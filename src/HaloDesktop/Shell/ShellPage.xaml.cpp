@@ -56,6 +56,46 @@ namespace winrt::HaloDesktop::implementation
         m_attached = false;
     }
 
+    bool ShellPage::IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element)
+    {
+        auto current = element;
+        while (current)
+        {
+            if (current.try_as<Microsoft::UI::Xaml::Controls::TextBox>() ||
+                current.try_as<Microsoft::UI::Xaml::Controls::AutoSuggestBox>() ||
+                current.try_as<Microsoft::UI::Xaml::Controls::RichEditBox>() ||
+                current.try_as<Microsoft::UI::Xaml::Controls::PasswordBox>())
+            {
+                return true;
+            }
+            current = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetParent(current);
+        }
+        return false;
+    }
+
+    void ShellPage::OnContentPointerPressed(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        // Only a caret is worth dismissing; other focus is left where the user put it.
+        auto const focused =
+            Microsoft::UI::Xaml::Input::FocusManager::GetFocusedElement(XamlRoot())
+                .try_as<Microsoft::UI::Xaml::DependencyObject>();
+        if (!focused || !IsWithinTextInput(focused))
+        {
+            return;
+        }
+
+        // A press that landed inside a text box is that box's business, not ours.
+        if (auto const source = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
+            source && IsWithinTextInput(source))
+        {
+            return;
+        }
+
+        ContentHost().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
+    }
+
     void ShellPage::OnItemInvoked(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
         Microsoft::UI::Xaml::Controls::NavigationViewItemInvokedEventArgs const& args)

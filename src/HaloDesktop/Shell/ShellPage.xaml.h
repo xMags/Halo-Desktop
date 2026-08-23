@@ -41,8 +41,13 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::Controls::NavigationView const& sender,
             Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args);
 
+        void OnContentPointerPressed(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+
     private:
         void SetJumpBackVisibility(bool visible);
+        [[nodiscard]] static bool IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element);
 
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;

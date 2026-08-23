@@ -143,11 +143,16 @@
       </Button>
     </NavigationView.PaneFooter>
 
+    <!-- Doubles as the focus sink: a press on empty content takes focus off a text box. -->
     <Border
+      x:Name="ContentHost"
       Background="{ThemeResource HaloLayerBrush}"
       BorderBrush="{ThemeResource HaloCardStrokeBrush}"
       BorderThickness="1,1,0,0"
-      CornerRadius="8,0,0,0">
+      CornerRadius="8,0,0,0"
+      IsTabStop="True"
+      PointerPressed="OnContentPointerPressed"
+      UseSystemFocusVisuals="False">
       <Frame x:Name="ContentFrame" />
     </Border>
   </NavigationView>
