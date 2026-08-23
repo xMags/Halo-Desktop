@@ -3,6 +3,7 @@
 #include "ShellPage.g.h"
 
 #include "Services/NavigationService.h"
+#include "Services/ServiceInterfaces.h"
 
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
@@ -16,6 +17,9 @@ namespace winrt::HaloDesktop::implementation
         ShellPage();
 
         void OnLoaded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnUnloaded(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnItemInvoked(
@@ -37,6 +41,7 @@ namespace winrt::HaloDesktop::implementation
     private:
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::AutoSuggestBox SearchBoxControl() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::NavigationView NavigationControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::NavigationViewItem NavigationItem(winrt::hstring const& name) const;
         void OnFrameNavigated(
@@ -44,8 +49,10 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
         void NavigateFromTag(winrt::hstring const& tag);
         void UpdateNavigationState(::HaloDesktop::Services::Page page);
+        void UpdateDownloadBadge();
 
         bool m_attached{ false };
+        ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };
 }

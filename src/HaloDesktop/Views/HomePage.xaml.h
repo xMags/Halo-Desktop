@@ -2,11 +2,16 @@
 
 #include "HomePage.g.h"
 
+#include <winrt/Windows.Foundation.h>
+
 namespace winrt::HaloDesktop::implementation
 {
     struct HomePage : HomePageT<HomePage>
     {
         HomePage();
+        void OnLoaded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::RoutedEventArgs const& args);
     };
 }
 

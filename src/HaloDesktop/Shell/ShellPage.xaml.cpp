@@ -32,6 +32,28 @@ namespace winrt::HaloDesktop::implementation
             });
 
         navigation->GoTo(::HaloDesktop::Services::Page::Home);
+        m_downloadChangedToken = App::Services().Downloads->AddChangedHandler(
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->UpdateDownloadBadge();
+                }
+            });
+        UpdateDownloadBadge();
+    }
+
+    void ShellPage::OnUnloaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        if (m_downloadChangedToken != 0)
+        {
+            App::Services().Downloads->RemoveChangedHandler(m_downloadChangedToken);
+            m_downloadChangedToken = 0;
+        }
+        m_frameNavigatedRevoker.revoke();
+        m_attached = false;
     }
 
     void ShellPage::OnItemInvoked(
@@ -91,6 +113,11 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Controls::AutoSuggestBox ShellPage::SearchBoxControl() const
     {
         return FindName(L"SearchBox").as<Microsoft::UI::Xaml::Controls::AutoSuggestBox>();
+    }
+
+    Microsoft::UI::Xaml::Controls::InfoBadge ShellPage::DownloadsBadgeControl() const
+    {
+        return FindName(L"DownloadsBadge").as<Microsoft::UI::Xaml::Controls::InfoBadge>();
     }
 
     Microsoft::UI::Xaml::Controls::NavigationView ShellPage::NavigationControl() const
@@ -161,5 +188,15 @@ namespace winrt::HaloDesktop::implementation
 
         NavigationControl().SelectedItem(selectedItem);
         NavigationControl().IsBackEnabled(App::Services().Navigation->CanGoBack());
+    }
+
+    void ShellPage::UpdateDownloadBadge()
+    {
+        auto const count = App::Services().Downloads->ActiveCount();
+        auto const badge = DownloadsBadgeControl();
+        badge.Value(count);
+        badge.Visibility(count == 0
+            ? Microsoft::UI::Xaml::Visibility::Collapsed
+            : Microsoft::UI::Xaml::Visibility::Visible);
     }
 }

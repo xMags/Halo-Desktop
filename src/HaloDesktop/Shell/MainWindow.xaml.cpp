@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Services/ServiceInterfaces.h"
 
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Windows.UI.h>
@@ -51,6 +52,7 @@ namespace winrt::HaloDesktop::implementation
 
         m_windowSizing = std::make_unique<::HaloDesktop::Shell::WindowSizing>(*this);
         UpdateCaptionButtonColors();
+        App::Services().Downloads->Start();
 
         m_themeChangedRevoker = RootGridControl().ActualThemeChanged(
             winrt::auto_revoke,
@@ -81,6 +83,7 @@ namespace winrt::HaloDesktop::implementation
             {
                 if (auto const self = weak.get())
                 {
+                    App::Services().Downloads->Stop();
                     App::Services().Navigation->Detach();
                     self->m_themeChangedRevoker.revoke();
                 }

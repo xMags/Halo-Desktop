@@ -4,8 +4,17 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:controls="using:HaloDesktop"
+  Loaded="OnLoaded"
   NavigationCacheMode="Required">
   <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
     <controls:SectionHeader Title="Home" Crumb="ALL CATALOGS" />
+    <StackPanel Grid.Row="1" Margin="24,20,24,24" Spacing="14">
+      <TextBlock Text="SERVICE SHELVES" Style="{StaticResource HaloMonoKicker}" />
+      <StackPanel x:Name="ShelfProofList" Spacing="8" />
+    </StackPanel>
   </Grid>
 </Page>

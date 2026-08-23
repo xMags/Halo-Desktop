@@ -1,0 +1,142 @@
+namespace HaloDesktop
+{
+    enum MediaKind
+    {
+        Movie = 0,
+        Series = 1,
+    };
+
+    enum StreamStatus
+    {
+        Instant = 0,
+        Caching = 1,
+        Uncached = 2,
+        OnDisk = 3,
+    };
+
+    enum DownloadState
+    {
+        Downloading = 0,
+        Queued = 1,
+        Paused = 2,
+        OnDisk = 3,
+    };
+
+    [default_interface]
+    runtimeclass MediaSummary
+    {
+        MediaSummary();
+        String Id { get; };
+        String Title { get; };
+        String Meta { get; };
+        MediaKind Kind { get; };
+    };
+
+    [default_interface]
+    runtimeclass MediaDetail
+    {
+        MediaDetail();
+        String Id { get; };
+        String Title { get; };
+        String Kicker { get; };
+        String MetaLine { get; };
+        String Synopsis { get; };
+        Windows.Foundation.Collections.IVectorView<String> Facts { get; };
+        Windows.Foundation.Collections.IVectorView<String> Availability { get; };
+        Windows.Foundation.Collections.IVectorView<Int32> Seasons { get; };
+    };
+
+    [default_interface]
+    runtimeclass Episode
+    {
+        Episode();
+        String Tag { get; };
+        String Title { get; };
+        String Blurb { get; };
+        String Runtime { get; };
+        String Aired { get; };
+        Double Progress { get; };
+        Boolean Downloaded { get; };
+    };
+
+    [default_interface]
+    runtimeclass StreamSource
+    {
+        StreamSource();
+        String Quality { get; };
+        String Range { get; };
+        String File { get; };
+        String Codec { get; };
+        String Audio { get; };
+        String Languages { get; };
+        StreamStatus Status { get; };
+        String Size { get; };
+    };
+
+    [default_interface]
+    runtimeclass SourceGroup
+    {
+        SourceGroup();
+        String Name { get; };
+        String Note { get; };
+        Int32 Count { get; };
+        Windows.Foundation.Collections.IVectorView<StreamSource> Sources { get; };
+    };
+
+    runtimeclass DownloadItem : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        DownloadItem();
+        String Id { get; };
+        String Tag { get; };
+        String Name { get; };
+        String Sub { get; };
+        DownloadState State { get; };
+        Double Progress { get; };
+        String Detail { get; };
+        String Quality { get; };
+        String Codec { get; };
+        String Size { get; };
+        String Subs { get; };
+    };
+
+    [default_interface]
+    runtimeclass Addon
+    {
+        Addon();
+        String Initials { get; };
+        String Name { get; };
+        String Version { get; };
+        String Scope { get; };
+        String Provides { get; };
+        Boolean Enabled;
+    };
+
+    [default_interface]
+    runtimeclass ContinueItem
+    {
+        ContinueItem();
+        String Name { get; };
+        String Sub { get; };
+        String Tag { get; };
+        String TimeLeft { get; };
+        Double Progress { get; };
+    };
+
+    [default_interface]
+    runtimeclass SearchGroup
+    {
+        SearchGroup();
+        String Title { get; };
+        String SourceLabel { get; };
+        Windows.Foundation.Collections.IVectorView<MediaSummary> Items { get; };
+    };
+
+    [default_interface]
+    runtimeclass Shelf
+    {
+        Shelf();
+        String Title { get; };
+        String SourceLabel { get; };
+        Windows.Foundation.Collections.IVectorView<MediaSummary> Items { get; };
+    };
+}

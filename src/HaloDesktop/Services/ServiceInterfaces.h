@@ -1,0 +1,80 @@
+#pragma once
+
+#include <cstdint>
+#include <functional>
+#include <winrt/HaloDesktop.h>
+#include <winrt/Windows.Foundation.Collections.h>
+
+namespace HaloDesktop::Services
+{
+    using DownloadChangedToken = std::uint64_t;
+    using DownloadChangedHandler = std::function<void()>;
+
+    class ICatalogService
+    {
+    public:
+        virtual ~ICatalogService() = default;
+        [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> Search(winrt::hstring const& query) const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const = 0;
+    };
+
+    class IMetadataService
+    {
+    public:
+        virtual ~IMetadataService() = default;
+        [[nodiscard]] virtual winrt::HaloDesktop::MediaDetail Detail() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> Episodes(std::int32_t season) const = 0;
+    };
+
+    class ISourceService
+    {
+    public:
+        virtual ~ISourceService() = default;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const = 0;
+    };
+
+    class IDownloadService
+    {
+    public:
+        virtual ~IDownloadService() = default;
+        virtual void Start() = 0;
+        virtual void Stop() noexcept = 0;
+        virtual void PauseAll() = 0;
+        virtual void ResumeAll() = 0;
+        [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
+        [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
+        [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
+        [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Transfers() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Ready() const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<double> Throughput() const = 0;
+        virtual DownloadChangedToken AddChangedHandler(DownloadChangedHandler handler) = 0;
+        virtual void RemoveChangedHandler(DownloadChangedToken token) noexcept = 0;
+    };
+
+    class IAddonService
+    {
+    public:
+        virtual ~IAddonService() = default;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> Items() const = 0;
+        virtual bool Toggle(winrt::hstring const& name, bool enabled) = 0;
+        virtual bool Remove(winrt::hstring const& name) = 0;
+    };
+
+    class ISessionService
+    {
+    public:
+        virtual ~ISessionService() = default;
+        [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
+        [[nodiscard]] virtual winrt::hstring UserName() const = 0;
+        [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
+        virtual bool TestServer(winrt::hstring const& url) = 0;
+        virtual bool SignIn(winrt::hstring const& user, winrt::hstring const& password) = 0;
+        virtual void SignOut() noexcept = 0;
+    };
+}

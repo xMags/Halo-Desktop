@@ -4,7 +4,8 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:controls="using:HaloDesktop"
-  Loaded="OnLoaded">
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded">
 
   <Page.KeyboardAccelerators>
     <KeyboardAccelerator
@@ -66,7 +67,7 @@
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <TextBlock VerticalAlignment="Center" Text="Downloads" />
-            <InfoBadge Grid.Column="1" Margin="12,0,0,0" Value="2" />
+            <InfoBadge x:Name="DownloadsBadge" Grid.Column="1" Margin="12,0,0,0" Value="2" />
           </Grid>
         </NavigationViewItem.Content>
       </NavigationViewItem>

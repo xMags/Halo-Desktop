@@ -4,6 +4,7 @@
     <Filter Include="Assets"><UniqueIdentifier>{73b9a894-e514-401a-b788-bb2a13ec0382}</UniqueIdentifier></Filter>
     <Filter Include="Assets\Fonts"><UniqueIdentifier>{587386ee-c526-4613-86e9-7869a89740ee}</UniqueIdentifier></Filter>
     <Filter Include="Controls"><UniqueIdentifier>{664cf318-fab9-49e5-8caf-fe085c75647f}</UniqueIdentifier></Filter>
+    <Filter Include="Models"><UniqueIdentifier>{b2c8e42d-69ac-4b1f-9404-054c69866c89}</UniqueIdentifier></Filter>
     <Filter Include="Services"><UniqueIdentifier>{16768e08-0a73-40c4-9f6e-adcd99549454}</UniqueIdentifier></Filter>
     <Filter Include="Shell"><UniqueIdentifier>{c5038496-9a9d-41ca-a1d4-2aac12961146}</UniqueIdentifier></Filter>
     <Filter Include="Styles"><UniqueIdentifier>{027d9ad2-09e5-4615-8539-7b2148e83cd0}</UniqueIdentifier></Filter>
@@ -32,6 +33,7 @@
   <ItemGroup>
     <Midl Include="Controls\PlaceholderArt.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Models\Models.idl"><Filter>Models</Filter></Midl>
     <Midl Include="Shell\MainWindow.idl"><Filter>Shell</Filter></Midl>
     <Midl Include="Shell\ShellPage.idl"><Filter>Shell</Filter></Midl>
     <Midl Include="Shell\TitleBar.idl"><Filter>Shell</Filter></Midl>
@@ -50,7 +52,11 @@
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
+    <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\MockServices.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\NavigationService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\SampleData.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -69,8 +75,13 @@
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\MockDownloadService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\MockServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\NavigationService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\SampleData.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>

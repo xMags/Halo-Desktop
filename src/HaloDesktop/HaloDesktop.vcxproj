@@ -134,8 +134,13 @@
     <ClInclude Include="Controls\SectionHeader.xaml.h">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Services\AppServices.h" />
+    <ClInclude Include="Services\MockDownloadService.h" />
+    <ClInclude Include="Services\MockServices.h" />
     <ClInclude Include="Services\NavigationService.h" />
+    <ClInclude Include="Services\SampleData.h" />
+    <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClInclude>
@@ -199,7 +204,11 @@
     <ClCompile Include="Controls\SectionHeader.xaml.cpp">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Models\Models.cpp" />
+    <ClCompile Include="Services\MockDownloadService.cpp" />
+    <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
+    <ClCompile Include="Services\SampleData.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
@@ -241,6 +250,9 @@
     <Midl Include="Controls\SectionHeader.idl">
       <SubType>Code</SubType>
       <DependentUpon>SectionHeader.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Models\Models.idl">
+      <SubType>Code</SubType>
     </Midl>
     <Midl Include="Shell\MainWindow.idl">
       <SubType>Code</SubType>
