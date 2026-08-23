@@ -135,9 +135,9 @@
               Foreground="{ThemeResource HaloOnAccentBrush}"
               Text="DB" />
           </Border>
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText1Brush}" Text="debashis" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="ADMIN" />
+          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+            <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" Text="Debashis" />
+            <TextBlock CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloAccentBrush}" Text="PREMIUM" />
           </StackPanel>
         </Grid>
       </Button>
