@@ -10,7 +10,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::HaloDesktop::SearchViewModel ViewModel() const;
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
-        void OnQueryKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
+        void OnQuerySubmitted(Microsoft::UI::Xaml::Controls::AutoSuggestBox const&,
+                              Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const&);
         void OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnMoviesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSeriesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);

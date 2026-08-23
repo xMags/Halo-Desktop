@@ -15,6 +15,19 @@ namespace winrt::HaloDesktop::implementation
         auto const viewModel = winrt::get_self<SearchViewModel>(m_viewModel);
         FindName(L"ResultsList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->ResultsView());
         FindName(L"RecentList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->RecentItemsView());
+
+        // Search is the shortcut's only entry point, so it takes the caret on arrival.
+        // NavigationView focuses the invoked menu item after navigation completes, so this
+        // is queued behind that rather than run inline, which it would otherwise undo.
+        DispatcherQueue().TryEnqueue(
+            Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->QueryBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+                }
+            });
     }
     void SearchPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
     {
@@ -22,17 +35,12 @@ namespace winrt::HaloDesktop::implementation
         {
             m_viewModel.Submit(query.GetString());
         }
-
-        // Search is the only entry point for the shortcut now, so hand it the caret.
-        QueryBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
     }
-    void SearchPage::OnQueryKeyDown(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
-        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    void SearchPage::OnQuerySubmitted(
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender,
+        Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args)
     {
-        if (args.Key() != winrt::Windows::System::VirtualKey::Enter) return;
-        args.Handled(true);
-        m_viewModel.Submit(m_viewModel.Query());
+        m_viewModel.Submit(args.QueryText());
     }
     void SearchPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
     void SearchPage::OnMoviesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }

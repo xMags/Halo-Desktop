@@ -12,31 +12,27 @@
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <StackPanel Margin="24,8,24,40">
 
-        <!-- Search field: accent underline, inline resolve stats and a clear affordance. -->
-        <Grid MaxWidth="720" Height="40" HorizontalAlignment="Left" Width="720">
-          <Border Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="4" />
-          <Rectangle Height="2" VerticalAlignment="Bottom" Fill="{ThemeResource HaloAccentBrush}" RadiusX="1" RadiusY="1" />
-          <Grid Margin="12,0" ColumnSpacing="10">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto" />
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <FontIcon VerticalAlignment="Center" FontSize="15" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xE721;" />
-            <!-- The TextBox supplies its own clear button, so the row adds only the resolve stats. -->
-            <TextBox
-              x:Name="QueryBox"
-              Grid.Column="1"
-              Padding="0"
-              VerticalAlignment="Center"
-              Background="Transparent"
-              BorderThickness="0"
-              FontSize="15"
-              KeyDown="OnQueryKeyDown"
-              PlaceholderText="Search movies and series"
-              Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-            <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="4 ADDONS · 128 MS" />
-          </Grid>
+        <!-- Same plain search control as the home header; the resolve stats sit beside it. -->
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <AutoSuggestBox
+            x:Name="QueryBox"
+            Width="480"
+            Height="36"
+            FontSize="14"
+            PlaceholderText="Search movies and series"
+            QueryIcon="Find"
+            QuerySubmitted="OnQuerySubmitted"
+            Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+          <TextBlock
+            Grid.Column="1"
+            Margin="14,0,0,0"
+            VerticalAlignment="Center"
+            Style="{StaticResource HaloMonoData}"
+            Text="4 ADDONS · 128 MS" />
         </Grid>
 
         <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
