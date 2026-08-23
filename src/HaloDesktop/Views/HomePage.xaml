@@ -10,17 +10,17 @@
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader Title="Home" Crumb="ALL CATALOGS">
         <local:SectionHeader.RightContent>
-          <Border Padding="3" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="5">
+          <Border Style="{StaticResource HaloSegmentedTrayStyle}">
             <StackPanel Orientation="Horizontal">
-              <RadioButton GroupName="HomeFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" />
-              <RadioButton GroupName="HomeFilter" Click="OnMoviesFilterClick" Content="Movies" />
-              <RadioButton GroupName="HomeFilter" Click="OnSeriesFilterClick" Content="Series" />
+              <RadioButton GroupName="HomeFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="HomeFilter" Click="OnMoviesFilterClick" Content="Movies" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="HomeFilter" Click="OnSeriesFilterClick" Content="Series" Style="{StaticResource HaloSegmentedRadioStyle}" />
             </StackPanel>
           </Border>
         </local:SectionHeader.RightContent>
       </local:SectionHeader>
       <Grid Height="304" Margin="24,0" CornerRadius="8">
-        <local:PlaceholderArt />
+        <local:PlaceholderArt Caption="BACKDROP 1920×1080 · CINEMETA" />
         <Rectangle>
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
@@ -30,15 +30,26 @@
             </LinearGradientBrush>
           </Rectangle.Fill>
         </Rectangle>
-        <StackPanel Width="560" Margin="28" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
+        <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED · CINEMETA" />
           <TextBlock Style="{StaticResource HaloHeroTitle}" Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
-          <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.HeroMeta, Mode=OneWay}" />
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.HeroRating, Mode=OneWay}" />
+            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
+            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.HeroMeta, Mode=OneWay}" />
+          </StackPanel>
           <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind ViewModel.HeroSynopsis, Mode=OneWay}" />
-          <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="8">
-            <Button Click="OnResumeClick" Content="Resume S02E04" Style="{StaticResource HaloAccentButtonStyle}" />
-            <Button Click="OnDetailsClick" Content="Details" />
-            <Button Content="&#xE734;" ToolTipService.ToolTip="Bookmarking is not available in this prototype" />
+          <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
+            <Button Height="36" Padding="18,0" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                <TextBlock VerticalAlignment="Center" Text="Resume S02E04" />
+              </StackPanel>
+            </Button>
+            <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />
+            <Button Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Bookmarking is not available in this prototype">
+              <FontIcon FontSize="14" Glyph="&#xE734;" />
+            </Button>
           </StackPanel>
         </StackPanel>
       </Grid>

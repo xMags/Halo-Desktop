@@ -47,4 +47,278 @@
     <Setter Property="CornerRadius" Value="3" />
     <Setter Property="FontSize" Value="13" />
   </Style>
+
+  <!-- Square icon-only button, 36x36, matching the design's secondary action squares. -->
+  <Style x:Key="HaloIconButtonStyle" TargetType="Button">
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="CornerRadius" Value="{StaticResource HaloControlCornerRadius}" />
+  </Style>
+
+  <!-- Borderless left-aligned row used by the Settings jump rail. -->
+  <Style x:Key="HaloRailButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="Padding" Value="12,9" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+  </Style>
+
+  <!--
+    Track-only toggle: the design carries no On/Off text beside the switch.
+    Null (not empty string) content so the presenters measure to zero and the row
+    keeps the design's height instead of reserving a label line.
+  -->
+  <Style x:Key="HaloToggleSwitchStyle" TargetType="ToggleSwitch">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="OnContent" Value="{x:Null}" />
+    <Setter Property="OffContent" Value="{x:Null}" />
+  </Style>
+
+  <!--
+    NavigationViewItemHeader's stock template applies its own text treatment, which
+    swallowed the kicker styling. Templating it keeps the design's mono label.
+  -->
+  <Style x:Key="HaloNavSectionHeaderStyle" TargetType="NavigationViewItemHeader">
+    <Setter Property="Padding" Value="12,6,12,8" />
+    <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="NavigationViewItemHeader">
+          <ContentPresenter
+            Padding="{TemplateBinding Padding}"
+            HorizontalAlignment="Left"
+            CharacterSpacing="160"
+            Content="{TemplateBinding Content}"
+            FontFamily="{StaticResource HaloMonoBoldFont}"
+            FontSize="10"
+            FontWeight="Bold"
+            Foreground="{ThemeResource HaloText3Brush}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    Segmented and chip selectors are RadioButtons so grouping, keyboarding and
+    automation keep working; only the template changes. Hover and selection are
+    separate layers so the two visual state groups never fight over one property.
+  -->
+  <Style x:Key="HaloSegmentedRadioStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="16,5" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="3">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Opacity="0" />
+            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloCtrlHoverBrush}" CornerRadius="3" Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="Normal"
+              Foreground="{ThemeResource HaloText3Brush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                    <Setter Target="Label.FontWeight" Value="SemiBold" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <Style x:Key="HaloChipRadioStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="14,5" />
+    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="14">
+            <Border
+              x:Name="BaseLayer"
+              BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="14" />
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="14" Opacity="0" />
+            <Border
+              x:Name="SelectionLayer"
+              Background="{ThemeResource HaloAccentTintBrush}"
+              BorderBrush="{ThemeResource HaloAccentBrush}"
+              BorderThickness="1"
+              CornerRadius="14"
+              Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              Foreground="{ThemeResource HaloText3Brush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    List rows in the design are self-contained cards, and selection is an accent
+    border rather than the stock selection pill, so the container is templated.
+  -->
+  <Style x:Key="HaloCardListItemStyle" TargetType="ListViewItem">
+    <Setter Property="Margin" Value="0,0,0,8" />
+    <Setter Property="Padding" Value="12" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Grid>
+            <Border
+              x:Name="Root"
+              Background="{ThemeResource HaloCardBrush}"
+              BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="8" />
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloCtrlHoverBrush}" CornerRadius="8" Opacity="0" />
+            <ContentPresenter
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Stretch"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Selected">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background" Value="{ThemeResource HaloNavSelBrush}" />
+                    <Setter Target="Root.BorderBrush" Value="{ThemeResource HaloAccentBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="PointerOverSelected">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background" Value="{ThemeResource HaloNavSelBrush}" />
+                    <Setter Target="Root.BorderBrush" Value="{ThemeResource HaloAccentBrush}" />
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="PressedSelected">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Background" Value="{ThemeResource HaloNavSelBrush}" />
+                    <Setter Target="Root.BorderBrush" Value="{ThemeResource HaloAccentBrush}" />
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The 3px inset tray the segmented selectors sit inside. -->
+  <Style x:Key="HaloSegmentedTrayStyle" TargetType="Border">
+    <Setter Property="Padding" Value="3" />
+    <Setter Property="Background" Value="{ThemeResource HaloCtrlBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloCtrlStrokeBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="HorizontalAlignment" Value="Left" />
+  </Style>
 </ResourceDictionary>

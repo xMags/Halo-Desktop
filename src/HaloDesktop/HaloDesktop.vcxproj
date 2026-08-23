@@ -98,7 +98,9 @@
       <AdditionalIncludeDirectories>$(GeneratedFilesDir)Controls;$(GeneratedFilesDir)Shell;$(GeneratedFilesDir)Views;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &gt;= '18.0'">stdcpp20</LanguageStandard>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &lt; '18.0'">stdcpp17</LanguageStandard>
-      <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
+      <!-- Sources are UTF-8 without a BOM. Without /utf-8 MSVC decodes them with the system
+           ANSI code page, which turns literals like L"·" into mojibake at runtime. -->
+      <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">

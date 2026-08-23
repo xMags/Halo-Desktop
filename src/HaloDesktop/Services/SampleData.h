@@ -10,9 +10,11 @@ namespace HaloDesktop::Services::SampleData
     namespace Copy
     {
         inline constexpr wchar_t HeroSynopsis[] = L"Six surveyors walk a border nobody has walked, and come back with two versions of the same winter.";
-        inline constexpr wchar_t HeroMeta[] = L"★ 8.4 · 2024 · Drama · Thriller · S02E04";
+        inline constexpr wchar_t HeroRating[] = L"★ 8.4";
+        inline constexpr wchar_t HeroMeta[] = L"2024 · Drama · Thriller · S02E04";
         inline constexpr wchar_t HomeCatalogStats[] = L"6 CATALOGS · 4 ADDONS";
         inline constexpr wchar_t SearchTopMatchMeta[] = L"SERIES · 2024 · 2 SEASONS · CINEMETA";
+        inline constexpr wchar_t SearchSeedQuery[] = L"northwind";
         inline constexpr wchar_t DetailSynopsis[] = L"Six surveyors walk a border nobody has walked. The map they bring back does not agree with the map they were sent to confirm, and the second season is the argument about which one gets filed.";
         inline constexpr wchar_t ConnectHeadline[] = L"Point Halo at your server.";
         inline constexpr wchar_t ConnectBody[] = L"Your library, watch progress and addons live there. Nothing is stored by anyone else.";

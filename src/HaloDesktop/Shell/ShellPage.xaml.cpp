@@ -100,6 +100,32 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Settings);
     }
 
+    void ShellPage::OnPaneOpening(
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
+    {
+        SetJumpBackVisibility(true);
+    }
+
+    void ShellPage::OnPaneClosing(
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args)
+    {
+        SetJumpBackVisibility(false);
+    }
+
+    void ShellPage::SetJumpBackVisibility(bool visible)
+    {
+        auto const visibility = visible
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed;
+
+        JumpHeader().Visibility(visibility);
+        JumpItem1().Visibility(visibility);
+        JumpItem2().Visibility(visibility);
+        JumpItem3().Visibility(visibility);
+    }
+
     void ShellPage::OnFrameNavigated(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
@@ -159,6 +185,11 @@ namespace winrt::HaloDesktop::implementation
         if (tag == L"Settings")
         {
             App::Services().Navigation->GoTo(Page::Settings);
+            return;
+        }
+        if (tag == L"Detail")
+        {
+            App::Services().Navigation->GoTo(Page::Detail);
         }
     }
 

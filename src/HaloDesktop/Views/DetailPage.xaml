@@ -10,7 +10,7 @@
     <StackPanel Padding="0,0,0,48">
       <local:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
       <Grid Height="268">
-        <local:PlaceholderArt />
+        <local:PlaceholderArt Caption="BACKDROP · CINEMETA" />
         <Rectangle VerticalAlignment="Bottom" Height="140">
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
@@ -28,32 +28,42 @@
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
+        <!-- Poster and title block are bottom-aligned, as in the design's hero row. -->
         <local:PlaceholderArt Width="128" Height="192" VerticalAlignment="Top" />
-        <StackPanel Grid.Column="1" Margin="0,76,0,0" Spacing="8">
+        <StackPanel Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Spacing="8">
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.Kicker, Mode=OneWay}" />
           <TextBlock Style="{StaticResource HaloDetailTitle}" Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
           <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.MetaLine, Mode=OneWay}" />
-          <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="8">
-            <Button Click="OnResumeClick" Content="Resume S02E04 · 18 min left" Style="{StaticResource HaloAccentButtonStyle}" />
-            <Button Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" ToolTipService.ToolTip="Library membership is preview-only in this prototype" />
-            <Button Click="OnDownloadsClick" Content="&#xE896;" />
+          <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="10">
+            <Button Height="36" Padding="18,0" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                <TextBlock VerticalAlignment="Center" Text="Resume S02E04 · 18 min left" />
+              </StackPanel>
+            </Button>
+            <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" ToolTipService.ToolTip="Library membership is preview-only in this prototype" />
+            <Button Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Go to downloads">
+              <FontIcon FontSize="14" Glyph="&#xE896;" />
+            </Button>
           </StackPanel>
         </StackPanel>
 
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="14">
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <StackPanel Orientation="Horizontal">
-              <RadioButton GroupName="DetailSeason" Click="OnSeasonOneClick" Content="Season 1" />
-              <RadioButton GroupName="DetailSeason" IsChecked="True" Click="OnSeasonTwoClick" Content="Season 2" />
-            </StackPanel>
+            <Border Style="{StaticResource HaloSegmentedTrayStyle}">
+              <StackPanel Orientation="Horizontal">
+                <RadioButton GroupName="DetailSeason" Click="OnSeasonOneClick" Content="Season 1" Padding="15,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                <RadioButton GroupName="DetailSeason" IsChecked="True" Click="OnSeasonTwoClick" Content="Season 2" Padding="15,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              </StackPanel>
+            </Border>
             <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
             <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" ToolTipService.ToolTip="Season downloads are not available in this prototype" />
           </Grid>
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:DetailEpisodeViewModel">
-                <Button Margin="0,0,0,8" Padding="10" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}">
+                <Button Margin="0,0,0,8" Padding="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}">
                   <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <Grid Width="118" Height="66">
@@ -82,7 +92,8 @@
           </ItemsControl>
         </StackPanel>
 
-        <StackPanel Grid.RowSpan="2" Grid.Column="2" Margin="0,76,0,0" Spacing="12">
+        <!-- The aside sits beside the episode list, not beside the hero. -->
+        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="12">
           <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
               <TextBlock Text="SYNOPSIS" Style="{StaticResource HaloMonoKicker}" />

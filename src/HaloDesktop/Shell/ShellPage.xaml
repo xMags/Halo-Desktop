@@ -24,6 +24,8 @@
     IsSettingsVisible="False"
     ItemInvoked="OnItemInvoked"
     BackRequested="OnBackRequested"
+    PaneOpening="OnPaneOpening"
+    PaneClosing="OnPaneClosing"
     OpenPaneLength="280"
     PaneDisplayMode="Left">
 
@@ -38,9 +40,7 @@
     </NavigationView.AutoSuggestBox>
 
     <NavigationView.MenuItems>
-      <NavigationViewItemHeader>
-        <TextBlock Text="MENU" Style="{StaticResource HaloMonoKicker}" />
-      </NavigationViewItemHeader>
+      <NavigationViewItemHeader Content="MENU" Style="{StaticResource HaloNavSectionHeaderStyle}" />
       <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home">
         <NavigationViewItem.Icon>
           <FontIcon Glyph="&#xE80F;" />
@@ -76,13 +76,15 @@
           <FontIcon Glyph="&#xE713;" />
         </NavigationViewItem.Icon>
       </NavigationViewItem>
-    </NavigationView.MenuItems>
 
-    <NavigationView.PaneCustomContent>
-      <StackPanel Margin="4,10,4,0">
-        <TextBlock Margin="12,0,0,8" Text="JUMP BACK IN" Style="{StaticResource HaloMonoKicker}" />
-
-        <Grid Height="44" Padding="8,0">
+      <!--
+        "Jump back in" belongs after the menu in the design. PaneCustomContent is
+        templated above MenuItems, so these live in MenuItems instead and opt out of
+        selection. They are hidden with the pane, matching the design's expanded-only rule.
+      -->
+      <NavigationViewItemHeader x:Name="JumpHeader" Margin="0,14,0,0" Content="JUMP BACK IN" Style="{StaticResource HaloNavSectionHeaderStyle}" />
+      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Detail">
+        <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
             <ColumnDefinition Width="*" />
@@ -93,8 +95,9 @@
             <TextBlock Style="{StaticResource HaloMonoData}" Text="S02E04 · 18 MIN LEFT" />
           </StackPanel>
         </Grid>
-
-        <Grid Height="44" Padding="8,0">
+      </NavigationViewItem>
+      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Detail">
+        <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
             <ColumnDefinition Width="*" />
@@ -105,8 +108,9 @@
             <TextBlock Style="{StaticResource HaloMonoData}" Text="52 MIN LEFT" />
           </StackPanel>
         </Grid>
-
-        <Grid Height="44" Padding="8,0">
+      </NavigationViewItem>
+      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Detail">
+        <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
             <ColumnDefinition Width="*" />
@@ -117,8 +121,8 @@
             <TextBlock Style="{StaticResource HaloMonoData}" Text="S01E07 · 6 MIN LEFT" />
           </StackPanel>
         </Grid>
-      </StackPanel>
-    </NavigationView.PaneCustomContent>
+      </NavigationViewItem>
+    </NavigationView.MenuItems>
 
     <NavigationView.PaneFooter>
       <Button Click="OnAccountClick" Style="{StaticResource HaloPaneRowButtonStyle}">

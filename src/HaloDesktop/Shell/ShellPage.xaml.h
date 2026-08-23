@@ -37,8 +37,16 @@ namespace winrt::HaloDesktop::implementation
         void OnAccountClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnPaneOpening(
+            Microsoft::UI::Xaml::Controls::NavigationView const& sender,
+            winrt::Windows::Foundation::IInspectable const& args);
+        void OnPaneClosing(
+            Microsoft::UI::Xaml::Controls::NavigationView const& sender,
+            Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args);
 
     private:
+        void SetJumpBackVisibility(bool visible);
+
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::AutoSuggestBox SearchBoxControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;

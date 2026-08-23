@@ -24,9 +24,9 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const item = sender.as<Microsoft::UI::Xaml::Controls::RadioMenuFlyoutItem>();
         auto const text = item.Text();
-        auto const index = text == L"Title A-Z" ? 1 : text == L"Release year" ? 2 : text == L"Recently watched" ? 3 : 0;
+        auto const index = text == L"Title A–Z" ? 1 : text == L"Release year" ? 2 : text == L"Recently watched" ? 3 : 0;
         m_viewModel.SetSort(index);
-        FindName(L"SortButton").as<Microsoft::UI::Xaml::Controls::Button>().Content(winrt::box_value(text));
+        SortLabel().Text(text);
     }
     void LibraryPage::OnPosterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDetail(); }
 }

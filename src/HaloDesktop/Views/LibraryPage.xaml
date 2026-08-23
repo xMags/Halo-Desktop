@@ -7,33 +7,38 @@
   Loaded="OnLoaded"
   NavigationCacheMode="Required">
   <Grid>
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Library" Crumb="42 TITLES">
-      <local:SectionHeader.RightContent>
-        <StackPanel Orientation="Horizontal" Spacing="12">
-          <StackPanel Orientation="Horizontal">
-            <RadioButton GroupName="LibraryFilter" IsChecked="True" Click="OnAllFilterClick" Content="All 42" />
-            <RadioButton GroupName="LibraryFilter" Click="OnMoviesFilterClick" Content="Movies 19" />
-            <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="Series 23" />
-          </StackPanel>
-          <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
-          <Button x:Name="SortButton" Width="164" HorizontalContentAlignment="Left" Content="Recently added">
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+    <local:SectionHeader Title="Library" Crumb="42 TITLES" />
+    <!-- The design keeps the filter and sort row in the page body, below the header. -->
+    <Grid Grid.Row="1" Margin="24,0,24,0">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+      <Border Style="{StaticResource HaloSegmentedTrayStyle}">
+            <StackPanel Orientation="Horizontal">
+              <RadioButton GroupName="LibraryFilter" IsChecked="True" Click="OnAllFilterClick" Content="All 42" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="LibraryFilter" Click="OnMoviesFilterClick" Content="Movies 19" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="Series 23" Style="{StaticResource HaloSegmentedRadioStyle}" />
+            </StackPanel>
+          </Border>
+      <TextBlock Grid.Column="1" Margin="0,0,14,0" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
+      <Button x:Name="SortButton" Grid.Column="2" Height="32" Padding="11,0" VerticalAlignment="Center" HorizontalContentAlignment="Left" FontSize="13">
+            <StackPanel Orientation="Horizontal" Spacing="10">
+              <TextBlock x:Name="SortLabel" VerticalAlignment="Center" Text="Recently added" />
+              <FontIcon VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" />
+            </StackPanel>
             <Button.Flyout>
               <MenuFlyout>
                 <RadioMenuFlyoutItem GroupName="LibrarySort" IsChecked="True" Text="Recently added" Click="OnSortClick" />
-                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Title A-Z" Click="OnSortClick" />
+                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Title A–Z" Click="OnSortClick" />
                 <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Release year" Click="OnSortClick" />
                 <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Recently watched" Click="OnSortClick" />
               </MenuFlyout>
-            </Button.Flyout>
-          </Button>
-        </StackPanel>
-      </local:SectionHeader.RightContent>
-    </local:SectionHeader>
+        </Button.Flyout>
+      </Button>
+    </Grid>
     <GridView
       x:Name="LibraryGrid"
-      Grid.Row="1"
-      Padding="24,8,24,32"
+      Grid.Row="2"
+      Padding="24,20,24,32"
       IsItemClickEnabled="False"
       SelectionMode="None">
       <GridView.ItemsPanel>

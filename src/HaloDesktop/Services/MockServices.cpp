@@ -49,20 +49,23 @@ namespace HaloDesktop::Services
             return winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>(std::move(groups)).GetView();
         }
 
+        // A group is a catalog's answer to the query, so once any title in it matches the
+        // whole group is returned rather than only the literal substring hits. That keeps
+        // the sample corpus's related titles ("North by Nine", "Treeline") in the results.
         for (auto const& group : m_searchGroups)
         {
-            std::vector<winrt::HaloDesktop::MediaSummary> matches;
+            auto matched = false;
             for (auto const& item : group.Items())
             {
                 if (Lower(item.Title().c_str()).find(normalized) != std::wstring::npos)
                 {
-                    matches.push_back(item);
+                    matched = true;
+                    break;
                 }
             }
-            if (!matches.empty())
+            if (matched)
             {
-                auto const items = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>(std::move(matches)).GetView();
-                groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(group.Title(), group.SourceLabel(), items));
+                groups.push_back(group);
             }
         }
         return winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>(std::move(groups)).GetView();

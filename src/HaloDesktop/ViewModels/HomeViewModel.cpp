@@ -23,6 +23,7 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring HomeViewModel::HeroTitle() const { return m_hero.Title(); }
     winrt::hstring HomeViewModel::HeroSynopsis() const { return ::HaloDesktop::Services::SampleData::Copy::HeroSynopsis; }
+    winrt::hstring HomeViewModel::HeroRating() const { return ::HaloDesktop::Services::SampleData::Copy::HeroRating; }
     winrt::hstring HomeViewModel::HeroMeta() const { return ::HaloDesktop::Services::SampleData::Copy::HeroMeta; }
     winrt::hstring HomeViewModel::CatalogStats() const { return ::HaloDesktop::Services::SampleData::Copy::HomeCatalogStats; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItemsView; }

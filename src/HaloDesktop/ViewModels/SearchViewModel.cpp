@@ -33,6 +33,12 @@ namespace winrt::HaloDesktop::implementation
         {
             m_recentItems.Append(winrt::make<RecentSearchViewModel>(terms.GetAt(index), ages.GetAt(index)));
         }
+
+        // The prototype opens Search on a resolved query so the results layout is visible
+        // without typing. Seeded directly rather than through Submit so the recent list
+        // keeps its sample ages instead of gaining a "NOW" entry.
+        m_query = ::HaloDesktop::Services::SampleData::Copy::SearchSeedQuery;
+        Rebuild();
     }
     winrt::hstring SearchViewModel::Query() const { return m_query; }
     void SearchViewModel::Query(winrt::hstring const& value)

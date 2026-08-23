@@ -4,6 +4,7 @@ namespace HaloDesktop
     {
         String HeroTitle { get; };
         String HeroSynopsis { get; };
+        String HeroRating { get; };
         String HeroMeta { get; };
         String CatalogStats { get; };
         Object ContinueItems { get; };

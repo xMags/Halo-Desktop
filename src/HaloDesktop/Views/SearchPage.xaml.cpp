@@ -23,7 +23,14 @@ namespace winrt::HaloDesktop::implementation
             m_viewModel.Submit(query.GetString());
         }
     }
-    void SearchPage::OnQuerySubmitted([[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender, Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args) { m_viewModel.Submit(args.QueryText()); }
+    void SearchPage::OnQueryKeyDown(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        if (args.Key() != winrt::Windows::System::VirtualKey::Enter) return;
+        args.Handled(true);
+        m_viewModel.Submit(m_viewModel.Query());
+    }
     void SearchPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
     void SearchPage::OnMoviesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
     void SearchPage::OnSeriesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }

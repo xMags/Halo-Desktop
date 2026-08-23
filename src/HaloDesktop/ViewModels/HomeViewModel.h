@@ -14,6 +14,7 @@ namespace winrt::HaloDesktop::implementation
         explicit HomeViewModel(::HaloDesktop::Services::AppServices const& services);
         [[nodiscard]] winrt::hstring HeroTitle() const;
         [[nodiscard]] winrt::hstring HeroSynopsis() const;
+        [[nodiscard]] winrt::hstring HeroRating() const;
         [[nodiscard]] winrt::hstring HeroMeta() const;
         [[nodiscard]] winrt::hstring CatalogStats() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ContinueItems() const;
