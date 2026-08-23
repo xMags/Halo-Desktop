@@ -50,10 +50,10 @@
                 </StackPanel>
                 <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.BestFile, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                 <StackPanel Orientation="Horizontal" Spacing="6">
-                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestCodec, Mode=OneWay}" />
-                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestAudio, Mode=OneWay}" />
-                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestLanguages, Mode=OneWay}" />
-                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestSize, Mode=OneWay}" />
+                  <Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="{x:Bind ViewModel.BestCodec, Mode=OneWay}" /></Border>
+                  <Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="{x:Bind ViewModel.BestAudio, Mode=OneWay}" /></Border>
+                  <Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="{x:Bind ViewModel.BestLanguages, Mode=OneWay}" /></Border>
+                  <Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="{x:Bind ViewModel.BestSize, Mode=OneWay}" /></Border>
                 </StackPanel>
               </StackPanel>
               <Button Grid.Column="3" VerticalAlignment="Center" Click="OnPlayClick" Content="Play" Style="{StaticResource HaloAccentButtonStyle}" />
@@ -61,11 +61,29 @@
           </Border>
 
           <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="36" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoHeaderColumn" Width="0" /><ColumnDefinition x:Name="AudioHeaderColumn" Width="0" /><ColumnDefinition x:Name="LanguagesHeaderColumn" Width="0" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="36" /></Grid.ColumnDefinitions>
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup>
+                <VisualState x:Name="WideSourceHeaders">
+                  <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
+                  <VisualState.Setters>
+                    <Setter Target="VideoHeaderColumn.Width" Value="84" />
+                    <Setter Target="AudioHeaderColumn.Width" Value="100" />
+                    <Setter Target="LanguagesHeaderColumn.Width" Value="110" />
+                    <Setter Target="VideoHeader.Visibility" Value="Visible" />
+                    <Setter Target="AudioHeader.Visibility" Value="Visible" />
+                    <Setter Target="LanguagesHeader.Visibility" Value="Visible" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
             <TextBlock Style="{StaticResource HaloMonoKicker}" Text="QUALITY" />
             <TextBlock Grid.Column="1" Style="{StaticResource HaloMonoKicker}" Text="FILE" />
-            <TextBlock Grid.Column="2" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
-            <TextBlock Grid.Column="3" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
+            <TextBlock x:Name="VideoHeader" Grid.Column="2" Style="{StaticResource HaloMonoKicker}" Text="VIDEO" Visibility="Collapsed" />
+            <TextBlock x:Name="AudioHeader" Grid.Column="3" Style="{StaticResource HaloMonoKicker}" Text="AUDIO" Visibility="Collapsed" />
+            <TextBlock x:Name="LanguagesHeader" Grid.Column="4" Style="{StaticResource HaloMonoKicker}" Text="LANGUAGES" Visibility="Collapsed" />
+            <TextBlock Grid.Column="5" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
+            <TextBlock Grid.Column="6" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
           </Grid>
           <ItemsControl x:Name="SourceList">
             <ItemsControl.ItemTemplate>
@@ -80,7 +98,23 @@
                   </Grid>
                   <Button Margin="0,0,0,6" Padding="10" HorizontalContentAlignment="Stretch" Click="OnSourceRowClick" PointerEntered="OnSourceRowPointerEntered" PointerExited="OnSourceRowPointerExited" Style="{StaticResource HaloCardButtonStyle}" Visibility="{x:Bind RowVisibility}">
                     <Grid ColumnSpacing="10">
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="86" /><ColumnDefinition Width="*" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="26" /></Grid.ColumnDefinitions>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="86" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoColumn" Width="0" /><ColumnDefinition x:Name="AudioColumn" Width="0" /><ColumnDefinition x:Name="LanguagesColumn" Width="0" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="26" /></Grid.ColumnDefinitions>
+                      <VisualStateManager.VisualStateGroups>
+                        <VisualStateGroup>
+                          <VisualState x:Name="WideSourceRow">
+                            <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
+                            <VisualState.Setters>
+                              <Setter Target="VideoColumn.Width" Value="84" />
+                              <Setter Target="AudioColumn.Width" Value="100" />
+                              <Setter Target="LanguagesColumn.Width" Value="110" />
+                              <Setter Target="VideoValue.Visibility" Value="Visible" />
+                              <Setter Target="AudioValue.Visibility" Value="Visible" />
+                              <Setter Target="LanguagesValue.Visibility" Value="Visible" />
+                              <Setter Target="CompactTechnicalSummary.Visibility" Value="Collapsed" />
+                            </VisualState.Setters>
+                          </VisualState>
+                        </VisualStateGroup>
+                      </VisualStateManager.VisualStateGroups>
                       <StackPanel>
                         <TextBlock FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Quality}" Visibility="{x:Bind Quality2160Visibility}" />
                         <TextBlock FontWeight="Bold" Text="{x:Bind Quality}" Visibility="{x:Bind Quality1080Visibility}" />
@@ -89,16 +123,19 @@
                       </StackPanel>
                       <StackPanel Grid.Column="1" Spacing="3">
                         <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Text="{x:Bind File}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
+                        <TextBlock x:Name="CompactTechnicalSummary" Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
                       </StackPanel>
-                      <Grid Grid.Column="2" VerticalAlignment="Center">
+                      <TextBlock x:Name="VideoValue" Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Codec}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+                      <TextBlock x:Name="AudioValue" Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Audio}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+                      <TextBlock x:Name="LanguagesValue" Grid.Column="4" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Languages}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
+                      <Grid Grid.Column="5" VerticalAlignment="Center">
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind InstantVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="INSTANT" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind CachingVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloCautionBrush}" Text="CACHING" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind UncachedVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Text="UNCACHED" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind OnDiskVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="ON DISK" /></Border>
                       </Grid>
-                      <TextBlock Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
-                      <TextBlock Grid.Column="4" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Text="&#xE768;" />
+                      <TextBlock Grid.Column="6" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
+                      <TextBlock Grid.Column="7" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Text="&#xE768;" />
                     </Grid>
                   </Button>
                 </Grid>

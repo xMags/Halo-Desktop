@@ -89,7 +89,7 @@
       <Color x:Key="HaloSubtleColor">#0A000000</Color>
       <Color x:Key="HaloText1Color">#E4000000</Color>
       <Color x:Key="HaloText2Color">#9B000000</Color>
-      <Color x:Key="HaloText3Color">#72000000</Color>
+      <Color x:Key="HaloText3Color">#8B000000</Color>
       <Color x:Key="HaloText4Color">#5C000000</Color>
       <Color x:Key="HaloAccentColor">#FF005FB8</Color>
       <Color x:Key="HaloAccentAltColor">#FF0067C0</Color>

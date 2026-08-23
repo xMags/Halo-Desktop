@@ -1,14 +1,17 @@
-# Halo
+# Halo Desktop
 
-Halo is a native Windows desktop client for a personal media server. This prototype uses mock catalog, addon, stream, and download data while providing the foundation for local media playback in a later milestone.
+Halo Desktop is a native Windows 11 media client built with C++/WinRT and WinUI 3. The current prototype uses mock server, catalog, source, addon, and download data. Local video playback is real and uses an embedded libmpv child window.
 
 ## Prerequisites
 
-- Visual Studio 2026 with the C++/WinRT workload
-- Windows Developer Mode enabled for loose MSIX registration
+- Windows 11 with Developer Mode enabled for loose MSIX registration
+- Visual Studio 2026 with the Desktop development with C++ and C++/WinRT components
 - PowerShell
+- Internet access when fetching the ignored libmpv development payload
 
-## Build and run
+The supported development target is x64 Debug.
+
+## Restore, build, and run
 
 Run these commands from the repository root in PowerShell:
 
@@ -16,17 +19,33 @@ Run these commands from the repository root in PowerShell:
 $msbuild = "C:\Program Files\Microsoft Visual Studio\18\Professional\MSBuild\Current\Bin\MSBuild.exe"
 
 & $msbuild "Halo-Desktop.slnx" -t:Restore -p:RestorePackagesConfig=true -p:Configuration=Debug -p:Platform=x64
+& ".\tools\fetch-mpv.ps1"
 & $msbuild "Halo-Desktop.slnx" -p:Configuration=Debug -p:Platform=x64 -m -v:m
 
-$manifest = Get-Item "x64\Debug\HaloDesktop\AppxManifest.xml"
-
+$manifest = Get-Item ".\x64\Debug\HaloDesktop\AppxManifest.xml"
 Add-AppxPackage -Register $manifest.FullName -ForceApplicationShutdown
 
-$pfn = (Get-AppxPackage | Where-Object { $_.Name -eq '56fcb18b-d21c-4111-93fb-bef0ffa36c43' }).PackageFamilyName
-Start-Process "shell:AppsFolder\$pfn!App"
+$package = Get-AppxPackage -Name "56fcb18b-d21c-4111-93fb-bef0ffa36c43"
+Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!App"
 ```
 
-The normal development configuration is x64 Debug.
+`tools/fetch-mpv.ps1` is safe to rerun. It downloads the baseline x64 developer archive, generates the MSVC import library, and writes the ignored payload under `external/mpv/`. Only `external/mpv/README.md` is tracked.
+
+Run `tools/make-app-assets.ps1` after updating `Assets/halo-mark.png` to regenerate the MSIX icons, wide tile, and splash image without changing the logo artwork.
+
+## Local playback
+
+Any Play affordance opens the Player. The first Play action prompts for a local video file, and later actions reopen the remembered file when it still exists. Supported picker extensions are MKV, MP4, WebM, MOV, M4V, and AVI.
+
+Player shortcuts:
+
+- `Space`: play or pause
+- `Left` and `Right`: seek backward or forward 10 seconds
+- `Up` and `Down`: change volume by 5
+- `F`: toggle fullscreen
+- `Escape`: leave fullscreen first, then close the Player
+
+Define `HALO_USE_NULL_PLAYBACK` for an x64 build when the simulated M8 engine is needed for debugging.
 
 ## Repository layout
 
@@ -34,9 +53,11 @@ The normal development configuration is x64 Debug.
 Halo-Desktop/
 |-- Halo-Desktop.slnx
 |-- src/HaloDesktop/       WinUI 3 application project
-|-- docs/HANDOFF.md        Milestone plan and implementation specification
+|-- tools/                 Reproducible asset and libmpv setup scripts
+|-- external/mpv/          Tracked instructions plus ignored local payload
+|-- docs/HANDOFF.md        Milestone specification and progress log
 |-- design/                Reference canvas, intentionally ignored by Git
 `-- packages/              Restored NuGet packages, intentionally ignored by Git
 ```
 
-The visual reference is stored in `design/`. The complete build plan and acceptance criteria are in `docs/HANDOFF.md`.
+The reference canvas is read-only. See `docs/HANDOFF.md` for the complete prototype scope, architecture, acceptance criteria, and implementation record.

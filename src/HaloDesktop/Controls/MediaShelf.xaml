@@ -20,7 +20,7 @@
       </Grid.ColumnDefinitions>
       <TextBlock x:Name="TitleText" Style="{StaticResource HaloShelfTitle}" />
       <TextBlock x:Name="SourceText" Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" />
-      <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" />
+      <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" ToolTipService.ToolTip="Expanded catalog views are not available in this prototype" />
       <Button Grid.Column="4" Width="30" Height="30" Margin="8,0,0,0" Click="OnScrollLeft" Content="&#x2039;" />
       <Button Grid.Column="5" Width="30" Height="30" Margin="4,0,0,0" Click="OnScrollRight" Content="&#x203A;" />
     </Grid>

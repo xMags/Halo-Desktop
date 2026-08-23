@@ -35,7 +35,7 @@
           <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.MetaLine, Mode=OneWay}" />
           <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="8">
             <Button Click="OnResumeClick" Content="Resume S02E04 · 18 min left" Style="{StaticResource HaloAccentButtonStyle}" />
-            <Button Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" />
+            <Button Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" ToolTipService.ToolTip="Library membership is preview-only in this prototype" />
             <Button Click="OnDownloadsClick" Content="&#xE896;" />
           </StackPanel>
         </StackPanel>
@@ -48,7 +48,7 @@
               <RadioButton GroupName="DetailSeason" IsChecked="True" Click="OnSeasonTwoClick" Content="Season 2" />
             </StackPanel>
             <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
-            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" />
+            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" ToolTipService.ToolTip="Season downloads are not available in this prototype" />
           </Grid>
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>

@@ -39,7 +39,7 @@
                     <TextBlock FontSize="19" FontWeight="SemiBold" Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}" />
                     <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TopMatchMeta, Mode=OneWay}" />
                     <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.TopMatchSynopsis, Mode=OneWay}" />
-                    <StackPanel Orientation="Horizontal" Spacing="6"><Button Style="{StaticResource HaloChipButtonStyle}" Content="IN LIBRARY" /><Button Style="{StaticResource HaloChipButtonStyle}" Content="4 DOWNLOADED" /></StackPanel>
+                    <StackPanel Orientation="Horizontal" Spacing="6"><Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="IN LIBRARY" /></Border><Border Padding="10,4" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="12"><TextBlock FontSize="12" Text="4 DOWNLOADED" /></Border></StackPanel>
                   </StackPanel>
                 </Grid>
               </Button>

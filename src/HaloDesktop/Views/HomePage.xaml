@@ -38,7 +38,7 @@
           <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="8">
             <Button Click="OnResumeClick" Content="Resume S02E04" Style="{StaticResource HaloAccentButtonStyle}" />
             <Button Click="OnDetailsClick" Content="Details" />
-            <Button Content="&#xE734;" />
+            <Button Content="&#xE734;" ToolTipService.ToolTip="Bookmarking is not available in this prototype" />
           </StackPanel>
         </StackPanel>
       </Grid>

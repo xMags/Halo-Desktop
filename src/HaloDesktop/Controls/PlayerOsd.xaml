@@ -47,7 +47,7 @@
           <TextBlock Grid.Column="5" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Foreground="White" Text="&#xE767;" />
           <Slider Grid.Column="6" Margin="8,0" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.Volume, Mode=TwoWay}" />
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-          <Button Grid.Column="8" Width="34" Height="34" Margin="8,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Content="&#xE9A6;" />
+          <Button Grid.Column="8" Width="34" Height="34" Margin="8,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Content="&#xE9A6;" ToolTipService.ToolTip="Picture in picture is not available in this prototype" />
           <Button Grid.Column="9" Width="34" Height="34" Margin="6,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnFullscreenClick" Content="{x:Bind ViewModel.FullscreenGlyph, Mode=OneWay}" />
         </Grid>
       </StackPanel>
