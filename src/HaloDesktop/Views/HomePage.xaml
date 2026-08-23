@@ -31,7 +31,7 @@
         </local:SectionHeader.RightContent>
       </local:SectionHeader>
       <Grid Height="304" Margin="24,0" CornerRadius="8">
-        <local:PlaceholderArt Caption="BACKDROP 1920×1080 · CINEMETA" />
+        <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
         <Rectangle>
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
@@ -42,7 +42,7 @@
           </Rectangle.Fill>
         </Rectangle>
         <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
-          <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED · CINEMETA" />
+          <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
           <TextBlock Style="{StaticResource HaloHeroTitle}" Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.HeroRating, Mode=OneWay}" />
@@ -64,7 +64,6 @@
           </StackPanel>
         </StackPanel>
       </Grid>
-      <TextBlock Margin="24,-18,24,0" HorizontalAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.CatalogStats, Mode=OneWay}" />
       <StackPanel Margin="24,0">
         <StackPanel Margin="0,0,0,12" Orientation="Horizontal" Spacing="10">
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />

@@ -110,7 +110,7 @@ namespace HaloDesktop::Services::SampleData
             Media(L"the-remainder", L"The Remainder", L"2024 · SERIES", winrt::HaloDesktop::MediaKind::Series),
             Media(L"longitude", L"Longitude", L"2021 · MOVIE", winrt::HaloDesktop::MediaKind::Movie),
         };
-        shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(L"Trending now", L"CINEMETA · TOP", View(std::move(trending))));
+        shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(L"Trending now", L"TOP", View(std::move(trending))));
 
         std::vector<winrt::HaloDesktop::MediaSummary> releases{
             Media(L"silt", L"Silt", L"2025 · MOVIE", winrt::HaloDesktop::MediaKind::Movie),
@@ -122,7 +122,7 @@ namespace HaloDesktop::Services::SampleData
             Media(L"frostline", L"Frostline", L"2025 · MOVIE", winrt::HaloDesktop::MediaKind::Movie),
             Media(L"ash-harbour", L"Ash Harbour", L"2025 · MOVIE", winrt::HaloDesktop::MediaKind::Movie),
         };
-        shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(L"New releases", L"CINEMETA · MOVIE", View(std::move(releases))));
+        shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(L"New releases", L"2025", View(std::move(releases))));
         return View(std::move(shelves));
     }
 
@@ -172,8 +172,8 @@ namespace HaloDesktop::Services::SampleData
             Media(L"whiteout", L"Whiteout", L"2009 · MOVIE", winrt::HaloDesktop::MediaKind::Movie),
         };
         std::vector<winrt::HaloDesktop::SearchGroup> groups;
-        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(L"Series", L"CINEMETA", View(std::move(series))));
-        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(L"Movies", L"CINEMETA · OPENSUBTITLES", View(std::move(movies))));
+        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(L"Series", L"8 RESULTS", View(std::move(series))));
+        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(L"Movies", L"8 RESULTS · OPENSUBTITLES", View(std::move(movies))));
         return View(std::move(groups));
     }
 
@@ -192,11 +192,11 @@ namespace HaloDesktop::Services::SampleData
         return winrt::make<winrt::HaloDesktop::implementation::MediaDetail>(
             L"northwind-divide",
             L"Northwind Divide",
-            L"SERIES · CINEMETA",
+            L"SERIES",
             L"★ 8.4 · 2024 · 2 seasons · 18 episodes · TV-MA",
             Copy::DetailSynopsis,
             View<winrt::hstring>({ L"CREATED BY · A. Rennick", L"CAST · M. Oyelaran, J. Fisk, S. Toth", L"GENRE · Drama · Thriller", L"NETWORK · Meridian" }),
-            View<winrt::hstring>({ L"Torrentio · 18 SOURCES", L"OpenSubtitles · 42 SUBS", L"Local files · 4 EPISODES" }),
+            View<winrt::hstring>({ L"Stream sources · 18 SOURCES", L"OpenSubtitles · 42 SUBS", L"Local files · 4 EPISODES" }),
             View<std::int32_t>({ 1, 2 }));
     }
 
@@ -224,7 +224,7 @@ namespace HaloDesktop::Services::SampleData
 
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> SourceGroups()
     {
-        std::vector<winrt::HaloDesktop::StreamSource> torrentio{
+        std::vector<winrt::HaloDesktop::StreamSource> remoteSources{
             Source(L"2160p", L"HDR10", L"Northwind.Divide.S02E04.2160p.WEB-DL.DDP5.1.HEVC-NTb.mkv", L"HEVC 10-bit", L"DDP 5.1", L"ENG · JPN", winrt::HaloDesktop::StreamStatus::Instant, L"6.2 GB"),
             Source(L"2160p", L"HDR10", L"Northwind.Divide.S02E04.2160p.HDR.WEB.H265-FLUX.mkv", L"HEVC 10-bit", L"AAC 2.0", L"ENG", winrt::HaloDesktop::StreamStatus::Instant, L"5.1 GB"),
             Source(L"1080p", L"SDR", L"Northwind.Divide.S02E04.1080p.WEB-DL.H264-GROUP.mkv", L"H.264", L"AC3 5.1", L"ENG · DEU", winrt::HaloDesktop::StreamStatus::Instant, L"3.4 GB"),
@@ -236,7 +236,7 @@ namespace HaloDesktop::Services::SampleData
             Source(L"1080p", L"SDR", L"Northwind Divide - S02E03 - The Inquiry.mkv", L"H.264", L"DDP 5.1", L"ENG · 4 SUBS", winrt::HaloDesktop::StreamStatus::OnDisk, L"3.2 GB"),
         };
         std::vector<winrt::HaloDesktop::SourceGroup> groups;
-        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(L"TORRENTIO", L"DEBRID · RESOLVED IN 0.8 S", 11, View(std::move(torrentio))));
+        groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(L"STREAM SOURCES", L"DEBRID · RESOLVED IN 0.8 S", 11, View(std::move(remoteSources))));
         groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(L"LOCAL LIBRARY", L"FROM YOUR DISK · 0.1 S", 4, View(std::move(local))));
         return View(std::move(groups));
     }

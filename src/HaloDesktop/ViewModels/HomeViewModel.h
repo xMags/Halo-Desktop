@@ -16,7 +16,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring HeroSynopsis() const;
         [[nodiscard]] winrt::hstring HeroRating() const;
         [[nodiscard]] winrt::hstring HeroMeta() const;
-        [[nodiscard]] winrt::hstring CatalogStats() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ContinueItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Shelves() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ContinueItemsView() const;

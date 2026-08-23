@@ -10,7 +10,7 @@
     <StackPanel Padding="0,0,0,48">
       <local:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
       <Grid Height="268">
-        <local:PlaceholderArt Caption="BACKDROP · CINEMETA" />
+        <local:PlaceholderArt Caption="BACKDROP" />
         <Rectangle VerticalAlignment="Bottom" Height="140">
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">

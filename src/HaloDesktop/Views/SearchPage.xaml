@@ -12,28 +12,16 @@
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <StackPanel Margin="24,8,24,40">
 
-        <!-- Same plain search control as the home header; the resolve stats sit beside it. -->
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="Auto" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <AutoSuggestBox
-            x:Name="QueryBox"
-            Width="480"
-            Height="36"
-            FontSize="14"
-            PlaceholderText="Search movies and series"
-            QueryIcon="Find"
-            QuerySubmitted="OnQuerySubmitted"
-            Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-          <TextBlock
-            Grid.Column="1"
-            Margin="14,0,0,0"
-            VerticalAlignment="Center"
-            Style="{StaticResource HaloMonoData}"
-            Text="4 ADDONS · 128 MS" />
-        </Grid>
+        <AutoSuggestBox
+          x:Name="QueryBox"
+          Width="480"
+          Height="36"
+          HorizontalAlignment="Left"
+          FontSize="14"
+          PlaceholderText="Search movies and series"
+          QueryIcon="Find"
+          QuerySubmitted="OnQuerySubmitted"
+          Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
 
         <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
           <RadioButton GroupName="SearchFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
