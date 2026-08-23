@@ -1,0 +1,15 @@
+.vs/
+packages/
+**/x64/
+**/Win32/
+**/ARM64/
+**/Generated Files/
+*.user
+*.aps
+*.log
+**/AppPackages/
+**/BundleArtifacts/
+design/
+external/mpv/*
+!external/mpv/README.md
+tools/nuget.exe

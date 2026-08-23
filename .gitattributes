@@ -1,0 +1,6 @@
+* text=auto
+*.png binary
+*.ttf binary
+*.dll binary
+*.sln* text eol=crlf
+*.vcxproj* text eol=crlf
