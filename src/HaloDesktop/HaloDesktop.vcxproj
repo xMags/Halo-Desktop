@@ -156,12 +156,14 @@
     </ClInclude>
     <ClInclude Include="Shell\WindowSizing.h" />
     <ClInclude Include="ViewModels\ConnectViewModel.h" />
+    <ClInclude Include="ViewModels\DetailViewModel.h" />
     <ClInclude Include="ViewModels\HomeViewModel.h" />
     <ClInclude Include="ViewModels\LibraryViewModel.h" />
     <ClInclude Include="ViewModels\LoginViewModel.h" />
     <ClInclude Include="ViewModels\ObservableHelper.h" />
     <ClInclude Include="ViewModels\SettingsViewModel.h" />
     <ClInclude Include="ViewModels\SearchViewModel.h" />
+    <ClInclude Include="ViewModels\SourcesViewModel.h" />
     <ClInclude Include="Views\ConnectPage.xaml.h">
       <DependentUpon>ConnectPage.xaml</DependentUpon>
     </ClInclude>
@@ -248,11 +250,13 @@
     </ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp" />
     <ClCompile Include="ViewModels\ConnectViewModel.cpp" />
+    <ClCompile Include="ViewModels\DetailViewModel.cpp" />
     <ClCompile Include="ViewModels\HomeViewModel.cpp" />
     <ClCompile Include="ViewModels\LibraryViewModel.cpp" />
     <ClCompile Include="ViewModels\LoginViewModel.cpp" />
     <ClCompile Include="ViewModels\SearchViewModel.cpp" />
     <ClCompile Include="ViewModels\SettingsViewModel.cpp" />
+    <ClCompile Include="ViewModels\SourcesViewModel.cpp" />
     <ClCompile Include="Views\ConnectPage.xaml.cpp">
       <DependentUpon>ConnectPage.xaml</DependentUpon>
     </ClCompile>

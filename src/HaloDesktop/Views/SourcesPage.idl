@@ -1,8 +1,53 @@
 namespace HaloDesktop
 {
     [default_interface]
+    runtimeclass SourceDisplayItemViewModel
+    {
+        Microsoft.UI.Xaml.Visibility HeaderVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RowVisibility { get; };
+        String GroupName { get; };
+        String GroupNote { get; };
+        String GroupCount { get; };
+        String Quality { get; };
+        String Range { get; };
+        String File { get; };
+        String Codec { get; };
+        String Audio { get; };
+        String Languages { get; };
+        String StatusLabel { get; };
+        String Size { get; };
+        Microsoft.UI.Xaml.Visibility Quality2160Visibility { get; };
+        Microsoft.UI.Xaml.Visibility Quality1080Visibility { get; };
+        Microsoft.UI.Xaml.Visibility QualityOtherVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InstantVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UncachedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
+    }
+
+    runtimeclass SourcesViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Object Items { get; };
+        String BestQuality { get; };
+        String BestRange { get; };
+        String BestFile { get; };
+        String BestCodec { get; };
+        String BestAudio { get; };
+        String BestLanguages { get; };
+        String BestSize { get; };
+        String TeachingTipTitle { get; };
+        String TeachingTipBody { get; };
+        Boolean TeachingTipOpen { get; };
+        void SetFilter(Int32 index);
+        void DismissTeachingTip();
+        void OpenPlayer();
+        void OpenSettings();
+    }
+
+    [default_interface]
     runtimeclass SourcesPage : Microsoft.UI.Xaml.Controls.Page
     {
         SourcesPage();
+        SourcesViewModel ViewModel { get; };
     }
 }

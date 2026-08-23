@@ -3,9 +3,129 @@
   x:Class="HaloDesktop.SourcesPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:controls="using:HaloDesktop"
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded"
   NavigationCacheMode="Required">
   <Grid>
-    <controls:SectionHeader Title="Sources" Crumb="S02E04" />
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+    <local:SectionHeader Title="Sources" Crumb="S02E04" />
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+      <Grid Margin="24,8,24,48" ColumnSpacing="20">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="292" /></Grid.ColumnDefinitions>
+        <StackPanel Spacing="18">
+          <Grid ColumnSpacing="12">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <local:PlaceholderArt Width="62" Height="92" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4">
+              <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="S02E04 · THE CUT LINE" />
+              <TextBlock FontSize="22" FontWeight="SemiBold" Text="Northwind Divide" />
+              <TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="18 sources from 3 addons · resolved in 1.4 s" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+              <RadioButton GroupName="SourceFilter" IsChecked="True" Click="OnAllFilterClick" Content="All 18" />
+              <RadioButton GroupName="SourceFilter" Click="OnInstantFilterClick" Content="Instant 11" />
+              <RadioButton GroupName="SourceFilter" Click="On2160FilterClick" Content="2160p 4" />
+              <RadioButton GroupName="SourceFilter" Click="On1080FilterClick" Content="1080p 9" />
+            </StackPanel>
+          </Grid>
+
+          <Border
+            x:Name="BestSourceCard"
+            Padding="18"
+            Background="{ThemeResource HaloAccentTintBrush}"
+            BorderBrush="{ThemeResource HaloAccentBrush}"
+            BorderThickness="1"
+            CornerRadius="8">
+            <Grid ColumnSpacing="18">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="86" /><ColumnDefinition Width="1" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock FontSize="20" FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.BestQuality, Mode=OneWay}" />
+                <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.BestRange, Mode=OneWay}" />
+              </StackPanel>
+              <Rectangle Grid.Column="1" Fill="{ThemeResource HaloDividerBrush}" />
+              <StackPanel Grid.Column="2" Spacing="7">
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource HaloSuccessBrush}" Text="Instant · cached on your debrid" />
+                  <Border Padding="6,2" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="NO WAIT" /></Border>
+                </StackPanel>
+                <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.BestFile, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                <StackPanel Orientation="Horizontal" Spacing="6">
+                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestCodec, Mode=OneWay}" />
+                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestAudio, Mode=OneWay}" />
+                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestLanguages, Mode=OneWay}" />
+                  <Button Style="{StaticResource HaloChipButtonStyle}" Content="{x:Bind ViewModel.BestSize, Mode=OneWay}" />
+                </StackPanel>
+              </StackPanel>
+              <Button Grid.Column="3" VerticalAlignment="Center" Click="OnPlayClick" Content="Play" Style="{StaticResource HaloAccentButtonStyle}" />
+            </Grid>
+          </Border>
+
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="36" /></Grid.ColumnDefinitions>
+            <TextBlock Style="{StaticResource HaloMonoKicker}" Text="QUALITY" />
+            <TextBlock Grid.Column="1" Style="{StaticResource HaloMonoKicker}" Text="FILE" />
+            <TextBlock Grid.Column="2" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
+            <TextBlock Grid.Column="3" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
+          </Grid>
+          <ItemsControl x:Name="SourceList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:SourceDisplayItemViewModel">
+                <Grid>
+                  <Grid Visibility="{x:Bind HeaderVisibility}" Margin="0,16,0,8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <TextBlock FontWeight="SemiBold" Text="{x:Bind GroupName}" />
+                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupNote}" />
+                    <Rectangle Grid.Column="2" Height="1" Margin="12,0" Fill="{ThemeResource HaloDividerBrush}" />
+                    <TextBlock Grid.Column="3" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupCount}" />
+                  </Grid>
+                  <Button Margin="0,0,0,6" Padding="10" HorizontalContentAlignment="Stretch" Click="OnSourceRowClick" PointerEntered="OnSourceRowPointerEntered" PointerExited="OnSourceRowPointerExited" Style="{StaticResource HaloCardButtonStyle}" Visibility="{x:Bind RowVisibility}">
+                    <Grid ColumnSpacing="10">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="86" /><ColumnDefinition Width="*" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="26" /></Grid.ColumnDefinitions>
+                      <StackPanel>
+                        <TextBlock FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Quality}" Visibility="{x:Bind Quality2160Visibility}" />
+                        <TextBlock FontWeight="Bold" Text="{x:Bind Quality}" Visibility="{x:Bind Quality1080Visibility}" />
+                        <TextBlock FontWeight="Bold" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Quality}" Visibility="{x:Bind QualityOtherVisibility}" />
+                        <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Range}" />
+                      </StackPanel>
+                      <StackPanel Grid.Column="1" Spacing="3">
+                        <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Text="{x:Bind File}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
+                      </StackPanel>
+                      <Grid Grid.Column="2" VerticalAlignment="Center">
+                        <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind InstantVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="INSTANT" /></Border>
+                        <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind CachingVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloCautionBrush}" Text="CACHING" /></Border>
+                        <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind UncachedVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Text="UNCACHED" /></Border>
+                        <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind OnDiskVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="ON DISK" /></Border>
+                      </Grid>
+                      <TextBlock Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
+                      <TextBlock Grid.Column="4" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Text="&#xE768;" />
+                    </Grid>
+                  </Button>
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Spacing="12">
+          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="RESOLUTION" /><TextBlock Text="● Torrentio   11 · 0.8 s" Foreground="{ThemeResource HaloSuccessBrush}" /><TextBlock Text="● Local files   4 · 0.1 s" Foreground="{ThemeResource HaloSuccessBrush}" /><TextBlock Text="● MediaFusion   3 · 1.4 s" Foreground="{ThemeResource HaloCautionBrush}" /><TextBlock Text="● Comet   timed out" Foreground="{ThemeResource HaloCriticalBrush}" /></StackPanel>
+          </Border>
+          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <StackPanel Spacing="9"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="BY QUALITY" /><TextBlock Text="2160p   4 · 22%" Foreground="{ThemeResource HaloCautionBrush}" /><ProgressBar Maximum="100" Value="22" /><TextBlock Text="1080p   9 · 50%" Foreground="{ThemeResource HaloAccentBrush}" /><ProgressBar Maximum="100" Value="50" /><TextBlock Text="720p   5 · 28%" Foreground="{ThemeResource HaloText4Brush}" /><ProgressBar Maximum="100" Value="28" /></StackPanel>
+          </Border>
+          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="PICKER RULES" /><TextBlock Text="Cached first   ON" /><TextBlock Text="Max quality   2160p" /><TextBlock Text="Audio preference   English" /><TextBlock Text="Skip over   12 GB" /><Button Margin="0,8,0,0" Click="OnEditPlaybackClick" Content="Edit in Playback" /></StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </ScrollViewer>
+    <TeachingTip
+      x:Name="RankingTip"
+      Title="{x:Bind ViewModel.TeachingTipTitle, Mode=OneWay}"
+      Subtitle="{x:Bind ViewModel.TeachingTipBody, Mode=OneWay}"
+      ActionButtonContent="Got it"
+      ActionButtonClick="OnTeachingTipAction"
+      Closed="OnTeachingTipClosed" />
   </Grid>
 </Page>

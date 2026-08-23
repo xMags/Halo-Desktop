@@ -1,8 +1,40 @@
 namespace HaloDesktop
 {
     [default_interface]
+    runtimeclass DetailEpisodeViewModel
+    {
+        String Tag { get; };
+        String Title { get; };
+        String Blurb { get; };
+        String Runtime { get; };
+        String Aired { get; };
+        Double Progress { get; };
+        Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InProgressVisibility { get; };
+        Microsoft.UI.Xaml.Visibility IdleVisibility { get; };
+    }
+
+    runtimeclass DetailViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Title { get; };
+        String Kicker { get; };
+        String MetaLine { get; };
+        String Synopsis { get; };
+        String SeasonMeta { get; };
+        Int32 SeasonIndex { get; };
+        Object Episodes { get; };
+        Object Facts { get; };
+        Object Availability { get; };
+        void SelectSeason(Int32 index);
+        void OpenSources();
+        void OpenPlayer();
+        void OpenDownloads();
+    }
+
+    [default_interface]
     runtimeclass DetailPage : Microsoft.UI.Xaml.Controls.Page
     {
         DetailPage();
+        DetailViewModel ViewModel { get; };
     }
 }

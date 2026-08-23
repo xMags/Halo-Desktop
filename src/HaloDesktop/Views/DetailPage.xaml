@@ -3,9 +3,102 @@
   x:Class="HaloDesktop.DetailPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:controls="using:HaloDesktop"
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded"
   NavigationCacheMode="Required">
-  <Grid>
-    <controls:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
-  </Grid>
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Padding="0,0,0,48">
+      <local:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
+      <Grid Height="268">
+        <local:PlaceholderArt />
+        <Rectangle VerticalAlignment="Bottom" Height="140">
+          <Rectangle.Fill>
+            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+              <GradientStop Offset="0" Color="#00202020" />
+              <GradientStop Offset="1" Color="{ThemeResource HaloDetailScrimColor}" />
+            </LinearGradientBrush>
+          </Rectangle.Fill>
+        </Rectangle>
+      </Grid>
+      <Grid Margin="24,-76,24,0" ColumnSpacing="20" RowSpacing="26">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="128" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="292" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+
+        <local:PlaceholderArt Width="128" Height="192" VerticalAlignment="Top" />
+        <StackPanel Grid.Column="1" Margin="0,76,0,0" Spacing="8">
+          <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.Kicker, Mode=OneWay}" />
+          <TextBlock Style="{StaticResource HaloDetailTitle}" Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
+          <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.MetaLine, Mode=OneWay}" />
+          <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="8">
+            <Button Click="OnResumeClick" Content="Resume S02E04 · 18 min left" Style="{StaticResource HaloAccentButtonStyle}" />
+            <Button Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" />
+            <Button Click="OnDownloadsClick" Content="&#xE896;" />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="14">
+          <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <StackPanel Orientation="Horizontal">
+              <RadioButton GroupName="DetailSeason" Click="OnSeasonOneClick" Content="Season 1" />
+              <RadioButton GroupName="DetailSeason" IsChecked="True" Click="OnSeasonTwoClick" Content="Season 2" />
+            </StackPanel>
+            <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
+            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" />
+          </Grid>
+          <ItemsControl x:Name="EpisodeList">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:DetailEpisodeViewModel">
+                <Button Margin="0,0,0,8" Padding="10" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}">
+                  <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid Width="118" Height="66">
+                      <local:PlaceholderArt />
+                      <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" />
+                    </Grid>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind InProgressVisibility}" />
+                        <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind IdleVisibility}" />
+                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind Title}" />
+                        <Border Padding="6,2" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind SavedVisibility}">
+                          <TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="SAVED" />
+                        </Border>
+                      </StackPanel>
+                      <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="12.5" Text="{x:Bind Blurb}" TextTrimming="CharacterEllipsis" />
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
+                      <TextBlock HorizontalAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Runtime}" />
+                      <TextBlock HorizontalAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Aired}" />
+                    </StackPanel>
+                  </Grid>
+                </Button>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <StackPanel Grid.RowSpan="2" Grid.Column="2" Margin="0,76,0,0" Spacing="12">
+          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <StackPanel Spacing="10">
+              <TextBlock Text="SYNOPSIS" Style="{StaticResource HaloMonoKicker}" />
+              <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.Synopsis, Mode=OneWay}" />
+              <ItemsControl x:Name="FactsList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+            </StackPanel>
+          </Border>
+          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <StackPanel Spacing="10">
+              <TextBlock Text="AVAILABILITY" Style="{StaticResource HaloMonoKicker}" />
+              <ItemsControl x:Name="AvailabilityList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+              <Button Margin="0,6,0,0" Click="OnBrowseSourcesClick" Content="Browse all sources" />
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </ScrollViewer>
 </Page>
