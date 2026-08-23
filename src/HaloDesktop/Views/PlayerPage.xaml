@@ -4,9 +4,12 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
+  KeyboardAcceleratorPlacementMode="Hidden"
   Loaded="OnLoaded"
   RequestedTheme="Dark"
   Unloaded="OnUnloaded">
+  <!-- The mode above belongs on the element that owns the accelerators. WinUI otherwise
+       floats a key-combination tooltip anywhere the pointer happens to rest. -->
   <Page.KeyboardAccelerators>
     <KeyboardAccelerator Key="Space" Invoked="OnSpaceInvoked" />
     <KeyboardAccelerator Key="Left" Invoked="OnLeftInvoked" />
@@ -19,7 +22,6 @@
   <Grid
     x:Name="PlayerRoot"
     Background="#FF050506"
-    KeyboardAcceleratorPlacementMode="Hidden"
     SizeChanged="OnPlayerSizeChanged">
 
     <!-- mpv draws into a native child window, which always paints above XAML in the
@@ -36,7 +38,6 @@
         x:Name="OverlayHost"
         Background="Transparent"
         IsTabStop="True"
-        KeyboardAcceleratorPlacementMode="Hidden"
         PreviewKeyDown="OnOverlayPreviewKeyDown"
         UseSystemFocusVisuals="False">
         <local:PlayerOsd x:Name="PlayerOverlay" />
