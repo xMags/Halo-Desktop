@@ -136,6 +136,7 @@
     <ClInclude Include="Controls\SectionHeader.xaml.h">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Controls\SettingRow.xaml.h"><DependentUpon>SettingRow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Services\AppServices.h" />
@@ -200,6 +201,7 @@
     <Page Include="Controls\PlaceholderArt.xaml" />
     <Page Include="Controls\PosterCard.xaml" />
     <Page Include="Controls\SectionHeader.xaml" />
+    <Page Include="Controls\SettingRow.xaml" />
     <Page Include="Controls\TagChip.xaml" />
     <Page Include="Shell\MainWindow.xaml" />
     <Page Include="Shell\ShellPage.xaml" />
@@ -233,6 +235,7 @@
     <ClCompile Include="Controls\SectionHeader.xaml.cpp">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
     <ClCompile Include="Services\MockDownloadService.cpp" />
@@ -300,6 +303,7 @@
       <SubType>Code</SubType>
       <DependentUpon>SectionHeader.xaml</DependentUpon>
     </Midl>
+    <Midl Include="Controls\SettingRow.idl"><SubType>Code</SubType><DependentUpon>SettingRow.xaml</DependentUpon></Midl>
     <Midl Include="Controls\TagChip.idl"><SubType>Code</SubType><DependentUpon>TagChip.xaml</DependentUpon></Midl>
     <Midl Include="Models\Models.idl">
       <SubType>Code</SubType>

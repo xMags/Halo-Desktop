@@ -1,0 +1,11 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass SettingRow : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SettingRow();
+        String Label;
+        String Hint;
+        Object SettingContent;
+    }
+}

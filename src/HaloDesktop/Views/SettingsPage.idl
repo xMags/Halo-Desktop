@@ -1,10 +1,44 @@
 namespace HaloDesktop
 {
+    [default_interface]
+    runtimeclass AddonRowViewModel
+    {
+        String Initials { get; };
+        String Name { get; };
+        String Version { get; };
+        String Scope { get; };
+        String Provides { get; };
+        Boolean Enabled { get; };
+        Microsoft.UI.Xaml.Visibility GlobalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility YoursVisibility { get; };
+    }
+
     runtimeclass SettingsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String ServerUrl { get; };
         String UserName { get; };
+        String SignedInLine { get; };
+        Object Addons { get; };
+        String AddonNoticeText { get; };
+        Microsoft.UI.Xaml.Visibility AddonNoticeVisibility { get; };
+        Double SubtitleSize;
+        String SubtitleSizeLabel { get; };
+        String PreviewText { get; };
+        Double PreviewFontSize { get; };
+        Microsoft.UI.Xaml.Media.FontFamily PreviewFontFamily { get; };
+        Int32 FontIndex { get; };
+        Int32 OutlineIndex { get; };
+        Microsoft.UI.Xaml.Visibility ThinOutlineVisibility { get; };
+        Microsoft.UI.Xaml.Visibility HeavyOutlineVisibility { get; };
+        Boolean AutoplayNext;
+        Boolean ResumePlayback;
+        Boolean HardwareDecoding;
         void Refresh();
+        void AddAddon(String url);
+        void ToggleAddon(String name, Boolean enabled);
+        void RemoveAddon(String name);
+        void SetFont(Int32 index);
+        void SetOutline(Int32 index);
         void SignOut();
         void SwitchServer();
     }

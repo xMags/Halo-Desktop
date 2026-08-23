@@ -18,6 +18,7 @@
     <Page Include="Controls\PlaceholderArt.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PosterCard.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SectionHeader.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\SettingRow.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\TagChip.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Shell\MainWindow.xaml"><Filter>Shell</Filter></Page>
     <Page Include="Shell\ShellPage.xaml"><Filter>Shell</Filter></Page>
@@ -42,6 +43,7 @@
     <Midl Include="Controls\MediaShelf.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\PosterCard.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\SettingRow.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\TagChip.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Models\Models.idl"><Filter>Models</Filter></Midl>
     <Midl Include="Shell\MainWindow.idl"><Filter>Shell</Filter></Midl>
@@ -67,6 +69,7 @@
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\SettingRow.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
@@ -106,6 +109,7 @@
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\SettingRow.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
