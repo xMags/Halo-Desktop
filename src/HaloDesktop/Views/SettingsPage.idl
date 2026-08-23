@@ -17,6 +17,7 @@ namespace HaloDesktop
     {
         String ServerUrl { get; };
         String UserName { get; };
+        String DisplayName { get; };
         String SignedInLine { get; };
         Object Addons { get; };
         String AddonNoticeText { get; };

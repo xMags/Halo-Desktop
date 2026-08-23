@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cwctype>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -48,6 +49,15 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
     winrt::hstring SettingsViewModel::UserName() const { return m_userName; }
+    winrt::hstring SettingsViewModel::DisplayName() const
+    {
+        std::wstring displayName{ m_userName };
+        if (!displayName.empty())
+        {
+            displayName.front() = static_cast<wchar_t>(std::towupper(displayName.front()));
+        }
+        return winrt::hstring{ displayName };
+    }
     winrt::hstring SettingsViewModel::SignedInLine() const { return winrt::hstring(std::wstring(m_userName) + L" · admin"); }
     winrt::Windows::Foundation::IInspectable SettingsViewModel::Addons() const { return m_addons; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::AddonsView() const { return m_addons; }
@@ -93,6 +103,7 @@ namespace winrt::HaloDesktop::implementation
         m_userName = m_session->UserName();
         Raise(L"ServerUrl");
         Raise(L"UserName");
+        Raise(L"DisplayName");
         Raise(L"SignedInLine");
     }
     void SettingsViewModel::AddAddon(winrt::hstring const& url)

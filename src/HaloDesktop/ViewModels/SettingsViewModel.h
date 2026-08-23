@@ -33,6 +33,7 @@ namespace winrt::HaloDesktop::implementation
         explicit SettingsViewModel(::HaloDesktop::Services::AppServices const& services);
         [[nodiscard]] winrt::hstring ServerUrl() const;
         [[nodiscard]] winrt::hstring UserName() const;
+        [[nodiscard]] winrt::hstring DisplayName() const;
         [[nodiscard]] winrt::hstring SignedInLine() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Addons() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AddonsView() const;
