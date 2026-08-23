@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Controls/WheelScrolling.h"
 #include "Controls/MediaShelf.xaml.h"
 #if __has_include("MediaShelf.g.cpp")
 #include "MediaShelf.g.cpp"
@@ -41,6 +42,14 @@ namespace winrt::HaloDesktop::implementation
     }
     void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1.0); }
     void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1.0); }
+    void MediaShelf::OnShelfWheelChanged(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        ::HaloDesktop::Controls::RedirectWheelToVerticalAncestor(
+            sender.try_as<Microsoft::UI::Xaml::UIElement>(), args);
+    }
+
     void MediaShelf::ScrollBy(double direction)
     {
         auto const scroller = FindName(L"ShelfScroller").as<Microsoft::UI::Xaml::Controls::ScrollViewer>();

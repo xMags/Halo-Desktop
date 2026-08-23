@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/WheelScrolling.h"
 #include "ViewModels/HomeViewModel.h"
 
 namespace winrt::HaloDesktop::implementation
@@ -79,6 +80,14 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         m_viewModel.OpenPlayer();
+    }
+
+    void HomePage::OnContinueWheelChanged(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        ::HaloDesktop::Controls::RedirectWheelToVerticalAncestor(
+            sender.try_as<Microsoft::UI::Xaml::UIElement>(), args);
     }
 
     void HomePage::OnShelfItemClick(

@@ -71,7 +71,7 @@
           <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="4 IN PROGRESS" />
         </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-          <ItemsControl x:Name="ContinueList">
+          <ItemsControl x:Name="ContinueList" PointerWheelChanged="OnContinueWheelChanged">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">

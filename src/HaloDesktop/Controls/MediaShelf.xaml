@@ -35,7 +35,7 @@
       HorizontalScrollMode="Enabled"
       VerticalScrollMode="Disabled"
       ZoomMode="Disabled">
-      <ItemsControl x:Name="ShelfItems">
+      <ItemsControl x:Name="ShelfItems" PointerWheelChanged="OnShelfWheelChanged">
         <ItemsControl.ItemsPanel>
           <ItemsPanelTemplate>
             <StackPanel Orientation="Horizontal" Spacing="14" />

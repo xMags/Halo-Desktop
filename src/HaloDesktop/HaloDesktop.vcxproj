@@ -160,6 +160,7 @@
     <ClInclude Include="Services\MockDownloadService.h" />
     <ClInclude Include="Services\MockServices.h" />
     <ClInclude Include="Services\NavigationService.h" />
+    <ClInclude Include="Controls\WheelScrolling.h" />
     <ClInclude Include="Services\SampleData.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
@@ -273,6 +274,7 @@
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
+    <ClCompile Include="Controls\WheelScrolling.cpp" />
     <ClCompile Include="Services\SampleData.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
