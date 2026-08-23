@@ -15,7 +15,7 @@
     </Rectangle>
     <Grid Margin="20" VerticalAlignment="Top">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-      <Button Width="36" Height="36" Padding="0" Background="#99000000" BorderThickness="0" Click="OnBackClick"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE72B;" /></Button>
+      <Button Width="36" Height="36" Padding="0" AutomationProperties.Name="Back" Background="#99000000" BorderThickness="0" Click="OnBackClick"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE72B;" /></Button>
       <StackPanel Grid.Column="1" Margin="12,0,0,0"><TextBlock FontSize="17" FontWeight="SemiBold" Foreground="White" Text="Northwind Divide" /><TextBlock x:Name="SourceLabelText" FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Foreground="#A8FFFFFF" Text="LOCAL FILE" /></StackPanel>
     </Grid>
 
@@ -40,14 +40,14 @@
         </Grid>
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Padding="0" Background="White" BorderThickness="0" Click="OnTogglePauseClick" CornerRadius="27"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="Black" Text="{x:Bind ViewModel.PlayPauseGlyph, Mode=OneWay}" /></Button>
-          <Button Grid.Column="1" Width="34" Height="34" Margin="10,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnReplayClick" CornerRadius="17"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A7;" /></Button>
-          <Button Grid.Column="2" Width="34" Height="34" Margin="6,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnForwardClick" CornerRadius="17"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A6;" /></Button>
+          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Padding="0" Background="White" BorderThickness="0" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" CornerRadius="27"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="Black" Text="{x:Bind ViewModel.PlayPauseGlyph, Mode=OneWay}" /></Button>
+          <Button Grid.Column="1" Width="34" Height="34" Margin="10,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" AutomationProperties.Name="Back 10 seconds" Click="OnReplayClick" CornerRadius="17"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A7;" /></Button>
+          <Button Grid.Column="2" Width="34" Height="34" Margin="6,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" AutomationProperties.Name="Forward 10 seconds" Click="OnForwardClick" CornerRadius="17"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A6;" /></Button>
           <TextBlock Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11" Foreground="White" Text="{x:Bind ViewModel.TimeText, Mode=OneWay}" />
           <TextBlock Grid.Column="5" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Foreground="White" Text="&#xE767;" />
           <Slider Grid.Column="6" Margin="8,0" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.Volume, Mode=TwoWay}" />
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-          <Button Grid.Column="8" Width="34" Height="34" Margin="8,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" CornerRadius="6" ToolTipService.ToolTip="Picture in picture is not available in this prototype"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE9A6;" /></Button>
+          <Button Grid.Column="8" Width="34" Height="34" Margin="8,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" AutomationProperties.Name="Picture in picture" CornerRadius="6" ToolTipService.ToolTip="Picture in picture is not available in this prototype"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE9A6;" /></Button>
           <Button Grid.Column="9" Width="34" Height="34" Margin="6,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnFullscreenClick" CornerRadius="6" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="White" Content="{x:Bind ViewModel.FullscreenGlyph, Mode=OneWay}" />
         </Grid>
       </StackPanel>
@@ -56,7 +56,7 @@
     <Border Width="400" HorizontalAlignment="Right" Background="#F01A1A1E" CornerRadius="10,0,0,10" Visibility="{x:Bind ViewModel.PanelVisibility, Mode=OneWay}">
       <Grid Padding="20">
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-        <Grid><StackPanel><TextBlock FontSize="20" FontWeight="SemiBold" Foreground="White" Text="Playback" /><TextBlock Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" /></StackPanel><Button HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" Click="OnClosePanelClick"><FontIcon FontSize="11" Foreground="White" Glyph="&#xE711;" /></Button></Grid>
+        <Grid><StackPanel><TextBlock FontSize="20" FontWeight="SemiBold" Foreground="White" Text="Playback" /><TextBlock Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" /></StackPanel><Button HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Close panel" Click="OnClosePanelClick"><FontIcon FontSize="11" Foreground="White" Glyph="&#xE711;" /></Button></Grid>
         <StackPanel Grid.Row="1" Margin="0,18,0,14" Orientation="Horizontal"><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesTabClick" Content="Subtitles" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedTabClick" Content="Speed" /></StackPanel>
         <ScrollViewer Grid.Row="2">
           <Grid>

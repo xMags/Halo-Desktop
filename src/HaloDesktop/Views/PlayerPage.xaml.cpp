@@ -36,7 +36,7 @@ namespace winrt::HaloDesktop::implementation
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
         winrt::get_self<VideoHostControl>(videoHost)->EnsureHostWindow();
         m_viewModel = FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>().ViewModel();
-        UpdateVideoLayout();
+        UpdateOverlayLayout();
         OpenRememberedFileOrPrompt();
         winrt::get_self<PlayerViewModel>(m_viewModel)->Activate();
     }
@@ -44,6 +44,7 @@ namespace winrt::HaloDesktop::implementation
                                 [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_loaded = false;
+        OverlayPopup().IsOpen(false);
         if (m_viewModel)
         {
             winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
@@ -54,7 +55,7 @@ namespace winrt::HaloDesktop::implementation
     void PlayerPage::OnPlayerSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                          [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
     {
-        UpdateVideoLayout();
+        UpdateOverlayLayout();
     }
     void PlayerPage::OnOpenFileClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                      [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
@@ -103,6 +104,34 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.HandleEscape();
         CompleteKeyboardAction(args);
     }
+    void PlayerPage::OnOverlayPreviewKeyDown(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        // The overlay lives in a windowed popup, which is its own focus root and swallows
+        // Escape before accelerators run. Tunnelling KeyDown sees every transport key first.
+        using winrt::Windows::System::VirtualKey;
+        if (!m_viewModel)
+        {
+            return;
+        }
+
+        switch (args.Key())
+        {
+        case VirtualKey::Space: m_viewModel.TogglePause(); break;
+        case VirtualKey::Left: m_viewModel.SeekRelative(-10.0); break;
+        case VirtualKey::Right: m_viewModel.SeekRelative(10.0); break;
+        case VirtualKey::Up: m_viewModel.ChangeVolume(5.0); break;
+        case VirtualKey::Down: m_viewModel.ChangeVolume(-5.0); break;
+        case VirtualKey::F: m_viewModel.ToggleFullscreen(); break;
+        case VirtualKey::Escape: m_viewModel.HandleEscape(); break;
+        default: return;
+        }
+
+        m_viewModel.NotifyUserActivity();
+        args.Handled(true);
+    }
+
     void PlayerPage::CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args)
     {
         if (m_viewModel)
@@ -207,24 +236,24 @@ namespace winrt::HaloDesktop::implementation
             .Visibility(Microsoft::UI::Xaml::Visibility::Visible);
     }
 
-    void PlayerPage::UpdateVideoLayout()
+    void PlayerPage::UpdateOverlayLayout()
     {
-        auto const videoArea = FindName(L"VideoArea").try_as<Microsoft::UI::Xaml::FrameworkElement>();
-        auto const videoHost = FindName(L"VideoHost").try_as<Microsoft::UI::Xaml::FrameworkElement>();
-        if (!videoArea || !videoHost || videoArea.ActualWidth() <= 0.0 || videoArea.ActualHeight() <= 0.0)
+        // A popup never inherits its parent's size, so the overlay is measured against
+        // the player surface by hand and re-measured on every resize.
+        auto const root = PlayerRoot();
+        if (root.ActualWidth() <= 0.0 || root.ActualHeight() <= 0.0)
         {
+            OverlayPopup().IsOpen(false);
             return;
         }
 
-        constexpr double aspectRatio = 16.0 / 9.0;
-        auto width = videoArea.ActualWidth();
-        auto height = width / aspectRatio;
-        if (height > videoArea.ActualHeight())
+        OverlayHost().Width(root.ActualWidth());
+        OverlayHost().Height(root.ActualHeight());
+        if (m_loaded && !OverlayPopup().IsOpen())
         {
-            height = videoArea.ActualHeight();
-            width = height * aspectRatio;
+            OverlayPopup().IsOpen(true);
+            // Without focus in the popup tree the transport shortcuts have nowhere to route.
+            OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
         }
-        videoHost.Width(width);
-        videoHost.Height(height);
     }
 } // namespace winrt::HaloDesktop::implementation

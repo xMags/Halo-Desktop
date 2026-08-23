@@ -30,13 +30,15 @@ namespace winrt::HaloDesktop::implementation
                                  Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
         void OnEscapeInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
                              Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
+        void OnOverlayPreviewKeyDown(winrt::Windows::Foundation::IInspectable const&,
+                                     Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
 
     private:
         void OpenRememberedFileOrPrompt();
         winrt::fire_and_forget OpenFilePicker();
         void OpenSource(winrt::hstring const& path);
         void ShowMediaPrompt(winrt::hstring const& message);
-        void UpdateVideoLayout();
+        void UpdateOverlayLayout();
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
