@@ -6,7 +6,7 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
   NavigationCacheMode="Required">
-  <ScrollViewer VerticalScrollBarVisibility="Auto">
+  <ScrollViewer VerticalScrollBarVisibility="Hidden">
     <StackPanel Padding="0,0,0,48">
       <local:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
       <Grid Height="268">

@@ -37,6 +37,7 @@
     </Grid>
     <GridView
       x:Name="LibraryGrid"
+      ScrollViewer.VerticalScrollBarVisibility="Hidden"
       Grid.Row="2"
       Padding="24,20,24,32"
       IsItemClickEnabled="False"

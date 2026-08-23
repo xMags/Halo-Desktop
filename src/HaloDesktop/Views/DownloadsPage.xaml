@@ -10,7 +10,7 @@
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <local:SectionHeader Title="Downloads" Crumb="{x:Bind ViewModel.HeaderCrumb, Mode=OneWay}" />
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <Grid Margin="24,8,24,48" ColumnSpacing="20">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="292" /></Grid.ColumnDefinitions>
         <StackPanel Spacing="16">
@@ -79,7 +79,7 @@
           </Border>
 
           <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Style="{StaticResource HaloMonoKicker}" Text="IN PROGRESS" /><Rectangle Grid.Column="1" Height="1" Margin="12,0" Fill="{ThemeResource HaloDividerBrush}" /><TextBlock Grid.Column="2" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TransferCountLabel, Mode=OneWay}" /></Grid>
-          <ListView x:Name="TransferList" IsItemClickEnabled="True" ItemClick="OnTransferItemClick" ItemContainerStyle="{StaticResource HaloCardListItemStyle}" SelectionMode="Single">
+          <ListView x:Name="TransferList" ScrollViewer.VerticalScrollBarVisibility="Hidden" IsItemClickEnabled="True" ItemClick="OnTransferItemClick" ItemContainerStyle="{StaticResource HaloCardListItemStyle}" SelectionMode="Single">
             <ListView.ItemTemplate>
               <DataTemplate x:DataType="local:DownloadRowViewModel">
                 <Grid ColumnSpacing="14">
@@ -103,7 +103,7 @@
           </ListView>
 
           <Grid Margin="0,8,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Style="{StaticResource HaloMonoKicker}" Text="READY TO WATCH" /><Rectangle Grid.Column="1" Height="1" Margin="12,0" Fill="{ThemeResource HaloDividerBrush}" /><TextBlock Grid.Column="2" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ReadyCountLabel, Mode=OneWay}" /></Grid>
-          <ListView x:Name="ReadyList" IsItemClickEnabled="True" ItemClick="OnReadyItemClick" ItemContainerStyle="{StaticResource HaloCardListItemStyle}" SelectionMode="Single">
+          <ListView x:Name="ReadyList" ScrollViewer.VerticalScrollBarVisibility="Hidden" IsItemClickEnabled="True" ItemClick="OnReadyItemClick" ItemContainerStyle="{StaticResource HaloCardListItemStyle}" SelectionMode="Single">
             <ListView.ItemTemplate>
               <DataTemplate x:DataType="local:DownloadRowViewModel">
                 <Grid ColumnSpacing="14">

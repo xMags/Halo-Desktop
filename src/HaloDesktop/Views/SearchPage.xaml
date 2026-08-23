@@ -9,7 +9,7 @@
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <local:SectionHeader Title="Search" Crumb="{x:Bind ViewModel.Crumb, Mode=OneWay}" />
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto">
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <StackPanel Margin="24,8,24,40">
 
         <!-- Search field: accent underline, inline resolve stats and a clear affordance. -->

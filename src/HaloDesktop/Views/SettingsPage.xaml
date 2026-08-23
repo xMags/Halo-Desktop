@@ -22,7 +22,7 @@
         </Border>
       </StackPanel>
 
-      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Auto">
+      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden">
         <StackPanel MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36">
           <StackPanel x:Name="AddonsSection" Spacing="14">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Addons" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Catalogs, streams and subtitles come from these. Order sets priority." /></StackPanel>

@@ -58,7 +58,7 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
         <Grid><StackPanel><TextBlock FontSize="20" FontWeight="SemiBold" Foreground="White" Text="Playback" /><TextBlock Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" /></StackPanel><Button HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Close panel" Click="OnClosePanelClick"><FontIcon FontSize="11" Foreground="White" Glyph="&#xE711;" /></Button></Grid>
         <StackPanel Grid.Row="1" Margin="0,18,0,14" Orientation="Horizontal"><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesTabClick" Content="Subtitles" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedTabClick" Content="Speed" /></StackPanel>
-        <ScrollViewer Grid.Row="2">
+        <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
           <Grid>
             <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
               <TextBlock Foreground="#9FFFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
