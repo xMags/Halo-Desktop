@@ -19,7 +19,7 @@
     AlwaysShowHeader="False"
     Background="Transparent"
     CompactPaneLength="48"
-    IsBackButtonVisible="Auto"
+    IsBackButtonVisible="Collapsed"
     IsBackEnabled="False"
     IsSettingsVisible="False"
     ItemInvoked="OnItemInvoked"
@@ -28,16 +28,6 @@
     PaneClosing="OnPaneClosing"
     OpenPaneLength="280"
     PaneDisplayMode="Left">
-
-    <NavigationView.AutoSuggestBox>
-      <AutoSuggestBox
-        x:Name="SearchBox"
-        IsTabStop="True"
-        KeyboardAcceleratorPlacementMode="Hidden"
-        PlaceholderText="Search"
-        QueryIcon="Find"
-        QuerySubmitted="OnSearchSubmitted" />
-    </NavigationView.AutoSuggestBox>
 
     <NavigationView.MenuItems>
       <NavigationViewItemHeader Content="MENU" Style="{StaticResource HaloNavSectionHeaderStyle}" />

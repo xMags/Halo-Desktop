@@ -76,20 +76,13 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Navigation->GoBack();
     }
 
-    void ShellPage::OnSearchSubmitted(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender,
-        Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args)
-    {
-        App::Services().Navigation->GoTo(
-            ::HaloDesktop::Services::Page::Search,
-            winrt::box_value(args.QueryText()));
-    }
-
     void ShellPage::OnSearchAcceleratorInvoked(
         [[maybe_unused]] Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
         Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args)
     {
-        SearchBoxControl().Focus(Microsoft::UI::Xaml::FocusState::Keyboard);
+        // The pane no longer hosts a search box, so the shortcut opens the search page,
+        // which focuses its own input on arrival.
+        App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Search);
         args.Handled(true);
     }
 
@@ -136,11 +129,6 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Controls::Frame ShellPage::ContentFrameControl() const
     {
         return FindName(L"ContentFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
-    }
-
-    Microsoft::UI::Xaml::Controls::AutoSuggestBox ShellPage::SearchBoxControl() const
-    {
-        return FindName(L"SearchBox").as<Microsoft::UI::Xaml::Controls::AutoSuggestBox>();
     }
 
     Microsoft::UI::Xaml::Controls::InfoBadge ShellPage::DownloadsBadgeControl() const

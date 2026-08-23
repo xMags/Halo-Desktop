@@ -25,6 +25,7 @@ namespace winrt::HaloDesktop::implementation
         void SetFilter(std::int32_t index);
         void OpenDetail();
         void OpenPlayer();
+        void OpenSearch(winrt::hstring const& query);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 

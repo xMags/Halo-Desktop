@@ -40,6 +40,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void HomeViewModel::OpenDetail() { m_navigation->GoTo(::HaloDesktop::Services::Page::Detail); }
     void HomeViewModel::OpenPlayer() { m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player); }
+    void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     void HomeViewModel::RebuildShelves()

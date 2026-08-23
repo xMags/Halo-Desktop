@@ -28,9 +28,6 @@ namespace winrt::HaloDesktop::implementation
         void OnBackRequested(
             Microsoft::UI::Xaml::Controls::NavigationView const& sender,
             Microsoft::UI::Xaml::Controls::NavigationViewBackRequestedEventArgs const& args);
-        void OnSearchSubmitted(
-            Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender,
-            Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args);
         void OnSearchAcceleratorInvoked(
             Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
             Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
@@ -48,7 +45,6 @@ namespace winrt::HaloDesktop::implementation
         void SetJumpBackVisibility(bool visible);
 
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Controls::AutoSuggestBox SearchBoxControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::NavigationView NavigationControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::NavigationViewItem NavigationItem(winrt::hstring const& name) const;

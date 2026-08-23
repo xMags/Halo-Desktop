@@ -35,14 +35,14 @@
           <TextBlock Style="{StaticResource HaloDetailTitle}" Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
           <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.MetaLine, Mode=OneWay}" />
           <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="10">
-            <Button Height="36" Padding="18,0" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+            <Button Height="36" Padding="18,0" AutomationProperties.Name="Resume S02E04" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
                 <TextBlock VerticalAlignment="Center" Text="Resume S02E04 · 18 min left" />
               </StackPanel>
             </Button>
             <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" ToolTipService.ToolTip="Library membership is preview-only in this prototype" />
-            <Button Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Go to downloads">
+            <Button AutomationProperties.Name="Go to downloads" Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Go to downloads">
               <FontIcon FontSize="14" Glyph="&#xE896;" />
             </Button>
           </StackPanel>

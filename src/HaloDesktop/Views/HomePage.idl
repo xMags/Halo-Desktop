@@ -13,6 +13,7 @@ namespace HaloDesktop
         void SetFilter(Int32 index);
         void OpenDetail();
         void OpenPlayer();
+        void OpenSearch(String query);
     }
 
     [default_interface]

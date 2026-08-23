@@ -11,6 +11,9 @@ namespace winrt::HaloDesktop::implementation
         HomePage();
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         [[nodiscard]] winrt::HaloDesktop::HomeViewModel ViewModel() const;
+        void OnSearchSubmitted(
+            Microsoft::UI::Xaml::Controls::AutoSuggestBox const&,
+            Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const&);
         void OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnMoviesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSeriesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);

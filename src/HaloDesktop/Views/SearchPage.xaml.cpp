@@ -22,6 +22,9 @@ namespace winrt::HaloDesktop::implementation
         {
             m_viewModel.Submit(query.GetString());
         }
+
+        // Search is the only entry point for the shortcut now, so hand it the caret.
+        QueryBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
     }
     void SearchPage::OnQueryKeyDown(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
