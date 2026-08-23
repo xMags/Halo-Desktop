@@ -27,7 +27,7 @@
     BackRequested="OnBackRequested"
     PaneOpening="OnPaneOpening"
     PaneClosing="OnPaneClosing"
-    OpenPaneLength="280"
+    OpenPaneLength="{StaticResource HaloPaneWidth}"
     PaneDisplayMode="Left">
 
     <NavigationView.MenuItems>
