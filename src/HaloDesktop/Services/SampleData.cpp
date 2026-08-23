@@ -182,6 +182,11 @@ namespace HaloDesktop::Services::SampleData
         return View<winrt::hstring>({ L"northwind", L"the long sunday", L"documentary 2024", L"harbour lights s01" });
     }
 
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentSearchAges()
+    {
+        return View<winrt::hstring>({ L"2M AGO", L"TODAY", L"YESTERDAY", L"MON" });
+    }
+
     winrt::HaloDesktop::MediaDetail Detail()
     {
         return winrt::make<winrt::HaloDesktop::implementation::MediaDetail>(

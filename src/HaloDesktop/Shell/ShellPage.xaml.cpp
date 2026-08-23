@@ -78,9 +78,11 @@ namespace winrt::HaloDesktop::implementation
 
     void ShellPage::OnSearchSubmitted(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args)
+        Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args)
     {
-        // Search routing and query binding are introduced with the catalog screens.
+        App::Services().Navigation->GoTo(
+            ::HaloDesktop::Services::Page::Search,
+            winrt::box_value(args.QueryText()));
     }
 
     void ShellPage::OnSearchAcceleratorInvoked(

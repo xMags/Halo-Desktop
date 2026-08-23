@@ -1,8 +1,23 @@
 namespace HaloDesktop
 {
+    runtimeclass HomeViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String HeroTitle { get; };
+        String HeroSynopsis { get; };
+        String HeroMeta { get; };
+        String CatalogStats { get; };
+        Object ContinueItems { get; };
+        Object Shelves { get; };
+        Int32 FilterIndex { get; };
+        void SetFilter(Int32 index);
+        void OpenDetail();
+        void OpenPlayer();
+    }
+
     [default_interface]
     runtimeclass HomePage : Microsoft.UI.Xaml.Controls.Page
     {
         HomePage();
+        HomeViewModel ViewModel { get; };
     }
 }

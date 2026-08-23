@@ -26,6 +26,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring Title() const;
         [[nodiscard]] hstring Meta() const;
         [[nodiscard]] HaloDesktop::MediaKind Kind() const noexcept;
+        [[nodiscard]] hstring KindLabel() const;
 
     private:
         hstring m_id;

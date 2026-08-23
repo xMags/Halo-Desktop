@@ -46,6 +46,10 @@ namespace winrt::HaloDesktop::implementation
     hstring MediaSummary::Title() const { return m_title; }
     hstring MediaSummary::Meta() const { return m_meta; }
     HaloDesktop::MediaKind MediaSummary::Kind() const noexcept { return m_kind; }
+    hstring MediaSummary::KindLabel() const
+    {
+        return m_kind == HaloDesktop::MediaKind::Movie ? L"MOVIE" : L"SERIES";
+    }
 
     MediaDetail::MediaDetail(
         hstring id,

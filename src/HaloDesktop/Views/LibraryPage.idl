@@ -1,8 +1,19 @@
 namespace HaloDesktop
 {
+    runtimeclass LibraryViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Object Items { get; };
+        Int32 FilterIndex { get; };
+        Int32 SortIndex { get; };
+        void SetFilter(Int32 index);
+        void SetSort(Int32 index);
+        void OpenDetail();
+    }
+
     [default_interface]
     runtimeclass LibraryPage : Microsoft.UI.Xaml.Controls.Page
     {
         LibraryPage();
+        LibraryViewModel ViewModel { get; };
     }
 }

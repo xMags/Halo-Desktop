@@ -1,0 +1,13 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass MediaShelf : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        MediaShelf();
+        String Title;
+        String SourceLabel;
+        Object ItemsSource;
+        Object SelectedItem { get; };
+        event Microsoft.UI.Xaml.RoutedEventHandler ItemClick;
+    }
+}

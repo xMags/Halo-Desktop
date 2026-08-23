@@ -3,9 +3,47 @@
   x:Class="HaloDesktop.LibraryPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:controls="using:HaloDesktop"
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded"
   NavigationCacheMode="Required">
   <Grid>
-    <controls:SectionHeader Title="Library" Crumb="42 TITLES" />
+    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+    <local:SectionHeader Title="Library" Crumb="42 TITLES">
+      <local:SectionHeader.RightContent>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <StackPanel Orientation="Horizontal">
+            <RadioButton GroupName="LibraryFilter" IsChecked="True" Click="OnAllFilterClick" Content="All 42" />
+            <RadioButton GroupName="LibraryFilter" Click="OnMoviesFilterClick" Content="Movies 19" />
+            <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="Series 23" />
+          </StackPanel>
+          <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
+          <Button x:Name="SortButton" Width="164" HorizontalContentAlignment="Left" Content="Recently added">
+            <Button.Flyout>
+              <MenuFlyout>
+                <RadioMenuFlyoutItem GroupName="LibrarySort" IsChecked="True" Text="Recently added" Click="OnSortClick" />
+                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Title A-Z" Click="OnSortClick" />
+                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Release year" Click="OnSortClick" />
+                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Recently watched" Click="OnSortClick" />
+              </MenuFlyout>
+            </Button.Flyout>
+          </Button>
+        </StackPanel>
+      </local:SectionHeader.RightContent>
+    </local:SectionHeader>
+    <GridView
+      x:Name="LibraryGrid"
+      Grid.Row="1"
+      Padding="24,8,24,32"
+      IsItemClickEnabled="False"
+      SelectionMode="None">
+      <GridView.ItemsPanel>
+        <ItemsPanelTemplate><ItemsWrapGrid ItemWidth="154" ItemHeight="250" Orientation="Horizontal" /></ItemsPanelTemplate>
+      </GridView.ItemsPanel>
+      <GridView.ItemTemplate>
+        <DataTemplate x:DataType="local:MediaSummary">
+          <local:PosterCard Title="{x:Bind Title}" Meta="{x:Bind Meta}" KindLabel="{x:Bind KindLabel}" ShowKindBadge="True" Click="OnPosterClick" />
+        </DataTemplate>
+      </GridView.ItemTemplate>
+    </GridView>
   </Grid>
 </Page>

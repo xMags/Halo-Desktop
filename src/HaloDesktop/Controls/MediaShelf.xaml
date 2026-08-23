@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.MediaShelf"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid Margin="0,0,0,12">
+      <Grid.ColumnDefinitions>
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="*" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+        <ColumnDefinition Width="Auto" />
+      </Grid.ColumnDefinitions>
+      <TextBlock x:Name="TitleText" Style="{StaticResource HaloShelfTitle}" />
+      <TextBlock x:Name="SourceText" Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" />
+      <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" />
+      <Button Grid.Column="4" Width="30" Height="30" Margin="8,0,0,0" Click="OnScrollLeft" Content="&#x2039;" />
+      <Button Grid.Column="5" Width="30" Height="30" Margin="4,0,0,0" Click="OnScrollRight" Content="&#x203A;" />
+    </Grid>
+    <ScrollViewer
+      x:Name="ShelfScroller"
+      Grid.Row="1"
+      HorizontalScrollBarVisibility="Hidden"
+      HorizontalScrollMode="Enabled"
+      VerticalScrollMode="Disabled"
+      ZoomMode="Disabled">
+      <ItemsControl x:Name="ShelfItems">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Orientation="Horizontal" Spacing="14" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="local:MediaSummary">
+            <local:PosterCard
+              Title="{x:Bind Title}"
+              Meta="{x:Bind Meta}"
+              KindLabel="{x:Bind KindLabel}"
+              ShowKindBadge="False"
+              Tag="{x:Bind}"
+              Click="OnPosterClick" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </ScrollViewer>
+  </Grid>
+</UserControl>

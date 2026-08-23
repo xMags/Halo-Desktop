@@ -1,0 +1,8 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass PlayerPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        PlayerPage();
+    }
+}

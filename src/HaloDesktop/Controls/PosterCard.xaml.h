@@ -1,0 +1,45 @@
+#pragma once
+
+#include "PosterCard.g.h"
+
+#include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Input.h>
+#include <winrt/Windows.Foundation.h>
+
+namespace winrt::HaloDesktop::implementation
+{
+    struct PosterCard : PosterCardT<PosterCard>
+    {
+        PosterCard();
+
+        [[nodiscard]] winrt::hstring Title() const;
+        void Title(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring Meta() const;
+        void Meta(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring KindLabel() const;
+        void KindLabel(winrt::hstring const& value);
+        [[nodiscard]] bool ShowKindBadge() const noexcept;
+        void ShowKindBadge(bool value);
+
+        winrt::event_token Click(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
+        void Click(winrt::event_token const& token) noexcept;
+
+        void OnCardClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnCardPointerEntered(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void OnCardPointerExited(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+
+    private:
+        [[nodiscard]] Microsoft::UI::Xaml::Controls::Border ArtBorderControl() const;
+
+        winrt::hstring m_title;
+        winrt::hstring m_meta;
+        winrt::hstring m_kindLabel;
+        bool m_showKindBadge{};
+        winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
+    };
+}
+
+namespace winrt::HaloDesktop::factory_implementation
+{
+    struct PosterCard : PosterCardT<PosterCard, implementation::PosterCard> {};
+}

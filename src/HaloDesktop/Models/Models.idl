@@ -30,6 +30,7 @@ namespace HaloDesktop
         String Title { get; };
         String Meta { get; };
         MediaKind Kind { get; };
+        String KindLabel { get; };
     };
 
     [default_interface]

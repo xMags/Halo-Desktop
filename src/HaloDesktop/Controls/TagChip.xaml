@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.TagChip"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Border Padding="6,3" Background="#B0000000" CornerRadius="3">
+    <TextBlock x:Name="ChipText" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" />
+  </Border>
+</UserControl>

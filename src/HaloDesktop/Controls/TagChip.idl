@@ -1,0 +1,9 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass TagChip : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        TagChip();
+        String Text;
+    }
+}

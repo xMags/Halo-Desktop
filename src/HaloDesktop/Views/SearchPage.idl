@@ -1,8 +1,37 @@
 namespace HaloDesktop
 {
     [default_interface]
+    runtimeclass RecentSearchViewModel
+    {
+        String Term { get; };
+        String Age { get; };
+    }
+
+    runtimeclass SearchViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Query;
+        String Crumb { get; };
+        Object Results { get; };
+        Object RecentItems { get; };
+        Int32 AllCount { get; };
+        Int32 MovieCount { get; };
+        Int32 SeriesCount { get; };
+        String TopMatchTitle { get; };
+        String TopMatchMeta { get; };
+        String TopMatchSynopsis { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
+        void SetFilter(Int32 index);
+        void Submit(String query);
+        void Clear();
+        void OpenDetail();
+    }
+
+    [default_interface]
     runtimeclass SearchPage : Microsoft.UI.Xaml.Controls.Page
     {
         SearchPage();
+        SearchViewModel ViewModel { get; };
     }
 }

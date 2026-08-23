@@ -7,6 +7,7 @@
 #include "Views/LibraryPage.xaml.h"
 #include "Views/ConnectPage.xaml.h"
 #include "Views/LoginPage.xaml.h"
+#include "Views/PlayerPage.xaml.h"
 #include "Views/SearchPage.xaml.h"
 #include "Views/SettingsPage.xaml.h"
 #include "Views/SourcesPage.xaml.h"
@@ -43,7 +44,7 @@ namespace
         case Page::Login:
             return winrt::xaml_typename<winrt::HaloDesktop::LoginPage>();
         case Page::Player:
-            throw std::invalid_argument("Player overlay is not implemented yet");
+            return winrt::xaml_typename<winrt::HaloDesktop::PlayerPage>();
         }
 
         throw std::invalid_argument("Unknown shell page");
@@ -145,7 +146,7 @@ namespace HaloDesktop::Services
         }
 
         auto const targetType = PageType(page);
-        if (m_shellFrame.Content() && m_shellFrame.CurrentSourcePageType().Name == targetType.Name)
+        if (m_shellFrame.Content() && m_shellFrame.CurrentSourcePageType().Name == targetType.Name && !parameter)
         {
             return false;
         }

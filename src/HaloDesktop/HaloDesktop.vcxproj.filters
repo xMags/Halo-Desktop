@@ -14,8 +14,11 @@
 
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+    <Page Include="Controls\MediaShelf.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PlaceholderArt.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\PosterCard.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SectionHeader.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\TagChip.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Shell\MainWindow.xaml"><Filter>Shell</Filter></Page>
     <Page Include="Shell\ShellPage.xaml"><Filter>Shell</Filter></Page>
     <Page Include="Shell\TitleBar.xaml"><Filter>Shell</Filter></Page>
@@ -28,6 +31,7 @@
     <Page Include="Views\HomePage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\LibraryPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\LoginPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\PlayerPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\SearchPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\SettingsPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\SourcesPage.xaml"><Filter>Views</Filter></Page>
@@ -35,7 +39,10 @@
 
   <ItemGroup>
     <Midl Include="Controls\PlaceholderArt.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\MediaShelf.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\PosterCard.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\TagChip.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Models\Models.idl"><Filter>Models</Filter></Midl>
     <Midl Include="Shell\MainWindow.idl"><Filter>Shell</Filter></Midl>
     <Midl Include="Shell\ShellPage.idl"><Filter>Shell</Filter></Midl>
@@ -46,6 +53,7 @@
     <Midl Include="Views\HomePage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\LibraryPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\LoginPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\PlayerPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\SearchPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\SettingsPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\SourcesPage.idl"><Filter>Views</Filter></Midl>
@@ -55,8 +63,11 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="Controls\MediaShelf.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\PosterCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\TagChip.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MockServices.cpp"><Filter>Services</Filter></ClCompile>
@@ -68,7 +79,10 @@
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="ViewModels\ConnectViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\HomeViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\LibraryViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LoginViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\SearchViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SettingsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="Views\ConnectPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\DetailPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
@@ -76,6 +90,7 @@
     <ClCompile Include="Views\HomePage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\LibraryPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\LoginPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\PlayerPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\SearchPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\SettingsPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\SourcesPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
@@ -84,8 +99,11 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="Controls\MediaShelf.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\PosterCard.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\TagChip.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MockDownloadService.h"><Filter>Services</Filter></ClInclude>
@@ -99,15 +117,19 @@
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="ViewModels\ConnectViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\HomeViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\LibraryViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LoginViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\ObservableHelper.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SettingsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\SearchViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="Views\ConnectPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\DetailPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\DownloadsPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\HomePage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\LibraryPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\LoginPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\PlayerPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\SearchPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\SettingsPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\SourcesPage.xaml.h"><Filter>Views</Filter></ClInclude>
