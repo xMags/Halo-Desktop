@@ -80,6 +80,7 @@
     <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="ViewModels\ConnectViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DetailViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\DownloadsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\HomeViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LibraryViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LoginViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -120,6 +121,7 @@
     <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="ViewModels\ConnectViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DetailViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\DownloadsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\HomeViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LibraryViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LoginViewModel.h"><Filter>ViewModels</Filter></ClInclude>

@@ -1,8 +1,75 @@
 namespace HaloDesktop
 {
+    runtimeclass DownloadRowViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Id { get; };
+        String Tag { get; };
+        String Name { get; };
+        String Sub { get; };
+        String StateLabel { get; };
+        Double Progress { get; };
+        String Detail { get; };
+        String QualityLine { get; };
+        String Size { get; };
+        String Subs { get; };
+        Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
+    }
+
+    [default_interface]
+    runtimeclass ChartBarViewModel
+    {
+        Double Height { get; };
+        Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility HistoricalVisibility { get; };
+    }
+
+    runtimeclass DownloadsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Object Transfers { get; };
+        Object Ready { get; };
+        Object ChartBars { get; };
+        String InfoTitle { get; };
+        String InfoMessage { get; };
+        String HeaderCrumb { get; };
+        String RateText { get; };
+        String QueueLine { get; };
+        String TransferCountLabel { get; };
+        String ReadyCountLabel { get; };
+        String PauseAllLabel { get; };
+        Boolean IsPausedAll { get; };
+        String SelectedTag { get; };
+        String SelectedTitle { get; };
+        String SelectedSub { get; };
+        Double SelectedProgress { get; };
+        String SelectedDetail { get; };
+        String SelectedQualityLine { get; };
+        String SelectedSize { get; };
+        String SelectedSubs { get; };
+        String ReadyActionLabel { get; };
+        Microsoft.UI.Xaml.Visibility DetailVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StartNowVisibility { get; };
+        void Select(String id);
+        void PauseAll();
+        void ResumeAll();
+        void PauseSelected();
+        void ResumeSelected();
+        void StartSelectedNow();
+        void CancelSelected();
+        void DeleteSelected();
+        void OpenPlayer();
+        void OpenSettings();
+    }
+
     [default_interface]
     runtimeclass DownloadsPage : Microsoft.UI.Xaml.Controls.Page
     {
         DownloadsPage();
+        DownloadsViewModel ViewModel { get; };
     }
 }

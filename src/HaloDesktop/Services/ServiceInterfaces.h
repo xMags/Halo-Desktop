@@ -47,7 +47,13 @@ namespace HaloDesktop::Services
         virtual void Stop() noexcept = 0;
         virtual void PauseAll() = 0;
         virtual void ResumeAll() = 0;
+        virtual bool PauseTransfer(winrt::hstring const& id) = 0;
+        virtual bool ResumeTransfer(winrt::hstring const& id) = 0;
+        virtual bool StartNow(winrt::hstring const& id) = 0;
+        virtual bool CancelTransfer(winrt::hstring const& id) = 0;
+        virtual bool DeleteReady(winrt::hstring const& id) = 0;
         [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
+        [[nodiscard]] virtual bool IsPausedAll() const noexcept = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
         [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
         [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;

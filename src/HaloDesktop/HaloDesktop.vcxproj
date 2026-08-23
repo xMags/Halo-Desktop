@@ -157,6 +157,7 @@
     <ClInclude Include="Shell\WindowSizing.h" />
     <ClInclude Include="ViewModels\ConnectViewModel.h" />
     <ClInclude Include="ViewModels\DetailViewModel.h" />
+    <ClInclude Include="ViewModels\DownloadsViewModel.h" />
     <ClInclude Include="ViewModels\HomeViewModel.h" />
     <ClInclude Include="ViewModels\LibraryViewModel.h" />
     <ClInclude Include="ViewModels\LoginViewModel.h" />
@@ -251,6 +252,7 @@
     <ClCompile Include="Shell\WindowSizing.cpp" />
     <ClCompile Include="ViewModels\ConnectViewModel.cpp" />
     <ClCompile Include="ViewModels\DetailViewModel.cpp" />
+    <ClCompile Include="ViewModels\DownloadsViewModel.cpp" />
     <ClCompile Include="ViewModels\HomeViewModel.cpp" />
     <ClCompile Include="ViewModels\LibraryViewModel.cpp" />
     <ClCompile Include="ViewModels\LoginViewModel.cpp" />

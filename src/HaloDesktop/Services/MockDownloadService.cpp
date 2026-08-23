@@ -87,10 +87,13 @@ namespace HaloDesktop::Services
             return;
         }
 
+        m_pauseAllStates.clear();
         for (auto const& item : m_transfers)
         {
-            if (item.State() == winrt::HaloDesktop::DownloadState::Downloading)
+            if (item.State() == winrt::HaloDesktop::DownloadState::Downloading
+                || item.State() == winrt::HaloDesktop::DownloadState::Queued)
             {
+                m_pauseAllStates.emplace(std::wstring(item.Id()), item.State());
                 auto const implementation = winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item);
                 implementation->UpdateState(winrt::HaloDesktop::DownloadState::Paused, L"PAUSED BY YOU");
             }
@@ -109,20 +112,158 @@ namespace HaloDesktop::Services
 
         for (auto const& item : m_transfers)
         {
-            if (item.Id() == L"t1" && item.State() == winrt::HaloDesktop::DownloadState::Paused)
+            auto const found = m_pauseAllStates.find(std::wstring(item.Id()));
+            if (found == m_pauseAllStates.end())
             {
-                auto const implementation = winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item);
-                implementation->UpdateState(
-                    winrt::HaloDesktop::DownloadState::Downloading,
-                    FormatTransferDetail(item, item.Progress()));
+                continue;
             }
+
+            auto const implementation = winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item);
+            auto const originalState = found->second;
+            implementation->UpdateState(
+                originalState,
+                originalState == winrt::HaloDesktop::DownloadState::Downloading
+                    ? FormatTransferDetail(item, item.Progress())
+                    : winrt::hstring{ L"WAITING FOR A SLOT · 3.4 GB" });
         }
+        m_pauseAllStates.clear();
         m_pausedAll = false;
-        m_aggregateRate = 28.4;
+        m_aggregateRate = HasDownloading() ? 28.4 : 0.0;
         NotifyChanged();
     }
 
+    bool MockDownloadService::PauseTransfer(winrt::hstring const& id)
+    {
+        auto const index = FindTransfer(id);
+        if (!index)
+        {
+            return false;
+        }
+
+        auto const item = m_transfers.GetAt(*index);
+        if (item.State() != winrt::HaloDesktop::DownloadState::Downloading
+            && item.State() != winrt::HaloDesktop::DownloadState::Queued)
+        {
+            return false;
+        }
+
+        auto const wasDownloading = item.State() == winrt::HaloDesktop::DownloadState::Downloading;
+        winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item)
+            ->UpdateState(winrt::HaloDesktop::DownloadState::Paused, L"PAUSED BY YOU");
+        if (wasDownloading)
+        {
+            StartNextQueued();
+        }
+        if (!HasDownloading())
+        {
+            m_aggregateRate = 0.0;
+        }
+        NotifyChanged();
+        return true;
+    }
+
+    bool MockDownloadService::ResumeTransfer(winrt::hstring const& id)
+    {
+        auto const index = FindTransfer(id);
+        if (!index)
+        {
+            return false;
+        }
+
+        auto const item = m_transfers.GetAt(*index);
+        if (item.State() != winrt::HaloDesktop::DownloadState::Paused)
+        {
+            return false;
+        }
+
+        auto const nextState = HasDownloading()
+            ? winrt::HaloDesktop::DownloadState::Queued
+            : winrt::HaloDesktop::DownloadState::Downloading;
+        winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item)->UpdateState(
+            nextState,
+            nextState == winrt::HaloDesktop::DownloadState::Downloading
+                ? FormatTransferDetail(item, item.Progress())
+                : winrt::hstring(std::wstring(L"WAITING FOR A SLOT · ") + std::wstring(item.Size())));
+        if (nextState == winrt::HaloDesktop::DownloadState::Downloading)
+        {
+            m_aggregateRate = 28.4;
+        }
+        m_pauseAllStates.clear();
+        m_pausedAll = false;
+        NotifyChanged();
+        return true;
+    }
+
+    bool MockDownloadService::StartNow(winrt::hstring const& id)
+    {
+        auto const index = FindTransfer(id);
+        if (!index)
+        {
+            return false;
+        }
+
+        auto const selected = m_transfers.GetAt(*index);
+        if (selected.State() == winrt::HaloDesktop::DownloadState::Downloading)
+        {
+            return true;
+        }
+
+        for (auto const& item : m_transfers)
+        {
+            if (item.State() == winrt::HaloDesktop::DownloadState::Downloading)
+            {
+                winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item)
+                    ->UpdateState(
+                        winrt::HaloDesktop::DownloadState::Queued,
+                        winrt::hstring(std::wstring(L"WAITING FOR A SLOT · ") + std::wstring(item.Size())));
+            }
+        }
+        winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(selected)
+            ->UpdateState(winrt::HaloDesktop::DownloadState::Downloading, FormatTransferDetail(selected, selected.Progress()));
+        m_pauseAllStates.clear();
+        m_pausedAll = false;
+        m_aggregateRate = 28.4;
+        NotifyChanged();
+        return true;
+    }
+
+    bool MockDownloadService::CancelTransfer(winrt::hstring const& id)
+    {
+        auto const index = FindTransfer(id);
+        if (!index)
+        {
+            return false;
+        }
+
+        auto const wasDownloading = m_transfers.GetAt(*index).State() == winrt::HaloDesktop::DownloadState::Downloading;
+        m_transfers.RemoveAt(*index);
+        m_pauseAllStates.erase(std::wstring(id));
+        if (wasDownloading)
+        {
+            StartNextQueued();
+        }
+        if (!HasDownloading())
+        {
+            m_aggregateRate = 0.0;
+        }
+        NotifyChanged();
+        return true;
+    }
+
+    bool MockDownloadService::DeleteReady(winrt::hstring const& id)
+    {
+        auto const index = FindReady(id);
+        if (!index)
+        {
+            return false;
+        }
+        m_ready.RemoveAt(*index);
+        NotifyChanged();
+        return true;
+    }
+
     bool MockDownloadService::IsRunning() const noexcept { return m_running; }
+    bool MockDownloadService::IsPausedAll() const noexcept { return m_pausedAll; }
 
     std::int32_t MockDownloadService::ActiveCount() const noexcept
     {
@@ -181,10 +322,23 @@ namespace HaloDesktop::Services
         m_handlers.erase(token);
     }
 
+
     void MockDownloadService::Tick()
     {
         if (m_pausedAll)
         {
+            if (m_throughput.Size() >= 30)
+            {
+                m_throughput.RemoveAt(0);
+            }
+            m_throughput.Append(0.0);
+            NotifyChanged();
+            return;
+        }
+
+        if (!HasDownloading())
+        {
+            m_aggregateRate = 0.0;
             if (m_throughput.Size() >= 30)
             {
                 m_throughput.RemoveAt(0);
@@ -211,18 +365,10 @@ namespace HaloDesktop::Services
             if (nextProgress >= 1.0)
             {
                 implementation->UpdateState(winrt::HaloDesktop::DownloadState::OnDisk, L"READY TO WATCH · 1080p");
+                m_pauseAllStates.erase(std::wstring(item.Id()));
                 m_transfers.RemoveAt(index);
                 m_ready.Append(item);
-
-                for (auto const& queued : m_transfers)
-                {
-                    if (queued.State() == winrt::HaloDesktop::DownloadState::Queued)
-                    {
-                        auto const queuedImplementation = winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(queued);
-                        queuedImplementation->UpdateState(winrt::HaloDesktop::DownloadState::Downloading, L"STARTING · 3.4 GB");
-                        break;
-                    }
-                }
+                StartNextQueued();
             }
             break;
         }
@@ -248,6 +394,62 @@ namespace HaloDesktop::Services
         {
             handler();
         }
+    }
+
+    void MockDownloadService::StartNextQueued()
+    {
+        if (HasDownloading())
+        {
+            return;
+        }
+
+        for (auto const& item : m_transfers)
+        {
+            if (item.State() != winrt::HaloDesktop::DownloadState::Queued)
+            {
+                continue;
+            }
+            winrt::get_self<winrt::HaloDesktop::implementation::DownloadItem>(item)
+                ->UpdateState(winrt::HaloDesktop::DownloadState::Downloading, FormatTransferDetail(item, item.Progress()));
+            m_aggregateRate = 28.4;
+            return;
+        }
+    }
+
+    bool MockDownloadService::HasDownloading() const noexcept
+    {
+        for (auto const& item : m_transfers)
+        {
+            if (item.State() == winrt::HaloDesktop::DownloadState::Downloading)
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    std::optional<std::uint32_t> MockDownloadService::FindTransfer(winrt::hstring const& id) const noexcept
+    {
+        for (std::uint32_t index = 0; index < m_transfers.Size(); ++index)
+        {
+            if (m_transfers.GetAt(index).Id() == id)
+            {
+                return index;
+            }
+        }
+        return std::nullopt;
+    }
+
+    std::optional<std::uint32_t> MockDownloadService::FindReady(winrt::hstring const& id) const noexcept
+    {
+        for (std::uint32_t index = 0; index < m_ready.Size(); ++index)
+        {
+            if (m_ready.GetAt(index).Id() == id)
+            {
+                return index;
+            }
+        }
+        return std::nullopt;
     }
 
     winrt::hstring MockDownloadService::FormatTransferDetail(
