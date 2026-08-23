@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.LoginPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Grid Background="Transparent">
+    <StackPanel
+      Width="404"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center">
+      <StackPanel Orientation="Horizontal" Spacing="10">
+        <Image Width="26" Height="26" Source="ms-appx:///Assets/halo-mark.png" />
+        <TextBlock
+          VerticalAlignment="Center"
+          CharacterSpacing="140"
+          FontSize="15"
+          FontWeight="SemiBold"
+          Foreground="{ThemeResource HaloText1Brush}"
+          Text="HALO" />
+      </StackPanel>
+      <TextBlock
+        Margin="0,26,0,0"
+        FontFamily="Segoe UI Variable Display"
+        FontSize="26"
+        FontWeight="SemiBold"
+        Foreground="{ThemeResource HaloText1Brush}"
+        Text="Sign in" />
+      <TextBlock
+        Margin="0,8,0,0"
+        Foreground="{ThemeResource HaloAccentBrush}"
+        Style="{StaticResource HaloMonoData}"
+        Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+
+      <TextBox
+        Margin="0,24,0,0"
+        AutomationProperties.Name="Username"
+        Header="Username"
+        Text="{x:Bind ViewModel.UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+      <PasswordBox
+        Margin="0,12,0,0"
+        AutomationProperties.Name="Password"
+        Header="Password"
+        Password="{x:Bind ViewModel.Password, Mode=TwoWay}" />
+      <TextBlock
+        Margin="0,8,0,0"
+        Foreground="{ThemeResource HaloCriticalBrush}"
+        Style="{StaticResource HaloMonoData}"
+        Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+        Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}" />
+      <Button
+        Height="36"
+        Margin="0,18,0,0"
+        Click="OnSignInClick"
+        Content="Sign in"
+        Style="{StaticResource HaloAccentButtonStyle}" />
+
+      <Grid Margin="0,20,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
+        <TextBlock Grid.Column="1" Margin="12,0" Style="{StaticResource HaloMonoData}" Text="OR" />
+        <Rectangle Grid.Column="2" Height="1" Fill="{ThemeResource HaloDividerBrush}" />
+      </Grid>
+      <Button
+        Height="36"
+        Margin="0,20,0,0"
+        Click="OnMeridianClick"
+        Content="Continue with Meridian ID" />
+      <Button
+        Margin="0,12,0,0"
+        HorizontalAlignment="Center"
+        Background="Transparent"
+        BorderThickness="0"
+        Click="OnDifferentServerClick"
+        Foreground="{ThemeResource HaloAccentBrush}"
+        Content="Use a different server" />
+    </StackPanel>
+  </Grid>
+</Page>

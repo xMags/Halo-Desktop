@@ -32,6 +32,11 @@ namespace
             return L"· Downloads";
         case Page::Settings:
             return L"· Settings";
+        case Page::Connect:
+        case Page::Login:
+            return L"";
+        case Page::Player:
+            return L"· Northwind Divide · S02E04";
         }
 
         return L"";
@@ -53,6 +58,7 @@ namespace winrt::HaloDesktop::implementation
         m_windowSizing = std::make_unique<::HaloDesktop::Shell::WindowSizing>(*this);
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
+        App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
 
         m_themeChangedRevoker = RootGridControl().ActualThemeChanged(
             winrt::auto_revoke,
@@ -74,6 +80,14 @@ namespace winrt::HaloDesktop::implementation
                     self->OnRouteChanged(page);
                 }
             });
+
+        if (!App::Services().Session->IsSignedIn())
+        {
+            auto const firstPage = App::Services().Session->ServerUrl().empty()
+                ? ::HaloDesktop::Services::Page::Connect
+                : ::HaloDesktop::Services::Page::Login;
+            App::Services().Navigation->ShowOverlay(firstPage);
+        }
 
         m_closedRevoker = Closed(
             winrt::auto_revoke,
@@ -101,6 +115,11 @@ namespace winrt::HaloDesktop::implementation
         return RootGridControl().FindName(L"AppTitleBar").as<winrt::HaloDesktop::TitleBar>();
     }
 
+    Microsoft::UI::Xaml::Controls::Frame MainWindow::OverlayFrameControl() const
+    {
+        return RootGridControl().FindName(L"OverlayFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
+    }
+
     void MainWindow::OnRouteChanged(::HaloDesktop::Services::Page page)
     {
         AppTitleBarControl().Crumb(CrumbForPage(page));
@@ -119,4 +138,5 @@ namespace winrt::HaloDesktop::implementation
         titleBar.ButtonForegroundColor(foreground);
         titleBar.ButtonInactiveForegroundColor(foreground);
     }
+
 }

@@ -35,6 +35,12 @@
         </Canvas>
 
         <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" />
-        <local:ShellPage Grid.Row="1" />
+        <Grid Grid.Row="1">
+            <local:ShellPage x:Name="ShellLayer" />
+            <Frame
+                x:Name="OverlayFrame"
+                Background="{ThemeResource HaloMicaBrush}"
+                Visibility="Collapsed" />
+        </Grid>
     </Grid>
 </Window>

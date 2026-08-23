@@ -5,6 +5,8 @@
 #include "Views/DownloadsPage.xaml.h"
 #include "Views/HomePage.xaml.h"
 #include "Views/LibraryPage.xaml.h"
+#include "Views/ConnectPage.xaml.h"
+#include "Views/LoginPage.xaml.h"
 #include "Views/SearchPage.xaml.h"
 #include "Views/SettingsPage.xaml.h"
 #include "Views/SourcesPage.xaml.h"
@@ -36,9 +38,21 @@ namespace
             return winrt::xaml_typename<winrt::HaloDesktop::DownloadsPage>();
         case Page::Settings:
             return winrt::xaml_typename<winrt::HaloDesktop::SettingsPage>();
+        case Page::Connect:
+            return winrt::xaml_typename<winrt::HaloDesktop::ConnectPage>();
+        case Page::Login:
+            return winrt::xaml_typename<winrt::HaloDesktop::LoginPage>();
+        case Page::Player:
+            throw std::invalid_argument("Player overlay is not implemented yet");
         }
 
         throw std::invalid_argument("Unknown shell page");
+    }
+
+    bool IsOverlayPage(HaloDesktop::Services::Page page) noexcept
+    {
+        using HaloDesktop::Services::Page;
+        return page == Page::Connect || page == Page::Login || page == Page::Player;
     }
 
     HaloDesktop::Services::Page PageFromType(winrt::Windows::UI::Xaml::Interop::TypeName const& type)
@@ -88,9 +102,9 @@ namespace HaloDesktop::Services
             throw std::invalid_argument("A shell frame is required");
         }
 
-        Detach();
+        m_shellNavigatedRevoker.revoke();
         m_shellFrame = frame;
-        m_navigatedRevoker = m_shellFrame.Navigated(
+        m_shellNavigatedRevoker = m_shellFrame.Navigated(
             winrt::auto_revoke,
             [this](
                 winrt::Windows::Foundation::IInspectable const& sender,
@@ -100,10 +114,24 @@ namespace HaloDesktop::Services
             });
     }
 
+    void NavigationService::AttachOverlayFrame(winrt::Microsoft::UI::Xaml::Controls::Frame const& frame)
+    {
+        if (!frame)
+        {
+            throw std::invalid_argument("An overlay frame is required");
+        }
+
+        m_overlayFrame = frame;
+        m_overlayFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        m_overlayOpen = false;
+    }
+
     void NavigationService::Detach() noexcept
     {
-        m_navigatedRevoker.revoke();
+        m_shellNavigatedRevoker.revoke();
         m_shellFrame = nullptr;
+        m_overlayFrame = nullptr;
+        m_overlayOpen = false;
         m_routeChangedHandler = {};
     }
 
@@ -111,7 +139,7 @@ namespace HaloDesktop::Services
         Page page,
         winrt::Windows::Foundation::IInspectable const& parameter)
     {
-        if (!m_shellFrame)
+        if (!m_shellFrame || IsOverlayPage(page))
         {
             return false;
         }
@@ -128,6 +156,17 @@ namespace HaloDesktop::Services
 
     bool NavigationService::GoBack()
     {
+        if (m_overlayOpen)
+        {
+            if (!m_overlayFrame || !m_overlayFrame.CanGoBack())
+            {
+                return false;
+            }
+
+            m_overlayFrame.GoBack();
+            return true;
+        }
+
         if (!CanGoBack())
         {
             return false;
@@ -139,12 +178,79 @@ namespace HaloDesktop::Services
 
     bool NavigationService::CanGoBack() const noexcept
     {
+        if (m_overlayOpen)
+        {
+            return m_overlayFrame && m_overlayFrame.CanGoBack();
+        }
         return m_shellFrame && m_shellFrame.CanGoBack();
+    }
+
+    bool NavigationService::ShowOverlay(
+        Page page,
+        winrt::Windows::Foundation::IInspectable const& parameter)
+    {
+        if (!m_overlayFrame || !IsOverlayPage(page))
+        {
+            return false;
+        }
+
+        auto const targetType = PageType(page);
+        auto navigated = true;
+        if (!m_overlayFrame.Content() || m_overlayFrame.CurrentSourcePageType().Name != targetType.Name)
+        {
+            auto const transition = winrt::Microsoft::UI::Xaml::Media::Animation::EntranceNavigationTransitionInfo{};
+            navigated = m_overlayFrame.Navigate(
+                targetType,
+                parameter,
+                winrt::Microsoft::UI::Xaml::Media::Animation::EntranceNavigationTransitionInfo{});
+        }
+        if (!navigated)
+        {
+            return false;
+        }
+
+        m_overlayFrame.BackStack().Clear();
+        m_currentOverlayPage = page;
+        m_overlayOpen = true;
+        m_overlayFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Visible);
+        if (m_routeChangedHandler)
+        {
+            m_routeChangedHandler(page);
+        }
+        return true;
+    }
+
+    bool NavigationService::CloseOverlay()
+    {
+        if (!m_overlayFrame || !m_overlayOpen)
+        {
+            return false;
+        }
+
+        m_overlayFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        m_overlayFrame.Content(nullptr);
+        m_overlayFrame.BackStack().Clear();
+        m_overlayOpen = false;
+        if (m_routeChangedHandler)
+        {
+            m_routeChangedHandler(m_currentPage);
+        }
+        return true;
     }
 
     Page NavigationService::CurrentPage() const noexcept
     {
         return m_currentPage;
+    }
+
+    Page NavigationService::CurrentOverlayPage() const noexcept
+    {
+        return m_currentOverlayPage;
+    }
+
+    bool NavigationService::IsOverlayOpen() const noexcept
+    {
+        return m_overlayOpen;
     }
 
     void NavigationService::SetRouteChangedHandler(RouteChangedHandler handler)

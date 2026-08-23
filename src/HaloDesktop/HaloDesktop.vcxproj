@@ -141,6 +141,7 @@
     <ClInclude Include="Services\NavigationService.h" />
     <ClInclude Include="Services\SampleData.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
+    <ClInclude Include="Services\SessionService.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClInclude>
@@ -151,6 +152,13 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Shell\WindowSizing.h" />
+    <ClInclude Include="ViewModels\ConnectViewModel.h" />
+    <ClInclude Include="ViewModels\LoginViewModel.h" />
+    <ClInclude Include="ViewModels\ObservableHelper.h" />
+    <ClInclude Include="ViewModels\SettingsViewModel.h" />
+    <ClInclude Include="Views\ConnectPage.xaml.h">
+      <DependentUpon>ConnectPage.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="Views\DetailPage.xaml.h">
       <DependentUpon>DetailPage.xaml</DependentUpon>
     </ClInclude>
@@ -162,6 +170,9 @@
     </ClInclude>
     <ClInclude Include="Views\LibraryPage.xaml.h">
       <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\LoginPage.xaml.h">
+      <DependentUpon>LoginPage.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Views\SearchPage.xaml.h">
       <DependentUpon>SearchPage.xaml</DependentUpon>
@@ -183,10 +194,12 @@
     <Page Include="Styles\Controls.xaml" />
     <Page Include="Styles\Tokens.xaml" />
     <Page Include="Styles\Typography.xaml" />
+    <Page Include="Views\ConnectPage.xaml" />
     <Page Include="Views\DetailPage.xaml" />
     <Page Include="Views\DownloadsPage.xaml" />
     <Page Include="Views\HomePage.xaml" />
     <Page Include="Views\LibraryPage.xaml" />
+    <Page Include="Views\LoginPage.xaml" />
     <Page Include="Views\SearchPage.xaml" />
     <Page Include="Views\SettingsPage.xaml" />
     <Page Include="Views\SourcesPage.xaml" />
@@ -209,6 +222,7 @@
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
     <ClCompile Include="Services\SampleData.cpp" />
+    <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
@@ -219,6 +233,12 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp" />
+    <ClCompile Include="ViewModels\ConnectViewModel.cpp" />
+    <ClCompile Include="ViewModels\LoginViewModel.cpp" />
+    <ClCompile Include="ViewModels\SettingsViewModel.cpp" />
+    <ClCompile Include="Views\ConnectPage.xaml.cpp">
+      <DependentUpon>ConnectPage.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="Views\DetailPage.xaml.cpp">
       <DependentUpon>DetailPage.xaml</DependentUpon>
     </ClCompile>
@@ -230,6 +250,9 @@
     </ClCompile>
     <ClCompile Include="Views\LibraryPage.xaml.cpp">
       <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\LoginPage.xaml.cpp">
+      <DependentUpon>LoginPage.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Views\SearchPage.xaml.cpp">
       <DependentUpon>SearchPage.xaml</DependentUpon>
@@ -270,6 +293,10 @@
       <SubType>Code</SubType>
       <DependentUpon>DetailPage.xaml</DependentUpon>
     </Midl>
+    <Midl Include="Views\ConnectPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>ConnectPage.xaml</DependentUpon>
+    </Midl>
     <Midl Include="Views\DownloadsPage.idl">
       <SubType>Code</SubType>
       <DependentUpon>DownloadsPage.xaml</DependentUpon>
@@ -281,6 +308,10 @@
     <Midl Include="Views\LibraryPage.idl">
       <SubType>Code</SubType>
       <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\LoginPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>LoginPage.xaml</DependentUpon>
     </Midl>
     <Midl Include="Views\SearchPage.idl">
       <SubType>Code</SubType>

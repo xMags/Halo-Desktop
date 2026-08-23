@@ -19,6 +19,7 @@ namespace winrt::HaloDesktop::implementation
     private:
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Grid RootGridControl() const;
         [[nodiscard]] winrt::HaloDesktop::TitleBar AppTitleBarControl() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame OverlayFrameControl() const;
         void OnRouteChanged(::HaloDesktop::Services::Page page);
         void UpdateCaptionButtonColors();
 

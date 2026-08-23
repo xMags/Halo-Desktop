@@ -61,19 +61,4 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };
     };
 
-    class MockSessionService final : public ISessionService
-    {
-    public:
-        [[nodiscard]] winrt::hstring ServerUrl() const override;
-        [[nodiscard]] winrt::hstring UserName() const override;
-        [[nodiscard]] bool IsSignedIn() const noexcept override;
-        bool TestServer(winrt::hstring const& url) override;
-        bool SignIn(winrt::hstring const& user, winrt::hstring const& password) override;
-        void SignOut() noexcept override;
-
-    private:
-        winrt::hstring m_serverUrl;
-        winrt::hstring m_userName;
-        bool m_isSignedIn{};
-    };
 }

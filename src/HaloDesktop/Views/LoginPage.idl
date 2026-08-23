@@ -1,0 +1,21 @@
+namespace HaloDesktop
+{
+    runtimeclass LoginViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String ServerHost { get; };
+        String UserName;
+        String Password;
+        String ErrorText { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        void SignIn();
+        void ContinueWithMeridian();
+        void UseDifferentServer();
+    }
+
+    [default_interface]
+    runtimeclass LoginPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        LoginPage();
+        LoginViewModel ViewModel { get; };
+    }
+}

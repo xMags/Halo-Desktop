@@ -128,34 +128,4 @@ namespace HaloDesktop::Services
         return false;
     }
 
-    winrt::hstring MockSessionService::ServerUrl() const { return m_serverUrl; }
-    winrt::hstring MockSessionService::UserName() const { return m_userName; }
-    bool MockSessionService::IsSignedIn() const noexcept { return m_isSignedIn; }
-
-    bool MockSessionService::TestServer(winrt::hstring const& url)
-    {
-        if (std::wstring_view(url).starts_with(L"https://"))
-        {
-            m_serverUrl = url;
-            return true;
-        }
-        return false;
-    }
-
-    bool MockSessionService::SignIn(winrt::hstring const& user, [[maybe_unused]] winrt::hstring const& password)
-    {
-        if (user.empty())
-        {
-            return false;
-        }
-        m_userName = user;
-        m_isSignedIn = true;
-        return true;
-    }
-
-    void MockSessionService::SignOut() noexcept
-    {
-        m_userName.clear();
-        m_isSignedIn = false;
-    }
 }

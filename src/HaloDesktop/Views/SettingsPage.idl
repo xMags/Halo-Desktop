@@ -1,8 +1,18 @@
 namespace HaloDesktop
 {
+    runtimeclass SettingsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String ServerUrl { get; };
+        String UserName { get; };
+        void Refresh();
+        void SignOut();
+        void SwitchServer();
+    }
+
     [default_interface]
     runtimeclass SettingsPage : Microsoft.UI.Xaml.Controls.Page
     {
         SettingsPage();
+        SettingsViewModel ViewModel { get; };
     }
 }
