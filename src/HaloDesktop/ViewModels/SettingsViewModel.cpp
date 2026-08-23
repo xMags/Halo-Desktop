@@ -38,6 +38,7 @@ namespace winrt::HaloDesktop::implementation
 
     SettingsViewModel::SettingsViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_session(services.Session),
+          m_theme(services.Theme),
           m_addonService(services.Addons),
           m_navigation(services.Navigation),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
@@ -120,6 +121,27 @@ namespace winrt::HaloDesktop::implementation
     {
         m_addonService->Remove(name);
         SynchronizeAddons();
+    }
+    bool SettingsViewModel::IsLightTheme() const noexcept
+    {
+        return m_theme->Preference() == ::HaloDesktop::Services::ThemePreference::Light;
+    }
+    bool SettingsViewModel::IsDarkTheme() const noexcept
+    {
+        return m_theme->Preference() == ::HaloDesktop::Services::ThemePreference::Dark;
+    }
+    bool SettingsViewModel::IsSystemTheme() const noexcept
+    {
+        return m_theme->Preference() == ::HaloDesktop::Services::ThemePreference::System;
+    }
+    void SettingsViewModel::SetTheme(std::int32_t index)
+    {
+        using ::HaloDesktop::Services::ThemePreference;
+        if (index < 0 || index > 2) return;
+        m_theme->SetPreference(static_cast<ThemePreference>(index));
+        Raise(L"IsLightTheme");
+        Raise(L"IsDarkTheme");
+        Raise(L"IsSystemTheme");
     }
     void SettingsViewModel::SetFont(std::int32_t index)
     {

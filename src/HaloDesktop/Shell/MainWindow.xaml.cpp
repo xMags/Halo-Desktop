@@ -7,6 +7,7 @@
 #include "App.xaml.h"
 #include "Playback/IPlaybackEngine.h"
 #include "Services/ServiceInterfaces.h"
+#include "Services/ThemeService.h"
 #include "Shell/WindowPresentationService.h"
 
 #include <winrt/Microsoft.UI.Xaml.Media.h>
@@ -58,6 +59,8 @@ namespace winrt::HaloDesktop::implementation
         SetTitleBar(AppTitleBarControl());
 
         m_windowSizing = std::make_unique<::HaloDesktop::Shell::WindowSizing>(*this);
+        // Applied before the first paint so a stored preference never flashes the other theme.
+        App::Services().Theme->Attach(RootGridControl());
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());

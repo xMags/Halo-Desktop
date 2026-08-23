@@ -21,6 +21,7 @@ namespace HaloDesktop::Services
     class ISessionService;
     class ISourceService;
     class NavigationService;
+    class ThemeService;
 
     struct AppServices final
     {
@@ -31,6 +32,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<IAddonService> Addons;
         std::shared_ptr<ISessionService> Session;
         std::shared_ptr<NavigationService> Navigation;
+        std::shared_ptr<ThemeService> Theme;
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> Playback;
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> WindowPresentation;
     };

@@ -85,6 +85,7 @@
     <ClCompile Include="Services\NavigationService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Controls\WheelScrolling.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Services\SampleData.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\ThemeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SessionService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -135,6 +136,7 @@
     <ClInclude Include="Services\NavigationService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Controls\WheelScrolling.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Services\SampleData.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\ThemeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SessionService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>

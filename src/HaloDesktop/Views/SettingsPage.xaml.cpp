@@ -22,6 +22,10 @@ namespace winrt::HaloDesktop::implementation
         m_loaded = true;
     }
     void SettingsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_loaded = false; }
+    void SettingsPage::OnAppearanceRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"AppearanceSection"); }
+    void SettingsPage::OnLightThemeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetTheme(0); }
+    void SettingsPage::OnDarkThemeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetTheme(1); }
+    void SettingsPage::OnSystemThemeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetTheme(2); }
     void SettingsPage::OnAddonsRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"AddonsSection"); }
     void SettingsPage::OnPlaybackRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"PlaybackSection"); }
     void SettingsPage::OnSubtitlesRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"SubtitlesSection"); }

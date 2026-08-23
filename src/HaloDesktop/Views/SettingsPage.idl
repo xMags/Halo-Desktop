@@ -37,6 +37,10 @@ namespace HaloDesktop
         void AddAddon(String url);
         void ToggleAddon(String name, Boolean enabled);
         void RemoveAddon(String name);
+        Boolean IsLightTheme { get; };
+        Boolean IsDarkTheme { get; };
+        Boolean IsSystemTheme { get; };
+        void SetTheme(Int32 index);
         void SetFont(Int32 index);
         void SetOutline(Int32 index);
         void SignOut();

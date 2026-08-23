@@ -312,6 +312,75 @@
     </Setter>
   </Style>
 
+  <!--
+    Picture-card selector used by the appearance switcher: the content is a preview
+    thumbnail plus a label, and selection reads as an accent frame around the card.
+  -->
+  <Style x:Key="HaloThemeCardRadioStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="10" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent">
+            <Border
+              x:Name="Base"
+              Background="{ThemeResource HaloCardBrush}"
+              BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="8" />
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="8" Opacity="0" />
+            <Border
+              x:Name="SelectionLayer"
+              Background="{ThemeResource HaloAccentTintBrush}"
+              BorderBrush="{ThemeResource HaloAccentBrush}"
+              BorderThickness="2"
+              CornerRadius="8"
+              Opacity="0" />
+            <ContentPresenter
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
   <!-- The 3px inset tray the segmented selectors sit inside. -->
   <Style x:Key="HaloSegmentedTrayStyle" TargetType="Border">
     <Setter Property="Padding" Value="3" />

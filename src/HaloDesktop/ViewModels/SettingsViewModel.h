@@ -4,6 +4,7 @@
 #include "SettingsViewModel.g.h"
 #include "Services/AppServices.h"
 #include "Services/ServiceInterfaces.h"
+#include "Services/ThemeService.h"
 
 #include <cstdint>
 #include <memory>
@@ -57,6 +58,10 @@ namespace winrt::HaloDesktop::implementation
         void AddAddon(winrt::hstring const& url);
         void ToggleAddon(winrt::hstring const& name, bool enabled);
         void RemoveAddon(winrt::hstring const& name);
+        [[nodiscard]] bool IsLightTheme() const noexcept;
+        [[nodiscard]] bool IsDarkTheme() const noexcept;
+        [[nodiscard]] bool IsSystemTheme() const noexcept;
+        void SetTheme(std::int32_t index);
         void SetFont(std::int32_t index);
         void SetOutline(std::int32_t index);
         void SignOut();
@@ -68,6 +73,7 @@ namespace winrt::HaloDesktop::implementation
         void SynchronizeAddons();
         void Raise(wchar_t const* propertyName);
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
+        std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_addons{ nullptr };

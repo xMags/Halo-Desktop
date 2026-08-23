@@ -45,6 +45,7 @@
     <Grid x:Name="SettingsBody" Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <StackPanel Spacing="2">
+        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAppearanceRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Appearance" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Theme" /></StackPanel></Button>
         <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Addons" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
         <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Playback" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
         <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnSubtitlesRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Subtitles" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Size, font, appearance" /></StackPanel></Button>
@@ -56,6 +57,64 @@
 
       <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden">
         <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36">
+          <StackPanel x:Name="AppearanceSection" Spacing="14">
+            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Appearance" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Choose how Halo looks. System follows your Windows setting." /></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="12">
+              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Light theme" Click="OnLightThemeClick" IsChecked="{x:Bind ViewModel.IsLightTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                <StackPanel Spacing="9">
+                  <Border Width="132" Height="80" Background="#FFFFFFFF" BorderBrush="#22000000" BorderThickness="1" CornerRadius="6">
+                        <Grid Padding="8" ColumnSpacing="8">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <Rectangle Fill="#FFE6E6EA" RadiusX="3" RadiusY="3" />
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                            <Rectangle Height="5" Fill="#FFC8C8CE" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="46" HorizontalAlignment="Left" Fill="#FFC8C8CE" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="34" HorizontalAlignment="Left" Fill="#FF005FB8" RadiusX="2" RadiusY="2" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                  <TextBlock HorizontalAlignment="Center" FontSize="13" Text="Light" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Dark theme" Click="OnDarkThemeClick" IsChecked="{x:Bind ViewModel.IsDarkTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                <StackPanel Spacing="9">
+                  <Border Width="132" Height="80" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6">
+                        <Grid Padding="8" ColumnSpacing="8">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <Rectangle Fill="#FF313138" RadiusX="3" RadiusY="3" />
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                            <Rectangle Height="5" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="46" HorizontalAlignment="Left" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="34" HorizontalAlignment="Left" Fill="#FF60CDFF" RadiusX="2" RadiusY="2" />
+                          </StackPanel>
+                        </Grid>
+                      </Border>
+                  <TextBlock HorizontalAlignment="Center" FontSize="13" Text="Dark" />
+                </StackPanel>
+              </RadioButton>
+              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Follow system theme" Click="OnSystemThemeClick" IsChecked="{x:Bind ViewModel.IsSystemTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                <StackPanel Spacing="9">
+                  <!-- Split down the middle so the card reads as "either one". -->
+                  <Grid Width="132" Height="80">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Border Grid.ColumnSpan="2" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6" />
+                    <Border Background="#FFFFFFFF" CornerRadius="6,0,0,6" />
+                    <Grid Grid.ColumnSpan="2" Padding="8" ColumnSpacing="8">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                      <Rectangle Fill="#FFE6E6EA" RadiusX="3" RadiusY="3" />
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                        <Rectangle Height="5" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                        <Rectangle Height="5" Width="46" HorizontalAlignment="Left" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                        <Rectangle Height="5" Width="34" HorizontalAlignment="Left" Fill="#FF60CDFF" RadiusX="2" RadiusY="2" />
+                      </StackPanel>
+                    </Grid>
+                  </Grid>
+                  <TextBlock HorizontalAlignment="Center" FontSize="13" Text="System" />
+                </StackPanel>
+              </RadioButton>
+            </StackPanel>
+          </StackPanel>
+
           <StackPanel x:Name="AddonsSection" Spacing="14">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Addons" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Catalogs, streams and subtitles come from these. Order sets priority." /></StackPanel>
             <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox x:Name="AddonUrlBox" Height="32" PlaceholderText="https://addon.example.com/manifest.json" /><Button Grid.Column="1" Height="32" Padding="18,0" Click="OnAddAddonClick" Content="Add" FontSize="13" Style="{StaticResource HaloAccentButtonStyle}" /></Grid>

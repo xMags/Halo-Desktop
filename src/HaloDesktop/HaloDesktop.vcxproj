@@ -162,6 +162,7 @@
     <ClInclude Include="Services\NavigationService.h" />
     <ClInclude Include="Controls\WheelScrolling.h" />
     <ClInclude Include="Services\SampleData.h" />
+    <ClInclude Include="Services\ThemeService.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
@@ -276,6 +277,7 @@
     <ClCompile Include="Services\NavigationService.cpp" />
     <ClCompile Include="Controls\WheelScrolling.cpp" />
     <ClCompile Include="Services\SampleData.cpp" />
+    <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>

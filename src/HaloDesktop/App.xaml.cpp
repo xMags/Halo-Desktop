@@ -6,6 +6,7 @@
 #include "Services/MockServices.h"
 #include "Services/NavigationService.h"
 #include "Services/SessionService.h"
+#include "Services/ThemeService.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/WindowPresentationService.h"
 
@@ -22,6 +23,7 @@ namespace winrt::HaloDesktop::implementation
         m_services.Addons = std::make_shared<::HaloDesktop::Services::MockAddonService>();
         m_services.Session = std::make_shared<::HaloDesktop::Services::SessionService>();
         m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
+        m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>();
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>();
 #else
