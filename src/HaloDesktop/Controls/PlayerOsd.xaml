@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.PlayerOsd"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded">
+  <Grid
+    x:Name="OsdRoot"
+    Background="Transparent"
+    Opacity="{x:Bind ViewModel.OsdOpacity, Mode=OneWay}"
+    PointerMoved="OnOsdPointerMoved">
+    <Rectangle Height="150" VerticalAlignment="Top">
+      <Rectangle.Fill><LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1"><GradientStop Offset="0" Color="#CC000000" /><GradientStop Offset="1" Color="#00000000" /></LinearGradientBrush></Rectangle.Fill>
+    </Rectangle>
+    <Grid Margin="20" VerticalAlignment="Top">
+      <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+      <Button Width="36" Height="36" Padding="0" Background="#99000000" BorderThickness="0" Click="OnBackClick" Content="&#xE72B;" />
+      <StackPanel Grid.Column="1" Margin="12,0,0,0"><TextBlock FontSize="17" FontWeight="SemiBold" Foreground="White" Text="Northwind Divide" /><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Foreground="#A8FFFFFF" Text="S02E04 · THE CUT LINE · 2160p HDR10 · TORRENTIO" /></StackPanel>
+    </Grid>
+
+    <Border Padding="14,8" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#B0202024" CornerRadius="6" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}"><TextBlock FontSize="15" FontWeight="SemiBold" Foreground="White" Text="Paused" /></Border>
+
+    <Grid VerticalAlignment="Bottom">
+      <Rectangle Height="320" VerticalAlignment="Bottom"><Rectangle.Fill><LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1"><GradientStop Offset="0" Color="#00000000" /><GradientStop Offset="1" Color="#E8000000" /></LinearGradientBrush></Rectangle.Fill></Rectangle>
+      <StackPanel Margin="24,0,24,20" VerticalAlignment="Bottom" Spacing="12">
+        <TextBlock HorizontalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="White" Text="The map does not agree with the ground." />
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <StackPanel Orientation="Horizontal" Spacing="7">
+            <Button Padding="10,6" Background="{x:Bind ViewModel.SubtitleChipBackground, Mode=OneWay}" BorderThickness="0" Click="OnSubtitlesPanelClick"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="#9FFFFFFF" Text="SUBTITLES" /><TextBlock Foreground="White" Text="English · ASS" /></StackPanel></Button>
+            <Button Padding="10,6" Background="{x:Bind ViewModel.AudioChipBackground, Mode=OneWay}" BorderThickness="0" Click="OnAudioPanelClick"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="#9FFFFFFF" Text="AUDIO" /><TextBlock Foreground="White" Text="English 5.1 · EAC3" /></StackPanel></Button>
+            <Button Padding="10,6" Background="{x:Bind ViewModel.SpeedChipBackground, Mode=OneWay}" BorderThickness="0" Click="OnSpeedPanelClick"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="#9FFFFFFF" Text="SPEED" /><TextBlock Foreground="White" Text="{x:Bind ViewModel.SpeedText, Mode=OneWay}" /></StackPanel></Button>
+            <Button Padding="10,6" Background="{x:Bind ViewModel.UpNextChipBackground, Mode=OneWay}" BorderThickness="0" Click="OnUpNextClick"><StackPanel Orientation="Horizontal" Spacing="6"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="#9FFFFFFF" Text="UP NEXT" /><TextBlock Foreground="White" Text="S02E05 · Thaw Season" /></StackPanel></Button>
+          </StackPanel>
+          <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#80FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · ESC EXIT" />
+        </Grid>
+        <Grid Height="20">
+          <ProgressBar Height="4" VerticalAlignment="Center" Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}" Value="{x:Bind ViewModel.BufferedPosition, Mode=OneWay}" Foreground="#55FFFFFF" />
+          <Slider Minimum="0" Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}" Value="{x:Bind ViewModel.Position, Mode=OneWay}" PointerReleased="OnSeekPointerReleased" />
+        </Grid>
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Padding="0" Background="White" BorderThickness="0" Click="OnTogglePauseClick" CornerRadius="27"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="Black" Text="{x:Bind ViewModel.PlayPauseGlyph, Mode=OneWay}" /></Button>
+          <Button Grid.Column="1" Width="34" Height="34" Margin="10,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnReplayClick" Content="&#xE7A7;" CornerRadius="17" />
+          <Button Grid.Column="2" Width="34" Height="34" Margin="6,5,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnForwardClick" Content="&#xE7A6;" CornerRadius="17" />
+          <TextBlock Grid.Column="3" Margin="12,0,0,0" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11" Foreground="White" Text="{x:Bind ViewModel.TimeText, Mode=OneWay}" />
+          <TextBlock Grid.Column="5" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Foreground="White" Text="&#xE767;" />
+          <Slider Grid.Column="6" Margin="8,0" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.Volume, Mode=TwoWay}" />
+          <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
+          <Button Grid.Column="8" Width="34" Height="34" Margin="8,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Content="&#xE9A6;" />
+          <Button Grid.Column="9" Width="34" Height="34" Margin="6,0,0,0" Padding="0" Background="#99202024" BorderThickness="0" Click="OnFullscreenClick" Content="{x:Bind ViewModel.FullscreenGlyph, Mode=OneWay}" />
+        </Grid>
+      </StackPanel>
+    </Grid>
+
+    <Border Width="400" HorizontalAlignment="Right" Background="#F01A1A1E" CornerRadius="10,0,0,10" Visibility="{x:Bind ViewModel.PanelVisibility, Mode=OneWay}">
+      <Grid Padding="20">
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <Grid><StackPanel><TextBlock FontSize="20" FontWeight="SemiBold" Foreground="White" Text="Playback" /><TextBlock Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" /></StackPanel><Button HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" Click="OnClosePanelClick" Content="&#xE711;" /></Grid>
+        <StackPanel Grid.Row="1" Margin="0,18,0,14" Orientation="Horizontal"><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesTabClick" Content="Subtitles" /><RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedTabClick" Content="Speed" /></StackPanel>
+        <ScrollViewer Grid.Row="2">
+          <Grid>
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
+              <TextBlock Foreground="#9FFFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
+              <RadioButton GroupName="SubtitleTrack" Click="OnSubtitlesOffClick" Content="Off · No subtitles" />
+              <ItemsControl x:Name="SubtitleTrackList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:PlaybackTrackViewModel"><RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind IsSelected}" Click="OnSubtitleTrackClick"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Foreground="White" Text="{x:Bind Title}" /><TextBlock Foreground="#8FFFFFFF" Text="{x:Bind Note}" /><Border Padding="5,2" Background="#3318CDFF" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" Text="{x:Bind Codec}" /></Border></StackPanel></RadioButton></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+              <TextBlock Margin="0,12,0,0" Foreground="#9FFFFFFF" Style="{StaticResource HaloMonoKicker}" Text="FROM ADDONS" />
+              <TextBlock Foreground="White" Text="English · OpenSubtitles · hash match · 8 variants · SRT" /><TextBlock Foreground="White" Text="English (forced) · OpenSubtitles · 2 variants · SRT" /><TextBlock Foreground="White" Text="Español · OpenSubtitles · 5 variants · SRT" />
+              <Grid Margin="0,16,0,0"><TextBlock VerticalAlignment="Center" Foreground="White" Text="Subtitle delay" /><StackPanel HorizontalAlignment="Right" Orientation="Horizontal"><Button Click="OnSubtitleDelayDownClick" Content="−" /><TextBlock Width="68" VerticalAlignment="Center" TextAlignment="Center" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" /><Button Click="OnSubtitleDelayUpClick" Content="+" /></StackPanel></Grid>
+            </StackPanel>
+            <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
+              <TextBlock Foreground="#9FFFFFFF" Style="{StaticResource HaloMonoKicker}" Text="TRACKS" />
+              <ItemsControl x:Name="AudioTrackList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:PlaybackTrackViewModel"><RadioButton GroupName="AudioTrack" IsChecked="{x:Bind IsSelected}" Click="OnAudioTrackClick"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Foreground="White" Text="{x:Bind Title}" /><TextBlock Foreground="#8FFFFFFF" Text="{x:Bind Note}" /><Border Padding="5,2" Background="#3318CDFF" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" Text="{x:Bind Codec}" /></Border></StackPanel></RadioButton></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+              <Grid Margin="0,16,0,0"><TextBlock VerticalAlignment="Center" Foreground="White" Text="Audio delay" /><StackPanel HorizontalAlignment="Right" Orientation="Horizontal"><Button Click="OnAudioDelayDownClick" Content="−" /><TextBlock Width="68" VerticalAlignment="Center" TextAlignment="Center" Foreground="White" Text="{x:Bind ViewModel.AudioDelayText, Mode=OneWay}" /><Button Click="OnAudioDelayUpClick" Content="+" /></StackPanel></Grid>
+            </StackPanel>
+            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.SpeedPanelVisibility, Mode=OneWay}">
+              <Grid ColumnSpacing="8" RowSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions><RadioButton GroupName="SpeedChoice" Click="OnSpeedHalfClick" Content="0.5×&#x0a;Half" /><RadioButton Grid.Column="1" GroupName="SpeedChoice" Click="OnSpeedThreeQuarterClick" Content="0.75×&#x0a;25% slower" /><RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="True" Click="OnSpeedNormalClick" Content="1×&#x0a;Normal" /><RadioButton Grid.Row="1" GroupName="SpeedChoice" Click="OnSpeedOneQuarterClick" Content="1.25×&#x0a;25% faster" /><RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" Click="OnSpeedOneHalfClick" Content="1.5×&#x0a;50% faster" /><RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" Click="OnSpeedDoubleClick" Content="2×&#x0a;Double" /></Grid>
+              <TextBlock Foreground="#9FFFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
+            </StackPanel>
+          </Grid>
+        </ScrollViewer>
+      </Grid>
+    </Border>
+
+    <Border Width="332" Margin="0,0,24,176" Padding="14" HorizontalAlignment="Right" VerticalAlignment="Bottom" Background="#E81A1A1E" CornerRadius="8" Visibility="{x:Bind ViewModel.UpNextVisibility, Mode=OneWay}">
+      <StackPanel Spacing="10"><Grid><TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.UpNextKicker, Mode=OneWay}" /><Button HorizontalAlignment="Right" Padding="4" Background="Transparent" BorderThickness="0" Click="OnCancelUpNextClick" Foreground="{ThemeResource HaloAccentBrush}" Content="Cancel" /></Grid><Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="84" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><local:PlaceholderArt Width="84" Height="48" /><StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Style="{StaticResource HaloMonoData}" Text="S02E05" /><TextBlock FontWeight="SemiBold" Foreground="White" Text="Thaw Season" /></StackPanel></Grid><ProgressBar Maximum="100" Value="{x:Bind ViewModel.UpNextProgress, Mode=OneWay}" /><Button Click="OnPlayNextClick" Content="Play now" Style="{StaticResource HaloAccentButtonStyle}" /></StackPanel>
+    </Border>
+  </Grid>
+</UserControl>

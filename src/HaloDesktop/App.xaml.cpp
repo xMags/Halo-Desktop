@@ -1,10 +1,12 @@
 #include "pch.h"
 #include "App.xaml.h"
+#include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
 #include "Services/NavigationService.h"
 #include "Services/SessionService.h"
 #include "Shell/MainWindow.xaml.h"
+#include "Shell/WindowPresentationService.h"
 
 #include <memory>
 
@@ -19,6 +21,8 @@ namespace winrt::HaloDesktop::implementation
         m_services.Addons = std::make_shared<::HaloDesktop::Services::MockAddonService>();
         m_services.Session = std::make_shared<::HaloDesktop::Services::SessionService>();
         m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
+        m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
+        m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
 
 #if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
         UnhandledException([](winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::UnhandledExceptionEventArgs const& e)

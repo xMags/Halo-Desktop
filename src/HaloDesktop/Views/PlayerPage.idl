@@ -1,8 +1,81 @@
 namespace HaloDesktop
 {
     [default_interface]
+    runtimeclass PlaybackTrackViewModel
+    {
+        Int64 Id { get; };
+        String Title { get; };
+        String Note { get; };
+        String Codec { get; };
+        Boolean IsSelected { get; };
+    }
+
+    runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Double Position;
+        Double Duration { get; };
+        Double Volume;
+        String VolumeText { get; };
+        String TimeText { get; };
+        String SpeedText { get; };
+        String PlayPauseGlyph { get; };
+        String FullscreenGlyph { get; };
+        Double PlayButtonSize { get; };
+        Microsoft.UI.Xaml.Media.Brush AudioChipBackground { get; };
+        Microsoft.UI.Xaml.Media.Brush SubtitleChipBackground { get; };
+        Microsoft.UI.Xaml.Media.Brush SpeedChipBackground { get; };
+        Microsoft.UI.Xaml.Media.Brush UpNextChipBackground { get; };
+        Object AudioTracks { get; };
+        Object SubtitleTracks { get; };
+        Double BufferedPosition { get; };
+        Double OsdOpacity { get; };
+        Double UpNextProgress { get; };
+        String UpNextKicker { get; };
+        String SubtitleDelayText { get; };
+        String AudioDelayText { get; };
+        Boolean IsPaused { get; };
+        Boolean IsFullscreen { get; };
+        Boolean AudioTabSelected { get; };
+        Boolean SubtitleTabSelected { get; };
+        Boolean SpeedTabSelected { get; };
+        Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PanelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AudioPanelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubtitlePanelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
+        void TogglePause();
+        void SeekRelative(Double seconds);
+        void ChangeVolume(Double delta);
+        void SetSpeed(Double speed);
+        void ShowPanel(Int32 index);
+        void SelectPanel(Int32 index);
+        void ClosePanel();
+        void SelectAudio(Int64 id);
+        void SelectSubtitle(Int64 id);
+        void DisableSubtitles();
+        void AdjustSubtitleDelay(Int32 milliseconds);
+        void AdjustAudioDelay(Int32 milliseconds);
+        void ToggleUpNext();
+        void CancelUpNext();
+        void PlayNext();
+        void ToggleFullscreen();
+        void HandleEscape();
+        void ClosePlayer();
+        void NotifyUserActivity();
+    }
+
+    [default_interface]
+    runtimeclass PlayerOsd : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        PlayerOsd();
+        PlayerViewModel ViewModel { get; };
+    }
+
+    [default_interface]
     runtimeclass PlayerPage : Microsoft.UI.Xaml.Controls.Page
     {
         PlayerPage();
+        PlayerViewModel ViewModel { get; };
     }
 }

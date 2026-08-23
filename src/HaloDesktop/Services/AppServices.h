@@ -2,6 +2,16 @@
 
 #include <memory>
 
+namespace HaloDesktop::Playback
+{
+    class IPlaybackEngine;
+}
+
+namespace HaloDesktop::Shell
+{
+    class WindowPresentationService;
+}
+
 namespace HaloDesktop::Services
 {
     class IAddonService;
@@ -21,5 +31,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<IAddonService> Addons;
         std::shared_ptr<ISessionService> Session;
         std::shared_ptr<NavigationService> Navigation;
+        std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> Playback;
+        std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> WindowPresentation;
     };
 }

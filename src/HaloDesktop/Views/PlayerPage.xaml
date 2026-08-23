@@ -2,12 +2,21 @@
 <Page
   x:Class="HaloDesktop.PlayerPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded">
+  <Page.KeyboardAccelerators>
+    <KeyboardAccelerator Key="Space" Invoked="OnSpaceInvoked" />
+    <KeyboardAccelerator Key="Left" Invoked="OnLeftInvoked" />
+    <KeyboardAccelerator Key="Right" Invoked="OnRightInvoked" />
+    <KeyboardAccelerator Key="Up" Invoked="OnUpInvoked" />
+    <KeyboardAccelerator Key="Down" Invoked="OnDownInvoked" />
+    <KeyboardAccelerator Key="F" Invoked="OnFullscreenInvoked" />
+    <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked" />
+  </Page.KeyboardAccelerators>
   <Grid Background="#FF090A0C">
-    <Button Margin="20" HorizontalAlignment="Left" VerticalAlignment="Top" Click="OnBackClick" Content="Back" />
-    <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="10">
-      <TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="12" Foreground="#70FFFFFF" Text="PLAYER PLACEHOLDER" />
-      <TextBlock HorizontalAlignment="Center" FontSize="22" FontWeight="SemiBold" Foreground="White" Text="Playback UI arrives in the player milestone" />
-    </StackPanel>
+    <local:PlaceholderArt Caption="SIMULATED PLAYBACK" />
+    <local:PlayerOsd x:Name="PlayerOverlay" />
   </Grid>
 </Page>

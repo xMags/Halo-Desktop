@@ -6,6 +6,7 @@
 
 #include "App.xaml.h"
 #include "Services/ServiceInterfaces.h"
+#include "Shell/WindowPresentationService.h"
 
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Windows.UI.h>
@@ -41,6 +42,7 @@ namespace
 
         return L"";
     }
+
 }
 
 namespace winrt::HaloDesktop::implementation
@@ -59,6 +61,9 @@ namespace winrt::HaloDesktop::implementation
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
+        App::Services().WindowPresentation->Attach(
+            m_windowSizing->AppWindow(),
+            RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
 
         m_themeChangedRevoker = RootGridControl().ActualThemeChanged(
             winrt::auto_revoke,
@@ -98,6 +103,7 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const self = weak.get())
                 {
                     App::Services().Downloads->Stop();
+                    App::Services().WindowPresentation->Detach();
                     App::Services().Navigation->Detach();
                     self->m_themeChangedRevoker.revoke();
                 }

@@ -139,6 +139,8 @@
     <ClInclude Include="Controls\SettingRow.xaml.h"><DependentUpon>SettingRow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Models\Models.h" />
+    <ClInclude Include="Playback\IPlaybackEngine.h" />
+    <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\MockDownloadService.h" />
     <ClInclude Include="Services\MockServices.h" />
@@ -156,12 +158,14 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Shell\WindowSizing.h" />
+    <ClInclude Include="Shell\WindowPresentationService.h" />
     <ClInclude Include="ViewModels\ConnectViewModel.h" />
     <ClInclude Include="ViewModels\DetailViewModel.h" />
     <ClInclude Include="ViewModels\DownloadsViewModel.h" />
     <ClInclude Include="ViewModels\HomeViewModel.h" />
     <ClInclude Include="ViewModels\LibraryViewModel.h" />
     <ClInclude Include="ViewModels\LoginViewModel.h" />
+    <ClInclude Include="ViewModels\PlayerViewModel.h" />
     <ClInclude Include="ViewModels\ObservableHelper.h" />
     <ClInclude Include="ViewModels\SettingsViewModel.h" />
     <ClInclude Include="ViewModels\SearchViewModel.h" />
@@ -185,6 +189,7 @@
       <DependentUpon>LoginPage.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Views\PlayerPage.xaml.h"><DependentUpon>PlayerPage.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Controls\PlayerOsd.xaml.h"><DependentUpon>PlayerOsd.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\SearchPage.xaml.h">
       <DependentUpon>SearchPage.xaml</DependentUpon>
     </ClInclude>
@@ -199,6 +204,7 @@
     <ApplicationDefinition Include="App.xaml" />
     <Page Include="Controls\MediaShelf.xaml" />
     <Page Include="Controls\PlaceholderArt.xaml" />
+    <Page Include="Controls\PlayerOsd.xaml" />
     <Page Include="Controls\PosterCard.xaml" />
     <Page Include="Controls\SectionHeader.xaml" />
     <Page Include="Controls\SettingRow.xaml" />
@@ -238,6 +244,7 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
+    <ClCompile Include="Playback\NullEngine.cpp" />
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
@@ -253,12 +260,14 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp" />
+    <ClCompile Include="Shell\WindowPresentationService.cpp" />
     <ClCompile Include="ViewModels\ConnectViewModel.cpp" />
     <ClCompile Include="ViewModels\DetailViewModel.cpp" />
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp" />
     <ClCompile Include="ViewModels\HomeViewModel.cpp" />
     <ClCompile Include="ViewModels\LibraryViewModel.cpp" />
     <ClCompile Include="ViewModels\LoginViewModel.cpp" />
+    <ClCompile Include="ViewModels\PlayerViewModel.cpp" />
     <ClCompile Include="ViewModels\SearchViewModel.cpp" />
     <ClCompile Include="ViewModels\SettingsViewModel.cpp" />
     <ClCompile Include="ViewModels\SourcesViewModel.cpp" />
@@ -281,6 +290,7 @@
       <DependentUpon>LoginPage.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Views\PlayerPage.xaml.cpp"><DependentUpon>PlayerPage.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Controls\PlayerOsd.xaml.cpp"><DependentUpon>PlayerOsd.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Views\SearchPage.xaml.cpp">
       <DependentUpon>SearchPage.xaml</DependentUpon>
     </ClCompile>
