@@ -30,6 +30,16 @@
     OpenPaneLength="{StaticResource HaloPaneWidth}"
     PaneDisplayMode="Left">
 
+    <NavigationView.Resources>
+      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{ThemeResource HaloNavSelColor}" />
+      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{ThemeResource HaloAccentTintColor}" />
+      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="{ThemeResource HaloChartDimColor}" />
+      <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{ThemeResource HaloAccentColor}" />
+      <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{ThemeResource HaloAccentColor}" />
+      <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="{ThemeResource HaloAccentColor}" />
+      <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="Transparent" />
+    </NavigationView.Resources>
+
     <NavigationView.MenuItems>
       <NavigationViewItemHeader Content="MENU" Style="{StaticResource HaloNavSectionHeaderStyle}" />
       <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home">
