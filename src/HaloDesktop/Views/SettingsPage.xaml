@@ -7,11 +7,43 @@
   Loaded="OnLoaded"
   Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
-  <Grid>
+  <!-- Capped and centred so the form does not strand itself against the left edge
+       of a maximised window; the header travels with it. -->
+  <Grid x:Name="PageRoot" MaxWidth="1000" HorizontalAlignment="Center">
+    <!--
+      The form is capped so line length stays readable, but the cap, the rail and the
+      spacing all grow with the window rather than holding one narrow column on a large
+      screen. Widths are effective pixels, so they track display scaling too.
+    -->
+    <VisualStateManager.VisualStateGroups>
+      <VisualStateGroup>
+        <VisualState x:Name="SettingsRegular" />
+        <VisualState x:Name="SettingsWide">
+          <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1500" /></VisualState.StateTriggers>
+          <VisualState.Setters>
+            <Setter Target="PageRoot.MaxWidth" Value="1240" />
+            <Setter Target="RailColumn.Width" Value="240" />
+            <Setter Target="SettingsBody.ColumnSpacing" Value="36" />
+            <Setter Target="SettingsForm.MaxWidth" Value="840" />
+            <Setter Target="SettingsForm.Spacing" Value="44" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="SettingsExpansive">
+          <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1900" /></VisualState.StateTriggers>
+          <VisualState.Setters>
+            <Setter Target="PageRoot.MaxWidth" Value="1460" />
+            <Setter Target="RailColumn.Width" Value="260" />
+            <Setter Target="SettingsBody.ColumnSpacing" Value="44" />
+            <Setter Target="SettingsForm.MaxWidth" Value="1000" />
+            <Setter Target="SettingsForm.Spacing" Value="52" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
+    </VisualStateManager.VisualStateGroups>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <local:SectionHeader Title="Settings" Crumb="ACCOUNT &amp; PLAYBACK" />
-    <Grid Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
-      <Grid.ColumnDefinitions><ColumnDefinition Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+    <Grid x:Name="SettingsBody" Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
+      <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <StackPanel Spacing="2">
         <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Addons" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
         <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Playback" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
@@ -23,7 +55,7 @@
       </StackPanel>
 
       <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden">
-        <StackPanel MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36">
+        <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36">
           <StackPanel x:Name="AddonsSection" Spacing="14">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Addons" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Catalogs, streams and subtitles come from these. Order sets priority." /></StackPanel>
             <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox x:Name="AddonUrlBox" Height="32" PlaceholderText="https://addon.example.com/manifest.json" /><Button Grid.Column="1" Height="32" Padding="18,0" Click="OnAddAddonClick" Content="Add" FontSize="13" Style="{StaticResource HaloAccentButtonStyle}" /></Grid>
@@ -61,7 +93,7 @@
 
           <StackPanel x:Name="SubtitlesSection" Spacing="12">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Subtitles" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Appearance applies live during playback." /></StackPanel>
-            <Grid ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
+            <Grid Height="176" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
               <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
                 <StackPanel>
                   <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
@@ -93,7 +125,25 @@
                 </StackPanel>
               </Border>
               <Border Grid.Column="1" Background="{ThemeResource HaloPhTint2Brush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-                <Grid><local:PlaceholderArt /><TextBlock Margin="12" VerticalAlignment="Top" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" /><TextBlock x:Name="ThinPreviewOutline" Margin="2,2,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="Black" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.ThinOutlineVisibility, Mode=OneWay}" /><TextBlock x:Name="HeavyPreviewOutline" Margin="3,3,0,0" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="Black" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.HeavyOutlineVisibility, Mode=OneWay}" /><TextBlock x:Name="SubtitlePreviewText" Margin="24" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="White" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" /></Grid>
+                <Grid>
+                  <local:PlaceholderArt />
+                  <TextBlock Margin="12,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{ThemeResource HaloPhTextBrush}" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" />
+                  <!--
+                    The three copies share one layout slot so they wrap identically; the
+                    shadow copies are displaced by a render transform, which does not
+                    affect layout. Giving them different margins made the caption read
+                    as two overlapping strings.
+                  -->
+                  <Grid Margin="14,0,14,16" VerticalAlignment="Bottom">
+                    <TextBlock x:Name="ThinPreviewOutline" Foreground="#D9000000" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.ThinOutlineVisibility, Mode=OneWay}">
+                      <TextBlock.RenderTransform><TranslateTransform X="1.5" Y="1.5" /></TextBlock.RenderTransform>
+                    </TextBlock>
+                    <TextBlock x:Name="HeavyPreviewOutline" Foreground="#F2000000" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.HeavyOutlineVisibility, Mode=OneWay}">
+                      <TextBlock.RenderTransform><TranslateTransform X="2.5" Y="2.5" /></TextBlock.RenderTransform>
+                    </TextBlock>
+                    <TextBlock x:Name="SubtitlePreviewText" Foreground="White" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" />
+                  </Grid>
+                </Grid>
               </Border>
             </Grid>
           </StackPanel>
