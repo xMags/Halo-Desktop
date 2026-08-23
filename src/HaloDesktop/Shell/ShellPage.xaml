@@ -125,15 +125,10 @@
           <Border
             Width="28"
             Height="28"
-            Background="{ThemeResource HaloAccentBrush}"
             CornerRadius="14">
-            <TextBlock
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              FontSize="11.5"
-              FontWeight="SemiBold"
-              Foreground="{ThemeResource HaloOnAccentBrush}"
-              Text="DB" />
+            <Image
+              Source="ms-appx:///Assets/user-avatar.png"
+              Stretch="UniformToFill" />
           </Border>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
             <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" Text="Debashis" />
