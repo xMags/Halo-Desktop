@@ -10,6 +10,7 @@ namespace winrt::HaloDesktop::implementation
     {
         PlayerOsd();
         [[nodiscard]] winrt::HaloDesktop::PlayerViewModel ViewModel() const;
+        void SourceLabel(winrt::hstring const& value);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);

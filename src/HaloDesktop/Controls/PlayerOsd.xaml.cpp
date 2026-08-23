@@ -16,6 +16,10 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_viewModel;
     }
+    void PlayerOsd::SourceLabel(winrt::hstring const& value)
+    {
+        FindName(L"SourceLabelText").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(value);
+    }
     void PlayerOsd::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

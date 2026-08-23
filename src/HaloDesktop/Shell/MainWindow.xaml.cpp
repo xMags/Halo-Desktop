@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Playback/IPlaybackEngine.h"
 #include "Services/ServiceInterfaces.h"
 #include "Shell/WindowPresentationService.h"
 
@@ -42,7 +43,6 @@ namespace
 
         return L"";
     }
-
 }
 
 namespace winrt::HaloDesktop::implementation
@@ -62,8 +62,20 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
         App::Services().WindowPresentation->Attach(
+            m_windowSizing->WindowHandle(),
             m_windowSizing->AppWindow(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
+
+        m_appWindowClosingToken = m_windowSizing->AppWindow().Closing(
+            [weak = get_weak()](
+                [[maybe_unused]] Microsoft::UI::Windowing::AppWindow const& window,
+                [[maybe_unused]] Microsoft::UI::Windowing::AppWindowClosingEventArgs const& args)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->PrepareForWindowClose();
+                }
+            });
 
         m_themeChangedRevoker = RootGridControl().ActualThemeChanged(
             winrt::auto_revoke,
@@ -94,21 +106,18 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Navigation->ShowOverlay(firstPage);
         }
 
-        m_closedRevoker = Closed(
-            winrt::auto_revoke,
+        // An explicit token avoids revoking the Window.Closed event after its
+        // native Window has already completed teardown.
+        m_closedToken = Closed(
             [weak = get_weak()](
                 [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                 [[maybe_unused]] Microsoft::UI::Xaml::WindowEventArgs const& args)
             {
                 if (auto const self = weak.get())
                 {
-                    App::Services().Downloads->Stop();
-                    App::Services().WindowPresentation->Detach();
-                    App::Services().Navigation->Detach();
-                    self->m_themeChangedRevoker.revoke();
+                    self->PrepareForWindowClose();
                 }
             });
-
     }
 
     Microsoft::UI::Xaml::Controls::Grid MainWindow::RootGridControl() const
@@ -124,6 +133,38 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Controls::Frame MainWindow::OverlayFrameControl() const
     {
         return RootGridControl().FindName(L"OverlayFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
+    }
+
+    void MainWindow::PrepareForWindowClose() noexcept
+    {
+        if (m_closePrepared)
+        {
+            return;
+        }
+        m_closePrepared = true;
+
+        try
+        {
+            App::Services().Playback->Stop();
+            App::Services().Playback->DetachVideoWindow();
+            App::Services().Downloads->Stop();
+            App::Services().Navigation->Detach();
+            App::Services().WindowPresentation->Detach();
+            m_themeChangedRevoker.revoke();
+
+            // Generated x:Name fields are strong references. Clear them while
+            // XAML is alive so Frame navigation caches do not release Pages
+            // during WindowsXamlManager shutdown.
+            Content(nullptr);
+            OverlayFrame(nullptr);
+            ShellLayer(nullptr);
+            AppTitleBar(nullptr);
+            TitleBarRow(nullptr);
+            RootGrid(nullptr);
+        }
+        catch (...)
+        {
+        }
     }
 
     void MainWindow::OnRouteChanged(::HaloDesktop::Services::Page page)
@@ -144,5 +185,4 @@ namespace winrt::HaloDesktop::implementation
         titleBar.ButtonForegroundColor(foreground);
         titleBar.ButtonInactiveForegroundColor(foreground);
     }
-
 }

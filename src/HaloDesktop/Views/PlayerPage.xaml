@@ -15,8 +15,48 @@
     <KeyboardAccelerator Key="F" Invoked="OnFullscreenInvoked" />
     <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked" />
   </Page.KeyboardAccelerators>
-  <Grid Background="#FF090A0C">
-    <local:PlaceholderArt Caption="SIMULATED PLAYBACK" />
-    <local:PlayerOsd x:Name="PlayerOverlay" />
+  <Grid
+    x:Name="PlayerRoot"
+    Background="#FF090A0C"
+    SizeChanged="OnPlayerSizeChanged">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="300" />
+    </Grid.RowDefinitions>
+    <Grid x:Name="VideoArea" Background="Black">
+      <local:VideoHostControl
+        x:Name="VideoHost"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center" />
+    </Grid>
+    <Grid Grid.Row="1" Background="#FF090A0C">
+      <local:PlayerOsd x:Name="PlayerOverlay" />
+      <Border
+        x:Name="MediaPrompt"
+        Width="360"
+        Padding="24"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#EC1A1A1E"
+        CornerRadius="10">
+        <StackPanel Spacing="12">
+          <TextBlock
+            FontSize="20"
+            FontWeight="SemiBold"
+            Foreground="White"
+            Text="Choose a local video" />
+          <TextBlock
+            x:Name="MediaPromptMessage"
+            Foreground="#A8FFFFFF"
+            Text="Halo will remember this file for the next Play action."
+            TextWrapping="Wrap" />
+          <Button
+            HorizontalAlignment="Left"
+            Click="OnOpenFileClick"
+            Content="Open video file"
+            Style="{StaticResource HaloAccentButtonStyle}" />
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </Page>

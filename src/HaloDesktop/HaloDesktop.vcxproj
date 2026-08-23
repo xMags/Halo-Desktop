@@ -101,6 +101,14 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+    <ClCompile>
+      <AdditionalIncludeDirectories>$(SolutionDir)external\mpv\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>$(SolutionDir)external\mpv\lib\mpv.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
     <ClCompile>
       <PreprocessorDefinitions>_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -131,6 +139,9 @@
     <ClInclude Include="Controls\PlaceholderArt.xaml.h">
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Controls\VideoHostControl.xaml.h">
+      <DependentUpon>VideoHostControl.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="Controls\MediaShelf.xaml.h"><DependentUpon>MediaShelf.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><DependentUpon>PosterCard.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h">
@@ -140,6 +151,8 @@
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
+    <ClInclude Include="Playback\MpvClient.h" />
+    <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\MockDownloadService.h" />
@@ -205,6 +218,7 @@
     <Page Include="Controls\MediaShelf.xaml" />
     <Page Include="Controls\PlaceholderArt.xaml" />
     <Page Include="Controls\PlayerOsd.xaml" />
+    <Page Include="Controls\VideoHostControl.xaml" />
     <Page Include="Controls\PosterCard.xaml" />
     <Page Include="Controls\SectionHeader.xaml" />
     <Page Include="Controls\SettingRow.xaml" />
@@ -237,6 +251,9 @@
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp">
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Controls\VideoHostControl.xaml.cpp">
+      <DependentUpon>VideoHostControl.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><DependentUpon>PosterCard.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
@@ -245,6 +262,12 @@
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
     <ClCompile Include="Playback\NullEngine.cpp" />
+    <ClCompile Include="Playback\MpvClient.cpp">
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Playback\MpvEngine.cpp">
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
@@ -306,6 +329,9 @@
     <Midl Include="Controls\PlaceholderArt.idl">
       <SubType>Code</SubType>
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Controls\VideoHostControl.idl">
+      <SubType>Code</SubType>
     </Midl>
     <Midl Include="Controls\MediaShelf.idl"><SubType>Code</SubType><DependentUpon>MediaShelf.xaml</DependentUpon></Midl>
     <Midl Include="Controls\PosterCard.idl"><SubType>Code</SubType><DependentUpon>PosterCard.xaml</DependentUpon></Midl>
@@ -409,6 +435,10 @@
   -->
   <ItemGroup>
     <None Include="packages.config" />
+    <None Include="$(SolutionDir)external\mpv\bin\libmpv-2.dll" Condition="'$(Platform)'=='x64'">
+      <DeploymentContent>true</DeploymentContent>
+      <Link>libmpv-2.dll</Link>
+    </None>
   </ItemGroup>
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>

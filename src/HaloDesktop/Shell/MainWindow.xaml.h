@@ -20,18 +20,21 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Grid RootGridControl() const;
         [[nodiscard]] winrt::HaloDesktop::TitleBar AppTitleBarControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame OverlayFrameControl() const;
+        void PrepareForWindowClose() noexcept;
         void OnRouteChanged(::HaloDesktop::Services::Page page);
         void UpdateCaptionButtonColors();
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
+        winrt::event_token m_appWindowClosingToken{};
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChangedRevoker{};
-        Microsoft::UI::Xaml::Window::Closed_revoker m_closedRevoker{};
+        winrt::event_token m_closedToken{};
+        bool m_closePrepared{};
     };
-}
+} // namespace winrt::HaloDesktop::implementation
 
 namespace winrt::HaloDesktop::factory_implementation
 {
     struct MainWindow : MainWindowT<MainWindow, implementation::MainWindow>
     {
     };
-}
+} // namespace winrt::HaloDesktop::factory_implementation

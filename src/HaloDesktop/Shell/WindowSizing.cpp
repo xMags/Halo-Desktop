@@ -7,10 +7,8 @@
 
 namespace
 {
-    winrt::Windows::Graphics::SizeInt32 WindowSizeForClientDips(
-        HWND windowHandle,
-        std::int32_t width,
-        std::int32_t height)
+    winrt::Windows::Graphics::SizeInt32 WindowSizeForClientDips(HWND windowHandle, std::int32_t width,
+                                                                std::int32_t height)
     {
         auto const dpi = GetDpiForWindow(windowHandle);
         RECT bounds{
@@ -34,7 +32,7 @@ namespace
     {
         return winrt::box_value(value).as<winrt::Windows::Foundation::IReference<std::int32_t>>();
     }
-}
+} // namespace
 
 namespace HaloDesktop::Shell
 {
@@ -42,6 +40,9 @@ namespace HaloDesktop::Shell
     {
         HWND windowHandle{};
         winrt::check_hresult(window.as<::IWindowNative>()->get_WindowHandle(&windowHandle));
+        // HWND is an opaque pointer supplied by WinUI. uintptr_t keeps it out
+        // of the platform-neutral service interface without changing bits.
+        m_windowHandle = reinterpret_cast<std::uintptr_t>(windowHandle);
 
         auto const windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(windowHandle);
         m_appWindow = winrt::Microsoft::UI::Windowing::AppWindow::GetFromWindowId(windowId);
@@ -59,4 +60,9 @@ namespace HaloDesktop::Shell
     {
         return m_appWindow;
     }
-}
+
+    std::uintptr_t WindowSizing::WindowHandle() const noexcept
+    {
+        return m_windowHandle;
+    }
+} // namespace HaloDesktop::Shell

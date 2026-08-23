@@ -16,7 +16,7 @@
     <Grid Margin="20" VerticalAlignment="Top">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <Button Width="36" Height="36" Padding="0" Background="#99000000" BorderThickness="0" Click="OnBackClick" Content="&#xE72B;" />
-      <StackPanel Grid.Column="1" Margin="12,0,0,0"><TextBlock FontSize="17" FontWeight="SemiBold" Foreground="White" Text="Northwind Divide" /><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Foreground="#A8FFFFFF" Text="S02E04 · THE CUT LINE · 2160p HDR10 · TORRENTIO" /></StackPanel>
+      <StackPanel Grid.Column="1" Margin="12,0,0,0"><TextBlock FontSize="17" FontWeight="SemiBold" Foreground="White" Text="Northwind Divide" /><TextBlock x:Name="SourceLabelText" FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Foreground="#A8FFFFFF" Text="LOCAL FILE" /></StackPanel>
     </Grid>
 
     <Border Padding="14,8" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#B0202024" CornerRadius="6" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}"><TextBlock FontSize="15" FontWeight="SemiBold" Foreground="White" Text="Paused" /></Border>
@@ -24,7 +24,6 @@
     <Grid VerticalAlignment="Bottom">
       <Rectangle Height="320" VerticalAlignment="Bottom"><Rectangle.Fill><LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1"><GradientStop Offset="0" Color="#00000000" /><GradientStop Offset="1" Color="#E8000000" /></LinearGradientBrush></Rectangle.Fill></Rectangle>
       <StackPanel Margin="24,0,24,20" VerticalAlignment="Bottom" Spacing="12">
-        <TextBlock HorizontalAlignment="Center" FontSize="15" FontWeight="SemiBold" Foreground="White" Text="The map does not agree with the ground." />
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" Spacing="7">

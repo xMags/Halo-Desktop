@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App.xaml.h"
+#include "Playback/MpvEngine.h"
 #include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
@@ -21,7 +22,11 @@ namespace winrt::HaloDesktop::implementation
         m_services.Addons = std::make_shared<::HaloDesktop::Services::MockAddonService>();
         m_services.Session = std::make_shared<::HaloDesktop::Services::SessionService>();
         m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
+#if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
+        m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>();
+#else
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
+#endif
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
 
 #if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
