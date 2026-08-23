@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.PlaceholderArt"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <Border
+    Background="{ThemeResource HaloPhTint1Brush}"
+    CornerRadius="{StaticResource HaloControlCornerRadius}">
+    <Grid>
+      <Image
+        Source="{ThemeResource HaloPlaceholderStripe}"
+        Stretch="UniformToFill" />
+      <TextBlock
+        x:Name="CaptionText"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        FontFamily="{StaticResource HaloMonoBoldFont}"
+        FontSize="10"
+        FontWeight="Bold"
+        Foreground="{ThemeResource HaloPhTextBrush}"
+        TextAlignment="Center"
+        TextWrapping="Wrap"
+        Visibility="Collapsed" />
+    </Grid>
+  </Border>
+</UserControl>

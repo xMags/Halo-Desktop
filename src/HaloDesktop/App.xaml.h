@@ -2,6 +2,8 @@
 
 #include "App.xaml.g.h"
 
+#include "Services/AppServices.h"
+
 namespace winrt::HaloDesktop::implementation
 {
     struct App : AppT<App>
@@ -9,8 +11,10 @@ namespace winrt::HaloDesktop::implementation
         App();
 
         void OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const&);
+        static ::HaloDesktop::Services::AppServices& Services();
 
     private:
-        winrt::Microsoft::UI::Xaml::Window window{ nullptr };
+        ::HaloDesktop::Services::AppServices m_services;
+        winrt::Microsoft::UI::Xaml::Window m_window{ nullptr };
     };
 }

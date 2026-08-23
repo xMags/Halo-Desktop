@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <Color x:Key="HaloMicaColor">#FF202020</Color>
+      <Color x:Key="HaloLayerColor">#4D3A3A3A</Color>
+      <Color x:Key="HaloCardColor">#0DFFFFFF</Color>
+      <Color x:Key="HaloCardStrokeColor">#15FFFFFF</Color>
+      <Color x:Key="HaloCtrlColor">#0FFFFFFF</Color>
+      <Color x:Key="HaloCtrlStrokeColor">#12FFFFFF</Color>
+      <Color x:Key="HaloCtrlHoverColor">#15FFFFFF</Color>
+      <Color x:Key="HaloSubtleColor">#0FFFFFFF</Color>
+      <Color x:Key="HaloText1Color">#FFFFFFFF</Color>
+      <Color x:Key="HaloText2Color">#C8FFFFFF</Color>
+      <Color x:Key="HaloText3Color">#8BFFFFFF</Color>
+      <Color x:Key="HaloText4Color">#5DFFFFFF</Color>
+      <Color x:Key="HaloAccentColor">#FF60CDFF</Color>
+      <Color x:Key="HaloAccentAltColor">#FF4CC2FF</Color>
+      <Color x:Key="HaloOnAccentColor">#FF000000</Color>
+      <Color x:Key="HaloAccentTintColor">#2460CDFF</Color>
+      <Color x:Key="HaloSuccessColor">#FF6CCB5F</Color>
+      <Color x:Key="HaloSuccessTintColor">#246CCB5F</Color>
+      <Color x:Key="HaloCautionColor">#FFFCE100</Color>
+      <Color x:Key="HaloCautionTintColor">#21FCE100</Color>
+      <Color x:Key="HaloCriticalColor">#FFFF99A4</Color>
+      <Color x:Key="HaloCriticalTintColor">#14FF99A4</Color>
+      <Color x:Key="HaloDividerColor">#15FFFFFF</Color>
+      <Color x:Key="HaloFlyoutColor">#FF2C2C2C</Color>
+      <Color x:Key="HaloNavSelColor">#2460CDFF</Color>
+      <Color x:Key="HaloPhTint1Color">#FF2A2B2F</Color>
+      <Color x:Key="HaloPhTint2Color">#FF232428</Color>
+      <Color x:Key="HaloChartDimColor">#4760CDFF</Color>
+      <Color x:Key="HaloPhTextColor">#57FFFFFF</Color>
+      <Color x:Key="HaloHeroScrim1Color">#F518181A</Color>
+      <Color x:Key="HaloHeroScrim2Color">#9E18181A</Color>
+      <Color x:Key="HaloDetailScrimColor">#FA202020</Color>
+      <Color x:Key="HaloInfoBgColor">#1460CDFF</Color>
+      <Color x:Key="HaloInfoStrokeColor">#4760CDFF</Color>
+
+      <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
+      <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
+      <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
+      <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlBrush" Color="{StaticResource HaloCtrlColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
+      <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
+      <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />
+      <SolidColorBrush x:Key="HaloText3Brush" Color="{StaticResource HaloText3Color}" />
+      <SolidColorBrush x:Key="HaloText4Brush" Color="{StaticResource HaloText4Color}" />
+      <SolidColorBrush x:Key="HaloAccentBrush" Color="{StaticResource HaloAccentColor}" />
+      <SolidColorBrush x:Key="HaloAccentAltBrush" Color="{StaticResource HaloAccentAltColor}" />
+      <SolidColorBrush x:Key="HaloOnAccentBrush" Color="{StaticResource HaloOnAccentColor}" />
+      <SolidColorBrush x:Key="HaloAccentTintBrush" Color="{StaticResource HaloAccentTintColor}" />
+      <SolidColorBrush x:Key="HaloSuccessBrush" Color="{StaticResource HaloSuccessColor}" />
+      <SolidColorBrush x:Key="HaloSuccessTintBrush" Color="{StaticResource HaloSuccessTintColor}" />
+      <SolidColorBrush x:Key="HaloCautionBrush" Color="{StaticResource HaloCautionColor}" />
+      <SolidColorBrush x:Key="HaloCautionTintBrush" Color="{StaticResource HaloCautionTintColor}" />
+      <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
+      <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
+      <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
+      <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
+      <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />
+      <SolidColorBrush x:Key="HaloPhTint1Brush" Color="{StaticResource HaloPhTint1Color}" />
+      <SolidColorBrush x:Key="HaloPhTint2Brush" Color="{StaticResource HaloPhTint2Color}" />
+      <SolidColorBrush x:Key="HaloChartDimBrush" Color="{StaticResource HaloChartDimColor}" />
+      <SolidColorBrush x:Key="HaloPhTextBrush" Color="{StaticResource HaloPhTextColor}" />
+      <SolidColorBrush x:Key="HaloHeroScrim1Brush" Color="{StaticResource HaloHeroScrim1Color}" />
+      <SolidColorBrush x:Key="HaloHeroScrim2Brush" Color="{StaticResource HaloHeroScrim2Color}" />
+      <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
+      <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
+      <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
+
+      <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-dark.png" />
+    </ResourceDictionary>
+
+    <ResourceDictionary x:Key="Light">
+      <Color x:Key="HaloMicaColor">#FFF3F3F3</Color>
+      <Color x:Key="HaloLayerColor">#9EFFFFFF</Color>
+      <Color x:Key="HaloCardColor">#B3FFFFFF</Color>
+      <Color x:Key="HaloCardStrokeColor">#0F000000</Color>
+      <Color x:Key="HaloCtrlColor">#B3FFFFFF</Color>
+      <Color x:Key="HaloCtrlStrokeColor">#0F000000</Color>
+      <Color x:Key="HaloCtrlHoverColor">#0A000000</Color>
+      <Color x:Key="HaloSubtleColor">#0A000000</Color>
+      <Color x:Key="HaloText1Color">#E4000000</Color>
+      <Color x:Key="HaloText2Color">#9B000000</Color>
+      <Color x:Key="HaloText3Color">#72000000</Color>
+      <Color x:Key="HaloText4Color">#5C000000</Color>
+      <Color x:Key="HaloAccentColor">#FF005FB8</Color>
+      <Color x:Key="HaloAccentAltColor">#FF0067C0</Color>
+      <Color x:Key="HaloOnAccentColor">#FFFFFFFF</Color>
+      <Color x:Key="HaloAccentTintColor">#1A005FB8</Color>
+      <Color x:Key="HaloSuccessColor">#FF0F7B0F</Color>
+      <Color x:Key="HaloSuccessTintColor">#1A0F7B0F</Color>
+      <Color x:Key="HaloCautionColor">#FF9D5D00</Color>
+      <Color x:Key="HaloCautionTintColor">#219D5D00</Color>
+      <Color x:Key="HaloCriticalColor">#FFC42B1C</Color>
+      <Color x:Key="HaloCriticalTintColor">#14C42B1C</Color>
+      <Color x:Key="HaloDividerColor">#0F000000</Color>
+      <Color x:Key="HaloFlyoutColor">#FFF9F9F9</Color>
+      <Color x:Key="HaloNavSelColor">#1A005FB8</Color>
+      <Color x:Key="HaloPhTint1Color">#FFE4E4E8</Color>
+      <Color x:Key="HaloPhTint2Color">#FFEFEFF2</Color>
+      <Color x:Key="HaloChartDimColor">#3D005FB8</Color>
+      <Color x:Key="HaloPhTextColor">#61000000</Color>
+      <Color x:Key="HaloHeroScrim1Color">#F7F3F3F3</Color>
+      <Color x:Key="HaloHeroScrim2Color">#A8F3F3F3</Color>
+      <Color x:Key="HaloDetailScrimColor">#FCF3F3F3</Color>
+      <Color x:Key="HaloInfoBgColor">#0F005FB8</Color>
+      <Color x:Key="HaloInfoStrokeColor">#33005FB8</Color>
+
+      <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
+      <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
+      <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
+      <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlBrush" Color="{StaticResource HaloCtrlColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
+      <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
+      <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />
+      <SolidColorBrush x:Key="HaloText3Brush" Color="{StaticResource HaloText3Color}" />
+      <SolidColorBrush x:Key="HaloText4Brush" Color="{StaticResource HaloText4Color}" />
+      <SolidColorBrush x:Key="HaloAccentBrush" Color="{StaticResource HaloAccentColor}" />
+      <SolidColorBrush x:Key="HaloAccentAltBrush" Color="{StaticResource HaloAccentAltColor}" />
+      <SolidColorBrush x:Key="HaloOnAccentBrush" Color="{StaticResource HaloOnAccentColor}" />
+      <SolidColorBrush x:Key="HaloAccentTintBrush" Color="{StaticResource HaloAccentTintColor}" />
+      <SolidColorBrush x:Key="HaloSuccessBrush" Color="{StaticResource HaloSuccessColor}" />
+      <SolidColorBrush x:Key="HaloSuccessTintBrush" Color="{StaticResource HaloSuccessTintColor}" />
+      <SolidColorBrush x:Key="HaloCautionBrush" Color="{StaticResource HaloCautionColor}" />
+      <SolidColorBrush x:Key="HaloCautionTintBrush" Color="{StaticResource HaloCautionTintColor}" />
+      <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
+      <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
+      <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
+      <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
+      <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />
+      <SolidColorBrush x:Key="HaloPhTint1Brush" Color="{StaticResource HaloPhTint1Color}" />
+      <SolidColorBrush x:Key="HaloPhTint2Brush" Color="{StaticResource HaloPhTint2Color}" />
+      <SolidColorBrush x:Key="HaloChartDimBrush" Color="{StaticResource HaloChartDimColor}" />
+      <SolidColorBrush x:Key="HaloPhTextBrush" Color="{StaticResource HaloPhTextColor}" />
+      <SolidColorBrush x:Key="HaloHeroScrim1Brush" Color="{StaticResource HaloHeroScrim1Color}" />
+      <SolidColorBrush x:Key="HaloHeroScrim2Brush" Color="{StaticResource HaloHeroScrim2Color}" />
+      <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
+      <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
+      <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
+
+      <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-light.png" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <FontFamily x:Key="HaloMonoFont">ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono</FontFamily>
+  <FontFamily x:Key="HaloMonoBoldFont">ms-appx:///Assets/Fonts/JetBrainsMono-Bold.ttf#JetBrains Mono</FontFamily>
+
+  <CornerRadius x:Key="HaloControlCornerRadius">4</CornerRadius>
+  <CornerRadius x:Key="HaloOverlayCornerRadius">8</CornerRadius>
+  <x:Double x:Key="HaloGutter">24</x:Double>
+  <x:Double x:Key="HaloPaneWidth">280</x:Double>
+  <x:Double x:Key="HaloCompactPaneWidth">48</x:Double>
+  <x:Double x:Key="HaloPosterWidth">132</x:Double>
+  <x:Double x:Key="HaloWideCardWidth">268</x:Double>
+  <x:Double x:Key="HaloAsideWidth">292</x:Double>
+  <x:Double x:Key="HaloHeroHeight">304</x:Double>
+  <x:Double x:Key="HaloHeroTitleSize">36</x:Double>
+  <x:Double x:Key="HaloFormMaxWidth">680</x:Double>
+  <x:Double x:Key="HaloLibraryColumns">6</x:Double>
+</ResourceDictionary>

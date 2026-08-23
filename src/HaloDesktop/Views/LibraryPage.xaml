@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.LibraryPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:controls="using:HaloDesktop"
+  NavigationCacheMode="Required">
+  <Grid>
+    <controls:SectionHeader Title="Library" Crumb="42 TITLES" />
+  </Grid>
+</Page>

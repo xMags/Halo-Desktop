@@ -1,0 +1,8 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass SourcesPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        SourcesPage();
+    }
+}

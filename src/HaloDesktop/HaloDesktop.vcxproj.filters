@@ -1,56 +1,111 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Assets"><UniqueIdentifier>{73b9a894-e514-401a-b788-bb2a13ec0382}</UniqueIdentifier></Filter>
+    <Filter Include="Assets\Fonts"><UniqueIdentifier>{587386ee-c526-4613-86e9-7869a89740ee}</UniqueIdentifier></Filter>
+    <Filter Include="Controls"><UniqueIdentifier>{664cf318-fab9-49e5-8caf-fe085c75647f}</UniqueIdentifier></Filter>
+    <Filter Include="Services"><UniqueIdentifier>{16768e08-0a73-40c4-9f6e-adcd99549454}</UniqueIdentifier></Filter>
+    <Filter Include="Shell"><UniqueIdentifier>{c5038496-9a9d-41ca-a1d4-2aac12961146}</UniqueIdentifier></Filter>
+    <Filter Include="Styles"><UniqueIdentifier>{027d9ad2-09e5-4615-8539-7b2148e83cd0}</UniqueIdentifier></Filter>
+    <Filter Include="Views"><UniqueIdentifier>{1430ed72-0c26-48c2-9b91-4adb45bf38f3}</UniqueIdentifier></Filter>
+  </ItemGroup>
+
+  <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+    <Page Include="Controls\PlaceholderArt.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\SectionHeader.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Shell\MainWindow.xaml"><Filter>Shell</Filter></Page>
+    <Page Include="Shell\ShellPage.xaml"><Filter>Shell</Filter></Page>
+    <Page Include="Shell\TitleBar.xaml"><Filter>Shell</Filter></Page>
+    <Page Include="Styles\Controls.xaml"><Filter>Styles</Filter></Page>
+    <Page Include="Styles\Tokens.xaml"><Filter>Styles</Filter></Page>
+    <Page Include="Styles\Typography.xaml"><Filter>Styles</Filter></Page>
+    <Page Include="Views\DetailPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\DownloadsPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\HomePage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\LibraryPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\SearchPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\SettingsPage.xaml"><Filter>Views</Filter></Page>
+    <Page Include="Views\SourcesPage.xaml"><Filter>Views</Filter></Page>
   </ItemGroup>
+
   <ItemGroup>
-    <Page Include="MainWindow.xaml" />
+    <Midl Include="Controls\PlaceholderArt.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Shell\MainWindow.idl"><Filter>Shell</Filter></Midl>
+    <Midl Include="Shell\ShellPage.idl"><Filter>Shell</Filter></Midl>
+    <Midl Include="Shell\TitleBar.idl"><Filter>Shell</Filter></Midl>
+    <Midl Include="Views\DetailPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\DownloadsPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\HomePage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\LibraryPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\SearchPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\SettingsPage.idl"><Filter>Views</Filter></Midl>
+    <Midl Include="Views\SourcesPage.idl"><Filter>Views</Filter></Midl>
   </ItemGroup>
-  <ItemGroup>
-    <Midl Include="MainWindow.idl" />
-  </ItemGroup>
+
   <ItemGroup>
     <ClCompile Include="pch.cpp" />
+    <ClCompile Include="App.xaml.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Services\NavigationService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Views\DetailPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\DownloadsPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\HomePage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\LibraryPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\SearchPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\SettingsPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
+    <ClCompile Include="Views\SourcesPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
   </ItemGroup>
+
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\NavigationService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Views\DetailPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\DownloadsPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\HomePage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\LibraryPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\SearchPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\SettingsPage.xaml.h"><Filter>Views</Filter></ClInclude>
+    <ClInclude Include="Views\SourcesPage.xaml.h"><Filter>Views</Filter></ClInclude>
   </ItemGroup>
+
   <ItemGroup>
-    <Image Include="Assets\Wide310x150Logo.scale-200.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\StoreLogo.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\Square150x150Logo.scale-200.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\Square44x44Logo.scale-200.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\SplashScreen.scale-200.png">
-      <Filter>Assets</Filter>
-    </Image>
-    <Image Include="Assets\LockScreenLogo.scale-200.png">
-      <Filter>Assets</Filter>
-    </Image>
+    <Image Include="Assets\halo-mark.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\LockScreenLogo.scale-200.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\SplashScreen.scale-200.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\Square150x150Logo.scale-200.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\Square44x44Logo.scale-200.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\StoreLogo.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\stripe-dark.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\stripe-light.png"><Filter>Assets</Filter></Image>
+    <Image Include="Assets\Wide310x150Logo.scale-200.png"><Filter>Assets</Filter></Image>
   </ItemGroup>
+
   <ItemGroup>
-    <Filter Include="Assets">
-      <UniqueIdentifier>{73b9a894-e514-401a-b788-bb2a13ec0382}</UniqueIdentifier>
-    </Filter>
+    <Font Include="Assets\Fonts\JetBrainsMono-Bold.ttf"><Filter>Assets\Fonts</Filter></Font>
+    <Font Include="Assets\Fonts\JetBrainsMono-Regular.ttf"><Filter>Assets\Fonts</Filter></Font>
+    <Text Include="Assets\Fonts\OFL.txt"><Filter>Assets\Fonts</Filter></Text>
   </ItemGroup>
+
   <ItemGroup>
     <Manifest Include="app.manifest" />
-  </ItemGroup>
-  <ItemGroup>
     <AppxManifest Include="Package.appxmanifest" />
-  </ItemGroup>
-  <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
 </Project>

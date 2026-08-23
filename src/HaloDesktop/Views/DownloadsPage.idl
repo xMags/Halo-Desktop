@@ -1,0 +1,8 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass DownloadsPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        DownloadsPage();
+    }
+}

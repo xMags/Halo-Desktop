@@ -1,0 +1,11 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass SectionHeader : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SectionHeader();
+        String Title;
+        String Crumb;
+        Object RightContent;
+    }
+}

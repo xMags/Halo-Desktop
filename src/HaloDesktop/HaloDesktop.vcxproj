@@ -95,6 +95,7 @@
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
       <PrecompiledHeaderOutputFile>$(IntDir)pch.pch</PrecompiledHeaderOutputFile>
       <WarningLevel>Level4</WarningLevel>
+      <AdditionalIncludeDirectories>$(GeneratedFilesDir)Controls;$(GeneratedFilesDir)Shell;$(GeneratedFilesDir)Views;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &gt;= '18.0'">stdcpp20</LanguageStandard>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &lt; '18.0'">stdcpp17</LanguageStandard>
       <AdditionalOptions>%(AdditionalOptions) /bigobj</AdditionalOptions>
@@ -127,13 +128,63 @@
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
     </ClInclude>
-    <ClInclude Include="MainWindow.xaml.h">
+    <ClInclude Include="Controls\PlaceholderArt.xaml.h">
+      <DependentUpon>PlaceholderArt.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Controls\SectionHeader.xaml.h">
+      <DependentUpon>SectionHeader.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Services\AppServices.h" />
+    <ClInclude Include="Services\NavigationService.h" />
+    <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Shell\ShellPage.xaml.h">
+      <DependentUpon>ShellPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Shell\TitleBar.xaml.h">
+      <DependentUpon>TitleBar.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Shell\WindowSizing.h" />
+    <ClInclude Include="Views\DetailPage.xaml.h">
+      <DependentUpon>DetailPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\DownloadsPage.xaml.h">
+      <DependentUpon>DownloadsPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\HomePage.xaml.h">
+      <DependentUpon>HomePage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\LibraryPage.xaml.h">
+      <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\SearchPage.xaml.h">
+      <DependentUpon>SearchPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\SettingsPage.xaml.h">
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </ClInclude>
+    <ClInclude Include="Views\SourcesPage.xaml.h">
+      <DependentUpon>SourcesPage.xaml</DependentUpon>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
-    <Page Include="MainWindow.xaml" />
+    <Page Include="Controls\PlaceholderArt.xaml" />
+    <Page Include="Controls\SectionHeader.xaml" />
+    <Page Include="Shell\MainWindow.xaml" />
+    <Page Include="Shell\ShellPage.xaml" />
+    <Page Include="Shell\TitleBar.xaml" />
+    <Page Include="Styles\Controls.xaml" />
+    <Page Include="Styles\Tokens.xaml" />
+    <Page Include="Styles\Typography.xaml" />
+    <Page Include="Views\DetailPage.xaml" />
+    <Page Include="Views\DownloadsPage.xaml" />
+    <Page Include="Views\HomePage.xaml" />
+    <Page Include="Views\LibraryPage.xaml" />
+    <Page Include="Views\SearchPage.xaml" />
+    <Page Include="Views\SettingsPage.xaml" />
+    <Page Include="Views\SourcesPage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -142,25 +193,121 @@
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
     </ClCompile>
-    <ClCompile Include="MainWindow.xaml.cpp">
+    <ClCompile Include="Controls\PlaceholderArt.xaml.cpp">
+      <DependentUpon>PlaceholderArt.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Controls\SectionHeader.xaml.cpp">
+      <DependentUpon>SectionHeader.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Services\NavigationService.cpp" />
+    <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Shell\ShellPage.xaml.cpp">
+      <DependentUpon>ShellPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Shell\TitleBar.xaml.cpp">
+      <DependentUpon>TitleBar.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Shell\WindowSizing.cpp" />
+    <ClCompile Include="Views\DetailPage.xaml.cpp">
+      <DependentUpon>DetailPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\DownloadsPage.xaml.cpp">
+      <DependentUpon>DownloadsPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\HomePage.xaml.cpp">
+      <DependentUpon>HomePage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\LibraryPage.xaml.cpp">
+      <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\SearchPage.xaml.cpp">
+      <DependentUpon>SearchPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\SettingsPage.xaml.cpp">
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </ClCompile>
+    <ClCompile Include="Views\SourcesPage.xaml.cpp">
+      <DependentUpon>SourcesPage.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Midl Include="MainWindow.idl">
+    <Midl Include="Controls\PlaceholderArt.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>PlaceholderArt.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Controls\SectionHeader.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>SectionHeader.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Shell\MainWindow.idl">
       <SubType>Code</SubType>
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </Midl>
+    <Midl Include="Shell\ShellPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>ShellPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Shell\TitleBar.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>TitleBar.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\DetailPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>DetailPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\DownloadsPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>DownloadsPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\HomePage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>HomePage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\LibraryPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>LibraryPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\SearchPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>SearchPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\SettingsPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>SettingsPage.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\SourcesPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>SourcesPage.xaml</DependentUpon>
+    </Midl>
   </ItemGroup>
   <ItemGroup>
+    <Image Include="Assets\halo-mark.png" />
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
     <Image Include="Assets\SplashScreen.scale-200.png" />
     <Image Include="Assets\Square150x150Logo.scale-200.png" />
     <Image Include="Assets\Square44x44Logo.scale-200.png" />
     <Image Include="Assets\Square44x44Logo.targetsize-24_altform-unplated.png" />
     <Image Include="Assets\StoreLogo.png" />
+    <Image Include="Assets\stripe-dark.png" />
+    <Image Include="Assets\stripe-light.png" />
     <Image Include="Assets\Wide310x150Logo.scale-200.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="Assets\Fonts\JetBrainsMono-Bold.ttf">
+      <DeploymentContent>true</DeploymentContent>
+      <Link>Assets\Fonts\JetBrainsMono-Bold.ttf</Link>
+    </Font>
+    <Font Include="Assets\Fonts\JetBrainsMono-Regular.ttf">
+      <DeploymentContent>true</DeploymentContent>
+      <Link>Assets\Fonts\JetBrainsMono-Regular.ttf</Link>
+    </Font>
+    <Text Include="Assets\Fonts\OFL.txt">
+      <DeploymentContent>true</DeploymentContent>
+      <Link>Assets\Fonts\OFL.txt</Link>
+    </Text>
   </ItemGroup>
   <!--
     Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging

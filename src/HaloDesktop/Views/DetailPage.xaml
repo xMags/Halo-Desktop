@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.DetailPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:controls="using:HaloDesktop"
+  NavigationCacheMode="Required">
+  <Grid>
+    <controls:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
+  </Grid>
+</Page>
