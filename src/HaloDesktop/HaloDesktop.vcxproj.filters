@@ -91,6 +91,7 @@
     <ClCompile Include="Playback\UpNextResolver.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\WatchReporter.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\WindowsAudioSession.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Services\DownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
@@ -168,6 +169,7 @@
     <ClInclude Include="Playback\UpNextResolver.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\WatchReporter.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvEngine.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\WindowsAudioSession.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\NullEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\AddonService.h"><Filter>Services</Filter></ClInclude>

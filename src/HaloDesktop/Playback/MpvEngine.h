@@ -50,6 +50,7 @@ namespace HaloDesktop::Playback
 
     private:
         void ApplyUpdate(PlaybackUpdate update);
+        void SynchronizeAudioSession();
         void NotifyChanged();
         // Keep the newest commanded position on screen until libmpv restarts at that
         // target, so an older time-pos or restart cannot rewind a rapid scrub.
@@ -66,6 +67,7 @@ namespace HaloDesktop::Playback
         std::optional<double> m_seekTarget;
         bool m_seekRestarted{};
         bool m_running{};
+        std::uint64_t m_audioSessionSerial{};
         SubtitleStyle m_subtitleStyle;
     };
 } // namespace HaloDesktop::Playback

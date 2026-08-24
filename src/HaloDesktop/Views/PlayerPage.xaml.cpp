@@ -41,7 +41,6 @@ namespace winrt::HaloDesktop::implementation
     {
         m_loaded=false;
         if(m_viewModel&&m_presentationChangedToken.value!=0){m_viewModel.PropertyChanged(m_presentationChangedToken);m_presentationChangedToken={};}
-        OverlayPopup().IsOpen(false);
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
         if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
@@ -129,7 +128,6 @@ namespace winrt::HaloDesktop::implementation
         co_await uiContext;
         if (!m_loaded) co_return;
 
-        OverlayPopup().IsOpen(false);
         App::Services().Subtitles->Stop();
         if (m_viewModel) winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
@@ -157,11 +155,10 @@ namespace winrt::HaloDesktop::implementation
 
     void PlayerPage::UpdateOverlayLayout()
     {
-        auto const root=PlayerRoot();if(root.ActualWidth()<=0.0||root.ActualHeight()<=0.0){OverlayPopup().IsOpen(false);return;}
-        OverlayHost().Width(root.ActualWidth());OverlayHost().Height(root.ActualHeight());if(m_loaded&&!OverlayPopup().IsOpen()){OverlayPopup().IsOpen(true);OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);}
+        if (m_loaded) OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
     }
     void PlayerPage::RefreshOverlayAfterPresentationChange()
     {
-        if(!m_loaded)return;OverlayPopup().IsOpen(false);auto const enqueued=DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,[weak=get_weak()](){if(auto self=weak.get();self&&self->m_loaded)self->UpdateOverlayLayout();});if(!enqueued)UpdateOverlayLayout();
+        if(!m_loaded)return;auto const enqueued=DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,[weak=get_weak()](){if(auto self=weak.get();self&&self->m_loaded)self->UpdateOverlayLayout();});if(!enqueued)UpdateOverlayLayout();
     }
 }

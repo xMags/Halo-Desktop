@@ -169,6 +169,7 @@
     <ClInclude Include="Playback\UpNextResolver.h" />
     <ClInclude Include="Playback\WatchReporter.h" />
     <ClInclude Include="Playback\MpvEngine.h" />
+    <ClInclude Include="Playback\WindowsAudioSession.h" />
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\AddonService.h" />
@@ -307,6 +308,9 @@
     <ClCompile Include="Playback\UpNextResolver.cpp" />
     <ClCompile Include="Playback\WatchReporter.cpp" />
     <ClCompile Include="Playback\MpvEngine.cpp">
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="Playback\WindowsAudioSession.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Services\DownloadService.cpp" />

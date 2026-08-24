@@ -2,6 +2,7 @@
 #include "Playback/MpvEngine.h"
 
 #include "Playback/MpvClient.h"
+#include "Playback/WindowsAudioSession.h"
 
 #include <algorithm>
 #include <chrono>
@@ -90,6 +91,7 @@ namespace HaloDesktop::Playback
         m_state.Paused = false;
         m_state.Buffering = false;
         m_state.Tracks.clear();
+        m_audioSessionSerial = 0;
     }
 
     void MpvEngine::Open(std::wstring const& source)
@@ -198,7 +200,8 @@ namespace HaloDesktop::Playback
         auto const next = std::clamp(volume, 0.0, 100.0);
         if (m_client)
         {
-            m_client->SetVolume(next);
+            auto const sessionApplied = WindowsAudioSession::SetVolume(next / 100.0, next > 0.0);
+            m_client->SetVolume(sessionApplied ? 100.0 : next);
         }
         if (std::abs(next - m_state.Volume) >= 0.001)
         {
@@ -318,7 +321,7 @@ namespace HaloDesktop::Playback
         {
             m_state.DurationSeconds = *update.DurationSeconds;
         }
-        if (update.Volume)
+        if (update.Volume && m_audioSessionSerial == 0)
         {
             m_state.Volume = *update.Volume;
         }
@@ -342,9 +345,29 @@ namespace HaloDesktop::Playback
         {
             m_state.Tracks = std::move(*update.Tracks);
         }
-        if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;}
+        if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
         if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
+        SynchronizeAudioSession();
         NotifyChanged();
+    }
+
+    void MpvEngine::SynchronizeAudioSession()
+    {
+        if (m_state.FileSerial == 0 || m_audioSessionSerial == m_state.FileSerial)
+        {
+            return;
+        }
+        auto const session = WindowsAudioSession::Read();
+        if (!session)
+        {
+            return;
+        }
+        m_audioSessionSerial = m_state.FileSerial;
+        if (m_client)
+        {
+            m_client->SetVolume(100.0);
+        }
+        m_state.Volume = session->Muted ? 0.0 : session->Volume * 100.0;
     }
 
     void MpvEngine::BeginSeek(double targetSeconds) noexcept
