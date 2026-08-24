@@ -151,6 +151,8 @@
     </ClInclude>
     <ClInclude Include="Controls\SettingRow.xaml.h"><DependentUpon>SettingRow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Config\ServerConfig.h" />
+    <ClInclude Include="Config\ServerConfig.example.h" />
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
     <ClInclude Include="Playback\LocalPlaybackQueue.h" />

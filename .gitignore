@@ -13,3 +13,4 @@ design/
 external/mpv/*
 !external/mpv/README.md
 tools/nuget.exe
+src/HaloDesktop/Config/ServerConfig.local.h

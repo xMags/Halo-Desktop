@@ -4,6 +4,7 @@
     <Filter Include="Assets"><UniqueIdentifier>{73b9a894-e514-401a-b788-bb2a13ec0382}</UniqueIdentifier></Filter>
     <Filter Include="Assets\Fonts"><UniqueIdentifier>{587386ee-c526-4613-86e9-7869a89740ee}</UniqueIdentifier></Filter>
     <Filter Include="Controls"><UniqueIdentifier>{664cf318-fab9-49e5-8caf-fe085c75647f}</UniqueIdentifier></Filter>
+    <Filter Include="Config"><UniqueIdentifier>{7129a737-3745-4f2a-b21c-c2dd55418897}</UniqueIdentifier></Filter>
     <Filter Include="Models"><UniqueIdentifier>{b2c8e42d-69ac-4b1f-9404-054c69866c89}</UniqueIdentifier></Filter>
     <Filter Include="Playback"><UniqueIdentifier>{53edc97c-4087-4629-b2ef-b35fe8898600}</UniqueIdentifier></Filter>
     <Filter Include="Services"><UniqueIdentifier>{16768e08-0a73-40c4-9f6e-adcd99549454}</UniqueIdentifier></Filter>
@@ -122,6 +123,8 @@
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SettingRow.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Config\ServerConfig.h"><Filter>Config</Filter></ClInclude>
+    <ClInclude Include="Config\ServerConfig.example.h"><Filter>Config</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Playback\IPlaybackEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\LocalPlaybackQueue.h"><Filter>Playback</Filter></ClInclude>

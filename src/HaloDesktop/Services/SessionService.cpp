@@ -1,15 +1,13 @@
 #include "pch.h"
 #include "Services/SessionService.h"
+#include "Config/ServerConfig.h"
 
 #include <chrono>
+#include <string>
 #include <winrt/Windows.Storage.h>
 
 namespace
 {
-    // The server is not user-selectable. Changing deployments is a rebuild, so
-    // this is the one place the address is written down.
-    constexpr wchar_t HaloServerUrl[] = L"https://halo.ditto.moe";
-
     // Stands in for the identity the server would return once sign-in is real.
     constexpr wchar_t SignedInUserName[] = L"debashis";
 
@@ -57,7 +55,12 @@ namespace HaloDesktop::Services
 
     winrt::hstring SessionService::ServerUrl() const
     {
-        return winrt::hstring{ HaloServerUrl };
+        std::wstring serverUrl{ ::HaloDesktop::Config::ServerBaseUrl };
+        while (!serverUrl.empty() && serverUrl.back() == L'/')
+        {
+            serverUrl.pop_back();
+        }
+        return winrt::hstring{ serverUrl };
     }
 
     winrt::hstring SessionService::UserName() const
