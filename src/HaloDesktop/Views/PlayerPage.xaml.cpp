@@ -96,16 +96,44 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::fire_and_forget PlayerPage::BeginClose()
     {
-        auto lifetime=get_strong();if(m_closing)co_return;co_await PrepareForWindowCloseAsync();
-        App::Services().Navigation->CloseOverlay();
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        if (m_closing) co_return;
+        try
+        {
+            co_await PrepareForWindowCloseAsync();
+        }
+        catch (...)
+        {
+            // A reporting or teardown failure must never strand the modal player.
+        }
+        co_await uiContext;
+        if (m_loaded) App::Services().Navigation->CloseOverlay();
     }
 
     winrt::Windows::Foundation::IAsyncAction PlayerPage::PrepareForWindowCloseAsync()
     {
-        auto lifetime=get_strong();if(m_closing)co_return;m_closing=true;
-        if(m_session)co_await m_session->CloseAsync();
-        if(m_viewModel)winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
-        auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        if (m_closing) co_return;
+        m_closing = true;
+        ++m_playbackGeneration;
+        try
+        {
+            if (m_session) co_await m_session->CloseAsync();
+        }
+        catch (...)
+        {
+            // The final report is best-effort. Local engine teardown still has to run.
+        }
+        co_await uiContext;
+        if (!m_loaded) co_return;
+
+        OverlayPopup().IsOpen(false);
+        App::Services().Subtitles->Stop();
+        if (m_viewModel) winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
+        auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
+        winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
     }
 
     void PlayerPage::ShowMediaPrompt(winrt::hstring const&message){FindName(L"MediaPromptMessage").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(message);FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Visible);}
