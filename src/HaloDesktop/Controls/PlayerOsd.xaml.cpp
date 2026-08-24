@@ -60,9 +60,19 @@ namespace winrt::HaloDesktop::implementation
         slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerCanceledEvent(), terminationHandler, true);
         m_seekHandlersRegistered = true;
     }
-    void PlayerOsd::OnOsdPointerMoved([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-                                      [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
+    void PlayerOsd::OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
+                                      Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
+        auto const pointerId = args.Pointer().PointerId();
+        auto const position = args.GetCurrentPoint(sender.as<Microsoft::UI::Xaml::UIElement>()).Position();
+        if (m_lastPointerPosition && m_lastPointerId == pointerId && m_lastPointerPosition->X == position.X &&
+            m_lastPointerPosition->Y == position.Y)
+        {
+            return;
+        }
+
+        m_lastPointerId = pointerId;
+        m_lastPointerPosition = position;
         m_viewModel.NotifyUserActivity();
     }
     void PlayerOsd::OnOsdWakePointerPressed(

@@ -2,6 +2,8 @@
 
 #include "PlayerOsd.g.h"
 
+#include <cstdint>
+#include <optional>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -82,6 +84,8 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
+        std::optional<winrt::Windows::Foundation::Point> m_lastPointerPosition;
+        std::uint32_t m_lastPointerId{};
         bool m_seekHandlersRegistered{};
         bool m_seekPointerActive{};
     };
