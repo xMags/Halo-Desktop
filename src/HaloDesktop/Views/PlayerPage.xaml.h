@@ -39,9 +39,11 @@ namespace winrt::HaloDesktop::implementation
         void OpenSource(winrt::hstring const& path);
         void ShowMediaPrompt(winrt::hstring const& message);
         void UpdateOverlayLayout();
+        void RefreshOverlayAfterPresentationChange();
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
+        winrt::event_token m_presentationChangedToken{};
         bool m_loaded{};
         bool m_pickerOpen{};
     };

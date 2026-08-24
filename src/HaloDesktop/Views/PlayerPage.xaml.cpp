@@ -36,6 +36,18 @@ namespace winrt::HaloDesktop::implementation
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
         winrt::get_self<VideoHostControl>(videoHost)->EnsureHostWindow();
         m_viewModel = FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>().ViewModel();
+        m_presentationChangedToken = m_viewModel.PropertyChanged(
+            [weak = get_weak()]([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+                                Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args) {
+                if (args.PropertyName() != L"IsFullscreen")
+                {
+                    return;
+                }
+                if (auto const self = weak.get())
+                {
+                    self->RefreshOverlayAfterPresentationChange();
+                }
+            });
         UpdateOverlayLayout();
         OpenRememberedFileOrPrompt();
         winrt::get_self<PlayerViewModel>(m_viewModel)->Activate();
@@ -44,6 +56,11 @@ namespace winrt::HaloDesktop::implementation
                                 [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_loaded = false;
+        if (m_viewModel && m_presentationChangedToken.value != 0)
+        {
+            m_viewModel.PropertyChanged(m_presentationChangedToken);
+            m_presentationChangedToken = {};
+        }
         OverlayPopup().IsOpen(false);
         if (m_viewModel)
         {
@@ -254,6 +271,31 @@ namespace winrt::HaloDesktop::implementation
             OverlayPopup().IsOpen(true);
             // Without focus in the popup tree the transport shortcuts have nowhere to route.
             OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        }
+    }
+
+    void PlayerPage::RefreshOverlayAfterPresentationChange()
+    {
+        if (!m_loaded)
+        {
+            return;
+        }
+
+        // A native fullscreen transition can move the main HWND above the popup's
+        // composition window. Reopening it after layout settles restores both its
+        // z-order and its independent focus root without touching video playback.
+        OverlayPopup().IsOpen(false);
+        auto const enqueued = DispatcherQueue().TryEnqueue(
+            Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+            [weak = get_weak()] {
+                if (auto const self = weak.get(); self && self->m_loaded)
+                {
+                    self->UpdateOverlayLayout();
+                }
+            });
+        if (!enqueued)
+        {
+            UpdateOverlayLayout();
         }
     }
 } // namespace winrt::HaloDesktop::implementation
