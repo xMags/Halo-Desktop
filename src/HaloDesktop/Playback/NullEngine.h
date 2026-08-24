@@ -36,6 +36,7 @@ namespace HaloDesktop::Playback
         void SetSubtitleDelay(double seconds) override;
         void SetAudioDelay(double seconds) override;
         [[nodiscard]] PlaybackState State() const override;
+        [[nodiscard]] double DurationNow() const noexcept override;
         PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) override;
         void RemoveChangedHandler(PlaybackChangedToken token) noexcept override;
 

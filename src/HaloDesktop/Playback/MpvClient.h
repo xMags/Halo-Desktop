@@ -25,6 +25,8 @@ namespace HaloDesktop::Playback
         std::optional<bool> Paused;
         std::optional<bool> Buffering;
         std::optional<bool> Ended;
+        std::optional<bool> FileLoaded;
+        std::optional<PlaybackEndReason> EndReason;
         // True while libmpv is between a seek request and the restart that completes it.
         std::optional<bool> Seeking;
         std::optional<std::vector<TrackInfo>> Tracks;
@@ -56,6 +58,7 @@ namespace HaloDesktop::Playback
         void SetSubtitleTrack(std::optional<std::int64_t> id);
         void SetSubtitleDelay(double seconds);
         void SetAudioDelay(double seconds);
+        [[nodiscard]] double DurationSeconds() const noexcept;
         void Shutdown() noexcept;
 
     private:

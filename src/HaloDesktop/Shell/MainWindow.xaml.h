@@ -21,6 +21,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::HaloDesktop::TitleBar AppTitleBarControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame OverlayFrameControl() const;
         void PrepareForWindowClose() noexcept;
+        winrt::fire_and_forget FinishOrderedPlayerClose();
         void UpdateCaptionButtonColors();
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
@@ -28,6 +29,8 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChangedRevoker{};
         winrt::event_token m_closedToken{};
         bool m_closePrepared{};
+        bool m_playerClosePending{};
+        bool m_windowCloseApproved{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

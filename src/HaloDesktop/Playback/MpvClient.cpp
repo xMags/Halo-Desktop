@@ -199,6 +199,18 @@ namespace
         case MPV_EVENT_PLAYBACK_RESTART:
             update.Seeking = false;
             return update;
+        case MPV_EVENT_FILE_LOADED:
+            update.FileLoaded = true;
+            return update;
+        case MPV_EVENT_END_FILE:
+        {
+            auto const end = static_cast<mpv_event_end_file const*>(event.data);
+            if (!end) return std::nullopt;
+            if (end->reason == MPV_END_FILE_REASON_EOF) update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Eof;
+            else if (end->reason == MPV_END_FILE_REASON_ERROR) update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Error;
+            else update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Stopped;
+            return update;
+        }
         default:
             return std::nullopt;
         }
@@ -258,6 +270,7 @@ namespace HaloDesktop::Playback
             CheckMpv("disable cursor input", mpv_set_option_string(handle, "input-cursor", "no"));
             CheckMpv("disable cursor autohide", mpv_set_option_string(handle, "cursor-autohide", "no"));
             CheckMpv("disable OSC", mpv_set_option_string(handle, "osc", "no"));
+            CheckMpv("disable ytdl", mpv_set_option_string(handle, "ytdl", "no"));
 
             initializationError = mpv_initialize(handle);
             if (initializationError < 0)
@@ -339,6 +352,12 @@ namespace HaloDesktop::Playback
         SetDoubleProperty("audio-delay", seconds);
     }
 
+    double MpvClient::DurationSeconds() const noexcept
+    {
+        double value{};
+        return m_handle&&mpv_get_property(m_handle,"duration",MPV_FORMAT_DOUBLE,&value)>=0?value:0.0;
+    }
+
     void MpvClient::Shutdown() noexcept
     {
         if (!m_handle || m_stopping.exchange(true))
@@ -402,7 +421,7 @@ namespace HaloDesktop::Playback
             static_cast<void>(m_dispatcher.TryEnqueue([alive, handler, update = std::move(update)]() mutable {
                 if (alive->load())
                 {
-                    handler(std::move(update));
+                    try{handler(std::move(update));}catch(...){}
                 }
             }));
         }

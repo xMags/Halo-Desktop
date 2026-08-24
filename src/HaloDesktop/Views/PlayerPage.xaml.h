@@ -3,9 +3,10 @@
 #include "PlayerPage.g.h"
 
 #include <cstdint>
-#include <filesystem>
-#include <optional>
+#include <memory>
 #include <winrt/Windows.Foundation.h>
+
+namespace HaloDesktop::Playback { class PlaybackSessionController; }
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -13,12 +14,13 @@ namespace winrt::HaloDesktop::implementation
     {
         PlayerPage();
         [[nodiscard]] winrt::HaloDesktop::PlayerViewModel ViewModel() const;
+        [[nodiscard]] winrt::Windows::Foundation::IAsyncAction PrepareForWindowCloseAsync();
+        void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPlayerSizeChanged(winrt::Windows::Foundation::IInspectable const&,
                                  Microsoft::UI::Xaml::SizeChangedEventArgs const&);
-        void OnOpenFileClick(winrt::Windows::Foundation::IInspectable const&,
-                             Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnCloseErrorClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSpaceInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
                             Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
         void OnLeftInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
@@ -37,22 +39,19 @@ namespace winrt::HaloDesktop::implementation
                                      Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
 
     private:
-        void OpenRememberedFileOrPrompt();
-        winrt::fire_and_forget OpenFilePicker();
-        void OpenSource(winrt::hstring const& path);
+        winrt::fire_and_forget InitializePlaybackAsync();
+        winrt::fire_and_forget BeginClose();
         void ShowMediaPrompt(winrt::hstring const& message);
-        winrt::fire_and_forget UpdateUpNext(std::filesystem::path currentSource);
-        void TryPlayNext();
         void UpdateOverlayLayout();
         void RefreshOverlayAfterPresentationChange();
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
-        std::optional<std::filesystem::path> m_nextSource;
+        winrt::HaloDesktop::PlaybackRequest m_request{ nullptr };
+        std::shared_ptr<::HaloDesktop::Playback::PlaybackSessionController> m_session;
         winrt::event_token m_presentationChangedToken{};
-        std::uint64_t m_upNextRequestId{};
         bool m_loaded{};
-        bool m_pickerOpen{};
+        bool m_closing{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

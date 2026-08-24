@@ -2,6 +2,7 @@
 #include "Services/WatchStateService.h"
 #include "Api/ApiClient.h"
 #include <stdexcept>
+#include <algorithm>
 #include <utility>
 namespace HaloDesktop::Services
 {
@@ -16,5 +17,10 @@ namespace HaloDesktop::Services
         co_await uiContext;
         m_rows = std::move(rows);
     }
+    concurrency::task<void> WatchStateService::PutAsync(::HaloDesktop::Api::Dto::WatchEntry row)
+    {
+        auto const uiContext=winrt::apartment_context{};auto const version=++m_writeVersion;auto rows=co_await m_apiClient->PutWatchStateAsync({std::move(row)});co_await uiContext;if(version==m_writeVersion)m_rows=std::move(rows);
+    }
     std::vector<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Rows() const { return m_rows; }
+    std::optional<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Find(winrt::hstring const& videoId)const{auto found=std::find_if(m_rows.begin(),m_rows.end(),[&](auto const&row){return row.VideoId==videoId;});return found==m_rows.end()?std::nullopt:std::optional<::HaloDesktop::Api::Dto::WatchEntry>{*found};}
 }

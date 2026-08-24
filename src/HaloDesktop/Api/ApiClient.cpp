@@ -206,6 +206,13 @@ namespace HaloDesktop::Api
             winrt::Windows::Web::Http::HttpMethod::Get(), L"/watch-state");
         co_return Mappers::ParseWatchState(response);
     }
+    concurrency::task<std::vector<Dto::WatchEntry>> ApiClient::PutWatchStateAsync(std::vector<Dto::WatchEntry> rows)
+    {
+        winrt::Windows::Data::Json::JsonArray body;
+        for(auto const&row:rows){winrt::Windows::Data::Json::JsonObject object;object.Insert(L"videoId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.VideoId));object.Insert(L"itemId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.ItemId));object.Insert(L"positionSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.PositionSec));object.Insert(L"durationSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.DurationSec));object.Insert(L"watched",winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(row.Watched));if(row.Name)object.Insert(L"name",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Name));if(row.Poster)object.Insert(L"poster",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Poster));object.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(row.UpdatedAt)));body.Append(object);}
+        auto const response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Put(),L"/watch-state",body.Stringify());
+        co_return Mappers::ParseWatchState(response);
+    }
 
     concurrency::task<Dto::MetaDetail> ApiClient::GetMetaAsync(winrt::hstring type,winrt::hstring metaId)
     {

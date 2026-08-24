@@ -49,21 +49,22 @@
           VerticalAlignment="Center"
           Background="#EC1A1A1E"
           CornerRadius="10">
+          <Border.Visibility>Collapsed</Border.Visibility>
           <StackPanel Spacing="12">
             <TextBlock
               FontSize="20"
               FontWeight="SemiBold"
               Foreground="White"
-              Text="Choose a local video" />
+              Text="Playback unavailable" />
             <TextBlock
               x:Name="MediaPromptMessage"
               Foreground="#A8FFFFFF"
-              Text="Halo will remember this file for the next Play action."
+              Text="Return to Sources and choose another source."
               TextWrapping="Wrap" />
             <Button
               HorizontalAlignment="Left"
-              Click="OnOpenFileClick"
-              Content="Open video file"
+              Click="OnCloseErrorClick"
+              Content="Back to Sources"
               Style="{StaticResource HaloAccentButtonStyle}" />
           </StackPanel>
         </Border>

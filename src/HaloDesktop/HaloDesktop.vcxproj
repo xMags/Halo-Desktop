@@ -162,8 +162,9 @@
     <ClInclude Include="Config\ServerConfig.example.h" />
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
-    <ClInclude Include="Playback\LocalPlaybackQueue.h" />
     <ClInclude Include="Playback\MpvClient.h" />
+    <ClInclude Include="Playback\PlaybackSessionController.h" />
+    <ClInclude Include="Playback\WatchReporter.h" />
     <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
@@ -171,6 +172,7 @@
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\MetadataService.h" />
+    <ClInclude Include="Services\PlaybackPreferences.h" />
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
     <ClInclude Include="Services\Auth\LoopbackListener.h" />
@@ -290,11 +292,12 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
-    <ClCompile Include="Playback\LocalPlaybackQueue.cpp" />
     <ClCompile Include="Playback\NullEngine.cpp" />
     <ClCompile Include="Playback\MpvClient.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="Playback\PlaybackSessionController.cpp" />
+    <ClCompile Include="Playback\WatchReporter.cpp" />
     <ClCompile Include="Playback\MpvEngine.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
@@ -303,6 +306,7 @@
     <ClCompile Include="Services\CatalogService.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />
+    <ClCompile Include="Services\PlaybackPreferences.cpp" />
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />

@@ -90,6 +90,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
         void SetPlayNextHandler(std::function<void()> handler);
+        void SetCloseRequestedHandler(std::function<void()> handler);
         void SetUpNextTitle(winrt::hstring const& title);
         void TogglePause();
         void BeginScrub();
@@ -131,7 +132,6 @@ namespace winrt::HaloDesktop::implementation
         static winrt::hstring FormatTime(double seconds, bool withHours);
 
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> m_engine;
-        std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> m_windowPresentation;
         ::HaloDesktop::Playback::PlaybackChangedToken m_engineToken{};
         ::HaloDesktop::Playback::PlaybackState m_state;
@@ -145,6 +145,7 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_audioDelayMs{};
         winrt::hstring m_upNextTitle;
         std::function<void()> m_playNextHandler;
+        std::function<void()> m_closeRequestedHandler;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_audioTracks{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>

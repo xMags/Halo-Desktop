@@ -6,6 +6,7 @@
 
 #include "App.xaml.h"
 #include "Playback/IPlaybackEngine.h"
+#include "Views/PlayerPage.xaml.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/ThemeService.h"
 #include "Shell/WindowPresentationService.h"
@@ -42,6 +43,14 @@ namespace winrt::HaloDesktop::implementation
             {
                 if (auto const self = weak.get())
                 {
+                    if(!self->m_windowCloseApproved)
+                    {
+                        if(self->m_playerClosePending){args.Cancel(true);return;}
+                        if(self->OverlayFrameControl().Content().try_as<winrt::HaloDesktop::PlayerPage>())
+                        {
+                            args.Cancel(true);self->m_playerClosePending=true;self->FinishOrderedPlayerClose();return;
+                        }
+                    }
                     self->PrepareForWindowClose();
                 }
             });
@@ -122,6 +131,13 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
         }
+    }
+
+    winrt::fire_and_forget MainWindow::FinishOrderedPlayerClose()
+    {
+        auto lifetime=get_strong();
+        try{if(auto page=OverlayFrameControl().Content().try_as<winrt::HaloDesktop::PlayerPage>())co_await winrt::get_self<PlayerPage>(page)->PrepareForWindowCloseAsync();}catch(...){}
+        m_windowCloseApproved=true;m_playerClosePending=false;m_windowSizing->AppWindow().Destroy();
     }
 
     void MainWindow::UpdateCaptionButtonColors()

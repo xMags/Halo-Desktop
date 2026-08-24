@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <stdexcept>
 #include <utility>
+#include <cwctype>
 
 namespace
 {
@@ -92,19 +93,21 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::Open(std::wstring const& source)
     {
-        std::error_code error;
-        auto const path = std::filesystem::path(source);
-        if (source.empty() || !std::filesystem::is_regular_file(path, error) || error)
+        auto lower=source;std::transform(lower.begin(),lower.end(),lower.begin(),[](wchar_t value){return static_cast<wchar_t>(std::towlower(value));});
+        auto const remote=lower.starts_with(L"http://")||lower.starts_with(L"https://");
+        std::error_code error;auto const path=std::filesystem::path(source);
+        if (source.empty() || (!remote && (!std::filesystem::is_regular_file(path,error)||error)))
         {
-            throw std::invalid_argument("Playback source must be an existing local file");
+            throw std::invalid_argument("Playback source must be an HTTP URL or an existing local file");
         }
 
-        m_source = path.wstring();
+        m_source = remote?source:path.wstring();
         m_seekTarget.reset();
         m_seekRestarted = false;
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
+        m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
         if (m_client)
         {
@@ -157,7 +160,7 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekAbsolute(double seconds)
     {
-        auto const next = std::clamp(seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
+        auto const next = std::clamp(seconds, 0.0, (std::max)(DurationNow(), m_state.DurationSeconds));
         if (m_client)
         {
             m_seekTarget.reset();
@@ -269,6 +272,7 @@ namespace HaloDesktop::Playback
     {
         return m_state;
     }
+    double MpvEngine::DurationNow()const noexcept{return m_client?m_client->DurationSeconds():m_state.DurationSeconds;}
 
     PlaybackChangedToken MpvEngine::AddChangedHandler(PlaybackChangedHandler handler)
     {
@@ -334,6 +338,8 @@ namespace HaloDesktop::Playback
         {
             m_state.Tracks = std::move(*update.Tracks);
         }
+        if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;}
+        if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
         NotifyChanged();
     }
 
@@ -377,7 +383,7 @@ namespace HaloDesktop::Playback
         }
         for (auto const& handler : handlers)
         {
-            handler();
+            try{handler();}catch(...){}
         }
     }
 } // namespace HaloDesktop::Playback

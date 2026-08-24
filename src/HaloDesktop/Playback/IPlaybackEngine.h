@@ -14,6 +14,14 @@ namespace HaloDesktop::Playback
         Subtitle,
     };
 
+    enum class PlaybackEndReason
+    {
+        None,
+        Eof,
+        Error,
+        Stopped,
+    };
+
     struct TrackInfo final
     {
         std::int64_t Id{};
@@ -34,6 +42,9 @@ namespace HaloDesktop::Playback
         double Speed{ 1.0 };
         bool Paused{};
         bool Buffering{};
+        std::uint64_t FileSerial{};
+        std::uint64_t EndSerial{};
+        PlaybackEndReason EndReason{ PlaybackEndReason::None };
         std::vector<TrackInfo> Tracks;
     };
 
@@ -59,6 +70,7 @@ namespace HaloDesktop::Playback
         virtual void SetSubtitleDelay(double seconds) = 0;
         virtual void SetAudioDelay(double seconds) = 0;
         [[nodiscard]] virtual PlaybackState State() const = 0;
+        [[nodiscard]] virtual double DurationNow() const noexcept = 0;
         virtual PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) = 0;
         virtual void RemoveChangedHandler(PlaybackChangedToken token) noexcept = 0;
     };

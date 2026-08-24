@@ -82,15 +82,17 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
-    <ClCompile Include="Playback\LocalPlaybackQueue.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\NullEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvClient.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\PlaybackSessionController.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\WatchReporter.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\LibraryService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\PlaybackPreferences.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
@@ -153,8 +155,9 @@
     <ClInclude Include="Config\ServerConfig.example.h"><Filter>Config</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Playback\IPlaybackEngine.h"><Filter>Playback</Filter></ClInclude>
-    <ClInclude Include="Playback\LocalPlaybackQueue.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvClient.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\PlaybackSessionController.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\WatchReporter.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\NullEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
@@ -162,6 +165,7 @@
     <ClInclude Include="Services\CatalogService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\LibraryService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\PlaybackPreferences.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LoopbackListener.h"><Filter>Services\Auth</Filter></ClInclude>

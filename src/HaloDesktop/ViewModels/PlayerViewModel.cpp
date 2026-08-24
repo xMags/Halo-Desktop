@@ -7,7 +7,6 @@
 #include "PlayerViewModel.g.cpp"
 #endif
 
-#include "Services/NavigationService.h"
 #include "Shell/WindowPresentationService.h"
 #include "ViewModels/ObservableHelper.h"
 
@@ -56,7 +55,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     PlayerViewModel::PlayerViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_engine(services.Playback), m_navigation(services.Navigation),
+        : m_engine(services.Playback),
           m_windowPresentation(services.WindowPresentation), m_state(services.Playback->State()),
           m_audioTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
@@ -360,6 +359,7 @@ namespace winrt::HaloDesktop::implementation
         }
         Raise(L"UpNextAvailableVisibility");
     }
+    void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
     void PlayerViewModel::SetUpNextTitle(winrt::hstring const& title)
     {
         if (m_upNextTitle == title)
@@ -572,7 +572,7 @@ namespace winrt::HaloDesktop::implementation
         {
             m_windowPresentation->SetFullscreen(false);
         }
-        m_navigation->CloseOverlay();
+        if(m_closeRequestedHandler)m_closeRequestedHandler();
     }
     void PlayerViewModel::NotifyUserActivity()
     {

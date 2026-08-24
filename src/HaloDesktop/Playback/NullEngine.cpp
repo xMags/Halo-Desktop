@@ -67,6 +67,8 @@ namespace HaloDesktop::Playback
     void NullEngine::Open(std::wstring const& source)
     {
         m_source = source;
+        ++m_state.FileSerial;
+        m_state.EndReason=PlaybackEndReason::None;
         NotifyChanged();
     }
     void NullEngine::AttachVideoWindow(std::uintptr_t windowHandle)
@@ -158,6 +160,7 @@ namespace HaloDesktop::Playback
     {
         return m_state;
     }
+    double NullEngine::DurationNow()const noexcept{return m_state.DurationSeconds;}
     PlaybackChangedToken NullEngine::AddChangedHandler(PlaybackChangedHandler handler)
     {
         if (!handler)

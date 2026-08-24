@@ -8,6 +8,7 @@
 #endif
 
 #include "Services/SampleData.h"
+#include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
 
@@ -47,6 +48,7 @@ namespace winrt::HaloDesktop::implementation
           m_settings(services.SettingsSync),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
+        m_resumePlayback=::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled();
         Refresh();
     }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
@@ -125,7 +127,7 @@ namespace winrt::HaloDesktop::implementation
     bool SettingsViewModel::SubtitleShadow() const noexcept { return m_subtitleShadow; }
     void SettingsViewModel::SubtitleShadow(bool value) { if (m_subtitleShadow != value) { m_subtitleShadow = value; m_settings->SubtitleShadow(value); Raise(L"SubtitleShadow"); } }
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
-    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; Raise(L"ResumePlayback"); } }
+    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; ::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
     void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; Raise(L"HardwareDecoding"); } }
     void SettingsViewModel::Refresh()
