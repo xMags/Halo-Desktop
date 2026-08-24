@@ -8,7 +8,7 @@
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Library" Crumb="42 TITLES" />
+    <local:SectionHeader Title="Library" />
     <!-- The design keeps the filter and sort row in the page body, below the header. -->
     <Grid Grid.Row="1" Margin="24,0,24,0">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

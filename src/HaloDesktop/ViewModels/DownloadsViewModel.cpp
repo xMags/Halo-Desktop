@@ -122,12 +122,6 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ReadyView() const { return m_ready; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ChartBarsView() const { return m_chartBars; }
     winrt::Windows::Foundation::IInspectable DownloadsViewModel::SelectedRow() const { return m_selected; }
-    winrt::hstring DownloadsViewModel::HeaderCrumb() const
-    {
-        std::wostringstream value;
-        value << m_downloads->ActiveCount() << L" ACTIVE · 18 DONE";
-        return winrt::hstring(value.str());
-    }
     winrt::hstring DownloadsViewModel::RateText() const
     {
         std::wostringstream value;
@@ -293,7 +287,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"HeaderCrumb", L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"ReadyActionLabel", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"StartNowVisibility" })
+        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"ReadyActionLabel", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"StartNowVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const

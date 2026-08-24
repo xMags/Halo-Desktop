@@ -13,11 +13,6 @@ namespace winrt::HaloDesktop::implementation
         return FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>();
     }
 
-    Microsoft::UI::Xaml::Controls::TextBlock SectionHeader::CrumbText() const
-    {
-        return FindName(L"CrumbText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>();
-    }
-
     Microsoft::UI::Xaml::Controls::ContentPresenter SectionHeader::RightContentHost() const
     {
         return FindName(L"RightContentHost").try_as<Microsoft::UI::Xaml::Controls::ContentPresenter>();
@@ -32,20 +27,6 @@ namespace winrt::HaloDesktop::implementation
     {
         m_title = value;
         if (auto const text = TitleText())
-        {
-            text.Text(value);
-        }
-    }
-
-    winrt::hstring SectionHeader::Crumb() const
-    {
-        return m_crumb;
-    }
-
-    void SectionHeader::Crumb(winrt::hstring const& value)
-    {
-        m_crumb = value;
-        if (auto const text = CrumbText())
         {
             text.Text(value);
         }

@@ -9,7 +9,7 @@
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Downloads" Crumb="{x:Bind ViewModel.HeaderCrumb, Mode=OneWay}" />
+    <local:SectionHeader Title="Downloads" />
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <Grid Margin="24,8,24,48" ColumnSpacing="20">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="292" /></Grid.ColumnDefinitions>

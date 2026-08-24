@@ -32,7 +32,6 @@ namespace HaloDesktop
         Object ChartBars { get; };
         String InfoTitle { get; };
         String InfoMessage { get; };
-        String HeaderCrumb { get; };
         String RateText { get; };
         String QueueLine { get; };
         String TransferCountLabel { get; };

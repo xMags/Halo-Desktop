@@ -21,12 +21,6 @@
         FontSize="12"
         Foreground="{ThemeResource HaloText2Brush}"
         Text="Halo" />
-      <TextBlock
-        x:Name="CrumbText"
-        VerticalAlignment="Center"
-        FontSize="12"
-        Foreground="{ThemeResource HaloText4Brush}"
-        Text="· Home" />
     </StackPanel>
   </Grid>
 </UserControl>

@@ -25,7 +25,6 @@ namespace winrt::HaloDesktop::implementation
         explicit SearchViewModel(::HaloDesktop::Services::AppServices const& services);
         [[nodiscard]] winrt::hstring Query() const;
         void Query(winrt::hstring const& value);
-        [[nodiscard]] winrt::hstring Crumb() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Results() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable RecentItems() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ResultsView() const;

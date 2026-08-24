@@ -13,38 +13,6 @@
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Windows.UI.h>
 
-namespace
-{
-    winrt::hstring CrumbForPage(HaloDesktop::Services::Page page)
-    {
-        using HaloDesktop::Services::Page;
-
-        switch (page)
-        {
-        case Page::Home:
-            return L"· Home";
-        case Page::Search:
-            return L"· Search";
-        case Page::Library:
-            return L"· Library";
-        case Page::Detail:
-            return L"· Northwind Divide";
-        case Page::Sources:
-            return L"· Sources";
-        case Page::Downloads:
-            return L"· Downloads";
-        case Page::Settings:
-            return L"· Settings";
-        case Page::Login:
-            return L"";
-        case Page::Player:
-            return L"· Northwind Divide · S02E04";
-        }
-
-        return L"";
-    }
-}
-
 namespace winrt::HaloDesktop::implementation
 {
     MainWindow::MainWindow() = default;
@@ -88,15 +56,6 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const self = weak.get())
                 {
                     self->UpdateCaptionButtonColors();
-                }
-            });
-
-        App::Services().Navigation->SetRouteChangedHandler(
-            [weak = get_weak()](::HaloDesktop::Services::Page page)
-            {
-                if (auto const self = weak.get())
-                {
-                    self->OnRouteChanged(page);
                 }
             });
 
@@ -164,11 +123,6 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
         }
-    }
-
-    void MainWindow::OnRouteChanged(::HaloDesktop::Services::Page page)
-    {
-        AppTitleBarControl().Crumb(CrumbForPage(page));
     }
 
     void MainWindow::UpdateCaptionButtonColors()

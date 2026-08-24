@@ -41,7 +41,7 @@
       </VisualStateGroup>
     </VisualStateManager.VisualStateGroups>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Settings" Crumb="ACCOUNT &amp; PLAYBACK" />
+    <local:SectionHeader Title="Settings" />
     <Grid x:Name="SettingsBody" Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <StackPanel Spacing="2">

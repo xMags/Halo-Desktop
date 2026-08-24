@@ -65,7 +65,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ReadyView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ChartBarsView() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SelectedRow() const;
-        [[nodiscard]] winrt::hstring HeaderCrumb() const;
         [[nodiscard]] winrt::hstring RateText() const;
         [[nodiscard]] winrt::hstring QueueLine() const;
         [[nodiscard]] winrt::hstring TransferCountLabel() const;

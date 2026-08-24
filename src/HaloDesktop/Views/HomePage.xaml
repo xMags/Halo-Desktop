@@ -8,7 +8,7 @@
   NavigationCacheMode="Required">
   <ScrollViewer VerticalScrollBarVisibility="Hidden">
     <StackPanel Padding="0,0,0,48" Spacing="28">
-      <local:SectionHeader Title="Home" Crumb="ALL CATALOGS">
+      <local:SectionHeader Title="Home">
         <local:SectionHeader.RightContent>
           <StackPanel Orientation="Horizontal" Spacing="16">
             <AutoSuggestBox

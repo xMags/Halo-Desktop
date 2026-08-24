@@ -47,15 +47,6 @@ namespace winrt::HaloDesktop::implementation
         m_query = value;
         Rebuild();
     }
-    winrt::hstring SearchViewModel::Crumb() const
-    {
-        std::wstring crumb(m_query);
-        std::transform(crumb.begin(), crumb.end(), crumb.begin(), [](wchar_t character)
-        {
-            return static_cast<wchar_t>(std::towupper(character));
-        });
-        return winrt::hstring(crumb);
-    }
     winrt::Windows::Foundation::IInspectable SearchViewModel::Results() const { return m_results; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::RecentItems() const { return m_recentItems; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SearchViewModel::ResultsView() const { return m_results; }
@@ -135,7 +126,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void SearchViewModel::RaiseState()
     {
-        for (auto const property : { L"Query", L"Crumb", L"Results", L"RecentItems", L"AllCount", L"MovieCount", L"SeriesCount", L"TopMatchTitle", L"TopMatchMeta", L"TopMatchSynopsis", L"TopMatchVisibility", L"ResultsVisibility", L"RecentVisibility" })
+        for (auto const property : { L"Query", L"Results", L"RecentItems", L"AllCount", L"MovieCount", L"SeriesCount", L"TopMatchTitle", L"TopMatchMeta", L"TopMatchSynopsis", L"TopMatchVisibility", L"ResultsVisibility", L"RecentVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
 }

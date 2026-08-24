@@ -8,7 +8,7 @@
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Sources" Crumb="S02E04" />
+    <local:SectionHeader Title="Sources" />
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <Grid Margin="24,8,24,48" ColumnSpacing="20">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="292" /></Grid.ColumnDefinitions>

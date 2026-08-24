@@ -10,7 +10,6 @@ namespace HaloDesktop
     runtimeclass SearchViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Query;
-        String Crumb { get; };
         Object Results { get; };
         Object RecentItems { get; };
         Int32 AllCount { get; };

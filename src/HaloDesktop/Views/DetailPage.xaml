@@ -8,7 +8,7 @@
   NavigationCacheMode="Required">
   <ScrollViewer VerticalScrollBarVisibility="Hidden">
     <StackPanel Padding="0,0,0,48">
-      <local:SectionHeader Title="Northwind Divide" Crumb="SERIES · 2024" />
+      <local:SectionHeader Title="Northwind Divide" />
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
         <Rectangle VerticalAlignment="Bottom" Height="140">

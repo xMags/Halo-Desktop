@@ -21,7 +21,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::HaloDesktop::TitleBar AppTitleBarControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame OverlayFrameControl() const;
         void PrepareForWindowClose() noexcept;
-        void OnRouteChanged(::HaloDesktop::Services::Page page);
         void UpdateCaptionButtonColors();
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;

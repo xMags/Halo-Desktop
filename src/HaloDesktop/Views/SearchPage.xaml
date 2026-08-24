@@ -8,7 +8,7 @@
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Search" Crumb="{x:Bind ViewModel.Crumb, Mode=OneWay}" />
+    <local:SectionHeader Title="Search" />
     <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
       <StackPanel Margin="24,8,24,40">
 

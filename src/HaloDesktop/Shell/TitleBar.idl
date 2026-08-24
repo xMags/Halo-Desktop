@@ -4,6 +4,5 @@ namespace HaloDesktop
     runtimeclass TitleBar : Microsoft.UI.Xaml.Controls.UserControl
     {
         TitleBar();
-        String Crumb;
     }
 }
