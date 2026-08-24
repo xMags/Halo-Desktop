@@ -26,6 +26,7 @@ namespace winrt::HaloDesktop::implementation
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
         winrt::event_token m_appWindowClosingToken{};
+        winrt::event_token m_activatedToken{};
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChangedRevoker{};
         winrt::event_token m_closedToken{};
         bool m_closePrepared{};

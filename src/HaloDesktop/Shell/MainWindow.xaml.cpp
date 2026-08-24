@@ -35,6 +35,14 @@ namespace winrt::HaloDesktop::implementation
         App::Services().WindowPresentation->Attach(
             m_windowSizing->WindowHandle(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
+        m_activatedToken = Activated(
+            [](
+                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+                Microsoft::UI::Xaml::WindowActivatedEventArgs const& args)
+            {
+                App::Services().WindowPresentation->SetWindowActive(
+                    args.WindowActivationState() != Microsoft::UI::Xaml::WindowActivationState::Deactivated);
+            });
 
         m_appWindowClosingToken = m_windowSizing->AppWindow().Closing(
             [weak = get_weak()](
@@ -115,6 +123,11 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Playback->DetachVideoWindow();
             App::Services().Downloads->Stop();
             App::Services().Navigation->Detach();
+            if (m_activatedToken.value != 0)
+            {
+                Activated(m_activatedToken);
+                m_activatedToken = {};
+            }
             App::Services().WindowPresentation->Detach();
             m_themeChangedRevoker.revoke();
 

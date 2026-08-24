@@ -47,11 +47,11 @@ namespace
         return info;
     }
 
-    void SizeWindowToMonitor(HWND window)
+    void SizeWindowToMonitor(HWND window, HWND insertAfter)
     {
         auto const monitor = MonitorInfoForWindow(window);
         auto const& bounds = monitor.rcMonitor;
-        winrt::check_bool(SetWindowPos(window, HWND_TOP, bounds.left, bounds.top, bounds.right - bounds.left,
+        winrt::check_bool(SetWindowPos(window, insertAfter, bounds.left, bounds.top, bounds.right - bounds.left,
                                        bounds.bottom - bounds.top,
                                        SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_FRAMECHANGED));
     }
@@ -61,16 +61,19 @@ namespace
     {
         WriteWindowStyle(window, GWL_STYLE, style);
         WriteWindowStyle(window, GWL_EXSTYLE, extendedStyle);
+        auto const insertAfter = (extendedStyle & static_cast<LONG_PTR>(WS_EX_TOPMOST)) != 0
+            ? HWND_TOPMOST
+            : HWND_NOTOPMOST;
         if (wasMaximized)
         {
             winrt::check_bool(SetWindowPlacement(window, &placement));
-            winrt::check_bool(SetWindowPos(window, nullptr, 0, 0, 0, 0,
-                                           SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER |
+            winrt::check_bool(SetWindowPos(window, insertAfter, 0, 0, 0, 0,
+                                           SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER |
                                                SWP_NOACTIVATE | SWP_FRAMECHANGED));
             return;
         }
 
-        winrt::check_bool(SetWindowPos(window, HWND_TOP, bounds.left, bounds.top, bounds.right - bounds.left,
+        winrt::check_bool(SetWindowPos(window, insertAfter, bounds.left, bounds.top, bounds.right - bounds.left,
                                        bounds.bottom - bounds.top,
                                        SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED));
     }
@@ -98,6 +101,7 @@ namespace HaloDesktop::Shell
         m_windowedExtendedStyle = 0;
         m_wasMaximized = false;
         m_fullscreen = false;
+        m_windowActive = true;
     }
     void WindowPresentationService::SetFullscreen(bool fullscreen)
     {
@@ -109,7 +113,9 @@ namespace HaloDesktop::Shell
         {
             if (fullscreen)
             {
-                SizeWindowToMonitor(reinterpret_cast<HWND>(m_windowHandle));
+                SizeWindowToMonitor(
+                    reinterpret_cast<HWND>(m_windowHandle),
+                    m_windowActive ? HWND_TOPMOST : HWND_NOTOPMOST);
             }
             return;
         }
@@ -130,14 +136,14 @@ namespace HaloDesktop::Shell
             auto const fullscreenExtendedStyle =
                 windowedExtendedStyle & ~static_cast<LONG_PTR>(WS_EX_WINDOWEDGE);
 
-            // AppWindow's FullScreen presenter can occasionally leave the taskbar above
-            // an otherwise full-sized window. Applying the native popup style and the
-            // monitor rectangle makes the transition a single, deterministic operation.
+            // The taskbar is itself topmost, so monitor-sized popup geometry alone can
+            // leave it over the transport controls. Promote Halo while it is active;
+            // SetWindowActive demotes it as soon as the user switches to another app.
             WriteWindowStyle(window, GWL_STYLE, fullscreenStyle);
             try
             {
                 WriteWindowStyle(window, GWL_EXSTYLE, fullscreenExtendedStyle);
-                SizeWindowToMonitor(window);
+                SizeWindowToMonitor(window, m_windowActive ? HWND_TOPMOST : HWND_NOTOPMOST);
             }
             catch (...)
             {
@@ -171,6 +177,23 @@ namespace HaloDesktop::Shell
         m_windowedExtendedStyle = 0;
         m_wasMaximized = false;
         m_fullscreen = false;
+    }
+    void WindowPresentationService::SetWindowActive(bool active) noexcept
+    {
+        m_windowActive = active;
+        if (!m_fullscreen || m_windowHandle == 0)
+        {
+            return;
+        }
+        auto const window = reinterpret_cast<HWND>(m_windowHandle);
+        static_cast<void>(SetWindowPos(
+            window,
+            active ? HWND_TOPMOST : HWND_NOTOPMOST,
+            0,
+            0,
+            0,
+            0,
+            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER));
     }
     bool WindowPresentationService::IsFullscreen() const noexcept
     {

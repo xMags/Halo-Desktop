@@ -15,6 +15,7 @@ namespace HaloDesktop::Shell
                     winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow);
         void Detach() noexcept;
         void SetFullscreen(bool fullscreen);
+        void SetWindowActive(bool active) noexcept;
         [[nodiscard]] bool IsFullscreen() const noexcept;
         [[nodiscard]] std::uintptr_t WindowHandle() const;
 
@@ -27,5 +28,6 @@ namespace HaloDesktop::Shell
         LONG_PTR m_windowedExtendedStyle{};
         bool m_wasMaximized{};
         bool m_fullscreen{};
+        bool m_windowActive{ true };
     };
 } // namespace HaloDesktop::Shell
