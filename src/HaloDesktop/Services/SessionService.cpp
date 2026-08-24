@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Api/ApiError.h"
 #include "Services/Auth/SessionController.h"
+#include "Services/Auth/SessionStore.h"
 #include "Services/Auth/OidcSignInFlow.h"
 #include "Services/NavigationService.h"
 
@@ -52,14 +53,16 @@ namespace HaloDesktop::Services
     SessionService::SessionService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
         std::shared_ptr<Auth::SessionController> controller,
+        std::shared_ptr<Auth::SessionStore> store,
         std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
         std::shared_ptr<NavigationService> navigation)
         : m_apiClient(std::move(apiClient)),
           m_controller(std::move(controller)),
+          m_store(std::move(store)),
           m_oidcSignInFlow(std::move(oidcSignInFlow)),
           m_navigation(std::move(navigation))
     {
-        if (!m_apiClient || !m_controller || !m_oidcSignInFlow || !m_navigation)
+        if (!m_apiClient || !m_controller || !m_store || !m_oidcSignInFlow || !m_navigation)
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
@@ -74,6 +77,11 @@ namespace HaloDesktop::Services
     winrt::hstring SessionService::UserName() const
     {
         return m_userName;
+    }
+
+    winrt::hstring SessionService::UserId() const
+    {
+        return m_userId;
     }
 
     bool SessionService::IsSignedIn() const noexcept
@@ -100,8 +108,17 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         co_await m_controller->RestoreAsync();
+        auto identity = m_controller->IsSignedIn()
+            ? co_await m_store->LoadIdentityAsync()
+            : std::optional<Auth::StoredIdentity>{};
         co_await uiContext;
         ClearIdentity();
+        if (identity)
+        {
+            m_userId = identity->UserId;
+            m_userName = identity->Username;
+            NotifyIdentityChanged();
+        }
     }
 
     concurrency::task<AuthenticationMode> SessionService::DiscoverAuthenticationAsync()
@@ -132,6 +149,8 @@ namespace HaloDesktop::Services
 
         try
         {
+            ClearIdentity();
+            co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
             co_await m_controller->SignInLocalAsync(normalizedUserName, std::move(password));
         }
         catch (winrt::hresult_error const& error)
@@ -181,6 +200,8 @@ namespace HaloDesktop::Services
         }
         try
         {
+            ClearIdentity();
+            co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
             co_await m_controller->SignInOidcAsync(std::move(*result.Session));
         }
         catch (...)
@@ -197,7 +218,8 @@ namespace HaloDesktop::Services
     concurrency::task<void> SessionService::SignOutAsync()
     {
         auto const uiContext = winrt::apartment_context{};
-        co_await m_controller->SignOutAsync();
+        try { co_await m_controller->SignOutAsync(); } catch (...) {}
+        try { co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration()); } catch (...) {}
         co_await uiContext;
         ClearIdentity();
         m_navigation->ShowOverlay(Page::Login);
@@ -222,18 +244,51 @@ namespace HaloDesktop::Services
             co_return;
         }
         m_userName = me.Username;
+        m_userId = me.Id;
         m_isAdmin = me.IsAdmin;
+        NotifyIdentityChanged();
+        try
+        {
+            co_await m_store->SaveIdentityAsync(Auth::StoredIdentity{
+                .UserId = me.Id,
+                .Username = me.Username,
+            }, generation);
+        }
+        catch (...)
+        {
+        }
+        co_await uiContext;
     }
 
     void SessionService::HandleSessionRejected()
     {
         ClearIdentity();
+        m_store->ClearIdentityAsync(m_controller->SessionGeneration()).then([](concurrency::task<void> task)
+        {
+            try { task.get(); } catch (...) {}
+        });
         m_navigation->ShowOverlay(Page::Login);
+    }
+
+    void SessionService::SetIdentityChangedHandler(std::function<void()> handler)
+    {
+        m_identityChanged = std::move(handler);
+        NotifyIdentityChanged();
     }
 
     void SessionService::ClearIdentity()
     {
         m_userName.clear();
+        m_userId.clear();
         m_isAdmin = false;
+        NotifyIdentityChanged();
+    }
+
+    void SessionService::NotifyIdentityChanged()
+    {
+        if (m_identityChanged)
+        {
+            m_identityChanged();
+        }
     }
 }

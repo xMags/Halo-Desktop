@@ -134,12 +134,20 @@ namespace HaloDesktop::Api::Dto
         std::int64_t UpdatedAt{};
     };
 
+    struct StreamSubtitleRecord final
+    {
+        winrt::hstring Id;
+        winrt::hstring Url;
+        winrt::hstring Lang;
+    };
+
     struct StreamRecord final
     {
         winrt::hstring Url;
         std::optional<winrt::hstring> Name,Title,Description,Filename,BingeGroup,VideoHash;
         std::optional<std::uint64_t> VideoSize;
         std::vector<std::pair<winrt::hstring,winrt::hstring>> RequestHeaders;
+        std::vector<StreamSubtitleRecord> Subtitles;
     };
     struct StreamGroup final{winrt::hstring AddonId,AddonName;std::vector<StreamRecord> Streams;};
     struct AddonFailure final{std::optional<winrt::hstring>Name,Code;};

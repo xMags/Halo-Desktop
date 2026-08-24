@@ -1294,6 +1294,14 @@ namespace HaloDesktop::Services::Downloads
                 lastBytes = written;
             }
         }
+        if (stopToken.stop_requested())
+        {
+            throw TransferError{ .Type = TransferError::Kind::Shutdown };
+        }
+        if (cancel->load(std::memory_order_acquire))
+        {
+            throw TransferError{ .Type = TransferError::Kind::Paused };
+        }
         if (!FlushFileBuffers(output.get()))
         {
             throw TransferError{

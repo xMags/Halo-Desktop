@@ -15,6 +15,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FailedVisibility { get; };
     }
 
     [default_interface]
@@ -47,22 +48,27 @@ namespace HaloDesktop
         String SelectedSize { get; };
         String SelectedSubs { get; };
         String ReadyActionLabel { get; };
+        String StorageLine { get; };
+        String FreeLine { get; };
+        String StoredLine { get; };
+        String InFlightLine { get; };
+        String PeakText { get; };
+        Double StorageFraction { get; };
         Microsoft.UI.Xaml.Visibility DetailVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
         Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
-        Microsoft.UI.Xaml.Visibility StartNowVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ChooseSourceVisibility { get; };
         void Select(String id);
         void PauseAll();
         void ResumeAll();
         void PauseSelected();
         void ResumeSelected();
-        void StartSelectedNow();
         void CancelSelected();
         void DeleteSelected();
         void OpenPlayer();
-        void OpenSettings();
+        void ChooseSource();
     }
 
     [default_interface]

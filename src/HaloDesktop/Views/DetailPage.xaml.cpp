@@ -18,11 +18,13 @@ namespace winrt::HaloDesktop::implementation
     void DetailPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         auto const viewModel = winrt::get_self<DetailViewModel>(m_viewModel);
+        viewModel->Activate();
         FindName(L"EpisodeList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->EpisodesView());
         FindName(L"FactsList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->FactsView());
         FindName(L"AvailabilityList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->AvailabilityView());
         FindName(L"SeasonPicker").as<Microsoft::UI::Xaml::Controls::ComboBox>().ItemsSource(viewModel->SeasonsView());
     }
+    void DetailPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,[[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&){winrt::get_self<DetailViewModel>(m_viewModel)->Deactivate();}
     void DetailPage::OnSeasonOneClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SelectSeason(0); }
     void DetailPage::OnSeasonTwoClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SelectSeason(1); }
     void DetailPage::OnSeasonChanged(winrt::Windows::Foundation::IInspectable const& sender,Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&){m_viewModel.SelectSeason(sender.as<Microsoft::UI::Xaml::Controls::ComboBox>().SelectedIndex());}
@@ -31,5 +33,5 @@ namespace winrt::HaloDesktop::implementation
     void DetailPage::OnEpisodeClick(winrt::Windows::Foundation::IInspectable const& sender,Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenSources(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag()); }
     void DetailPage::OnBrowseSourcesClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.BrowseSources(); }
     void DetailPage::OnResumeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.BrowseSources(); }
-    void DetailPage::OnDownloadsClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDownloads(); }
+    void DetailPage::OnDownloadsClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.BrowseSources(); }
 }

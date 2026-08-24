@@ -12,6 +12,7 @@ namespace winrt::HaloDesktop::implementation
     struct DetailViewModel:DetailViewModelT<DetailViewModel>
     {
         explicit DetailViewModel(::HaloDesktop::Services::AppServices const& services);
+        ~DetailViewModel();void Activate();void Deactivate()noexcept;
         winrt::hstring Title()const;winrt::hstring Kicker()const;winrt::hstring MetaLine()const;winrt::hstring Synopsis()const;winrt::hstring SeasonMeta()const;winrt::hstring LibraryLabel()const;std::int32_t SeasonIndex()const noexcept;
         winrt::Windows::Foundation::IInspectable Episodes()const;winrt::Windows::Foundation::IInspectable Facts()const;winrt::Windows::Foundation::IInspectable Availability()const;winrt::Windows::Foundation::IInspectable Seasons()const;
         auto EpisodesView()const{return m_episodes;}auto FactsView()const{return m_facts;}auto AvailabilityView()const{return m_availability;}auto SeasonsView()const{return m_seasons;}
@@ -20,9 +21,9 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&);void PropertyChanged(winrt::event_token const&)noexcept;
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();winrt::Windows::Foundation::IAsyncAction ToggleLibraryAsync();void RebuildEpisodes();void RaiseState();void Raise(wchar_t const*);
-        std::shared_ptr<::HaloDesktop::Services::IMetadataService>m_metadata;std::shared_ptr<::HaloDesktop::Services::LibraryService>m_library;std::shared_ptr<::HaloDesktop::Services::NavigationService>m_navigation;
+        std::shared_ptr<::HaloDesktop::Services::IMetadataService>m_metadata;std::shared_ptr<::HaloDesktop::Services::LibraryService>m_library;std::shared_ptr<::HaloDesktop::Services::NavigationService>m_navigation;std::shared_ptr<::HaloDesktop::Services::IDownloadService>m_downloads;
         winrt::HaloDesktop::DetailNavParams m_params{nullptr};winrt::HaloDesktop::MediaDetail m_detail{nullptr};
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>m_episodes{nullptr},m_facts{nullptr},m_availability{nullptr},m_seasons{nullptr};
-        std::vector<std::int32_t>m_seasonValues;std::int32_t m_seasonIndex{};std::uint32_t m_loadVersion{};bool m_loading{},m_error{},m_inLibrary{};winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler>m_propertyChanged;
+        std::vector<std::int32_t>m_seasonValues;std::int32_t m_seasonIndex{};std::uint32_t m_loadVersion{};::HaloDesktop::Services::DownloadChangedToken m_downloadToken{};bool m_loading{},m_error{},m_inLibrary{};winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler>m_propertyChanged;
     };
 }

@@ -5,6 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
+  Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
   <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
@@ -43,7 +44,7 @@
               </StackPanel>
             </Button>
             <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="{x:Bind ViewModel.LibraryLabel, Mode=OneWay}" Click="OnLibraryClick" />
-            <Button AutomationProperties.Name="Go to downloads" Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Go to downloads">
+            <Button AutomationProperties.Name="Choose a download source" Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Choose a download source">
               <FontIcon FontSize="14" Glyph="&#xE896;" />
             </Button>
           </StackPanel>
@@ -54,7 +55,7 @@
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <ComboBox x:Name="SeasonPicker" MinWidth="140" SelectedIndex="{x:Bind ViewModel.SeasonIndex, Mode=OneWay}" SelectionChanged="OnSeasonChanged" />
             <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
-            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" ToolTipService.ToolTip="Season downloads are not available in this prototype" />
+            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Click="OnBrowseSourcesClick" Content="Choose episode source" ToolTipService.ToolTip="Choose a source for the first episode shown" />
           </Grid>
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>

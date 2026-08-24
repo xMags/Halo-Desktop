@@ -10,6 +10,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::HaloDesktop::DetailViewModel ViewModel() const;
         void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSeasonOneClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSeasonTwoClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSeasonChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&);

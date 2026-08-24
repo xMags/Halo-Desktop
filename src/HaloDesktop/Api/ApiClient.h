@@ -21,6 +21,12 @@ namespace HaloDesktop::Api
 {
     class HttpExecutor;
 
+    struct AuthenticatedDownloadRequest final
+    {
+        winrt::hstring Url;
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> Headers;
+    };
+
     // Thread-safe endpoint facade. Public discovery bypasses authentication;
     // protected endpoints draw a token and spend at most one refresh retry.
     class ApiClient final
@@ -66,6 +72,8 @@ namespace HaloDesktop::Api
             winrt::hstring bingeGroup);
         [[nodiscard]] concurrency::task<Dto::SubtitlesPayload> GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename);
         [[nodiscard]] concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> OpenAddonProxyAsync(winrt::hstring targetUrl);
+        [[nodiscard]] concurrency::task<AuthenticatedDownloadRequest> BuildAddonProxyDownloadRequestAsync(
+            winrt::hstring targetUrl);
         [[nodiscard]] concurrency::task<VideoHashResult> ComputeVideoHashAsync(winrt::hstring streamUrl);
 
     private:

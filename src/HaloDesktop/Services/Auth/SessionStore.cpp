@@ -159,6 +159,27 @@ namespace
         }
         throw std::invalid_argument{ "A complete session is required for persistence." };
     }
+
+    ::HaloDesktop::Services::Auth::StoredIdentity ParseIdentity(std::string const& raw)
+    {
+        auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
+        return {
+            .UserId = RequiredString(root, L"userId"),
+            .Username = RequiredString(root, L"username"),
+        };
+    }
+
+    std::string SerializeIdentity(::HaloDesktop::Services::Auth::StoredIdentity const& identity)
+    {
+        if (identity.UserId.empty() || identity.Username.empty())
+        {
+            throw std::invalid_argument{ "A complete identity is required for persistence." };
+        }
+        winrt::Windows::Data::Json::JsonObject root;
+        root.Insert(L"userId", winrt::Windows::Data::Json::JsonValue::CreateStringValue(identity.UserId));
+        root.Insert(L"username", winrt::Windows::Data::Json::JsonValue::CreateStringValue(identity.Username));
+        return winrt::to_string(root.Stringify());
+    }
 }
 
 namespace HaloDesktop::Services::Auth
@@ -166,7 +187,8 @@ namespace HaloDesktop::Services::Auth
     SessionStore::SessionStore()
         : m_path(std::filesystem::path{
             winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str() }
-            / L"auth-session.bin")
+            / L"auth-session.bin"),
+          m_identityPath(m_path.parent_path() / L"auth-identity.bin")
     {
     }
 
@@ -230,5 +252,93 @@ namespace HaloDesktop::Services::Auth
     {
         co_await winrt::resume_background();
         co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_path);
+    }
+
+    concurrency::task<std::optional<StoredIdentity>> SessionStore::LoadIdentityAsync()
+    {
+        co_await winrt::resume_background();
+        std::optional<std::string> raw;
+        try
+        {
+            raw = co_await ::HaloDesktop::Security::ReadProtectedTextAsync(m_identityPath);
+        }
+        catch (...)
+        {
+        }
+        if (!raw)
+        {
+            co_return std::nullopt;
+        }
+        auto wipeRaw = wil::scope_exit([&raw]() noexcept
+        {
+            if (raw && !raw->empty()) SecureZeroMemory(raw->data(), raw->size());
+        });
+        try
+        {
+            co_return ParseIdentity(*raw);
+        }
+        catch (...)
+        {
+        }
+        try { co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_identityPath); } catch (...) {}
+        co_return std::nullopt;
+    }
+
+    concurrency::task<void> SessionStore::SaveIdentityAsync(
+        StoredIdentity identity,
+        std::uint64_t generation)
+    {
+        co_await winrt::resume_background();
+        concurrency::task<void> operation;
+        {
+            std::scoped_lock const lock{ m_identityQueueMutex };
+            operation = m_identityTail.then(
+                [this, identity = std::move(identity), generation]() mutable -> concurrency::task<void>
+                {
+                    if (generation < m_identityGeneration)
+                    {
+                        return concurrency::task_from_result();
+                    }
+                    return ::HaloDesktop::Security::WriteProtectedTextAsync(
+                        m_identityPath,
+                        SerializeIdentity(identity)).then([this, generation](concurrency::task<void> write)
+                    {
+                        write.get();
+                        m_identityGeneration = generation;
+                    });
+                });
+            m_identityTail = operation.then([](concurrency::task<void> completed)
+            {
+                try { completed.get(); } catch (...) {}
+            });
+        }
+        co_await operation;
+    }
+
+    concurrency::task<void> SessionStore::ClearIdentityAsync(std::uint64_t generation)
+    {
+        co_await winrt::resume_background();
+        concurrency::task<void> operation;
+        {
+            std::scoped_lock const lock{ m_identityQueueMutex };
+            operation = m_identityTail.then([this, generation]() -> concurrency::task<void>
+            {
+                if (generation < m_identityGeneration)
+                {
+                    return concurrency::task_from_result();
+                }
+                return ::HaloDesktop::Security::DeleteProtectedFileAsync(m_identityPath).then(
+                    [this, generation](concurrency::task<void> remove)
+                    {
+                        remove.get();
+                        m_identityGeneration = generation;
+                    });
+            });
+            m_identityTail = operation.then([](concurrency::task<void> completed)
+            {
+                try { completed.get(); } catch (...) {}
+            });
+        }
+        co_await operation;
     }
 }

@@ -191,6 +191,22 @@ namespace
         record.Name = OptionalDisplayString(stream, L"name", 2048);
         record.Title = OptionalDisplayString(stream, L"title", 4096);
         record.Description = OptionalDisplayString(stream, L"description", 4096);
+        for (auto const& item : stream.GetNamedArray(L"subtitles", winrt::Windows::Data::Json::JsonArray{}))
+        {
+            if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object
+                || record.Subtitles.size() == 128)
+            {
+                continue;
+            }
+            auto const subtitle = item.GetObject();
+            auto const urlValue = OptionalHttpUrl(subtitle, L"url");
+            auto const id = OptionalDisplayString(subtitle, L"id", 512);
+            auto const lang = OptionalDisplayString(subtitle, L"lang", 32);
+            if (urlValue && id && lang)
+            {
+                record.Subtitles.push_back({ *id, *urlValue, *lang });
+            }
+        }
         if (!stream.HasKey(L"behaviorHints"))
         {
             return record;

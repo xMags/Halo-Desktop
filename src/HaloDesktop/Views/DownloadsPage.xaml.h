@@ -17,16 +17,17 @@ namespace winrt::HaloDesktop::implementation
         void OnPauseAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPauseSelectedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnResumeSelectedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnStartNowClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnCancelSelectedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnDeleteSelectedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPlaySelectedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnChooseSourceClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnManageFolderClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
         winrt::fire_and_forget ShowPauseAllDialog();
         winrt::fire_and_forget ShowCancelDialog();
         winrt::fire_and_forget ShowDeleteDialog();
+        winrt::fire_and_forget PickDownloadFolder();
 
         winrt::HaloDesktop::DownloadsViewModel m_viewModel{ nullptr };
     };

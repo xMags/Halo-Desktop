@@ -67,11 +67,34 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::UnknownVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Unknown ? Visible : Collapsed; }
 
     SourcesViewModel::SourcesViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_sources(services.Sources), m_navigation(services.Navigation), m_settings(services.SettingsSync),
+        : m_sources(services.Sources), m_navigation(services.Navigation), m_settings(services.SettingsSync), m_downloads(services.Downloads),
           m_sourceGroups(services.Sources->Groups()),
           m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_resolutionItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
+
+    SourcesViewModel::~SourcesViewModel() { Deactivate(); }
+    void SourcesViewModel::Activate()
+    {
+        if (m_downloadToken != 0) return;
+        m_downloadToken = m_downloads->AddChangedHandler([weak = get_weak()]()
+        {
+            if (auto const self = weak.get())
+            {
+                self->m_sources->RefreshDownloadStates();
+                self->m_sourceGroups = self->m_sources->Groups();
+                self->m_bestSource = self->m_sources->BestSource();
+                self->Rebuild();
+                self->RaiseState();
+            }
+        });
+    }
+    void SourcesViewModel::Deactivate() noexcept
+    {
+        if (m_downloadToken == 0) return;
+        m_downloads->RemoveChangedHandler(m_downloadToken);
+        m_downloadToken = 0;
+    }
 
     winrt::Windows::Foundation::IInspectable SourcesViewModel::Items() const { return m_items; }
     winrt::Windows::Foundation::IInspectable SourcesViewModel::ResolutionItems() const { return m_resolutionItems; }
@@ -116,6 +139,13 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::OpenPlayer(winrt::hstring const& key) { auto request=m_sources->BuildPlaybackRequest(key); if(request)m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player,request); }
     void SourcesViewModel::OpenBest() { if (m_bestSource) OpenPlayer(m_bestSource.Key()); }
     void SourcesViewModel::OpenSettings() { m_navigation->GoTo(::HaloDesktop::Services::Page::Settings); }
+    concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> SourcesViewModel::StartDownloadAsync(
+        winrt::hstring key,
+        bool replaceExisting)
+    {
+        co_return co_await m_sources->StartDownloadAsync(std::move(key), replaceExisting);
+    }
+    winrt::hstring SourcesViewModel::BestKey() const { return m_bestSource ? m_bestSource.Key() : L""; }
     winrt::event_token SourcesViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void SourcesViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
 

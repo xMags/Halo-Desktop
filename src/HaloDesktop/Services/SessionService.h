@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <optional>
+#include <functional>
 
 namespace HaloDesktop::Api
 {
@@ -13,6 +14,7 @@ namespace HaloDesktop::Api
 
 namespace HaloDesktop::Services::Auth
 {
+    class SessionStore;
     class SessionController;
     class OidcSignInFlow;
 }
@@ -30,10 +32,12 @@ namespace HaloDesktop::Services
         SessionService(
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
             std::shared_ptr<Auth::SessionController> controller,
+            std::shared_ptr<Auth::SessionStore> store,
             std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
             std::shared_ptr<NavigationService> navigation);
 
         [[nodiscard]] winrt::hstring ServerUrl() const override;
+        [[nodiscard]] winrt::hstring UserId() const override;
         [[nodiscard]] winrt::hstring UserName() const override;
         [[nodiscard]] bool IsSignedIn() const noexcept override;
         [[nodiscard]] bool IsAdmin() const noexcept override;
@@ -49,16 +53,21 @@ namespace HaloDesktop::Services
 
         [[nodiscard]] concurrency::task<void> RefreshIdentityAsync();
         void HandleSessionRejected();
+        void SetIdentityChangedHandler(std::function<void()> handler);
 
     private:
         void ClearIdentity();
+        void NotifyIdentityChanged();
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<Auth::SessionController> m_controller;
+        std::shared_ptr<Auth::SessionStore> m_store;
         std::shared_ptr<Auth::OidcSignInFlow> m_oidcSignInFlow;
         std::shared_ptr<NavigationService> m_navigation;
         std::optional<::HaloDesktop::Api::Dto::AuthConfig> m_oidcConfig;
+        winrt::hstring m_userId;
         winrt::hstring m_userName;
+        std::function<void()> m_identityChanged;
         AuthenticationMode m_mode{ AuthenticationMode::Unknown };
         bool m_isAdmin{};
     };

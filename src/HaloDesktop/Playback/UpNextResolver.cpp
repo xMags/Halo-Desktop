@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
 #include "Services/SettingsSyncService.h"
+#include "Services/ServiceInterfaces.h"
 #include "Services/StreamInfo.h"
 
 #include <atomic>
@@ -33,10 +34,11 @@ namespace HaloDesktop::Playback
 {
     UpNextResolver::UpNextResolver(
         std::shared_ptr<Api::ApiClient> api,
-        std::shared_ptr<Services::SettingsSyncService> settings)
-        : m_api(std::move(api)), m_settings(std::move(settings))
+        std::shared_ptr<Services::SettingsSyncService> settings,
+        std::shared_ptr<Services::IDownloadService> downloads)
+        : m_api(std::move(api)), m_settings(std::move(settings)), m_downloads(std::move(downloads))
     {
-        if (!m_api || !m_settings)
+        if (!m_api || !m_settings || !m_downloads)
         {
             throw std::invalid_argument("UpNextResolver requires its dependencies.");
         }
@@ -45,7 +47,7 @@ namespace HaloDesktop::Playback
     concurrency::task<std::optional<UpNextResult>> UpNextResolver::ResolveAsync(
         winrt::HaloDesktop::PlaybackRequest request)
     {
-        if (!request || request.IsLocalFile() || request.MediaType() != L"series")
+        if (!request || request.MediaType() != L"series")
         {
             co_return std::nullopt;
         }
@@ -62,6 +64,21 @@ namespace HaloDesktop::Playback
         if (!m_settings->AutoplayNextEpisode())
         {
             co_return std::nullopt;
+        }
+
+        if (request.IsLocalFile())
+        {
+            auto const next = m_downloads->OfflineNext(request.DownloadId());
+            if (!next)
+            {
+                co_return std::nullopt;
+            }
+            co_return UpNextResult{
+                nullptr,
+                *next,
+                (*next).Title(),
+                (*next).EpisodeLabel(),
+            };
         }
 
         using Payload = std::optional<Api::Dto::NextEpisodePayload>;

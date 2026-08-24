@@ -245,6 +245,23 @@ namespace HaloDesktop::Api
         for(int attempt=0;attempt<2;++attempt){winrt::Windows::Web::Http::HttpRequestMessage request{winrt::Windows::Web::Http::HttpMethod::Get(),uri};request.Headers().TryAppendWithoutValidation(L"Authorization",winrt::hstring{L"Bearer "}+*token);auto response=co_await m_executor->SendForStreamAsync(request);auto const status=static_cast<std::uint16_t>(response.StatusCode());if(status>=200&&status<300)co_return response;if(status!=401||attempt==1)throw winrt::hresult_error{ApiError::MakeHttpStatus(status),L"The subtitle proxy request failed."};token=co_await m_tokenProvider->RefreshAccessTokenAsync();if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}}
         throw winrt::hresult_error{ApiError::SessionRejected};
     }
+    concurrency::task<AuthenticatedDownloadRequest> ApiClient::BuildAddonProxyDownloadRequestAsync(
+        winrt::hstring targetUrl)
+    {
+        co_await winrt::resume_background();
+        auto const generation = m_tokenProvider->SessionGeneration();
+        auto token = co_await m_tokenProvider->AccessTokenAsync();
+        if (!token)
+        {
+            co_await m_tokenProvider->RejectSessionAsync(generation);
+            ThrowSessionRejected();
+        }
+        co_return AuthenticatedDownloadRequest{
+            .Url = Endpoint((winrt::hstring{ L"/addon-proxy?url=" }
+                + EncodeUriComponent(targetUrl)).c_str()).ToString(),
+            .Headers = { { L"Authorization", winrt::hstring{ L"Bearer " } + *token } },
+        };
+    }
     concurrency::task<VideoHashResult> ApiClient::ComputeVideoHashAsync(winrt::hstring streamUrl){co_return co_await ComputeRemoteVideoHashAsync(std::move(streamUrl),m_executor);}
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(

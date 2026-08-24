@@ -213,7 +213,9 @@ namespace winrt::HaloDesktop::implementation
         hstring quality,
         hstring codec,
         hstring size,
-        hstring subs)
+        hstring subs,
+        hstring videoId,
+        bool requiresNewSource)
         : m_id(std::move(id)),
           m_tag(std::move(tag)),
           m_name(std::move(name)),
@@ -224,7 +226,9 @@ namespace winrt::HaloDesktop::implementation
           m_quality(std::move(quality)),
           m_codec(std::move(codec)),
           m_size(std::move(size)),
-          m_subs(std::move(subs))
+          m_subs(std::move(subs)),
+          m_videoId(std::move(videoId)),
+          m_requiresNewSource(requiresNewSource)
     {
     }
 
@@ -239,6 +243,8 @@ namespace winrt::HaloDesktop::implementation
     hstring DownloadItem::Codec() const { return m_codec; }
     hstring DownloadItem::Size() const { return m_size; }
     hstring DownloadItem::Subs() const { return m_subs; }
+    hstring DownloadItem::VideoId() const { return m_videoId; }
+    bool DownloadItem::RequiresNewSource() const noexcept { return m_requiresNewSource; }
 
     winrt::event_token DownloadItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
     {

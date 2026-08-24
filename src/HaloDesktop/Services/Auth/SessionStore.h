@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <mutex>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/base.h>
@@ -40,6 +41,12 @@ namespace HaloDesktop::Services::Auth
         std::optional<StoredOidcSession> Oidc;
     };
 
+    struct StoredIdentity final
+    {
+        winrt::hstring UserId;
+        winrt::hstring Username;
+    };
+
     // Thread-safe. Storage is one current-user DPAPI file in LocalFolder.
     class SessionStore final
     {
@@ -49,8 +56,17 @@ namespace HaloDesktop::Services::Auth
         [[nodiscard]] concurrency::task<std::optional<StoredSession>> LoadAsync();
         [[nodiscard]] concurrency::task<void> SaveAsync(StoredSession session);
         [[nodiscard]] concurrency::task<void> ClearAsync();
+        [[nodiscard]] concurrency::task<std::optional<StoredIdentity>> LoadIdentityAsync();
+        [[nodiscard]] concurrency::task<void> SaveIdentityAsync(
+            StoredIdentity identity,
+            std::uint64_t generation);
+        [[nodiscard]] concurrency::task<void> ClearIdentityAsync(std::uint64_t generation);
 
     private:
         std::filesystem::path m_path;
+        std::filesystem::path m_identityPath;
+        std::mutex m_identityQueueMutex;
+        concurrency::task<void> m_identityTail{ concurrency::task_from_result() };
+        std::uint64_t m_identityGeneration{};
     };
 }

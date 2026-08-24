@@ -3,6 +3,7 @@
 
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
+#include "Services/SettingsSyncService.h"
 
 #include <algorithm>
 #include <chrono>
@@ -62,15 +63,52 @@ namespace
         auto const last = std::find_if_not(value.rbegin(), value.rend(), [](wchar_t item) { return std::iswspace(item) != 0; }).base();
         return std::wstring(first, last);
     }
+
+    std::wstring NormalizedLanguage(winrt::hstring const& language)
+    {
+        auto value = std::wstring{ language.c_str() };
+        std::transform(value.begin(), value.end(), value.begin(), [](wchar_t character)
+        {
+            return static_cast<wchar_t>(std::towlower(character));
+        });
+        if (value == L"fre") return L"fra";
+        if (value == L"ger") return L"deu";
+        if (value == L"chi") return L"zho";
+        if (value == L"cze") return L"ces";
+        if (value == L"dut") return L"nld";
+        if (value == L"gre") return L"ell";
+        if (value == L"rum") return L"ron";
+        if (value == L"slo") return L"slk";
+        return value;
+    }
+
+    bool LanguageMatches(winrt::hstring const& left, winrt::hstring const& right)
+    {
+        return NormalizedLanguage(left) == NormalizedLanguage(right);
+    }
+
+    std::map<std::wstring, std::wstring, std::less<>> DownloadHeaders(
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> const& values)
+    {
+        std::map<std::wstring, std::wstring, std::less<>> result;
+        for (auto const& [key, value] : values)
+        {
+            result.emplace(std::wstring{ key.c_str() }, std::wstring{ value.c_str() });
+        }
+        return result;
+    }
 }
 
 namespace HaloDesktop::Services
 {
-    SourceService::SourceService(std::shared_ptr<Api::ApiClient> api, std::shared_ptr<IDownloadService> downloads)
-        : m_api(std::move(api)), m_downloads(std::move(downloads)),
+    SourceService::SourceService(
+        std::shared_ptr<Api::ApiClient> api,
+        std::shared_ptr<IDownloadService> downloads,
+        std::shared_ptr<SettingsSyncService> settings)
+        : m_api(std::move(api)), m_downloads(std::move(downloads)), m_settings(std::move(settings)),
           m_groups(winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView())
     {
-        if (!m_api || !m_downloads) throw std::invalid_argument("SourceService requires its dependencies.");
+        if (!m_api || !m_downloads || !m_settings) throw std::invalid_argument("SourceService requires its dependencies.");
     }
 
     concurrency::task<void> SourceService::LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters)
@@ -192,6 +230,138 @@ namespace HaloDesktop::Services
             BuildSourceTagLine(resolved.Info));
     }
 
+    concurrency::task<DownloadStartOutcome> SourceService::StartDownloadAsync(
+        winrt::hstring key,
+        bool replaceExisting)
+    {
+        auto const found = m_records.find(std::wstring{ key.c_str() });
+        if (found == m_records.end())
+        {
+            co_return DownloadStartOutcome::Failed;
+        }
+        auto const resolved = found->second;
+        auto const& stream = resolved.Stream;
+        auto const& navigation = resolved.Navigation;
+        Downloads::DownloadStartRequest request{
+            .Media = Downloads::DownloadMedia{
+                .VideoId = std::wstring{ navigation.VideoId().c_str() },
+                .ItemId = std::wstring{ navigation.ItemId().c_str() },
+                .MediaType = std::wstring{ navigation.Type().c_str() },
+                .MetaId = navigation.MetaId().empty()
+                    ? std::nullopt
+                    : std::optional<std::wstring>{ navigation.MetaId().c_str() },
+                .Title = std::wstring{ navigation.Title().c_str() },
+                .ShowName = navigation.ShowName().empty()
+                    ? std::nullopt
+                    : std::optional<std::wstring>{ navigation.ShowName().c_str() },
+                .EpisodeLabel = navigation.EpisodeLabel().empty()
+                    ? std::nullopt
+                    : std::optional<std::wstring>{ navigation.EpisodeLabel().c_str() },
+                .Poster = navigation.Poster().empty()
+                    ? std::nullopt
+                    : std::optional<std::wstring>{ navigation.Poster().c_str() },
+                .AddonId = resolved.AddonId.empty()
+                    ? std::nullopt
+                    : std::optional<std::wstring>{ resolved.AddonId.c_str() },
+                .BingeGroup = stream.BingeGroup
+                    ? std::optional<std::wstring>{ stream.BingeGroup->c_str() }
+                    : std::nullopt,
+                .FileName = std::wstring{ resolved.Info.Filename.c_str() },
+                .VideoSize = resolved.Info.SizeBytes,
+                .VideoHash = stream.VideoHash
+                    ? std::optional<std::wstring>{ stream.VideoHash->c_str() }
+                    : std::nullopt,
+                .StreamName = stream.Name
+                    ? std::optional<std::wstring>{ stream.Name->c_str() }
+                    : std::nullopt,
+                .StreamTitle = stream.Title
+                    ? std::optional<std::wstring>{ stream.Title->c_str() }
+                    : std::nullopt,
+            },
+            .Request = Downloads::ProtectedRequest{
+                .Url = std::wstring{ stream.Url.c_str() },
+                .Headers = DownloadHeaders(stream.RequestHeaders),
+            },
+            .ReplaceExisting = replaceExisting,
+        };
+
+        try
+        {
+            auto const uiContext = winrt::apartment_context{};
+            try { co_await m_settings->LoadAsync(); } catch (...) {}
+            co_await uiContext;
+            auto const preferred = m_settings->PreferredSubtitleLanguage();
+            if (preferred)
+            {
+                std::optional<Api::Dto::SubtitleRecord> selected;
+                for (auto const& subtitle : stream.Subtitles)
+                {
+                    if (LanguageMatches(subtitle.Lang, *preferred))
+                    {
+                        selected = Api::Dto::SubtitleRecord{ subtitle.Id, subtitle.Url, subtitle.Lang };
+                        break;
+                    }
+                }
+                if (!selected)
+                {
+                    std::optional<winrt::hstring> hash;
+                    std::optional<std::uint64_t> size;
+                    if (stream.VideoHash && stream.VideoSize)
+                    {
+                        hash = stream.VideoHash;
+                        size = stream.VideoSize;
+                    }
+                    else
+                    {
+                        try
+                        {
+                            auto const computed = co_await m_api->ComputeVideoHashAsync(stream.Url);
+                            hash = computed.Hash;
+                            size = computed.Size;
+                        }
+                        catch (...)
+                        {
+                        }
+                    }
+                    auto const payload = co_await m_api->GetSubtitlesAsync(
+                        navigation.Type(),
+                        navigation.VideoId(),
+                        hash,
+                        size,
+                        stream.Filename);
+                    for (auto const& group : payload.Results)
+                    {
+                        auto const match = std::find_if(group.Subtitles.begin(), group.Subtitles.end(),
+                            [&preferred](auto const& subtitle)
+                            {
+                                return LanguageMatches(subtitle.Lang, *preferred);
+                            });
+                        if (match != group.Subtitles.end())
+                        {
+                            selected = *match;
+                            break;
+                        }
+                    }
+                }
+                if (selected)
+                {
+                    auto const proxy = co_await m_api->BuildAddonProxyDownloadRequestAsync(selected->Url);
+                    request.Request.Subtitle = Downloads::SubtitleRequest{
+                        .Url = std::wstring{ proxy.Url.c_str() },
+                        .Language = std::wstring{ selected->Lang.c_str() },
+                        .Id = std::wstring{ selected->Id.c_str() },
+                        .Headers = DownloadHeaders(proxy.Headers),
+                    };
+                }
+            }
+            co_return co_await m_downloads->StartDownloadAsync(std::move(request));
+        }
+        catch (...)
+        {
+            co_return DownloadStartOutcome::Failed;
+        }
+    }
+
     winrt::hstring SourceService::ResolveSummary() const { return m_summary; }
 
     std::int32_t SourceService::Count(winrt::hstring const& filter) const noexcept
@@ -202,6 +372,44 @@ namespace HaloDesktop::Services
             for (auto const& source : group.Sources()) if (Matches(source, filter)) ++count;
         }
         return count;
+    }
+
+    void SourceService::RefreshDownloadStates()
+    {
+        std::vector<winrt::HaloDesktop::SourceGroup> groups;
+        groups.reserve(m_groups.Size());
+        for (auto const& group : m_groups)
+        {
+            std::vector<winrt::HaloDesktop::StreamSource> sources;
+            sources.reserve(group.Sources().Size());
+            for (auto const& source : group.Sources())
+            {
+                auto const found = m_records.find(std::wstring{ source.Key().c_str() });
+                if (found != m_records.end())
+                {
+                    sources.push_back(MakeDisplaySource(
+                        found->second,
+                        m_downloads->HasCompleted(found->second.Navigation.VideoId())));
+                }
+            }
+            groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(
+                group.AddonId(),
+                group.Name(),
+                group.Note(),
+                group.Count(),
+                winrt::single_threaded_vector(std::move(sources)).GetView()));
+        }
+        m_groups = winrt::single_threaded_vector(std::move(groups)).GetView();
+        if (m_best)
+        {
+            auto const found = m_records.find(std::wstring{ m_best.Key().c_str() });
+            if (found != m_records.end())
+            {
+                m_best = MakeDisplaySource(
+                    found->second,
+                    m_downloads->HasCompleted(found->second.Navigation.VideoId()));
+            }
+        }
     }
 
     std::optional<ResolvedSourceRecord> SourceService::NativeRecord(winrt::hstring const& key) const

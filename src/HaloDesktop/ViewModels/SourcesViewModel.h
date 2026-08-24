@@ -50,6 +50,9 @@ namespace winrt::HaloDesktop::implementation
     struct SourcesViewModel : SourcesViewModelT<SourcesViewModel>
     {
         explicit SourcesViewModel(::HaloDesktop::Services::AppServices const& services);
+        ~SourcesViewModel();
+        void Activate();
+        void Deactivate() noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Items() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ResolutionItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable QualityItems() const;
@@ -87,6 +90,10 @@ namespace winrt::HaloDesktop::implementation
         void OpenPlayer(winrt::hstring const& key);
         void OpenBest();
         void OpenSettings();
+        [[nodiscard]] concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> StartDownloadAsync(
+            winrt::hstring key,
+            bool replaceExisting);
+        [[nodiscard]] winrt::hstring BestKey() const;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
@@ -101,6 +108,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::ISourceService> m_sources;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
+        std::shared_ptr<::HaloDesktop::Services::IDownloadService> m_downloads;
         winrt::HaloDesktop::SourcesNavParams m_parameters{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_sourceGroups{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };
@@ -112,6 +120,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_loading{};
         bool m_error{};
         bool m_teachingTipOpen{ true };
+        ::HaloDesktop::Services::DownloadChangedToken m_downloadToken{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }

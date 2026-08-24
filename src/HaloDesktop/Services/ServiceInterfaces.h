@@ -1,9 +1,12 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Services/Downloads/DownloadTypes.h"
 
 #include <cstdint>
 #include <functional>
+#include <filesystem>
+#include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/HaloDesktop.h>
@@ -21,6 +24,14 @@ namespace HaloDesktop::Services
 
     using DownloadChangedToken = std::uint64_t;
     using DownloadChangedHandler = std::function<void()>;
+
+    enum class DownloadStartOutcome
+    {
+        Started,
+        AlreadyExists,
+        ReplacementRequired,
+        Failed,
+    };
 
     class ICatalogService
     {
@@ -55,8 +66,12 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::StreamSource BestSource() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const = 0;
+        [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+            winrt::hstring key,
+            bool replaceExisting) = 0;
         [[nodiscard]] virtual winrt::hstring ResolveSummary() const = 0;
         [[nodiscard]] virtual std::int32_t Count(winrt::hstring const& filter) const noexcept = 0;
+        virtual void RefreshDownloadStates() = 0;
     };
 
     class IDownloadService
@@ -69,9 +84,18 @@ namespace HaloDesktop::Services
         virtual void ResumeAll() = 0;
         virtual bool PauseTransfer(winrt::hstring const& id) = 0;
         virtual bool ResumeTransfer(winrt::hstring const& id) = 0;
-        virtual bool StartNow(winrt::hstring const& id) = 0;
         virtual bool CancelTransfer(winrt::hstring const& id) = 0;
         virtual bool DeleteReady(winrt::hstring const& id) = 0;
+        [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+            Downloads::DownloadStartRequest request) = 0;
+        [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(
+            winrt::hstring const& id) const = 0;
+        [[nodiscard]] virtual winrt::HaloDesktop::SourcesNavParams BuildSourcesNavigation(
+            winrt::hstring const& id) const = 0;
+        [[nodiscard]] virtual std::optional<winrt::HaloDesktop::PlaybackRequest> OfflineNext(
+            winrt::hstring const& id) const = 0;
+        [[nodiscard]] virtual std::optional<std::filesystem::path> SubtitlePath(
+            winrt::hstring const& id) const = 0;
         [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
         [[nodiscard]] virtual bool IsPausedAll() const noexcept = 0;
         [[nodiscard]] virtual bool HasCompleted(winrt::hstring const& videoId) const noexcept = 0;
@@ -81,6 +105,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Transfers() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Ready() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<double> Throughput() const = 0;
+        [[nodiscard]] virtual std::uint64_t StoredBytes() const noexcept = 0;
+        [[nodiscard]] virtual std::uint64_t InFlightBytes() const noexcept = 0;
+        [[nodiscard]] virtual std::optional<std::uint64_t> FreeBytes() const noexcept = 0;
+        [[nodiscard]] virtual std::filesystem::path DownloadDirectory() const = 0;
+        virtual void SetDownloadDirectory(std::filesystem::path directory) = 0;
         virtual DownloadChangedToken AddChangedHandler(DownloadChangedHandler handler) = 0;
         virtual void RemoveChangedHandler(DownloadChangedToken token) noexcept = 0;
     };
@@ -105,6 +134,7 @@ namespace HaloDesktop::Services
     public:
         virtual ~ISessionService() = default;
         [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
+        [[nodiscard]] virtual winrt::hstring UserId() const = 0;
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
         [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
         [[nodiscard]] virtual bool IsAdmin() const noexcept = 0;

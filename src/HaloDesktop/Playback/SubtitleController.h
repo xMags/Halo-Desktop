@@ -3,6 +3,7 @@
 #include "Playback/IPlaybackEngine.h"
 
 #include <functional>
+#include <filesystem>
 #include <memory>
 #include <optional>
 #include <string>
@@ -12,7 +13,7 @@
 #include <winrt/HaloDesktop.h>
 
 namespace HaloDesktop::Api { class ApiClient; }
-namespace HaloDesktop::Services { class SettingsSyncService; }
+namespace HaloDesktop::Services { class IDownloadService; class SettingsSyncService; }
 
 namespace HaloDesktop::Playback
 {
@@ -23,7 +24,11 @@ namespace HaloDesktop::Playback
     class SubtitleController final : public std::enable_shared_from_this<SubtitleController>
     {
     public:
-        SubtitleController(std::shared_ptr<Api::ApiClient> api,std::shared_ptr<IPlaybackEngine> engine,std::shared_ptr<Services::SettingsSyncService> settings);
+        SubtitleController(
+            std::shared_ptr<Api::ApiClient> api,
+            std::shared_ptr<IPlaybackEngine> engine,
+            std::shared_ptr<Services::SettingsSyncService> settings,
+            std::shared_ptr<Services::IDownloadService> downloads);
         ~SubtitleController();
         [[nodiscard]] concurrency::task<void> PrepareAsync(winrt::HaloDesktop::PlaybackRequest request);
         [[nodiscard]] concurrency::task<void> SelectAsync(winrt::hstring key,bool deliberate=true);
@@ -41,8 +46,9 @@ namespace HaloDesktop::Playback
         [[nodiscard]] std::optional<winrt::hstring> PreferredKey()const;
         [[nodiscard]] concurrency::task<std::wstring> DownloadAsync(NativeChoice const& choice);
 
-        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;
+        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};std::unordered_map<std::wstring,NativeChoice>m_choices;std::vector<AddonSubtitleDisplay>m_display;
+        std::optional<std::filesystem::path> m_localSubtitlePath;
         std::function<void()>m_changed;PlaybackChangedToken m_engineToken{};std::uint64_t m_appliedSerial{},m_generation{};bool m_selecting{};
     };
 

@@ -7,7 +7,6 @@
 #include "SettingsViewModel.g.cpp"
 #endif
 
-#include "Services/SampleData.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -85,7 +84,7 @@ namespace winrt::HaloDesktop::implementation
         label << static_cast<std::int32_t>(std::lround(m_subtitleSize)) << L"%";
         return winrt::hstring(label.str());
     }
-    winrt::hstring SettingsViewModel::PreviewText() const { return ::HaloDesktop::Services::SampleData::Copy::PlayerSubtitle; }
+    winrt::hstring SettingsViewModel::PreviewText() const { return L"Subtitle preview text"; }
     double SettingsViewModel::PreviewFontSize() const noexcept { return 15.0 * m_subtitleSize / 100.0; }
     Microsoft::UI::Xaml::Media::FontFamily SettingsViewModel::PreviewFontFamily() const
     {

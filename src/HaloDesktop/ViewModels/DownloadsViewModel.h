@@ -29,6 +29,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DownloadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QueuedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FailedVisibility() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
@@ -80,22 +81,28 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring SelectedSize() const;
         [[nodiscard]] winrt::hstring SelectedSubs() const;
         [[nodiscard]] winrt::hstring ReadyActionLabel() const;
+        [[nodiscard]] winrt::hstring StorageLine() const;
+        [[nodiscard]] winrt::hstring FreeLine() const;
+        [[nodiscard]] winrt::hstring StoredLine() const;
+        [[nodiscard]] winrt::hstring InFlightLine() const;
+        [[nodiscard]] winrt::hstring PeakText() const;
+        [[nodiscard]] double StorageFraction() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedTransferVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedReadyVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PauseVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResumeVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility StartNowVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ChooseSourceVisibility() const noexcept;
         void Select(winrt::hstring const& id);
         void PauseAll();
         void ResumeAll();
         void PauseSelected();
         void ResumeSelected();
-        void StartSelectedNow();
         void CancelSelected();
         void DeleteSelected();
         void OpenPlayer();
-        void OpenSettings();
+        void ChooseSource();
+        void SetDownloadDirectory(std::filesystem::path directory);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
@@ -116,7 +123,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_ready{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_chartBars{ nullptr };
         winrt::HaloDesktop::DownloadRowViewModel m_selected{ nullptr };
-        winrt::hstring m_selectedId{ L"r1" };
+        winrt::hstring m_selectedId;
         ::HaloDesktop::Services::DownloadChangedToken m_changedToken{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };

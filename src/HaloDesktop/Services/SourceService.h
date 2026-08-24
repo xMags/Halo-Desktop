@@ -16,6 +16,8 @@ namespace HaloDesktop::Api
 
 namespace HaloDesktop::Services
 {
+    class SettingsSyncService;
+
     struct ResolvedSourceRecord final
     {
         winrt::hstring Key;
@@ -30,15 +32,22 @@ namespace HaloDesktop::Services
     class SourceService final : public ISourceService
     {
     public:
-        SourceService(std::shared_ptr<Api::ApiClient> api, std::shared_ptr<IDownloadService> downloads);
+        SourceService(
+            std::shared_ptr<Api::ApiClient> api,
+            std::shared_ptr<IDownloadService> downloads,
+            std::shared_ptr<SettingsSyncService> settings);
 
         [[nodiscard]] concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const override;
         [[nodiscard]] winrt::HaloDesktop::StreamSource BestSource() const override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const override;
+        [[nodiscard]] concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+            winrt::hstring key,
+            bool replaceExisting) override;
         [[nodiscard]] winrt::hstring ResolveSummary() const override;
         [[nodiscard]] std::int32_t Count(winrt::hstring const& filter) const noexcept override;
+        void RefreshDownloadStates() override;
 
         [[nodiscard]] std::optional<ResolvedSourceRecord> NativeRecord(winrt::hstring const& key) const;
 
@@ -47,6 +56,7 @@ namespace HaloDesktop::Services
 
         std::shared_ptr<Api::ApiClient> m_api;
         std::shared_ptr<IDownloadService> m_downloads;
+        std::shared_ptr<SettingsSyncService> m_settings;
         std::unordered_map<std::wstring, ResolvedSourceRecord> m_records;
         std::vector<winrt::hstring> m_orderedKeys;
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_groups{ nullptr };

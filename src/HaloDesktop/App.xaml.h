@@ -14,6 +14,7 @@ namespace HaloDesktop::Api
 
 namespace HaloDesktop::Services
 {
+    class DownloadService;
     class QueryCache;
     class SessionService;
 }
@@ -27,12 +28,10 @@ namespace HaloDesktop::Services::Auth
     class SessionStore;
 }
 
-#if defined(_DEBUG)
 namespace HaloDesktop::Services::Downloads
 {
     class TransferEngine;
 }
-#endif
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -42,12 +41,10 @@ namespace winrt::HaloDesktop::implementation
 
         void OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const&);
         static ::HaloDesktop::Services::AppServices& Services();
+        static Microsoft::UI::Xaml::Window Window();
 
     private:
         winrt::Windows::Foundation::IAsyncAction LaunchAsync();
-#if defined(_DEBUG)
-        void StartDownloadProbe(winrt::hstring const& arguments);
-#endif
 
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> m_httpExecutor;
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
@@ -58,9 +55,8 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::Auth::OidcSignInFlow> m_oidcSignInFlow;
         std::shared_ptr<::HaloDesktop::Services::Auth::SessionController> m_sessionController;
         std::shared_ptr<::HaloDesktop::Services::SessionService> m_sessionService;
-#if defined(_DEBUG)
-        std::shared_ptr<::HaloDesktop::Services::Downloads::TransferEngine> m_downloadProbe;
-#endif
+        std::shared_ptr<::HaloDesktop::Services::Downloads::TransferEngine> m_downloadEngine;
+        std::shared_ptr<::HaloDesktop::Services::DownloadService> m_downloadService;
         ::HaloDesktop::Services::AppServices m_services;
         winrt::Microsoft::UI::Xaml::Window m_window{ nullptr };
     };
