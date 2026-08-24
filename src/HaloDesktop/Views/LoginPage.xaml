@@ -142,7 +142,7 @@
 
       <!-- Signed in, about to hand over to the shell -->
       <StackPanel Visibility="{x:Bind ViewModel.SignedInVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Signed in" />
+        <TextBlock Style="{StaticResource LoginTitle}" Text="You’re all set" />
         <StackPanel
           Margin="0,20,0,0"
           HorizontalAlignment="Center"
@@ -160,42 +160,19 @@
               FontWeight="SemiBold"
               Foreground="{ThemeResource HaloText1Brush}"
               Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" />
-            <TextBlock Style="{StaticResource HaloMonoData}">
-              <Run
-                FontFamily="{StaticResource HaloMonoBoldFont}"
-                Foreground="{ThemeResource HaloAccentBrush}"
-                Text="PREMIUM" />
-              <Run Text=" · " />
-              <Run Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-            </TextBlock>
+            <TextBlock Style="{StaticResource HaloMonoData}" Text="PREMIUM" />
           </StackPanel>
-        </StackPanel>
-        <StackPanel
-          Margin="0,16,0,0"
-          HorizontalAlignment="Center"
-          Orientation="Horizontal"
-          Spacing="8">
-          <Ellipse
-            Width="7"
-            Height="7"
-            VerticalAlignment="Center"
-            Fill="{ThemeResource HaloSuccessBrush}" />
-          <TextBlock
-            FontFamily="{StaticResource HaloMonoFont}"
-            FontSize="10.5"
-            Foreground="{ThemeResource HaloSuccessBrush}"
-            Text="SESSION SAVED ON THIS DEVICE" />
         </StackPanel>
         <TextBlock
           Margin="0,18,0,0"
           Style="{StaticResource LoginBody}"
-          Text="Halo remembers this machine. You will not see this screen again until you sign out." />
+          Text="Halo will remember this device until you sign out." />
         <ProgressBar Height="3" Margin="0,22,0,0" IsIndeterminate="True" />
         <TextBlock
           Margin="0,10,0,0"
           HorizontalAlignment="Center"
           Style="{StaticResource HaloMonoData}"
-          Text="OPENING YOUR LIBRARY" />
+          Text="Opening your library…" />
       </StackPanel>
 
       <!-- Declined at the provider -->
