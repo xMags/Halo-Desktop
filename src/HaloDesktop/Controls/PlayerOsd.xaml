@@ -93,13 +93,16 @@
           <TextBlock Grid.Column="1" Padding="0,0,0,8" VerticalAlignment="Bottom" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="#70FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · ESC EXIT" />
         </Grid>
         <Grid Height="32" Margin="0,4,0,0">
-          <ProgressBar Height="6" Margin="8,0" VerticalAlignment="Center" Background="Transparent" Foreground="#4DFFFFFF" Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}" Value="{x:Bind ViewModel.BufferedPosition, Mode=OneWay}" />
+          <Border Height="6" Margin="8,0" VerticalAlignment="Center" Background="#29FFFFFF" CornerRadius="3" IsHitTestVisible="False" />
+          <ProgressBar Height="6" Margin="8,0" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="3" Foreground="#4DFFFFFF" IsHitTestVisible="False" Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}" Value="{x:Bind ViewModel.BufferedPosition, Mode=OneWay}" />
+          <ProgressBar Height="6" Margin="8,0" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="3" Foreground="#FF60CDFF" IsHitTestVisible="False" Maximum="{Binding ElementName=SeekSlider, Path=Maximum}" Value="{Binding ElementName=SeekSlider, Path=Value}" />
           <Slider
             x:Name="SeekSlider"
             Height="32"
             AutomationProperties.Name="Seek position"
-            Background="#29FFFFFF"
-            Foreground="#FF60CDFF"
+            Background="Transparent"
+            CornerRadius="3"
+            Foreground="Transparent"
             IsThumbToolTipEnabled="False"
             Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}"
             Minimum="0"
@@ -108,12 +111,14 @@
               <x:Double x:Key="SliderTrackThemeHeight">6</x:Double>
               <x:Double x:Key="SliderHorizontalThumbWidth">16</x:Double>
               <x:Double x:Key="SliderHorizontalThumbHeight">16</x:Double>
-              <SolidColorBrush x:Key="SliderTrackFill" Color="#29FFFFFF" />
-              <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="#3DFFFFFF" />
-              <SolidColorBrush x:Key="SliderTrackFillPressed" Color="#52FFFFFF" />
-              <SolidColorBrush x:Key="SliderTrackValueFill" Color="#FF60CDFF" />
-              <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="#FF60CDFF" />
-              <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="#FF4CC2FF" />
+              <SolidColorBrush x:Key="SliderTrackFill" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackFillPointerOver" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackFillPressed" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackFillDisabled" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackValueFill" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackValueFillPointerOver" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackValueFillPressed" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderTrackValueFillDisabled" Color="Transparent" />
               <SolidColorBrush x:Key="SliderThumbBackground" Color="#FFFFFFFF" />
               <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FFFFFFFF" />
               <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FFFFFFFF" />
