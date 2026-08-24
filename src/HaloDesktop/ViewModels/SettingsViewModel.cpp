@@ -7,7 +7,6 @@
 #include "SettingsViewModel.g.cpp"
 #endif
 
-#include "Services/NavigationService.h"
 #include "Services/SampleData.h"
 #include "ViewModels/ObservableHelper.h"
 
@@ -41,7 +40,6 @@ namespace winrt::HaloDesktop::implementation
         : m_session(services.Session),
           m_theme(services.Theme),
           m_addonService(services.Addons),
-          m_navigation(services.Navigation),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         Refresh();
@@ -171,9 +169,15 @@ namespace winrt::HaloDesktop::implementation
     }
     void SettingsViewModel::SignOut()
     {
-        m_session->SignOut();
+        static_cast<void>(RunSignOutAsync());
+    }
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::RunSignOutAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        co_await m_session->SignOutAsync();
+        co_await uiContext;
         Refresh();
-        m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
     }
     winrt::event_token SettingsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void SettingsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }

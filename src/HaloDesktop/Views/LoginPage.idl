@@ -4,14 +4,25 @@ namespace HaloDesktop
     {
         String ServerHost { get; };
         String DisplayName { get; };
-        Microsoft.UI.Xaml.Visibility IdleVisibility { get; };
+        String Username;
+        String LocalErrorText { get; };
+        String WaitingTitle { get; };
+        String WaitingBody { get; };
+        String WaitingStatus { get; };
+        Microsoft.UI.Xaml.Visibility DiscoveringVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LocalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility OidcVisibility { get; };
         Microsoft.UI.Xaml.Visibility WaitingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WaitingCancelVisibility { get; };
         Microsoft.UI.Xaml.Visibility SignedInVisibility { get; };
         Microsoft.UI.Xaml.Visibility DeclinedVisibility { get; };
         Microsoft.UI.Xaml.Visibility ExpiredVisibility { get; };
         Microsoft.UI.Xaml.Visibility UnreachableVisibility { get; };
         Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LocalErrorVisibility { get; };
         String DetailsGlyph { get; };
+        void RetryDiscovery();
+        void StartLocalSignIn(String password);
         void StartSignIn();
         void Reopen();
         void Cancel();

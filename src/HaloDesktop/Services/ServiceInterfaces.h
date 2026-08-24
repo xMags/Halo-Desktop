@@ -2,12 +2,21 @@
 
 #include <cstdint>
 #include <functional>
+#include <pplawait.h>
+#include <ppltasks.h>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 
 namespace HaloDesktop::Services
 {
+    enum class AuthenticationMode
+    {
+        Unknown,
+        Local,
+        Oidc,
+    };
+
     using DownloadChangedToken = std::uint64_t;
     using DownloadChangedHandler = std::function<void()>;
 
@@ -80,10 +89,15 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
         [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
-        // Hands sign-in to the browser and completes when the server answers.
-        // A Succeeded outcome has already persisted the session before it returns.
-        virtual winrt::Windows::Foundation::IAsyncOperation<winrt::HaloDesktop::SignInOutcome>
+        [[nodiscard]] virtual bool IsAdmin() const noexcept = 0;
+        [[nodiscard]] virtual AuthenticationMode Mode() const noexcept = 0;
+        [[nodiscard]] virtual std::uint64_t Generation() const noexcept = 0;
+        [[nodiscard]] virtual concurrency::task<void> RestoreAsync() = 0;
+        [[nodiscard]] virtual concurrency::task<AuthenticationMode> DiscoverAuthenticationAsync() = 0;
+        [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
+            SignInLocalAsync(winrt::hstring username, winrt::hstring password) = 0;
+        [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() = 0;
-        virtual void SignOut() = 0;
+        [[nodiscard]] virtual concurrency::task<void> SignOutAsync() = 0;
     };
 }

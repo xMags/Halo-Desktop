@@ -70,12 +70,12 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
+        winrt::Windows::Foundation::IAsyncAction RunSignOutAsync();
         void SynchronizeAddons();
         void Raise(wchar_t const* propertyName);
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
-        std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_addons{ nullptr };
         winrt::hstring m_serverUrl;
         winrt::hstring m_userName;

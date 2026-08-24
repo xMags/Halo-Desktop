@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Api/ApiClient.h"
+#include "Api/ApiError.h"
 #include "Api/HttpExecutor.h"
+#include "Services/Auth/ITokenProvider.h"
 
 #include <chrono>
 #include <stdexcept>
@@ -36,13 +38,15 @@ namespace HaloDesktop::Api
 {
     ApiClient::ApiClient(
         winrt::hstring baseUrl,
-        std::shared_ptr<HttpExecutor> executor)
+        std::shared_ptr<HttpExecutor> executor,
+        std::shared_ptr<::HaloDesktop::Services::Auth::ITokenProvider> tokenProvider)
         : m_baseUrl(NormalizeBaseUrl(baseUrl)),
-          m_executor(std::move(executor))
+          m_executor(std::move(executor)),
+          m_tokenProvider(std::move(tokenProvider))
     {
-        if (!m_executor)
+        if (!m_executor || !m_tokenProvider)
         {
-            throw std::invalid_argument{ "ApiClient requires an HTTP executor." };
+            throw std::invalid_argument{ "ApiClient requires HTTP and token-provider dependencies." };
         }
     }
 
@@ -73,6 +77,83 @@ namespace HaloDesktop::Api
             winrt::Windows::Web::Http::HttpMethod::Get(),
             Endpoint(L"/auth/config"));
         co_return Mappers::ParseAuthConfig(value);
+    }
+
+    concurrency::task<Dto::Me> ApiClient::GetMeAsync()
+    {
+        co_await winrt::resume_background();
+        auto const value = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(),
+            L"/auth/me");
+        co_return Mappers::ParseMe(value);
+    }
+
+    concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(
+        winrt::Windows::Web::Http::HttpMethod method,
+        wchar_t const* path,
+        std::optional<winrt::hstring> body)
+    {
+        co_await winrt::resume_background();
+
+        auto const generation = m_tokenProvider->SessionGeneration();
+        auto token = co_await m_tokenProvider->AccessTokenAsync();
+        if (!token)
+        {
+            co_await m_tokenProvider->RejectSessionAsync(generation);
+            ThrowSessionRejected();
+        }
+
+        auto send = [this, &method, path, &body](winrt::hstring const& bearer)
+        {
+            return m_executor->SendJsonAsync(
+                method,
+                Endpoint(path),
+                body,
+                { { L"Authorization", winrt::hstring{ L"Bearer " } + bearer } });
+        };
+
+        try
+        {
+            co_return co_await send(*token);
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            auto const status = ApiError::HttpStatus(error.code());
+            if (!status || *status != 401)
+            {
+                throw;
+            }
+        }
+
+        token = co_await m_tokenProvider->RefreshAccessTokenAsync();
+        if (!token)
+        {
+            co_await m_tokenProvider->RejectSessionAsync(generation);
+            ThrowSessionRejected();
+        }
+
+        try
+        {
+            co_return co_await send(*token);
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            auto const status = ApiError::HttpStatus(error.code());
+            if (!status || *status != 401)
+            {
+                throw;
+            }
+        }
+
+        co_await m_tokenProvider->RejectSessionAsync(generation);
+        ThrowSessionRejected();
+    }
+
+    void ApiClient::ThrowSessionRejected()
+    {
+        throw winrt::hresult_error{
+            ApiError::SessionRejected,
+            L"The session is no longer valid." };
     }
 
     winrt::Windows::Foundation::Uri ApiClient::Endpoint(wchar_t const* path) const

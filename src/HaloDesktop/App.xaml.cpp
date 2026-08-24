@@ -7,6 +7,9 @@
 #include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
+#include "Services/Auth/LocalAuthSession.h"
+#include "Services/Auth/SessionController.h"
+#include "Services/Auth/SessionStore.h"
 #include "Services/NavigationService.h"
 #include "Services/QueryCache.h"
 #include "Services/SessionService.h"
@@ -21,18 +24,41 @@ namespace winrt::HaloDesktop::implementation
     App::App()
     {
         m_httpExecutor = std::make_shared<::HaloDesktop::Api::HttpExecutor>();
+        m_queryCache = std::make_shared<::HaloDesktop::Services::QueryCache>();
+        m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
+        m_sessionStore = std::make_shared<::HaloDesktop::Services::Auth::SessionStore>();
+        m_localAuthSession = std::make_shared<::HaloDesktop::Services::Auth::LocalAuthSession>(
+            ::HaloDesktop::Config::ServerBaseUrl,
+            m_httpExecutor,
+            m_sessionStore);
+        m_sessionController = std::make_shared<::HaloDesktop::Services::Auth::SessionController>(
+            m_sessionStore,
+            m_localAuthSession,
+            m_queryCache,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_apiClient = std::make_shared<::HaloDesktop::Api::ApiClient>(
             ::HaloDesktop::Config::ServerBaseUrl,
-            m_httpExecutor);
-        m_queryCache = std::make_shared<::HaloDesktop::Services::QueryCache>();
+            m_httpExecutor,
+            m_sessionController);
+        m_sessionService = std::make_shared<::HaloDesktop::Services::SessionService>(
+            m_apiClient,
+            m_sessionController,
+            m_services.Navigation);
+        std::weak_ptr<::HaloDesktop::Services::SessionService> weakSession = m_sessionService;
+        m_sessionController->SetRejectedHandler([weakSession]()
+        {
+            if (auto const session = weakSession.lock())
+            {
+                session->HandleSessionRejected();
+            }
+        });
 
         m_services.Catalog = std::make_shared<::HaloDesktop::Services::MockCatalogService>();
         m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
         m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();
         m_services.Downloads = std::make_shared<::HaloDesktop::Services::MockDownloadService>();
         m_services.Addons = std::make_shared<::HaloDesktop::Services::MockAddonService>();
-        m_services.Session = std::make_shared<::HaloDesktop::Services::SessionService>();
-        m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
+        m_services.Session = m_sessionService;
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>();
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>();
@@ -62,7 +88,28 @@ namespace winrt::HaloDesktop::implementation
 
     void App::OnLaunched([[maybe_unused]] Microsoft::UI::Xaml::LaunchActivatedEventArgs const& e)
     {
+        static_cast<void>(LaunchAsync());
+    }
+
+    winrt::Windows::Foundation::IAsyncAction App::LaunchAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        try
+        {
+            co_await m_sessionService->RestoreAsync();
+        }
+        catch (...)
+        {
+        }
+        co_await uiContext;
+
         m_window = winrt::make<MainWindow>();
         m_window.Activate();
+        if (m_sessionService->IsSignedIn())
+        {
+            static_cast<void>(m_sessionService->RefreshIdentityAsync());
+        }
     }
+
 }

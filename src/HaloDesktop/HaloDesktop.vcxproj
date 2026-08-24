@@ -167,6 +167,10 @@
     <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
+    <ClInclude Include="Services\Auth\ITokenProvider.h" />
+    <ClInclude Include="Services\Auth\LocalAuthSession.h" />
+    <ClInclude Include="Services\Auth\SessionController.h" />
+    <ClInclude Include="Services\Auth\SessionStore.h" />
     <ClInclude Include="Services\MockDownloadService.h" />
     <ClInclude Include="Services\MockServices.h" />
     <ClInclude Include="Services\NavigationService.h" />
@@ -284,6 +288,9 @@
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp" />
+    <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
+    <ClCompile Include="Services\Auth\SessionController.cpp" />
+    <ClCompile Include="Services\Auth\SessionStore.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
     <ClCompile Include="Services\QueryCache.cpp" />

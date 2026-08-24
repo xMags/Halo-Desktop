@@ -2,27 +2,58 @@
 
 #include "Services/ServiceInterfaces.h"
 
+#include <memory>
+
+namespace HaloDesktop::Api
+{
+    class ApiClient;
+}
+
+namespace HaloDesktop::Services::Auth
+{
+    class SessionController;
+}
+
 namespace HaloDesktop::Services
 {
-    // UI-thread-only. The server is fixed at build time: there is no manual
-    // server selection, so only the signed-in identity is persisted. Sign-in is
-    // handed to the browser, so no credential ever reaches this process.
+    class NavigationService;
+
+    // UI-thread-only facade over the thread-safe session authority. Restore is
+    // a local DPAPI read; identity hydration is deliberately separate so an
+    // offline launch never waits for the network.
     class SessionService final : public ISessionService
     {
     public:
-        SessionService();
+        SessionService(
+            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<Auth::SessionController> controller,
+            std::shared_ptr<NavigationService> navigation);
 
         [[nodiscard]] winrt::hstring ServerUrl() const override;
         [[nodiscard]] winrt::hstring UserName() const override;
         [[nodiscard]] bool IsSignedIn() const noexcept override;
-        winrt::Windows::Foundation::IAsyncOperation<winrt::HaloDesktop::SignInOutcome>
+        [[nodiscard]] bool IsAdmin() const noexcept override;
+        [[nodiscard]] AuthenticationMode Mode() const noexcept override;
+        [[nodiscard]] std::uint64_t Generation() const noexcept override;
+        [[nodiscard]] concurrency::task<void> RestoreAsync() override;
+        [[nodiscard]] concurrency::task<AuthenticationMode> DiscoverAuthenticationAsync() override;
+        [[nodiscard]] concurrency::task<winrt::HaloDesktop::SignInOutcome>
+            SignInLocalAsync(winrt::hstring username, winrt::hstring password) override;
+        [[nodiscard]] concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() override;
-        void SignOut() override;
+        [[nodiscard]] concurrency::task<void> SignOutAsync() override;
+
+        [[nodiscard]] concurrency::task<void> RefreshIdentityAsync();
+        void HandleSessionRejected();
 
     private:
-        void PersistSession();
+        void ClearIdentity();
 
+        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<Auth::SessionController> m_controller;
+        std::shared_ptr<NavigationService> m_navigation;
         winrt::hstring m_userName;
-        bool m_isSignedIn{};
+        AuthenticationMode m_mode{ AuthenticationMode::Unknown };
+        bool m_isAdmin{};
     };
 }

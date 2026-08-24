@@ -63,8 +63,63 @@
           Text="HALO" />
       </StackPanel>
 
-      <!-- Idle -->
-      <StackPanel Visibility="{x:Bind ViewModel.IdleVisibility, Mode=OneWay}">
+      <!-- Discovering the server's authentication mode -->
+      <StackPanel Visibility="{x:Bind ViewModel.DiscoveringVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Connecting to Halo" />
+        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+        <ProgressRing
+          Width="22"
+          Height="22"
+          HorizontalAlignment="Center"
+          Margin="0,22,0,0"
+          IsActive="True" />
+        <TextBlock
+          Margin="0,14,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="Checking how this server signs you in." />
+      </StackPanel>
+
+      <!-- Local username and password mode -->
+      <StackPanel Visibility="{x:Bind ViewModel.LocalVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign in to Halo" />
+        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+        <TextBlock
+          Margin="0,14,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="Use the account created on your Halo server." />
+        <TextBox
+          x:Name="UsernameInput"
+          Margin="0,22,0,0"
+          AutomationProperties.Name="Username"
+          Header="Username"
+          MaxLength="512"
+          Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+        <PasswordBox
+          x:Name="PasswordInput"
+          Margin="0,12,0,0"
+          AutomationProperties.Name="Password"
+          Header="Password"
+          KeyDown="OnPasswordKeyDown"
+          MaxLength="4096"
+          PasswordRevealMode="Peek" />
+        <TextBlock
+          Margin="0,10,0,0"
+          Foreground="{ThemeResource HaloCriticalBrush}"
+          Style="{StaticResource LoginBody}"
+          Text="{x:Bind ViewModel.LocalErrorText, Mode=OneWay}"
+          Visibility="{x:Bind ViewModel.LocalErrorVisibility, Mode=OneWay}" />
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,20,0,0"
+          AutomationProperties.Name="Sign in"
+          Click="OnLocalSignInClick"
+          Content="Sign in"
+          Style="{StaticResource HaloAccentButtonStyle}" />
+      </StackPanel>
+
+      <!-- OIDC browser mode -->
+      <StackPanel Visibility="{x:Bind ViewModel.OidcVisibility, Mode=OneWay}">
         <TextBlock Style="{StaticResource LoginTitle}" Text="Sign in to Halo" />
         <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
         <TextBlock
@@ -95,7 +150,7 @@
 
       <!-- Waiting for the browser round trip -->
       <StackPanel Visibility="{x:Bind ViewModel.WaitingVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Check your browser" />
+        <TextBlock Style="{StaticResource LoginTitle}" Text="{x:Bind ViewModel.WaitingTitle, Mode=OneWay}" />
         <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
         <Border
           Margin="0,20,0,0"
@@ -112,7 +167,7 @@
               IsActive="True" />
             <TextBlock
               Style="{StaticResource LoginBody}"
-              Text="We opened a sign-in request in your default browser. Approve it there and this window carries on by itself." />
+              Text="{x:Bind ViewModel.WaitingBody, Mode=OneWay}" />
           </StackPanel>
         </Border>
         <StackPanel
@@ -125,7 +180,7 @@
             Height="7"
             VerticalAlignment="Center"
             Fill="{ThemeResource HaloAccentBrush}" />
-          <TextBlock Style="{StaticResource HaloMonoData}" Text="WAITING FOR BROWSER" />
+          <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.WaitingStatus, Mode=OneWay}" />
         </StackPanel>
         <Button
           Height="36"
@@ -137,7 +192,8 @@
           Margin="0,12,0,0"
           Click="OnCancelClick"
           Content="Cancel"
-          Style="{StaticResource LoginLinkButton}" />
+          Style="{StaticResource LoginLinkButton}"
+          Visibility="{x:Bind ViewModel.WaitingCancelVisibility, Mode=OneWay}" />
       </StackPanel>
 
       <!-- Signed in, about to hand over to the shell -->
@@ -218,7 +274,7 @@
           Height="36"
           HorizontalAlignment="Stretch"
           Margin="0,24,0,0"
-          Click="OnContinueClick"
+          Click="OnRetryClick"
           Content="Retry"
           Style="{StaticResource HaloAccentButtonStyle}" />
         <TextBlock
@@ -258,7 +314,7 @@
           CornerRadius="4"
           Visibility="{x:Bind ViewModel.DetailsVisibility, Mode=OneWay}">
           <StackPanel Spacing="5">
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="HTTPS://HALO.DITTO.MOE" />
+            <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
             <TextBlock
               FontFamily="{StaticResource HaloMonoFont}"
               FontSize="10.5"

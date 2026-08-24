@@ -3,31 +3,46 @@
 #include "Api/Dto.h"
 
 #include <memory>
+#include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Web.Http.h>
+
+namespace HaloDesktop::Services::Auth
+{
+    class ITokenProvider;
+}
 
 namespace HaloDesktop::Api
 {
     class HttpExecutor;
 
-    // Thread-safe endpoint facade. Authentication and the one-refresh retry
-    // policy are added when sessions become real in the next milestone.
+    // Thread-safe endpoint facade. Public discovery bypasses authentication;
+    // protected endpoints draw a token and spend at most one refresh retry.
     class ApiClient final
     {
     public:
         ApiClient(
             winrt::hstring baseUrl,
-            std::shared_ptr<HttpExecutor> executor);
+            std::shared_ptr<HttpExecutor> executor,
+            std::shared_ptr<::HaloDesktop::Services::Auth::ITokenProvider> tokenProvider);
 
         [[nodiscard]] winrt::hstring BaseUrl() const;
         [[nodiscard]] concurrency::task<Dto::HealthStatus> GetHealthAsync();
         [[nodiscard]] concurrency::task<Dto::AuthConfig> GetAuthConfigAsync();
+        [[nodiscard]] concurrency::task<Dto::Me> GetMeAsync();
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;
+        [[nodiscard]] concurrency::task<winrt::Windows::Data::Json::IJsonValue> SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod method,
+            wchar_t const* path,
+            std::optional<winrt::hstring> body = std::nullopt);
+        [[noreturn]] static void ThrowSessionRejected();
 
         winrt::hstring m_baseUrl;
         std::shared_ptr<HttpExecutor> m_executor;
+        std::shared_ptr<::HaloDesktop::Services::Auth::ITokenProvider> m_tokenProvider;
     };
 }

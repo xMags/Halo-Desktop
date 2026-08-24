@@ -1,66 +1,71 @@
 #include "pch.h"
 #include "Services/SessionService.h"
-#include "Config/ServerConfig.h"
 
-#include <chrono>
+#include "Api/ApiClient.h"
+#include "Api/ApiError.h"
+#include "Services/Auth/SessionController.h"
+#include "Services/NavigationService.h"
+
+#include <algorithm>
+#include <cwctype>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <winrt/Windows.Storage.h>
 
 namespace
 {
-    // Stands in for the identity the server would return once sign-in is real.
-    constexpr wchar_t SignedInUserName[] = L"debashis";
-
-    constexpr wchar_t UserNameKey[] = L"Session.UserName";
-    constexpr wchar_t SignedInKey[] = L"Session.IsSignedIn";
-
-    // Written by the removed Connect screen. Cleared on load so an upgraded
-    // install does not keep a server address the app can no longer act on.
     constexpr wchar_t LegacyServerUrlKey[] = L"Session.ServerUrl";
+    constexpr wchar_t LegacyUserNameKey[] = L"Session.UserName";
+    constexpr wchar_t LegacySignedInKey[] = L"Session.IsSignedIn";
 
-    winrt::Windows::Foundation::Collections::IPropertySet LocalValues()
+    winrt::hstring Trimmed(winrt::hstring const& input)
     {
-        return winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
-    }
-
-    winrt::Windows::Foundation::IInspectable ReadValue(
-        winrt::Windows::Foundation::Collections::IPropertySet const& values,
-        wchar_t const* key)
-    {
-        return values.HasKey(key) ? values.Lookup(key) : nullptr;
-    }
-
-    void RemoveIfPresent(
-        winrt::Windows::Foundation::Collections::IPropertySet const& values,
-        wchar_t const* key)
-    {
-        if (values.HasKey(key))
+        std::wstring value{ input };
+        auto const first = std::find_if_not(value.begin(), value.end(), [](wchar_t character)
         {
-            values.Remove(key);
+            return std::iswspace(character) != 0;
+        });
+        auto const last = std::find_if_not(value.rbegin(), value.rend(), [](wchar_t character)
+        {
+            return std::iswspace(character) != 0;
+        }).base();
+        return first < last ? winrt::hstring{ std::wstring(first, last) } : winrt::hstring{};
+    }
+
+    void RemoveLegacyPrototypeSession()
+    {
+        auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
+        for (auto const key : { LegacyServerUrlKey, LegacyUserNameKey, LegacySignedInKey })
+        {
+            if (values.HasKey(key))
+            {
+                values.Remove(key);
+            }
         }
     }
 }
 
 namespace HaloDesktop::Services
 {
-    SessionService::SessionService()
+    SessionService::SessionService(
+        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<Auth::SessionController> controller,
+        std::shared_ptr<NavigationService> navigation)
+        : m_apiClient(std::move(apiClient)),
+          m_controller(std::move(controller)),
+          m_navigation(std::move(navigation))
     {
-        auto const values = LocalValues();
-        RemoveIfPresent(values, LegacyServerUrlKey);
-
-        m_userName = winrt::unbox_value_or<winrt::hstring>(ReadValue(values, UserNameKey), L"");
-        m_isSignedIn = winrt::unbox_value_or<bool>(ReadValue(values, SignedInKey), false)
-            && !m_userName.empty();
+        if (!m_apiClient || !m_controller || !m_navigation)
+        {
+            throw std::invalid_argument{ "SessionService requires all dependencies." };
+        }
+        RemoveLegacyPrototypeSession();
     }
 
     winrt::hstring SessionService::ServerUrl() const
     {
-        std::wstring serverUrl{ ::HaloDesktop::Config::ServerBaseUrl };
-        while (!serverUrl.empty() && serverUrl.back() == L'/')
-        {
-            serverUrl.pop_back();
-        }
-        return winrt::hstring{ serverUrl };
+        return m_apiClient->BaseUrl();
     }
 
     winrt::hstring SessionService::UserName() const
@@ -70,39 +75,137 @@ namespace HaloDesktop::Services
 
     bool SessionService::IsSignedIn() const noexcept
     {
-        return m_isSignedIn;
+        return m_controller->IsSignedIn();
     }
 
-    winrt::Windows::Foundation::IAsyncOperation<winrt::HaloDesktop::SignInOutcome>
-        SessionService::RequestBrowserSignInAsync()
+    bool SessionService::IsAdmin() const noexcept
     {
-        // Prototype stand-in for the real flow: open the browser, listen on a
-        // loopback redirect, and resolve when the server hands back a session.
-        // The delay is the round trip; the other outcomes are wired through the
-        // UI but cannot be produced until a real server is on the other end.
+        return m_isAdmin;
+    }
+
+    AuthenticationMode SessionService::Mode() const noexcept
+    {
+        return m_mode;
+    }
+
+    std::uint64_t SessionService::Generation() const noexcept
+    {
+        return m_controller->SessionGeneration();
+    }
+
+    concurrency::task<void> SessionService::RestoreAsync()
+    {
         auto const uiContext = winrt::apartment_context{};
-        co_await winrt::resume_after(std::chrono::milliseconds(3200));
+        co_await m_controller->RestoreAsync();
         co_await uiContext;
-
-        m_userName = winrt::hstring{ SignedInUserName };
-        m_isSignedIn = true;
-        PersistSession();
-        co_return winrt::HaloDesktop::SignInOutcome::Succeeded;
+        ClearIdentity();
     }
 
-    void SessionService::SignOut()
+    concurrency::task<AuthenticationMode> SessionService::DiscoverAuthenticationAsync()
     {
-        auto const values = LocalValues();
-        RemoveIfPresent(values, SignedInKey);
-        RemoveIfPresent(values, UserNameKey);
+        auto const uiContext = winrt::apartment_context{};
+        auto const config = co_await m_apiClient->GetAuthConfigAsync();
+        co_await uiContext;
+        m_mode = config.Mode == ::HaloDesktop::Api::Dto::AuthMode::Local
+            ? AuthenticationMode::Local
+            : AuthenticationMode::Oidc;
+        co_return m_mode;
+    }
+
+    concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::SignInLocalAsync(
+        winrt::hstring username,
+        winrt::hstring password)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const normalizedUserName = Trimmed(username);
+        if (normalizedUserName.empty() || normalizedUserName.size() > 512
+            || password.empty() || password.size() > 4096)
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::InvalidCredentials;
+        }
+
+        try
+        {
+            co_await m_controller->SignInLocalAsync(normalizedUserName, std::move(password));
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            auto const status = ::HaloDesktop::Api::ApiError::HttpStatus(error.code());
+            if (status && *status == 401)
+            {
+                co_return winrt::HaloDesktop::SignInOutcome::InvalidCredentials;
+            }
+            if (status && *status == 429)
+            {
+                co_return winrt::HaloDesktop::SignInOutcome::RateLimited;
+            }
+            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+        }
+        catch (...)
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+        }
+
+        co_await uiContext;
+        m_userName = normalizedUserName;
+        m_isAdmin = false;
+        try
+        {
+            co_await RefreshIdentityAsync();
+        }
+        catch (...)
+        {
+        }
+        co_return m_controller->IsSignedIn()
+            ? winrt::HaloDesktop::SignInOutcome::Succeeded
+            : winrt::HaloDesktop::SignInOutcome::Expired;
+    }
+
+    concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::RequestBrowserSignInAsync()
+    {
+        co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+    }
+
+    concurrency::task<void> SessionService::SignOutAsync()
+    {
+        auto const uiContext = winrt::apartment_context{};
+        co_await m_controller->SignOutAsync();
+        co_await uiContext;
+        ClearIdentity();
+        m_navigation->ShowOverlay(Page::Login);
+    }
+
+    concurrency::task<void> SessionService::RefreshIdentityAsync()
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const generation = m_controller->SessionGeneration();
+        ::HaloDesktop::Api::Dto::Me me;
+        try
+        {
+            me = co_await m_apiClient->GetMeAsync();
+        }
+        catch (...)
+        {
+            co_return;
+        }
+        co_await uiContext;
+        if (generation != m_controller->SessionGeneration() || !m_controller->IsSignedIn())
+        {
+            co_return;
+        }
+        m_userName = me.Username;
+        m_isAdmin = me.IsAdmin;
+    }
+
+    void SessionService::HandleSessionRejected()
+    {
+        ClearIdentity();
+        m_navigation->ShowOverlay(Page::Login);
+    }
+
+    void SessionService::ClearIdentity()
+    {
         m_userName.clear();
-        m_isSignedIn = false;
-    }
-
-    void SessionService::PersistSession()
-    {
-        auto const values = LocalValues();
-        values.Insert(UserNameKey, winrt::box_value(m_userName));
-        values.Insert(SignedInKey, winrt::box_value(m_isSignedIn));
+        m_isAdmin = false;
     }
 }
