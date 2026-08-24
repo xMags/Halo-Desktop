@@ -3,12 +3,15 @@ namespace HaloDesktop
     [default_interface]
     runtimeclass AddonRowViewModel
     {
+        String Id { get; };
         String Initials { get; };
         String Name { get; };
         String Version { get; };
         String Scope { get; };
         String Provides { get; };
         Boolean Enabled { get; };
+        Boolean CanEdit { get; };
+        Boolean IsGlobal { get; };
         Microsoft.UI.Xaml.Visibility GlobalVisibility { get; };
         Microsoft.UI.Xaml.Visibility YoursVisibility { get; };
     }
@@ -21,6 +24,7 @@ namespace HaloDesktop
         String SignedInLine { get; };
         Object Addons { get; };
         String AddonNoticeText { get; };
+        Boolean CanEditAddons { get; };
         Microsoft.UI.Xaml.Visibility AddonNoticeVisibility { get; };
         Double SubtitleSize;
         String SubtitleSizeLabel { get; };
@@ -29,9 +33,19 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Media.FontFamily PreviewFontFamily { get; };
         Int32 FontIndex { get; };
         Int32 OutlineIndex { get; };
+        Boolean IsSystemFont { get; };
+        Boolean IsSerifFont { get; };
+        Boolean IsMonoFont { get; };
+        Boolean IsNoOutline { get; };
+        Boolean IsThinOutline { get; };
+        Boolean IsNormalOutline { get; };
+        Boolean IsThickOutline { get; };
+        Int32 AudioLanguageIndex;
+        Int32 SubtitleLanguageIndex;
         Microsoft.UI.Xaml.Visibility ThinOutlineVisibility { get; };
         Microsoft.UI.Xaml.Visibility HeavyOutlineVisibility { get; };
         Boolean AutoplayNext;
+        Boolean SubtitleShadow;
         Boolean ResumePlayback;
         Boolean HardwareDecoding;
         void Refresh();

@@ -195,22 +195,40 @@ namespace winrt::HaloDesktop::implementation
     struct Addon : AddonT<Addon>
     {
         Addon() = default;
-        Addon(hstring initials, hstring name, hstring version, hstring scope, hstring provides, bool enabled);
+        Addon(
+            hstring id,
+            hstring transportUrl,
+            hstring initials,
+            hstring name,
+            hstring version,
+            hstring scope,
+            hstring provides,
+            bool canEdit,
+            bool isGlobal,
+            bool enabled);
 
+        [[nodiscard]] hstring Id() const;
+        [[nodiscard]] hstring TransportUrl() const;
         [[nodiscard]] hstring Initials() const;
         [[nodiscard]] hstring Name() const;
         [[nodiscard]] hstring Version() const;
         [[nodiscard]] hstring Scope() const;
         [[nodiscard]] hstring Provides() const;
+        [[nodiscard]] bool CanEdit() const noexcept;
+        [[nodiscard]] bool IsGlobal() const noexcept;
         [[nodiscard]] bool Enabled() const noexcept;
         void Enabled(bool value) noexcept;
 
     private:
+        hstring m_id;
+        hstring m_transportUrl;
         hstring m_initials;
         hstring m_name;
         hstring m_version;
         hstring m_scope;
         hstring m_provides;
+        bool m_canEdit{};
+        bool m_isGlobal{};
         bool m_enabled{};
     };
 

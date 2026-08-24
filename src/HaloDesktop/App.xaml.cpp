@@ -7,6 +7,7 @@
 #include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
+#include "Services/AddonService.h"
 #include "Services/Auth/LocalAuthSession.h"
 #include "Services/Auth/OidcAuthSession.h"
 #include "Services/Auth/OidcSignInFlow.h"
@@ -15,6 +16,7 @@
 #include "Services/NavigationService.h"
 #include "Services/QueryCache.h"
 #include "Services/SessionService.h"
+#include "Services/SettingsSyncService.h"
 #include "Services/ThemeService.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/WindowPresentationService.h"
@@ -66,7 +68,14 @@ namespace winrt::HaloDesktop::implementation
         m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
         m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();
         m_services.Downloads = std::make_shared<::HaloDesktop::Services::MockDownloadService>();
-        m_services.Addons = std::make_shared<::HaloDesktop::Services::MockAddonService>();
+        m_services.Addons = std::make_shared<::HaloDesktop::Services::AddonService>(
+            m_apiClient,
+            m_queryCache,
+            m_sessionService);
+        m_services.SettingsSync = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
+            m_apiClient,
+            m_queryCache,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Session = m_sessionService;
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>();
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
@@ -120,5 +129,6 @@ namespace winrt::HaloDesktop::implementation
             static_cast<void>(m_sessionService->RefreshIdentityAsync());
         }
     }
+
 
 }

@@ -114,11 +114,15 @@ namespace HaloDesktop
     runtimeclass Addon
     {
         Addon();
+        String Id { get; };
+        String TransportUrl { get; };
         String Initials { get; };
         String Name { get; };
         String Version { get; };
         String Scope { get; };
         String Provides { get; };
+        Boolean CanEdit { get; };
+        Boolean IsGlobal { get; };
         Boolean Enabled;
     };
 

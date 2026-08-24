@@ -167,6 +167,7 @@
     <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
+    <ClInclude Include="Services\AddonService.h" />
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
     <ClInclude Include="Services\Auth\LoopbackListener.h" />
@@ -183,6 +184,7 @@
     <ClInclude Include="Services\ThemeService.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
+    <ClInclude Include="Services\SettingsSyncService.h" />
     <ClInclude Include="Security\Dpapi.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -291,6 +293,7 @@
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp" />
+    <ClCompile Include="Services\AddonService.cpp" />
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />
@@ -304,6 +307,7 @@
     <ClCompile Include="Services\SampleData.cpp" />
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
+    <ClCompile Include="Services\SettingsSyncService.cpp" />
     <ClCompile Include="Security\Dpapi.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>

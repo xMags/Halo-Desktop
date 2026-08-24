@@ -224,21 +224,39 @@ namespace winrt::HaloDesktop::implementation
         m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ propertyName });
     }
 
-    Addon::Addon(hstring initials, hstring name, hstring version, hstring scope, hstring provides, bool enabled)
-        : m_initials(std::move(initials)),
+    Addon::Addon(
+        hstring id,
+        hstring transportUrl,
+        hstring initials,
+        hstring name,
+        hstring version,
+        hstring scope,
+        hstring provides,
+        bool canEdit,
+        bool isGlobal,
+        bool enabled)
+        : m_id(std::move(id)),
+          m_transportUrl(std::move(transportUrl)),
+          m_initials(std::move(initials)),
           m_name(std::move(name)),
           m_version(std::move(version)),
           m_scope(std::move(scope)),
           m_provides(std::move(provides)),
+          m_canEdit(canEdit),
+          m_isGlobal(isGlobal),
           m_enabled(enabled)
     {
     }
 
+    hstring Addon::Id() const { return m_id; }
+    hstring Addon::TransportUrl() const { return m_transportUrl; }
     hstring Addon::Initials() const { return m_initials; }
     hstring Addon::Name() const { return m_name; }
     hstring Addon::Version() const { return m_version; }
     hstring Addon::Scope() const { return m_scope; }
     hstring Addon::Provides() const { return m_provides; }
+    bool Addon::CanEdit() const noexcept { return m_canEdit; }
+    bool Addon::IsGlobal() const noexcept { return m_isGlobal; }
     bool Addon::Enabled() const noexcept { return m_enabled; }
     void Addon::Enabled(bool value) noexcept { m_enabled = value; }
 

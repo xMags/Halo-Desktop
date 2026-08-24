@@ -49,24 +49,28 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnMonoFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFont(2); }
     void SettingsPage::OnNoOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(0); }
     void SettingsPage::OnThinOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(1); }
-    void SettingsPage::OnHeavyOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(2); }
+    void SettingsPage::OnNormalOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(2); }
+    void SettingsPage::OnHeavyOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(3); }
     void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignOut(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
         FindName(elementName).as<Microsoft::UI::Xaml::FrameworkElement>().StartBringIntoView();
     }
-    winrt::fire_and_forget SettingsPage::ShowDeleteAddonDialog(winrt::hstring name)
+    winrt::fire_and_forget SettingsPage::ShowDeleteAddonDialog(winrt::hstring id)
     {
         auto lifetime = get_strong();
         Microsoft::UI::Xaml::Controls::ContentDialog dialog;
         dialog.XamlRoot(XamlRoot());
         dialog.Title(winrt::box_value(L"Remove addon?"));
-        dialog.Content(winrt::box_value(L"This removes the addon from the current mock session."));
+        auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
+        dialog.Content(winrt::box_value(viewModel->IsGlobalAddon(id)
+            ? L"This removes the addon for every user on this server."
+            : L"This removes the addon from your account."));
         dialog.PrimaryButtonText(L"Remove");
         dialog.CloseButtonText(L"Cancel");
         if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
         {
-            m_viewModel.RemoveAddon(name);
+            m_viewModel.RemoveAddon(id);
         }
     }
 }

@@ -49,16 +49,4 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_groups{ nullptr };
     };
 
-    class MockAddonService final : public IAddonService
-    {
-    public:
-        MockAddonService();
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> Items() const override;
-        bool Toggle(winrt::hstring const& name, bool enabled) override;
-        bool Remove(winrt::hstring const& name) override;
-
-    private:
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };
-    };
-
 }

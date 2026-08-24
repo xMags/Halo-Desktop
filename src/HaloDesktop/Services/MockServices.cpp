@@ -98,37 +98,4 @@ namespace HaloDesktop::Services
         return winrt::single_threaded_vector<winrt::HaloDesktop::StreamSource>(std::move(matches)).GetView();
     }
 
-    MockAddonService::MockAddonService()
-        : m_items(winrt::single_threaded_observable_vector<winrt::HaloDesktop::Addon>(SampleData::Addons()))
-    {
-    }
-
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> MockAddonService::Items() const { return m_items; }
-
-    bool MockAddonService::Toggle(winrt::hstring const& name, bool enabled)
-    {
-        for (auto const& addon : m_items)
-        {
-            if (addon.Name() == name)
-            {
-                addon.Enabled(enabled);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    bool MockAddonService::Remove(winrt::hstring const& name)
-    {
-        for (std::uint32_t index = 0; index < m_items.Size(); ++index)
-        {
-            if (m_items.GetAt(index).Name() == name)
-            {
-                m_items.RemoveAt(index);
-                return true;
-            }
-        }
-        return false;
-    }
-
 }

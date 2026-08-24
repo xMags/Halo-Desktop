@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <optional>
 #include <vector>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/base.h>
@@ -40,6 +41,31 @@ namespace HaloDesktop::Api::Dto
         bool IsAdmin{};
         std::int64_t CreatedAt{};
     };
+
+    struct AddonRecord final
+    {
+        winrt::hstring Id;
+        std::optional<winrt::hstring> TransportUrl;
+        winrt::hstring Name;
+        winrt::hstring Version;
+        std::vector<winrt::hstring> Resources;
+        std::vector<winrt::hstring> Types;
+        std::int32_t Position{};
+        bool HideCatalogs{};
+        bool IsGlobal{};
+    };
+
+    struct AddonsPayload final
+    {
+        std::vector<AddonRecord> Global;
+        std::vector<AddonRecord> User;
+    };
+
+    struct SettingsPayload final
+    {
+        winrt::Windows::Data::Json::JsonObject Value;
+        std::int64_t UpdatedAt{};
+    };
 }
 
 namespace HaloDesktop::Api::Mappers
@@ -48,4 +74,6 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] Dto::AuthConfig ParseAuthConfig(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::IssuedToken ParseIssuedToken(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::Me ParseMe(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::AddonsPayload ParseAddons(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::SettingsPayload ParseSettings(winrt::Windows::Data::Json::IJsonValue const& value);
 }

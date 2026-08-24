@@ -17,7 +17,6 @@ namespace HaloDesktop::Services::SampleData
         inline constexpr wchar_t DetailSynopsis[] = L"Six surveyors walk a border nobody has walked. The map they bring back does not agree with the map they were sent to confirm, and the second season is the argument about which one gets filed.";
         inline constexpr wchar_t SourceTeachingTitle[] = L"Halo ranks sources for you";
         inline constexpr wchar_t SourceTeachingBody[] = L"Cached first, then the highest quality your connection holds, then audio in your language. Change the weighting in Settings · Playback.";
-        inline constexpr wchar_t AddonInstallNotice[] = L"Addon install is wired to the server later.";
         inline constexpr wchar_t DownloadsInfoTitle[] = L"Downloads keep running in the tray";
         inline constexpr wchar_t DownloadsInfoBody[] = L"Closing the window minimises Halo. Transfers finish in the background and resume after a restart.";
         inline constexpr wchar_t PauseAllTitle[] = L"Pause all transfers?";

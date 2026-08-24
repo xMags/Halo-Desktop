@@ -32,6 +32,18 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::HealthStatus> GetHealthAsync();
         [[nodiscard]] concurrency::task<Dto::AuthConfig> GetAuthConfigAsync();
         [[nodiscard]] concurrency::task<Dto::Me> GetMeAsync();
+        [[nodiscard]] concurrency::task<Dto::AddonsPayload> GetAddonsAsync();
+        [[nodiscard]] concurrency::task<void> PutAddonsAsync(
+            std::vector<winrt::hstring> transportUrls,
+            bool global);
+        [[nodiscard]] concurrency::task<void> PatchAddonAsync(
+            winrt::hstring addonId,
+            bool global,
+            bool hideCatalogs);
+        [[nodiscard]] concurrency::task<Dto::SettingsPayload> GetSettingsAsync();
+        [[nodiscard]] concurrency::task<Dto::SettingsPayload> PutSettingsAsync(
+            winrt::Windows::Data::Json::JsonObject value,
+            std::int64_t updatedAt);
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;

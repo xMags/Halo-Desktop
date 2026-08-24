@@ -32,6 +32,32 @@ namespace
         }
         return winrt::hstring{ baseUrl };
     }
+
+    winrt::hstring EncodeUriComponent(winrt::hstring const& input)
+    {
+        constexpr char hex[] = "0123456789ABCDEF";
+        auto const utf8 = winrt::to_string(input);
+        std::string result;
+        for (auto const character : utf8)
+        {
+            auto const byte = static_cast<std::uint8_t>(character);
+            auto const unreserved = (byte >= 'A' && byte <= 'Z') || (byte >= 'a' && byte <= 'z')
+                || (byte >= '0' && byte <= '9') || byte == '-' || byte == '_'
+                || byte == '.' || byte == '!' || byte == '~' || byte == '*'
+                || byte == '\'' || byte == '(' || byte == ')';
+            if (unreserved)
+            {
+                result.push_back(static_cast<char>(byte));
+            }
+            else
+            {
+                result.push_back('%');
+                result.push_back(hex[byte >> 4]);
+                result.push_back(hex[byte & 15]);
+            }
+        }
+        return winrt::to_hstring(result);
+    }
 }
 
 namespace HaloDesktop::Api
@@ -86,6 +112,67 @@ namespace HaloDesktop::Api
             winrt::Windows::Web::Http::HttpMethod::Get(),
             L"/auth/me");
         co_return Mappers::ParseMe(value);
+    }
+
+    concurrency::task<Dto::AddonsPayload> ApiClient::GetAddonsAsync()
+    {
+        auto const value = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(),
+            L"/addons");
+        co_return Mappers::ParseAddons(value);
+    }
+
+    concurrency::task<void> ApiClient::PutAddonsAsync(
+        std::vector<winrt::hstring> transportUrls,
+        bool global)
+    {
+        winrt::Windows::Data::Json::JsonArray body;
+        for (auto const& url : transportUrls)
+        {
+            body.Append(winrt::Windows::Data::Json::JsonValue::CreateStringValue(url));
+        }
+        static_cast<void>(co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Put(),
+            global ? L"/addons/global" : L"/addons",
+            body.Stringify()));
+    }
+
+    concurrency::task<void> ApiClient::PatchAddonAsync(
+        winrt::hstring addonId,
+        bool global,
+        bool hideCatalogs)
+    {
+        winrt::Windows::Data::Json::JsonObject body;
+        body.Insert(L"hideCatalogs", winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(hideCatalogs));
+        auto const prefix = global ? winrt::hstring{ L"/addons/global/" } : winrt::hstring{ L"/addons/" };
+        auto const path = prefix + EncodeUriComponent(addonId);
+        static_cast<void>(co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod{ L"PATCH" },
+            path.c_str(),
+            body.Stringify()));
+    }
+
+    concurrency::task<Dto::SettingsPayload> ApiClient::GetSettingsAsync()
+    {
+        auto const value = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(),
+            L"/settings");
+        co_return Mappers::ParseSettings(value);
+    }
+
+    concurrency::task<Dto::SettingsPayload> ApiClient::PutSettingsAsync(
+        winrt::Windows::Data::Json::JsonObject value,
+        std::int64_t updatedAt)
+    {
+        winrt::Windows::Data::Json::JsonObject body;
+        body.Insert(L"value", value);
+        body.Insert(L"updatedAt", winrt::Windows::Data::Json::JsonValue::CreateNumberValue(
+            static_cast<double>(updatedAt)));
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Put(),
+            L"/settings",
+            body.Stringify());
+        co_return Mappers::ParseSettings(response);
     }
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(

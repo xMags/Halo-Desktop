@@ -87,6 +87,7 @@
     <ClCompile Include="Playback\MpvClient.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
@@ -100,6 +101,7 @@
     <ClCompile Include="Services\SampleData.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ThemeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SessionService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\SettingsSyncService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -150,6 +152,7 @@
     <ClInclude Include="Playback\MpvEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\NullEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\AddonService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LoopbackListener.h"><Filter>Services\Auth</Filter></ClInclude>
@@ -166,6 +169,7 @@
     <ClInclude Include="Services\ThemeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SessionService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\SettingsSyncService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>

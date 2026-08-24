@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Api/Dto.h"
+
 #include <cstdint>
 #include <functional>
 #include <pplawait.h>
@@ -78,8 +80,14 @@ namespace HaloDesktop::Services
     public:
         virtual ~IAddonService() = default;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> Items() const = 0;
-        virtual bool Toggle(winrt::hstring const& name, bool enabled) = 0;
-        virtual bool Remove(winrt::hstring const& name) = 0;
+        [[nodiscard]] virtual std::vector<::HaloDesktop::Api::Dto::AddonRecord> Records() const = 0;
+        [[nodiscard]] virtual bool CanEditLists() const noexcept = 0;
+        [[nodiscard]] virtual concurrency::task<void> LoadAsync() = 0;
+        [[nodiscard]] virtual concurrency::task<void> AddAsync(winrt::hstring transportUrl) = 0;
+        [[nodiscard]] virtual concurrency::task<void> RemoveAsync(winrt::hstring addonId) = 0;
+        [[nodiscard]] virtual concurrency::task<void> SetCatalogsVisibleAsync(
+            winrt::hstring addonId,
+            bool visible) = 0;
     };
 
     class ISessionService

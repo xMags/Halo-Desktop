@@ -267,10 +267,10 @@ namespace HaloDesktop::Services::SampleData
     std::vector<winrt::HaloDesktop::Addon> Addons()
     {
         return {
-            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"CM", L"Cinemeta", L"v3.0.13", L"GLOBAL", L"Catalogs · Metadata · movie, series", true),
-            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"TO", L"Torrentio", L"v0.0.15", L"YOURS", L"Streams · debrid resolution", true),
-            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"OS", L"OpenSubtitles v3", L"v1.2.0", L"YOURS", L"Subtitles · 62 languages", true),
-            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"LB", L"Local Files", L"v0.4.1", L"YOURS", L"Catalogs · Streams · from your disk", false),
+            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"sample-cm", L"", L"CM", L"Cinemeta", L"v3.0.13", L"GLOBAL", L"Catalogs · Metadata · movie, series", false, true, true),
+            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"sample-to", L"", L"TO", L"Torrentio", L"v0.0.15", L"YOURS", L"Streams · debrid resolution", false, false, true),
+            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"sample-os", L"", L"OS", L"OpenSubtitles v3", L"v1.2.0", L"YOURS", L"Subtitles · 62 languages", false, false, true),
+            winrt::make<winrt::HaloDesktop::implementation::Addon>(L"sample-lb", L"", L"LB", L"Local Files", L"v0.4.1", L"YOURS", L"Catalogs · Streams · from your disk", false, false, false),
         };
     }
 }
