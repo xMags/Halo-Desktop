@@ -28,6 +28,7 @@ namespace HaloDesktop
         Object SubtitleTracks { get; };
         Double BufferedPosition { get; };
         Double OsdOpacity { get; };
+        Microsoft.UI.Xaml.Visibility OsdWakeVisibility { get; };
         Double UpNextProgress { get; };
         String UpNextKicker { get; };
         String SubtitleDelayText { get; };

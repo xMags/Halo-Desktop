@@ -321,5 +321,10 @@
         <Button Height="30" Margin="0,11,0,0" Click="OnPlayNextClick" Content="Play now" Style="{StaticResource HaloAccentButtonStyle}" />
       </StackPanel>
     </Border>
+
+    <Grid
+      Background="Transparent"
+      PointerPressed="OnOsdWakePointerPressed"
+      Visibility="{x:Bind ViewModel.OsdWakeVisibility, Mode=OneWay}" />
   </Grid>
 </UserControl>

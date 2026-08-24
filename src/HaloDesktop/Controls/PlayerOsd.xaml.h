@@ -14,6 +14,8 @@ namespace winrt::HaloDesktop::implementation
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnOsdWakePointerPressed(winrt::Windows::Foundation::IInspectable const&,
+                                     Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnBackClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnTogglePauseClick(winrt::Windows::Foundation::IInspectable const&,
                                 Microsoft::UI::Xaml::RoutedEventArgs const&);

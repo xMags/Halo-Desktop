@@ -65,6 +65,15 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.NotifyUserActivity();
     }
+    void PlayerOsd::OnOsdWakePointerPressed(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        m_viewModel.NotifyUserActivity();
+        // This layer exists only while the controls are hidden. Consume the first
+        // press so it cannot activate an invisible control underneath.
+        args.Handled(true);
+    }
     void PlayerOsd::OnBackClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                 [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

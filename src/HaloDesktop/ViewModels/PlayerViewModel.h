@@ -66,6 +66,7 @@ namespace winrt::HaloDesktop::implementation
         SubtitleTracksView() const;
         [[nodiscard]] double BufferedPosition() const noexcept;
         [[nodiscard]] double OsdOpacity() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility OsdWakeVisibility() const noexcept;
         [[nodiscard]] double UpNextProgress() const noexcept;
         [[nodiscard]] winrt::hstring UpNextKicker() const;
         [[nodiscard]] winrt::hstring SubtitleDelayText() const;

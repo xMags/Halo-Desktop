@@ -93,6 +93,8 @@ namespace winrt::HaloDesktop::implementation
                     {
                         self->m_osdOpacity = 0.0;
                         ::HaloDesktop::detail::RaisePropertyChanged(self->m_propertyChanged, *self, L"OsdOpacity");
+                        ::HaloDesktop::detail::RaisePropertyChanged(self->m_propertyChanged, *self,
+                                                                    L"OsdWakeVisibility");
                     }
                 }
             });
@@ -260,6 +262,10 @@ namespace winrt::HaloDesktop::implementation
     double PlayerViewModel::OsdOpacity() const noexcept
     {
         return m_osdOpacity;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::OsdWakeVisibility() const noexcept
+    {
+        return m_osdOpacity < 1.0 ? Visible : Collapsed;
     }
     double PlayerViewModel::UpNextProgress() const noexcept
     {
@@ -527,6 +533,7 @@ namespace winrt::HaloDesktop::implementation
         {
             m_osdOpacity = 1.0;
             Raise(L"OsdOpacity");
+            Raise(L"OsdWakeVisibility");
         }
         RestartHideTimer();
     }
