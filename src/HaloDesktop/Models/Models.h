@@ -12,6 +12,7 @@
 #include "SourceGroup.g.h"
 #include "SourcesNavParams.g.h"
 #include "StreamSource.g.h"
+#include "PlaybackRequest.g.h"
 
 #include <cstdint>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
@@ -130,7 +131,9 @@ namespace winrt::HaloDesktop::implementation
     struct StreamSource : StreamSourceT<StreamSource>
     {
         StreamSource() = default;
+        StreamSource(hstring quality,hstring range,hstring file,hstring codec,hstring audio,hstring languages,HaloDesktop::StreamStatus status,hstring size);
         StreamSource(
+            hstring key,
             hstring quality,
             hstring range,
             hstring file,
@@ -138,8 +141,10 @@ namespace winrt::HaloDesktop::implementation
             hstring audio,
             hstring languages,
             HaloDesktop::StreamStatus status,
-            hstring size);
+            hstring size,
+            hstring detail);
 
+        [[nodiscard]] hstring Key() const;
         [[nodiscard]] hstring Quality() const;
         [[nodiscard]] hstring Range() const;
         [[nodiscard]] hstring File() const;
@@ -148,8 +153,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring Languages() const;
         [[nodiscard]] HaloDesktop::StreamStatus Status() const noexcept;
         [[nodiscard]] hstring Size() const;
+        [[nodiscard]] hstring Detail() const;
 
     private:
+        hstring m_key;
         hstring m_quality;
         hstring m_range;
         hstring m_file;
@@ -158,19 +165,23 @@ namespace winrt::HaloDesktop::implementation
         hstring m_languages;
         HaloDesktop::StreamStatus m_status{ HaloDesktop::StreamStatus::Uncached };
         hstring m_size;
+        hstring m_detail;
     };
 
     struct SourceGroup : SourceGroupT<SourceGroup>
     {
         SourceGroup() = default;
-        SourceGroup(hstring name, hstring note, std::int32_t count, Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources);
+        SourceGroup(hstring name,hstring note,std::int32_t count,Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources);
+        SourceGroup(hstring addonId, hstring name, hstring note, std::int32_t count, Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources);
 
+        [[nodiscard]] hstring AddonId() const;
         [[nodiscard]] hstring Name() const;
         [[nodiscard]] hstring Note() const;
         [[nodiscard]] std::int32_t Count() const noexcept;
         [[nodiscard]] Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> Sources() const;
 
     private:
+        hstring m_addonId;
         hstring m_name;
         hstring m_note;
         std::int32_t m_count{};
@@ -349,6 +360,15 @@ namespace winrt::HaloDesktop::implementation
         hstring Type()const;hstring MetaId()const;hstring VideoId()const;hstring ItemId()const;hstring Title()const;hstring ShowName()const;hstring EpisodeLabel()const;hstring Poster()const;
     private:hstring m_type,m_metaId,m_videoId,m_itemId,m_title,m_showName,m_episodeLabel,m_poster;
     };
+
+    struct PlaybackRequest : PlaybackRequestT<PlaybackRequest>
+    {
+        PlaybackRequest()=default;
+        PlaybackRequest(hstring url,bool isLocalFile,hstring downloadId,hstring subtitleLang,hstring mediaType,hstring videoId,hstring itemId,hstring metaId,hstring title,hstring showName,hstring episodeLabel,hstring poster,hstring addonId,hstring bingeGroup,hstring filename,std::uint64_t videoSize,hstring videoHash,hstring sourceTagLine);
+        [[nodiscard]] hstring Url()const; [[nodiscard]] bool IsLocalFile()const noexcept; [[nodiscard]] hstring DownloadId()const; [[nodiscard]] hstring SubtitleLang()const; [[nodiscard]] hstring MediaType()const; [[nodiscard]] hstring VideoId()const; [[nodiscard]] hstring ItemId()const; [[nodiscard]] hstring MetaId()const; [[nodiscard]] hstring Title()const; [[nodiscard]] hstring ShowName()const; [[nodiscard]] hstring EpisodeLabel()const; [[nodiscard]] hstring Poster()const; [[nodiscard]] hstring AddonId()const; [[nodiscard]] hstring BingeGroup()const; [[nodiscard]] hstring Filename()const; [[nodiscard]] std::uint64_t VideoSize()const noexcept; [[nodiscard]] hstring VideoHash()const; [[nodiscard]] hstring SourceTagLine()const;
+    private:
+        hstring m_url,m_downloadId,m_subtitleLang,m_mediaType,m_videoId,m_itemId,m_metaId,m_title,m_showName,m_episodeLabel,m_poster,m_addonId,m_bingeGroup,m_filename,m_videoHash,m_sourceTagLine; bool m_isLocalFile{}; std::uint64_t m_videoSize{};
+    };
 }
 
 namespace winrt::HaloDesktop::factory_implementation
@@ -365,4 +385,5 @@ namespace winrt::HaloDesktop::factory_implementation
     struct Shelf : ShelfT<Shelf, implementation::Shelf> {};
     struct DetailNavParams : DetailNavParamsT<DetailNavParams, implementation::DetailNavParams> {};
     struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams, implementation::SourcesNavParams> {};
+    struct PlaybackRequest : PlaybackRequestT<PlaybackRequest, implementation::PlaybackRequest> {};
 }

@@ -133,6 +133,17 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Poster;
         std::int64_t UpdatedAt{};
     };
+
+    struct StreamRecord final
+    {
+        winrt::hstring Url;
+        std::optional<winrt::hstring> Name,Title,Description,Filename,BingeGroup,VideoHash;
+        std::optional<std::uint64_t> VideoSize;
+        std::vector<std::pair<winrt::hstring,winrt::hstring>> RequestHeaders;
+    };
+    struct StreamGroup final{winrt::hstring AddonId,AddonName;std::vector<StreamRecord> Streams;};
+    struct AddonFailure final{std::optional<winrt::hstring>Name,Code;};
+    struct StreamsPayload final{std::vector<StreamGroup>Results;std::vector<AddonFailure>Errors;};
 }
 
 namespace HaloDesktop::Api::Mappers
@@ -147,4 +158,5 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] std::vector<Dto::LibraryRow> ParseLibrary(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] std::vector<Dto::WatchEntry> ParseWatchState(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::MetaDetail ParseMeta(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value);
 }

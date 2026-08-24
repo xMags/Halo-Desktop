@@ -37,6 +37,9 @@
 #if __has_include("SourcesNavParams.g.cpp")
 #include "SourcesNavParams.g.cpp"
 #endif
+#if __has_include("PlaybackRequest.g.cpp")
+#include "PlaybackRequest.g.cpp"
+#endif
 
 #include <algorithm>
 #include <utility>
@@ -142,7 +145,11 @@ namespace winrt::HaloDesktop::implementation
     double Episode::Progress() const noexcept { return m_progress; }
     bool Episode::Downloaded() const noexcept { return m_downloaded; }
 
+    StreamSource::StreamSource(hstring quality,hstring range,hstring file,hstring codec,hstring audio,hstring languages,HaloDesktop::StreamStatus status,hstring size)
+        : StreamSource(L"",std::move(quality),std::move(range),std::move(file),std::move(codec),std::move(audio),std::move(languages),status,std::move(size),L"") {}
+
     StreamSource::StreamSource(
+        hstring key,
         hstring quality,
         hstring range,
         hstring file,
@@ -150,18 +157,22 @@ namespace winrt::HaloDesktop::implementation
         hstring audio,
         hstring languages,
         HaloDesktop::StreamStatus status,
-        hstring size)
-        : m_quality(std::move(quality)),
+        hstring size,
+        hstring detail)
+        : m_key(std::move(key)),
+          m_quality(std::move(quality)),
           m_range(std::move(range)),
           m_file(std::move(file)),
           m_codec(std::move(codec)),
           m_audio(std::move(audio)),
           m_languages(std::move(languages)),
           m_status(status),
-          m_size(std::move(size))
+          m_size(std::move(size)),
+          m_detail(std::move(detail))
     {
     }
 
+    hstring StreamSource::Key() const { return m_key; }
     hstring StreamSource::Quality() const { return m_quality; }
     hstring StreamSource::Range() const { return m_range; }
     hstring StreamSource::File() const { return m_file; }
@@ -170,16 +181,22 @@ namespace winrt::HaloDesktop::implementation
     hstring StreamSource::Languages() const { return m_languages; }
     HaloDesktop::StreamStatus StreamSource::Status() const noexcept { return m_status; }
     hstring StreamSource::Size() const { return m_size; }
+    hstring StreamSource::Detail() const { return m_detail; }
+
+    SourceGroup::SourceGroup(hstring name,hstring note,std::int32_t count,Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources)
+        : SourceGroup(L"",std::move(name),std::move(note),count,std::move(sources)) {}
 
     SourceGroup::SourceGroup(
+        hstring addonId,
         hstring name,
         hstring note,
         std::int32_t count,
         Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources)
-        : m_name(std::move(name)), m_note(std::move(note)), m_count(count), m_sources(std::move(sources))
+        : m_addonId(std::move(addonId)), m_name(std::move(name)), m_note(std::move(note)), m_count(count), m_sources(std::move(sources))
     {
     }
 
+    hstring SourceGroup::AddonId() const { return m_addonId; }
     hstring SourceGroup::Name() const { return m_name; }
     hstring SourceGroup::Note() const { return m_note; }
     std::int32_t SourceGroup::Count() const noexcept { return m_count; }
@@ -366,4 +383,7 @@ namespace winrt::HaloDesktop::implementation
     hstring DetailNavParams::Type()const{return m_type;}hstring DetailNavParams::MetaId()const{return m_metaId;}hstring DetailNavParams::Title()const{return m_title;}hstring DetailNavParams::Poster()const{return m_poster;}
     SourcesNavParams::SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_videoId(std::move(videoId)),m_itemId(std::move(itemId)),m_title(std::move(title)),m_showName(std::move(showName)),m_episodeLabel(std::move(episodeLabel)),m_poster(std::move(poster)){}
     hstring SourcesNavParams::Type()const{return m_type;}hstring SourcesNavParams::MetaId()const{return m_metaId;}hstring SourcesNavParams::VideoId()const{return m_videoId;}hstring SourcesNavParams::ItemId()const{return m_itemId;}hstring SourcesNavParams::Title()const{return m_title;}hstring SourcesNavParams::ShowName()const{return m_showName;}hstring SourcesNavParams::EpisodeLabel()const{return m_episodeLabel;}hstring SourcesNavParams::Poster()const{return m_poster;}
+
+    PlaybackRequest::PlaybackRequest(hstring url,bool isLocalFile,hstring downloadId,hstring subtitleLang,hstring mediaType,hstring videoId,hstring itemId,hstring metaId,hstring title,hstring showName,hstring episodeLabel,hstring poster,hstring addonId,hstring bingeGroup,hstring filename,std::uint64_t videoSize,hstring videoHash,hstring sourceTagLine):m_url(std::move(url)),m_downloadId(std::move(downloadId)),m_subtitleLang(std::move(subtitleLang)),m_mediaType(std::move(mediaType)),m_videoId(std::move(videoId)),m_itemId(std::move(itemId)),m_metaId(std::move(metaId)),m_title(std::move(title)),m_showName(std::move(showName)),m_episodeLabel(std::move(episodeLabel)),m_poster(std::move(poster)),m_addonId(std::move(addonId)),m_bingeGroup(std::move(bingeGroup)),m_filename(std::move(filename)),m_videoHash(std::move(videoHash)),m_sourceTagLine(std::move(sourceTagLine)),m_isLocalFile(isLocalFile),m_videoSize(videoSize){}
+    hstring PlaybackRequest::Url()const{return m_url;}bool PlaybackRequest::IsLocalFile()const noexcept{return m_isLocalFile;}hstring PlaybackRequest::DownloadId()const{return m_downloadId;}hstring PlaybackRequest::SubtitleLang()const{return m_subtitleLang;}hstring PlaybackRequest::MediaType()const{return m_mediaType;}hstring PlaybackRequest::VideoId()const{return m_videoId;}hstring PlaybackRequest::ItemId()const{return m_itemId;}hstring PlaybackRequest::MetaId()const{return m_metaId;}hstring PlaybackRequest::Title()const{return m_title;}hstring PlaybackRequest::ShowName()const{return m_showName;}hstring PlaybackRequest::EpisodeLabel()const{return m_episodeLabel;}hstring PlaybackRequest::Poster()const{return m_poster;}hstring PlaybackRequest::AddonId()const{return m_addonId;}hstring PlaybackRequest::BingeGroup()const{return m_bingeGroup;}hstring PlaybackRequest::Filename()const{return m_filename;}std::uint64_t PlaybackRequest::VideoSize()const noexcept{return m_videoSize;}hstring PlaybackRequest::VideoHash()const{return m_videoHash;}hstring PlaybackRequest::SourceTagLine()const{return m_sourceTagLine;}
 }

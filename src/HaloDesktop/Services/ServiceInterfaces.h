@@ -50,8 +50,13 @@ namespace HaloDesktop::Services
     {
     public:
         virtual ~ISourceService() = default;
+        [[nodiscard]] virtual concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const = 0;
+        [[nodiscard]] virtual winrt::HaloDesktop::StreamSource BestSource() const = 0;
+        [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const = 0;
+        [[nodiscard]] virtual winrt::hstring ResolveSummary() const = 0;
+        [[nodiscard]] virtual std::int32_t Count(winrt::hstring const& filter) const noexcept = 0;
     };
 
     class IDownloadService
@@ -69,6 +74,7 @@ namespace HaloDesktop::Services
         virtual bool DeleteReady(winrt::hstring const& id) = 0;
         [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
         [[nodiscard]] virtual bool IsPausedAll() const noexcept = 0;
+        [[nodiscard]] virtual bool HasCompleted(winrt::hstring const& videoId) const noexcept = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
         [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
         [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;

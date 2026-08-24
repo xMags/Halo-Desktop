@@ -105,6 +105,8 @@
     <ClCompile Include="Services\ThemeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SessionService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SettingsSyncService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\SourceService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\StreamInfo.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\WatchStateService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -177,6 +179,8 @@
     <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SessionService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SettingsSyncService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\SourceService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\StreamInfo.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\WatchStateService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>

@@ -219,6 +219,7 @@ namespace HaloDesktop::Api
         for(auto const&r:rows){winrt::Windows::Data::Json::JsonObject o;o.Insert(L"id",winrt::Windows::Data::Json::JsonValue::CreateStringValue(r.Id));o.Insert(L"type",winrt::Windows::Data::Json::JsonValue::CreateStringValue(r.Type));o.Insert(L"name",winrt::Windows::Data::Json::JsonValue::CreateStringValue(r.Name));if(r.Poster)o.Insert(L"poster",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*r.Poster));o.Insert(L"addedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(r.AddedAt)));if(r.RemovedAt)o.Insert(L"removedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(*r.RemovedAt)));o.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(r.UpdatedAt)));body.Append(o);}
         auto const response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Put(),L"/library",body.Stringify());co_return Mappers::ParseLibrary(response);
     }
+    concurrency::task<Dto::StreamsPayload> ApiClient::GetStreamsAsync(winrt::hstring type,winrt::hstring videoId){auto path=winrt::hstring{L"/streams?type="}+EncodeUriComponent(type)+L"&videoId="+EncodeUriComponent(videoId);auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());co_return Mappers::ParseStreams(response);}
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(
         winrt::Windows::Web::Http::HttpMethod method,

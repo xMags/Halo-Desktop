@@ -12,6 +12,7 @@ namespace HaloDesktop
         Caching = 1,
         Uncached = 2,
         OnDisk = 3,
+        Unknown = 4,
     };
 
     enum SignInOutcome
@@ -90,6 +91,7 @@ namespace HaloDesktop
     runtimeclass StreamSource
     {
         StreamSource();
+        String Key { get; };
         String Quality { get; };
         String Range { get; };
         String File { get; };
@@ -98,12 +100,14 @@ namespace HaloDesktop
         String Languages { get; };
         StreamStatus Status { get; };
         String Size { get; };
+        String Detail { get; };
     };
 
     [default_interface]
     runtimeclass SourceGroup
     {
         SourceGroup();
+        String AddonId { get; };
         String Name { get; };
         String Note { get; };
         Int32 Count { get; };
@@ -198,5 +202,29 @@ namespace HaloDesktop
         String ShowName { get; };
         String EpisodeLabel { get; };
         String Poster { get; };
+    };
+
+    [default_interface]
+    runtimeclass PlaybackRequest
+    {
+        PlaybackRequest();
+        String Url { get; };
+        Boolean IsLocalFile { get; };
+        String DownloadId { get; };
+        String SubtitleLang { get; };
+        String MediaType { get; };
+        String VideoId { get; };
+        String ItemId { get; };
+        String MetaId { get; };
+        String Title { get; };
+        String ShowName { get; };
+        String EpisodeLabel { get; };
+        String Poster { get; };
+        String AddonId { get; };
+        String BingeGroup { get; };
+        String Filename { get; };
+        UInt64 VideoSize { get; };
+        String VideoHash { get; };
+        String SourceTagLine { get; };
     };
 }

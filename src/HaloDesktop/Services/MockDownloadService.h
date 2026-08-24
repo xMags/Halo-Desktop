@@ -37,6 +37,7 @@ namespace HaloDesktop::Services
         bool DeleteReady(winrt::hstring const& id) override;
         [[nodiscard]] bool IsRunning() const noexcept override;
         [[nodiscard]] bool IsPausedAll() const noexcept override;
+        [[nodiscard]] bool HasCompleted(winrt::hstring const& videoId) const noexcept override;
         [[nodiscard]] std::int32_t ActiveCount() const noexcept override;
         [[nodiscard]] double AggregateRate() const noexcept override;
         [[nodiscard]] winrt::hstring QueueLine() const override;

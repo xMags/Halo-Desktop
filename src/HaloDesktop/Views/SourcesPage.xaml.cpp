@@ -14,6 +14,7 @@ namespace winrt::HaloDesktop::implementation
     {
     }
     winrt::HaloDesktop::SourcesViewModel SourcesPage::ViewModel() const { return m_viewModel; }
+    void SourcesPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args) { m_viewModel.Load(args.Parameter()); }
     void SourcesPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
@@ -37,8 +38,9 @@ namespace winrt::HaloDesktop::implementation
     void SourcesPage::OnInstantFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
     void SourcesPage::On2160FilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
     void SourcesPage::On1080FilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(3); }
-    void SourcesPage::OnPlayClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenPlayer(); }
-    void SourcesPage::OnSourceRowClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenPlayer(); }
+    void SourcesPage::OnRetryClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
+    void SourcesPage::OnPlayClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenBest(); }
+    void SourcesPage::OnSourceRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenPlayer(winrt::unbox_value_or<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag(),L"")); }
     void SourcesPage::OnSourceRowPointerEntered(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)

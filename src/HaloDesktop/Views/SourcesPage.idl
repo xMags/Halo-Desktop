@@ -5,6 +5,7 @@ namespace HaloDesktop
     {
         Microsoft.UI.Xaml.Visibility HeaderVisibility { get; };
         Microsoft.UI.Xaml.Visibility RowVisibility { get; };
+        String Key { get; };
         String GroupName { get; };
         String GroupNote { get; };
         String GroupCount { get; };
@@ -16,6 +17,7 @@ namespace HaloDesktop
         String Languages { get; };
         String StatusLabel { get; };
         String Size { get; };
+        String Detail { get; };
         Microsoft.UI.Xaml.Visibility Quality2160Visibility { get; };
         Microsoft.UI.Xaml.Visibility Quality1080Visibility { get; };
         Microsoft.UI.Xaml.Visibility QualityOtherVisibility { get; };
@@ -23,11 +25,21 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
         Microsoft.UI.Xaml.Visibility UncachedVisibility { get; };
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UnknownVisibility { get; };
     }
 
     runtimeclass SourcesViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Object Items { get; };
+        Object ResolutionItems { get; };
+        Object QualityItems { get; };
+        String Title { get; };
+        String EpisodeLabel { get; };
+        String ResolveSummary { get; };
+        String AllFilterLabel { get; };
+        String InstantFilterLabel { get; };
+        String Quality2160FilterLabel { get; };
+        String Quality1080FilterLabel { get; };
         String BestQuality { get; };
         String BestRange { get; };
         String BestFile { get; };
@@ -35,12 +47,24 @@ namespace HaloDesktop
         String BestAudio { get; };
         String BestLanguages { get; };
         String BestSize { get; };
+        String BestStatusLine { get; };
+        String BestStatusBadge { get; };
+        String PickerAudio { get; };
+        String PickerSubtitles { get; };
+        String PickerAutoplay { get; };
         String TeachingTipTitle { get; };
         String TeachingTipBody { get; };
         Boolean TeachingTipOpen { get; };
+        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        void Load(Object parameter);
+        void Retry();
         void SetFilter(Int32 index);
         void DismissTeachingTip();
-        void OpenPlayer();
+        void OpenPlayer(String key);
+        void OpenBest();
         void OpenSettings();
     }
 

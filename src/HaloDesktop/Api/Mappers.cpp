@@ -391,4 +391,12 @@ namespace HaloDesktop::Api::Mappers
         }
         return result;
     }
+
+    Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const root=RequireObject(value,L"The streams response must be an object.");Dto::StreamsPayload result;
+        for(auto const&entry:root.GetNamedArray(L"results")){auto const object=RequireObject(entry,L"A stream group must be an object.");auto const addon=object.GetNamedObject(L"addon");Dto::StreamGroup group{DisplayString(addon,L"id",1024),DisplayString(addon,L"name",80),{}};for(auto const&item:object.GetNamedArray(L"streams")){auto const stream=RequireObject(item,L"A stream must be an object.");auto const url=OptionalHttpUrl(stream,L"url");if(!url)continue;Dto::StreamRecord record;record.Url=*url;record.Name=OptionalDisplayString(stream,L"name",2048);record.Title=OptionalDisplayString(stream,L"title",4096);record.Description=OptionalDisplayString(stream,L"description",4096);if(stream.HasKey(L"behaviorHints")){auto const hints=stream.GetNamedObject(L"behaviorHints");record.Filename=OptionalDisplayString(hints,L"filename",1024);record.BingeGroup=OptionalDisplayString(hints,L"bingeGroup",512);record.VideoHash=OptionalDisplayString(hints,L"videoHash",64);if(hints.HasKey(L"videoSize")){auto n=hints.GetNamedNumber(L"videoSize");if(std::isfinite(n)&&n>0)record.VideoSize=static_cast<std::uint64_t>(n);}if(hints.HasKey(L"proxyHeaders")){auto ph=hints.GetNamedObject(L"proxyHeaders");if(ph.HasKey(L"request")){for(auto const&pair:ph.GetNamedObject(L"request")){if(pair.Value().ValueType()==winrt::Windows::Data::Json::JsonValueType::String&&record.RequestHeaders.size()<64)record.RequestHeaders.emplace_back(pair.Key(),pair.Value().GetString());}}}}group.Streams.push_back(std::move(record));}if(!group.Streams.empty())result.Results.push_back(std::move(group));}
+        for(auto const&entry:root.GetNamedArray(L"errors")){auto const object=RequireObject(entry,L"An addon error must be an object.");result.Errors.push_back({OptionalDisplayString(object,L"name",80),OptionalDisplayString(object,L"code",32)});}
+        return result;
+    }
 }

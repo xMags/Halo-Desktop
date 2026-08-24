@@ -188,6 +188,8 @@
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
     <ClInclude Include="Services\SettingsSyncService.h" />
+    <ClInclude Include="Services\SourceService.h" />
+    <ClInclude Include="Services\StreamInfo.h" />
     <ClInclude Include="Services\WatchStateService.h" />
     <ClInclude Include="Security\Dpapi.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
@@ -315,6 +317,8 @@
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Services\SettingsSyncService.cpp" />
+    <ClCompile Include="Services\SourceService.cpp" />
+    <ClCompile Include="Services\StreamInfo.cpp" />
     <ClCompile Include="Services\WatchStateService.cpp" />
     <ClCompile Include="Security\Dpapi.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">

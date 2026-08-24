@@ -264,6 +264,7 @@ namespace HaloDesktop::Services
 
     bool MockDownloadService::IsRunning() const noexcept { return m_running; }
     bool MockDownloadService::IsPausedAll() const noexcept { return m_pausedAll; }
+    bool MockDownloadService::HasCompleted([[maybe_unused]] winrt::hstring const& videoId) const noexcept { return false; }
 
     std::int32_t MockDownloadService::ActiveCount() const noexcept
     {
