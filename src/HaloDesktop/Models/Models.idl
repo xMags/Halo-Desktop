@@ -56,6 +56,9 @@ namespace HaloDesktop
     {
         MediaDetail();
         String Id { get; };
+        String Type { get; };
+        String Poster { get; };
+        String Background { get; };
         String Title { get; };
         String Kicker { get; };
         String MetaLine { get; };
@@ -70,6 +73,11 @@ namespace HaloDesktop
     {
         Episode();
         String Tag { get; };
+        String VideoId { get; };
+        Int32 Season { get; };
+        Int32 Number { get; };
+        String Thumbnail { get; };
+        Boolean Watched { get; };
         String Title { get; };
         String Blurb { get; };
         String Runtime { get; };
@@ -166,5 +174,29 @@ namespace HaloDesktop
         String Title { get; };
         String SourceLabel { get; };
         Windows.Foundation.Collections.IVectorView<MediaSummary> Items { get; };
+    };
+
+    [default_interface]
+    runtimeclass DetailNavParams
+    {
+        DetailNavParams();
+        String Type { get; };
+        String MetaId { get; };
+        String Title { get; };
+        String Poster { get; };
+    };
+
+    [default_interface]
+    runtimeclass SourcesNavParams
+    {
+        SourcesNavParams();
+        String Type { get; };
+        String MetaId { get; };
+        String VideoId { get; };
+        String ItemId { get; };
+        String Title { get; };
+        String ShowName { get; };
+        String EpisodeLabel { get; };
+        String Poster { get; };
     };
 }

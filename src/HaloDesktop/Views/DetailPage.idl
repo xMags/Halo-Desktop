@@ -8,8 +8,10 @@ namespace HaloDesktop
         String Blurb { get; };
         String Runtime { get; };
         String Aired { get; };
+        String VideoId { get; };
         Double Progress { get; };
         Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WatchedVisibility { get; };
         Microsoft.UI.Xaml.Visibility InProgressVisibility { get; };
         Microsoft.UI.Xaml.Visibility IdleVisibility { get; };
     }
@@ -21,13 +23,21 @@ namespace HaloDesktop
         String MetaLine { get; };
         String Synopsis { get; };
         String SeasonMeta { get; };
+        String LibraryLabel { get; };
         Int32 SeasonIndex { get; };
         Object Episodes { get; };
         Object Facts { get; };
         Object Availability { get; };
+        Object Seasons { get; };
+        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        void Load(Object parameter);
         void SelectSeason(Int32 index);
-        void OpenSources();
-        void OpenPlayer();
+        void Retry();
+        void ToggleLibrary();
+        void OpenSources(Object episode);
+        void BrowseSources();
         void OpenDownloads();
     }
 

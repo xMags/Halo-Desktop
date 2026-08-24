@@ -53,6 +53,8 @@ namespace HaloDesktop::Api
             std::vector<std::pair<winrt::hstring, winrt::hstring>> extras = {});
         [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> GetLibraryAsync();
         [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> GetWatchStateAsync();
+        [[nodiscard]] concurrency::task<Dto::MetaDetail> GetMetaAsync(winrt::hstring type,winrt::hstring metaId);
+        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> PutLibraryAsync(std::vector<Dto::LibraryRow> rows);
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;

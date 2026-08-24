@@ -41,6 +41,7 @@ namespace HaloDesktop::Services
     {
     public:
         virtual ~IMetadataService() = default;
+        [[nodiscard]] virtual concurrency::task<void> LoadAsync(winrt::hstring type,winrt::hstring metaId) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaDetail Detail() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> Episodes(std::int32_t season) const = 0;
     };

@@ -27,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
+        m_viewModel.Retry();
         FindName(L"ContinueList")
             .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
             .ItemsSource(viewModel->ContinueItemsView());

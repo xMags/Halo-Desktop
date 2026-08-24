@@ -252,6 +252,14 @@ namespace HaloDesktop::Services
             liveLibrary.emplace(std::wstring{ row.Id }, row);
         }
         m_libraryItems = winrt::single_threaded_vector(std::move(libraryItems)).GetView();
+        if (m_libraryItems.Size() > 0)
+        {
+            std::vector<winrt::HaloDesktop::Shelf> shelves;
+            for (auto const& shelf : m_shelves) shelves.push_back(shelf);
+            shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+                L"My library", L"SYNCED · " + winrt::to_hstring(m_libraryItems.Size()), m_libraryItems));
+            m_shelves = winrt::single_threaded_vector(std::move(shelves)).GetView();
+        }
 
         std::sort(watch.begin(), watch.end(), [](auto const& a, auto const& b) { return a.UpdatedAt > b.UpdatedAt; });
         std::set<std::wstring> seen;

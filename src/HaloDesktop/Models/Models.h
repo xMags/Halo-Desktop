@@ -2,6 +2,7 @@
 
 #include "Addon.g.h"
 #include "ContinueItem.g.h"
+#include "DetailNavParams.g.h"
 #include "DownloadItem.g.h"
 #include "Episode.g.h"
 #include "MediaDetail.g.h"
@@ -9,6 +10,7 @@
 #include "SearchGroup.g.h"
 #include "Shelf.g.h"
 #include "SourceGroup.g.h"
+#include "SourcesNavParams.g.h"
 #include "StreamSource.g.h"
 
 #include <cstdint>
@@ -74,9 +76,11 @@ namespace winrt::HaloDesktop::implementation
             hstring synopsis,
             Windows::Foundation::Collections::IVectorView<hstring> facts,
             Windows::Foundation::Collections::IVectorView<hstring> availability,
-            Windows::Foundation::Collections::IVectorView<std::int32_t> seasons);
+            Windows::Foundation::Collections::IVectorView<std::int32_t> seasons,
+            hstring type = {}, hstring poster = {}, hstring background = {});
 
         [[nodiscard]] hstring Id() const;
+        [[nodiscard]] hstring Type() const; [[nodiscard]] hstring Poster() const; [[nodiscard]] hstring Background() const;
         [[nodiscard]] hstring Title() const;
         [[nodiscard]] hstring Kicker() const;
         [[nodiscard]] hstring MetaLine() const;
@@ -87,6 +91,7 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         hstring m_id;
+        hstring m_type,m_poster,m_background;
         hstring m_title;
         hstring m_kicker;
         hstring m_metaLine;
@@ -99,9 +104,11 @@ namespace winrt::HaloDesktop::implementation
     struct Episode : EpisodeT<Episode>
     {
         Episode() = default;
-        Episode(hstring tag, hstring title, hstring blurb, hstring runtime, hstring aired, double progress, bool downloaded);
+        Episode(hstring tag, hstring title, hstring blurb, hstring runtime, hstring aired, double progress, bool downloaded,
+                hstring videoId = {}, std::int32_t season = 0, std::int32_t number = 0, hstring thumbnail = {}, bool watched = false);
 
         [[nodiscard]] hstring Tag() const;
+        [[nodiscard]] hstring VideoId() const; [[nodiscard]] std::int32_t Season() const noexcept; [[nodiscard]] std::int32_t Number() const noexcept; [[nodiscard]] hstring Thumbnail() const; [[nodiscard]] bool Watched() const noexcept;
         [[nodiscard]] hstring Title() const;
         [[nodiscard]] hstring Blurb() const;
         [[nodiscard]] hstring Runtime() const;
@@ -111,6 +118,7 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         hstring m_tag;
+        hstring m_videoId,m_thumbnail; std::int32_t m_season{},m_number{}; bool m_watched{};
         hstring m_title;
         hstring m_blurb;
         hstring m_runtime;
@@ -328,6 +336,19 @@ namespace winrt::HaloDesktop::implementation
         hstring m_sourceLabel;
         Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_items{ nullptr };
     };
+
+    struct DetailNavParams : DetailNavParamsT<DetailNavParams>
+    {
+        DetailNavParams()=default; DetailNavParams(hstring type,hstring metaId,hstring title,hstring poster);
+        hstring Type()const;hstring MetaId()const;hstring Title()const;hstring Poster()const;
+    private:hstring m_type,m_metaId,m_title,m_poster;
+    };
+    struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams>
+    {
+        SourcesNavParams()=default; SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster);
+        hstring Type()const;hstring MetaId()const;hstring VideoId()const;hstring ItemId()const;hstring Title()const;hstring ShowName()const;hstring EpisodeLabel()const;hstring Poster()const;
+    private:hstring m_type,m_metaId,m_videoId,m_itemId,m_title,m_showName,m_episodeLabel,m_poster;
+    };
 }
 
 namespace winrt::HaloDesktop::factory_implementation
@@ -342,4 +363,6 @@ namespace winrt::HaloDesktop::factory_implementation
     struct ContinueItem : ContinueItemT<ContinueItem, implementation::ContinueItem> {};
     struct SearchGroup : SearchGroupT<SearchGroup, implementation::SearchGroup> {};
     struct Shelf : ShelfT<Shelf, implementation::Shelf> {};
+    struct DetailNavParams : DetailNavParamsT<DetailNavParams, implementation::DetailNavParams> {};
+    struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams, implementation::SourcesNavParams> {};
 }

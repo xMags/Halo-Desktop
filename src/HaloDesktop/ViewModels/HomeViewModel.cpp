@@ -37,7 +37,7 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility HomeViewModel::EmptyVisibility() const noexcept { return !m_loading && !m_error && !m_hero && m_shelves.Size() == 0 ? Visible : Collapsed; }
     void HomeViewModel::SetFilter(std::int32_t index) { if (index >= 0 && index <= 2 && index != m_filterIndex) { m_filterIndex = index; Rebuild(); Raise(L"FilterIndex"); } }
     void HomeViewModel::Retry() { static_cast<void>(LoadAsync()); }
-    void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Detail, item); }
+    void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));} }
     void HomeViewModel::OpenHeroDetail() { OpenDetail(m_hero); }
     void HomeViewModel::OpenHeroSources() { if (m_hero) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, m_hero); }
     void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, item); }

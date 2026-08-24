@@ -170,6 +170,7 @@
     <ClInclude Include="Services\AddonService.h" />
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\LibraryService.h" />
+    <ClInclude Include="Services\MetadataService.h" />
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
     <ClInclude Include="Services\Auth\LoopbackListener.h" />
@@ -299,6 +300,7 @@
     <ClCompile Include="Services\AddonService.cpp" />
     <ClCompile Include="Services\CatalogService.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
+    <ClCompile Include="Services\MetadataService.cpp" />
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />

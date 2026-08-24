@@ -6,9 +6,10 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
   NavigationCacheMode="Required">
-  <ScrollViewer VerticalScrollBarVisibility="Hidden">
+  <Grid>
+  <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
-      <local:SectionHeader Title="Northwind Divide" />
+      <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
         <Rectangle VerticalAlignment="Bottom" Height="140">
@@ -41,7 +42,7 @@
                 <TextBlock VerticalAlignment="Center" Text="Resume S02E04 · 18 min left" />
               </StackPanel>
             </Button>
-            <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="In library" ToolTipService.ToolTip="Library membership is preview-only in this prototype" />
+            <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="{x:Bind ViewModel.LibraryLabel, Mode=OneWay}" Click="OnLibraryClick" />
             <Button AutomationProperties.Name="Go to downloads" Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Go to downloads">
               <FontIcon FontSize="14" Glyph="&#xE896;" />
             </Button>
@@ -51,19 +52,14 @@
         <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="14">
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-            <Border Style="{StaticResource HaloSegmentedTrayStyle}">
-              <StackPanel Orientation="Horizontal">
-                <RadioButton GroupName="DetailSeason" Click="OnSeasonOneClick" Content="Season 1" Padding="15,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                <RadioButton GroupName="DetailSeason" IsChecked="True" Click="OnSeasonTwoClick" Content="Season 2" Padding="15,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-              </StackPanel>
-            </Border>
+            <ComboBox x:Name="SeasonPicker" MinWidth="140" SelectedIndex="{x:Bind ViewModel.SeasonIndex, Mode=OneWay}" SelectionChanged="OnSeasonChanged" />
             <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
             <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Content="Download season" ToolTipService.ToolTip="Season downloads are not available in this prototype" />
           </Grid>
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:DetailEpisodeViewModel">
-                <Button Margin="0,0,0,8" Padding="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}">
+                <Button Margin="0,0,0,8" Padding="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}" Tag="{x:Bind}">
                   <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <Grid Width="118" Height="66">
@@ -74,6 +70,7 @@
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind InProgressVisibility}" />
                         <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind IdleVisibility}" />
+                        <FontIcon Foreground="{ThemeResource HaloSuccessBrush}" Glyph="&#xE73E;" Visibility="{x:Bind WatchedVisibility}" />
                         <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind Title}" />
                         <Border Padding="6,2" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind SavedVisibility}">
                           <TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="SAVED" />
@@ -112,4 +109,7 @@
       </Grid>
     </StackPanel>
   </ScrollViewer>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading title details…" /></StackPanel>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Title details could not be loaded." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+  </Grid>
 </Page>

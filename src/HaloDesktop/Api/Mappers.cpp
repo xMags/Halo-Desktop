@@ -373,4 +373,22 @@ namespace HaloDesktop::Api::Mappers
         }
         return result;
     }
+
+    Dto::MetaDetail ParseMeta(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const root=RequireObject(value,L"The metadata response must be an object.");auto const object=root.GetNamedObject(L"meta");
+        Dto::MetaDetail result;
+        result.Preview={DisplayString(object,L"id",1024),DisplayString(object,L"type",128),DisplayString(object,L"name",512),OptionalHttpUrl(object,L"poster"),OptionalHttpUrl(object,L"background"),OptionalDisplayString(object,L"description",4096),OptionalDisplayString(object,L"releaseInfo",128),OptionalDisplayString(object,L"imdbRating",32)};
+        result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Genres=StringArray(object,L"genres");result.Cast=StringArray(object,L"cast");result.Director=StringArray(object,L"director");result.Writer=StringArray(object,L"writer");
+        for(auto const&item:object.GetNamedArray(L"videos",winrt::Windows::Data::Json::JsonArray{}))
+        {
+            if(item.ValueType()!=winrt::Windows::Data::Json::JsonValueType::Object)continue;auto const video=item.GetObject();
+            auto title=OptionalDisplayString(video,L"title",512).value_or(OptionalDisplayString(video,L"name",512).value_or(L"Episode"));
+            std::optional<std::int32_t> season,episode;
+            if(video.HasKey(L"season")){auto n=video.GetNamedNumber(L"season");if(std::isfinite(n)&&n>=0&&std::floor(n)==n)season=static_cast<std::int32_t>(n);}
+            if(video.HasKey(L"episode")){auto n=video.GetNamedNumber(L"episode");if(std::isfinite(n)&&n>=0&&std::floor(n)==n)episode=static_cast<std::int32_t>(n);}
+            result.Videos.push_back({DisplayString(video,L"id",2048),title,OptionalDisplayString(video,L"released",128),OptionalHttpUrl(video,L"thumbnail"),OptionalDisplayString(video,L"overview",4096),season,episode});
+        }
+        return result;
+    }
 }

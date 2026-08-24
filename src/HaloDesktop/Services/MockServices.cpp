@@ -11,10 +11,6 @@
 
 namespace HaloDesktop::Services
 {
-    MockMetadataService::MockMetadataService() : m_detail(SampleData::Detail()) {}
-    winrt::HaloDesktop::MediaDetail MockMetadataService::Detail() const { return m_detail; }
-    winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> MockMetadataService::Episodes(std::int32_t season) const { return SampleData::Episodes(season); }
-
     MockSourceService::MockSourceService() : m_groups(SampleData::SourceGroups()) {}
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> MockSourceService::Groups() const { return m_groups; }
 

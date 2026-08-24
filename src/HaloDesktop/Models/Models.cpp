@@ -10,6 +10,9 @@
 #if __has_include("DownloadItem.g.cpp")
 #include "DownloadItem.g.cpp"
 #endif
+#if __has_include("DetailNavParams.g.cpp")
+#include "DetailNavParams.g.cpp"
+#endif
 #if __has_include("Episode.g.cpp")
 #include "Episode.g.cpp"
 #endif
@@ -30,6 +33,9 @@
 #endif
 #if __has_include("StreamSource.g.cpp")
 #include "StreamSource.g.cpp"
+#endif
+#if __has_include("SourcesNavParams.g.cpp")
+#include "SourcesNavParams.g.cpp"
 #endif
 
 #include <algorithm>
@@ -90,8 +96,10 @@ namespace winrt::HaloDesktop::implementation
         hstring synopsis,
         Windows::Foundation::Collections::IVectorView<hstring> facts,
         Windows::Foundation::Collections::IVectorView<hstring> availability,
-        Windows::Foundation::Collections::IVectorView<std::int32_t> seasons)
+        Windows::Foundation::Collections::IVectorView<std::int32_t> seasons,
+        hstring type,hstring poster,hstring background)
         : m_id(std::move(id)),
+          m_type(std::move(type)),m_poster(std::move(poster)),m_background(std::move(background)),
           m_title(std::move(title)),
           m_kicker(std::move(kicker)),
           m_metaLine(std::move(metaLine)),
@@ -103,6 +111,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     hstring MediaDetail::Id() const { return m_id; }
+    hstring MediaDetail::Type() const{return m_type;}hstring MediaDetail::Poster()const{return m_poster;}hstring MediaDetail::Background()const{return m_background;}
     hstring MediaDetail::Title() const { return m_title; }
     hstring MediaDetail::Kicker() const { return m_kicker; }
     hstring MediaDetail::MetaLine() const { return m_metaLine; }
@@ -111,8 +120,10 @@ namespace winrt::HaloDesktop::implementation
     Windows::Foundation::Collections::IVectorView<hstring> MediaDetail::Availability() const { return m_availability; }
     Windows::Foundation::Collections::IVectorView<std::int32_t> MediaDetail::Seasons() const { return m_seasons; }
 
-    Episode::Episode(hstring tag, hstring title, hstring blurb, hstring runtime, hstring aired, double progress, bool downloaded)
+    Episode::Episode(hstring tag, hstring title, hstring blurb, hstring runtime, hstring aired, double progress, bool downloaded,
+                     hstring videoId,std::int32_t season,std::int32_t number,hstring thumbnail,bool watched)
         : m_tag(std::move(tag)),
+          m_videoId(std::move(videoId)),m_thumbnail(std::move(thumbnail)),m_season(season),m_number(number),m_watched(watched),
           m_title(std::move(title)),
           m_blurb(std::move(blurb)),
           m_runtime(std::move(runtime)),
@@ -123,6 +134,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     hstring Episode::Tag() const { return m_tag; }
+    hstring Episode::VideoId()const{return m_videoId;}std::int32_t Episode::Season()const noexcept{return m_season;}std::int32_t Episode::Number()const noexcept{return m_number;}hstring Episode::Thumbnail()const{return m_thumbnail;}bool Episode::Watched()const noexcept{return m_watched;}
     hstring Episode::Title() const { return m_title; }
     hstring Episode::Blurb() const { return m_blurb; }
     hstring Episode::Runtime() const { return m_runtime; }
@@ -349,4 +361,9 @@ namespace winrt::HaloDesktop::implementation
     hstring Shelf::Title() const { return m_title; }
     hstring Shelf::SourceLabel() const { return m_sourceLabel; }
     Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> Shelf::Items() const { return m_items; }
+
+    DetailNavParams::DetailNavParams(hstring type,hstring metaId,hstring title,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_title(std::move(title)),m_poster(std::move(poster)){}
+    hstring DetailNavParams::Type()const{return m_type;}hstring DetailNavParams::MetaId()const{return m_metaId;}hstring DetailNavParams::Title()const{return m_title;}hstring DetailNavParams::Poster()const{return m_poster;}
+    SourcesNavParams::SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_videoId(std::move(videoId)),m_itemId(std::move(itemId)),m_title(std::move(title)),m_showName(std::move(showName)),m_episodeLabel(std::move(episodeLabel)),m_poster(std::move(poster)){}
+    hstring SourcesNavParams::Type()const{return m_type;}hstring SourcesNavParams::MetaId()const{return m_metaId;}hstring SourcesNavParams::VideoId()const{return m_videoId;}hstring SourcesNavParams::ItemId()const{return m_itemId;}hstring SourcesNavParams::Title()const{return m_title;}hstring SourcesNavParams::ShowName()const{return m_showName;}hstring SourcesNavParams::EpisodeLabel()const{return m_episodeLabel;}hstring SourcesNavParams::Poster()const{return m_poster;}
 }

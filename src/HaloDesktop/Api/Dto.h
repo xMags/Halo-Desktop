@@ -89,6 +89,28 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Rating;
     };
 
+    struct MetaVideo final
+    {
+        winrt::hstring Id;
+        winrt::hstring Title;
+        std::optional<winrt::hstring> Released;
+        std::optional<winrt::hstring> Thumbnail;
+        std::optional<winrt::hstring> Overview;
+        std::optional<std::int32_t> Season;
+        std::optional<std::int32_t> Episode;
+    };
+
+    struct MetaDetail final
+    {
+        MetaPreview Preview;
+        std::vector<MetaVideo> Videos;
+        std::optional<winrt::hstring> Runtime;
+        std::vector<winrt::hstring> Genres;
+        std::vector<winrt::hstring> Cast;
+        std::vector<winrt::hstring> Director;
+        std::vector<winrt::hstring> Writer;
+    };
+
     struct LibraryRow final
     {
         winrt::hstring Id;
@@ -124,4 +146,5 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] std::vector<Dto::MetaPreview> ParseCatalog(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] std::vector<Dto::LibraryRow> ParseLibrary(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] std::vector<Dto::WatchEntry> ParseWatchState(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::MetaDetail ParseMeta(winrt::Windows::Data::Json::IJsonValue const& value);
 }

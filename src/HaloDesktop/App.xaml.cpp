@@ -3,6 +3,7 @@
 #include "Api/ApiClient.h"
 #include "Api/HttpExecutor.h"
 #include "Config/ServerConfig.h"
+#include "Models/Models.h"
 #include "Playback/MpvEngine.h"
 #include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
@@ -16,6 +17,7 @@
 #include "Services/Auth/SessionStore.h"
 #include "Services/NavigationService.h"
 #include "Services/LibraryService.h"
+#include "Services/MetadataService.h"
 #include "Services/QueryCache.h"
 #include "Services/SessionService.h"
 #include "Services/SettingsSyncService.h"
@@ -80,7 +82,7 @@ namespace winrt::HaloDesktop::implementation
             m_services.Library,
             m_services.WatchState);
         m_services.Catalog = catalogService;
-        m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
+        m_services.Metadata = std::make_shared<::HaloDesktop::Services::MetadataService>(m_apiClient,m_services.WatchState);
         m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();
         m_services.Downloads = std::make_shared<::HaloDesktop::Services::MockDownloadService>();
         m_services.SettingsSync = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(

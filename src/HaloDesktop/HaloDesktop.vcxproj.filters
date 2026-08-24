@@ -90,6 +90,7 @@
     <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\LibraryService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
@@ -158,6 +159,7 @@
     <ClInclude Include="Services\AddonService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\CatalogService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\LibraryService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LoopbackListener.h"><Filter>Services\Auth</Filter></ClInclude>

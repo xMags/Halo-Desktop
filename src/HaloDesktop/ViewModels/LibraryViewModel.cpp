@@ -4,6 +4,7 @@
 #include "LibraryViewModel.g.cpp"
 #endif
 #include "Services/NavigationService.h"
+#include "Models/Models.h"
 #include "ViewModels/ObservableHelper.h"
 #include <algorithm>
 namespace { auto const Visible=winrt::Microsoft::UI::Xaml::Visibility::Visible; auto const Collapsed=winrt::Microsoft::UI::Xaml::Visibility::Collapsed; }
@@ -24,7 +25,7 @@ namespace winrt::HaloDesktop::implementation
     void LibraryViewModel::SetFilter(std::int32_t index){if(index>=0&&index<=2&&index!=m_filterIndex){m_filterIndex=index;Rebuild();Raise(L"FilterIndex");}}
     void LibraryViewModel::SetSort(std::int32_t index){if(index>=0&&index<=2&&index!=m_sortIndex){m_sortIndex=index;Rebuild();Raise(L"SortIndex");}}
     void LibraryViewModel::Retry(){static_cast<void>(LoadAsync());}
-    void LibraryViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item){if(item)m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,item);}
+    void LibraryViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item){if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));}}
     winrt::event_token LibraryViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler){return m_propertyChanged.add(handler);}
     void LibraryViewModel::PropertyChanged(winrt::event_token const& token)noexcept{m_propertyChanged.remove(token);}
     winrt::Windows::Foundation::IAsyncAction LibraryViewModel::LoadAsync()
