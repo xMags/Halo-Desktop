@@ -40,6 +40,9 @@ namespace HaloDesktop::Playback
         void SetSubtitleTrack(std::optional<std::int64_t> id) override;
         void SetSubtitleDelay(double seconds) override;
         void SetAudioDelay(double seconds) override;
+        void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle) override;
+        void RemoveTrack(std::int64_t id) override;
+        void ApplySubtitleStyle(SubtitleStyle const& style) override;
         [[nodiscard]] PlaybackState State() const override;
         [[nodiscard]] double DurationNow() const noexcept override;
         PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) override;
@@ -63,5 +66,6 @@ namespace HaloDesktop::Playback
         std::optional<double> m_seekTarget;
         bool m_seekRestarted{};
         bool m_running{};
+        SubtitleStyle m_subtitleStyle;
     };
 } // namespace HaloDesktop::Playback

@@ -58,6 +58,9 @@ namespace HaloDesktop::Playback
         void SetSubtitleTrack(std::optional<std::int64_t> id);
         void SetSubtitleDelay(double seconds);
         void SetAudioDelay(double seconds);
+        void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle);
+        void RemoveTrack(std::int64_t id);
+        void ApplySubtitleStyle(SubtitleStyle const& style);
         [[nodiscard]] double DurationSeconds() const noexcept;
         void Shutdown() noexcept;
 
@@ -69,6 +72,7 @@ namespace HaloDesktop::Playback
         void Command(std::vector<std::string> const& arguments);
         void SetDoubleProperty(char const* name, double value);
         void SetInt64Property(char const* name, std::int64_t value);
+        void SetStringProperty(char const* name,std::wstring const& value);
 
         mpv_handle* m_handle{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };

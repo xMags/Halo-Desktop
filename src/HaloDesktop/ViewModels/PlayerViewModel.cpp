@@ -6,6 +6,9 @@
 #if __has_include("PlayerViewModel.g.cpp")
 #include "PlayerViewModel.g.cpp"
 #endif
+#if __has_include("AddonSubtitleViewModel.g.cpp")
+#include "AddonSubtitleViewModel.g.cpp"
+#endif
 
 #include "Shell/WindowPresentationService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -30,6 +33,7 @@ namespace
 
 namespace winrt::HaloDesktop::implementation
 {
+    AddonSubtitleViewModel::AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value):m_value(std::move(value)){}winrt::hstring AddonSubtitleViewModel::Key()const{return m_value.Key;}winrt::hstring AddonSubtitleViewModel::Language()const{return m_value.Language;}winrt::hstring AddonSubtitleViewModel::Addon()const{return m_value.Addon;}winrt::hstring AddonSubtitleViewModel::Variant()const{return m_value.Variant;}
     PlaybackTrackViewModel::PlaybackTrackViewModel(::HaloDesktop::Playback::TrackInfo track) : m_track(std::move(track))
     {
     }
@@ -58,7 +62,7 @@ namespace winrt::HaloDesktop::implementation
         : m_engine(services.Playback),
           m_windowPresentation(services.WindowPresentation), m_state(services.Playback->State()),
           m_audioTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_addonSubtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         RebuildTracks();
     }
@@ -244,6 +248,7 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_subtitleTracks;
     }
+    winrt::Windows::Foundation::IInspectable PlayerViewModel::AddonSubtitles()const{return m_addonSubtitles;}
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
     PlayerViewModel::AudioTracksView() const
     {
@@ -254,6 +259,7 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_subtitleTracks;
     }
+    auto PlayerViewModel::AddonSubtitlesView()const->winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>{return m_addonSubtitles;}
     double PlayerViewModel::BufferedPosition() const noexcept
     {
         return (std::min)(m_state.DurationSeconds, m_state.PositionSeconds + m_state.DurationSeconds * 0.09);
@@ -360,6 +366,8 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"UpNextAvailableVisibility");
     }
     void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
+    void PlayerViewModel::SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler){m_addonSubtitleHandler=std::move(handler);}
+    void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonSubtitles.Clear();for(auto&value:values)m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(std::move(value)));Raise(L"AddonSubtitles");}
     void PlayerViewModel::SetUpNextTitle(winrt::hstring const& title)
     {
         if (m_upNextTitle == title)
@@ -485,6 +493,7 @@ namespace winrt::HaloDesktop::implementation
         m_engine->SetSubtitleTrack(std::nullopt);
         NotifyUserActivity();
     }
+    void PlayerViewModel::SelectAddonSubtitle(winrt::hstring const&key){if(m_addonSubtitleHandler)m_addonSubtitleHandler(key);NotifyUserActivity();}
     void PlayerViewModel::AdjustSubtitleDelay(std::int32_t milliseconds)
     {
         m_subtitleDelayMs = std::clamp(m_subtitleDelayMs + milliseconds, -5000, 5000);

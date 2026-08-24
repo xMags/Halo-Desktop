@@ -399,4 +399,11 @@ namespace HaloDesktop::Api::Mappers
         for(auto const&entry:root.GetNamedArray(L"errors")){auto const object=RequireObject(entry,L"An addon error must be an object.");result.Errors.push_back({OptionalDisplayString(object,L"name",80),OptionalDisplayString(object,L"code",32)});}
         return result;
     }
+
+    Dto::SubtitlesPayload ParseSubtitles(winrt::Windows::Data::Json::IJsonValue const&value)
+    {
+        auto const root=RequireObject(value,L"The subtitles response must be an object.");Dto::SubtitlesPayload result;result.HashMatched=root.GetNamedBoolean(L"hashMatched",false);
+        for(auto const&entry:root.GetNamedArray(L"results")){auto const object=RequireObject(entry,L"A subtitle group must be an object.");auto const addon=object.GetNamedObject(L"addon");Dto::SubtitleGroup group{DisplayString(addon,L"id",1024),DisplayString(addon,L"name",80),{}};for(auto const&item:object.GetNamedArray(L"subtitles")){auto const subtitle=RequireObject(item,L"A subtitle must be an object.");auto const url=OptionalHttpUrl(subtitle,L"url");auto id=OptionalDisplayString(subtitle,L"id",512);auto lang=OptionalDisplayString(subtitle,L"lang",32);if(url&&id&&lang)group.Subtitles.push_back({*id,*url,*lang});}result.Results.push_back(std::move(group));}
+        for(auto const&entry:root.GetNamedArray(L"errors")){auto const object=RequireObject(entry,L"An addon error must be an object.");result.Errors.push_back({OptionalDisplayString(object,L"name",80),OptionalDisplayString(object,L"code",32)});}return result;
+    }
 }

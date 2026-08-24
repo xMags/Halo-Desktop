@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Api/ApiClient.h"
+#include <winrt/Windows.Web.Http.Headers.h>
 #include "Api/ApiError.h"
 #include "Api/HttpExecutor.h"
 #include "Services/Auth/ITokenProvider.h"
@@ -227,6 +228,16 @@ namespace HaloDesktop::Api
         auto const response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Put(),L"/library",body.Stringify());co_return Mappers::ParseLibrary(response);
     }
     concurrency::task<Dto::StreamsPayload> ApiClient::GetStreamsAsync(winrt::hstring type,winrt::hstring videoId){auto path=winrt::hstring{L"/streams?type="}+EncodeUriComponent(type)+L"&videoId="+EncodeUriComponent(videoId);auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());co_return Mappers::ParseStreams(response);}
+    concurrency::task<Dto::SubtitlesPayload> ApiClient::GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename){auto path=winrt::hstring{L"/subtitles?type="}+EncodeUriComponent(type)+L"&videoId="+EncodeUriComponent(videoId);if(videoHash)path=path+L"&videoHash="+EncodeUriComponent(*videoHash);if(videoSize)path=path+L"&videoSize="+winrt::to_hstring(*videoSize);if(filename)path=path+L"&filename="+EncodeUriComponent(*filename);auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());co_return Mappers::ParseSubtitles(response);}
+
+    concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> ApiClient::OpenAddonProxyAsync(winrt::hstring targetUrl)
+    {
+        co_await winrt::resume_background();auto const generation=m_tokenProvider->SessionGeneration();auto token=co_await m_tokenProvider->AccessTokenAsync();if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}
+        auto const uri=Endpoint((winrt::hstring{L"/addon-proxy?url="}+EncodeUriComponent(targetUrl)).c_str());
+        for(int attempt=0;attempt<2;++attempt){winrt::Windows::Web::Http::HttpRequestMessage request{winrt::Windows::Web::Http::HttpMethod::Get(),uri};request.Headers().TryAppendWithoutValidation(L"Authorization",winrt::hstring{L"Bearer "}+*token);auto response=co_await m_executor->SendForStreamAsync(request);auto const status=static_cast<std::uint16_t>(response.StatusCode());if(status>=200&&status<300)co_return response;if(status!=401||attempt==1)throw winrt::hresult_error{ApiError::MakeHttpStatus(status),L"The subtitle proxy request failed."};token=co_await m_tokenProvider->RefreshAccessTokenAsync();if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}}
+        throw winrt::hresult_error{ApiError::SessionRejected};
+    }
+    concurrency::task<VideoHashResult> ApiClient::ComputeVideoHashAsync(winrt::hstring streamUrl){co_return co_await ComputeRemoteVideoHashAsync(std::move(streamUrl),m_executor);}
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(
         winrt::Windows::Web::Http::HttpMethod method,

@@ -6,6 +6,7 @@
 #include "Models/Models.h"
 #include "Playback/MpvEngine.h"
 #include "Playback/NullEngine.h"
+#include "Playback/SubtitleController.h"
 #include "Services/MockDownloadService.h"
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
@@ -96,6 +97,7 @@ namespace winrt::HaloDesktop::implementation
 #else
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
 #endif
+        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
 
 #if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION

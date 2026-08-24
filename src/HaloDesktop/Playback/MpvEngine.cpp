@@ -57,6 +57,7 @@ namespace HaloDesktop::Playback
         {
             m_client->SetVolume(m_state.Volume);
             m_client->SetSpeed(m_state.Speed);
+            m_client->ApplySubtitleStyle(m_subtitleStyle);
             if (m_state.Paused)
             {
                 m_client->SetPaused(true);
@@ -272,6 +273,9 @@ namespace HaloDesktop::Playback
     {
         return m_state;
     }
+    void MpvEngine::AddExternalSubtitle(std::wstring const&path,std::wstring const&identityTitle){if(m_client)m_client->AddExternalSubtitle(path,identityTitle);}
+    void MpvEngine::RemoveTrack(std::int64_t id){if(m_client)m_client->RemoveTrack(id);}
+    void MpvEngine::ApplySubtitleStyle(SubtitleStyle const&style){m_subtitleStyle=style;if(m_client)m_client->ApplySubtitleStyle(style);}
     double MpvEngine::DurationNow()const noexcept{return m_client?m_client->DurationSeconds():m_state.DurationSeconds;}
 
     PlaybackChangedToken MpvEngine::AddChangedHandler(PlaybackChangedHandler handler)

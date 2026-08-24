@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Api/OpenSubtitlesHash.h"
 
 #include <memory>
 #include <optional>
@@ -57,6 +58,9 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::MetaDetail> GetMetaAsync(winrt::hstring type,winrt::hstring metaId);
         [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> PutLibraryAsync(std::vector<Dto::LibraryRow> rows);
         [[nodiscard]] concurrency::task<Dto::StreamsPayload> GetStreamsAsync(winrt::hstring type,winrt::hstring videoId);
+        [[nodiscard]] concurrency::task<Dto::SubtitlesPayload> GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename);
+        [[nodiscard]] concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> OpenAddonProxyAsync(winrt::hstring targetUrl);
+        [[nodiscard]] concurrency::task<VideoHashResult> ComputeVideoHashAsync(winrt::hstring streamUrl);
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;

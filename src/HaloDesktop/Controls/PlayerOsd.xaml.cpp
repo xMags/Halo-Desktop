@@ -33,6 +33,7 @@ namespace winrt::HaloDesktop::implementation
         FindName(L"SubtitleTrackList")
             .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
             .ItemsSource(viewModel->SubtitleTracksView());
+        if(auto list=FindName(L"AddonSubtitleList").try_as<Microsoft::UI::Xaml::Controls::ItemsControl>())list.ItemsSource(viewModel->AddonSubtitlesView());
         if (m_seekHandlersRegistered)
         {
             return;
@@ -222,6 +223,7 @@ namespace winrt::HaloDesktop::implementation
                                        .as<winrt::HaloDesktop::PlaybackTrackViewModel>()
                                        .Id());
     }
+    void PlayerOsd::OnAddonSubtitleClick(winrt::Windows::Foundation::IInspectable const&sender,Microsoft::UI::Xaml::RoutedEventArgs const&){m_viewModel.SelectAddonSubtitle(winrt::unbox_value_or<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag(),L""));}
     void PlayerOsd::OnSubtitleDelayDownClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

@@ -30,6 +30,7 @@ namespace HaloDesktop::Playback
         std::wstring Note;
         std::wstring Codec;
         bool Selected{};
+        bool External{};
 
         bool operator==(TrackInfo const&) const = default;
     };
@@ -47,6 +48,8 @@ namespace HaloDesktop::Playback
         PlaybackEndReason EndReason{ PlaybackEndReason::None };
         std::vector<TrackInfo> Tracks;
     };
+
+    struct SubtitleStyle final{double Scale{1.0};std::wstring Font{L"Segoe UI"};double BorderSize{3.0};double ShadowOffset{2.0};};
 
     using PlaybackChangedToken = std::uint64_t;
     using PlaybackChangedHandler = std::function<void()>;
@@ -69,6 +72,9 @@ namespace HaloDesktop::Playback
         virtual void SetSubtitleTrack(std::optional<std::int64_t> id) = 0;
         virtual void SetSubtitleDelay(double seconds) = 0;
         virtual void SetAudioDelay(double seconds) = 0;
+        virtual void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle) = 0;
+        virtual void RemoveTrack(std::int64_t id) = 0;
+        virtual void ApplySubtitleStyle(SubtitleStyle const& style) = 0;
         [[nodiscard]] virtual PlaybackState State() const = 0;
         [[nodiscard]] virtual double DurationNow() const noexcept = 0;
         virtual PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) = 0;

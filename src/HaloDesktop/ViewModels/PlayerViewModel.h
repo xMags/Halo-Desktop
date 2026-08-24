@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/SubtitleController.h"
 #include "PlaybackTrackViewModel.g.h"
+#include "AddonSubtitleViewModel.g.h"
 #include "PlayerViewModel.g.h"
 #include "Services/AppServices.h"
 
@@ -25,6 +27,7 @@ namespace HaloDesktop::Shell
 
 namespace winrt::HaloDesktop::implementation
 {
+    struct AddonSubtitleViewModel:AddonSubtitleViewModelT<AddonSubtitleViewModel>{explicit AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value);winrt::hstring Key()const;winrt::hstring Language()const;winrt::hstring Addon()const;winrt::hstring Variant()const;private: ::HaloDesktop::Playback::AddonSubtitleDisplay m_value;};
     struct PlaybackTrackViewModel : PlaybackTrackViewModelT<PlaybackTrackViewModel>
     {
         explicit PlaybackTrackViewModel(::HaloDesktop::Playback::TrackInfo track);
@@ -59,12 +62,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double TitleFontSize() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleTracks() const;
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable AddonSubtitles()const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<
             winrt::Windows::Foundation::IInspectable>
         AudioTracksView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<
             winrt::Windows::Foundation::IInspectable>
         SubtitleTracksView() const;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AddonSubtitlesView()const;
         [[nodiscard]] double BufferedPosition() const noexcept;
         [[nodiscard]] double OsdOpacity() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OsdWakeVisibility() const noexcept;
@@ -91,6 +96,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
         void SetPlayNextHandler(std::function<void()> handler);
         void SetCloseRequestedHandler(std::function<void()> handler);
+        void SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler);
+        void SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay> values);
         void SetUpNextTitle(winrt::hstring const& title);
         void TogglePause();
         void BeginScrub();
@@ -105,6 +112,7 @@ namespace winrt::HaloDesktop::implementation
         void SelectAudio(std::int64_t id);
         void SelectSubtitle(std::int64_t id);
         void DisableSubtitles();
+        void SelectAddonSubtitle(winrt::hstring const&key);
         void AdjustSubtitleDelay(std::int32_t milliseconds);
         void AdjustAudioDelay(std::int32_t milliseconds);
         void ToggleUpNext();
@@ -146,10 +154,12 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_upNextTitle;
         std::function<void()> m_playNextHandler;
         std::function<void()> m_closeRequestedHandler;
+        std::function<void(winrt::hstring)>m_addonSubtitleHandler;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_audioTracks{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_subtitleTracks{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>m_addonSubtitles{nullptr};
         double m_osdOpacity{ 1.0 };
         double m_scrubPosition{};
         std::chrono::steady_clock::time_point m_lastScrubSeek{};

@@ -10,6 +10,15 @@ namespace HaloDesktop
         Boolean IsSelected { get; };
     }
 
+    [default_interface]
+    runtimeclass AddonSubtitleViewModel
+    {
+        String Key { get; };
+        String Language { get; };
+        String Addon { get; };
+        String Variant { get; };
+    }
+
     runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Double Position { get; };
@@ -26,6 +35,7 @@ namespace HaloDesktop
         Double TitleFontSize { get; };
         Object AudioTracks { get; };
         Object SubtitleTracks { get; };
+        Object AddonSubtitles { get; };
         Double BufferedPosition { get; };
         Double OsdOpacity { get; };
         Microsoft.UI.Xaml.Visibility OsdWakeVisibility { get; };
@@ -63,6 +73,7 @@ namespace HaloDesktop
         void SelectAudio(Int64 id);
         void SelectSubtitle(Int64 id);
         void DisableSubtitles();
+        void SelectAddonSubtitle(String key);
         void AdjustSubtitleDelay(Int32 milliseconds);
         void AdjustAudioDelay(Int32 milliseconds);
         void ToggleUpNext();

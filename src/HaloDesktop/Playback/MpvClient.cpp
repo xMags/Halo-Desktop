@@ -130,6 +130,7 @@ namespace
                 std::move(note),
                 Uppercase(ReadString(entry, "codec")),
                 ReadFlag(entry, "selected"),
+                ReadFlag(entry, "external"),
             });
         }
         return tracks;
@@ -357,6 +358,9 @@ namespace HaloDesktop::Playback
         double value{};
         return m_handle&&mpv_get_property(m_handle,"duration",MPV_FORMAT_DOUBLE,&value)>=0?value:0.0;
     }
+    void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identityTitle){Command({"sub-add",winrt::to_string(winrt::hstring(path)),"select",winrt::to_string(winrt::hstring(identityTitle))});}
+    void MpvClient::RemoveTrack(std::int64_t id){Command({"sub-remove",std::to_string(id)});}
+    void MpvClient::ApplySubtitleStyle(SubtitleStyle const&style){SetDoubleProperty("sub-scale",style.Scale);SetStringProperty("sub-font",style.Font);SetDoubleProperty("sub-border-size",style.BorderSize);SetDoubleProperty("sub-shadow-offset",style.ShadowOffset);}
 
     void MpvClient::Shutdown() noexcept
     {
@@ -451,4 +455,5 @@ namespace HaloDesktop::Playback
     {
         CheckMpv("set integer property", mpv_set_property(m_handle, name, MPV_FORMAT_INT64, &value));
     }
+    void MpvClient::SetStringProperty(char const*name,std::wstring const&value){CheckMpv("set string property",mpv_set_property_string(m_handle,name,winrt::to_string(winrt::hstring(value)).c_str()));}
 } // namespace HaloDesktop::Playback

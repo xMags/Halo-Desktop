@@ -58,6 +58,7 @@ namespace winrt::HaloDesktop::implementation
                                  Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitleTrackClick(winrt::Windows::Foundation::IInspectable const&,
                                   Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnAddonSubtitleClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitleDelayDownClick(winrt::Windows::Foundation::IInspectable const&,
                                       Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitleDelayUpClick(winrt::Windows::Foundation::IInspectable const&,

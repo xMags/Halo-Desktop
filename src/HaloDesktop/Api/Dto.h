@@ -144,6 +144,9 @@ namespace HaloDesktop::Api::Dto
     struct StreamGroup final{winrt::hstring AddonId,AddonName;std::vector<StreamRecord> Streams;};
     struct AddonFailure final{std::optional<winrt::hstring>Name,Code;};
     struct StreamsPayload final{std::vector<StreamGroup>Results;std::vector<AddonFailure>Errors;};
+    struct SubtitleRecord final{winrt::hstring Id,Url,Lang;};
+    struct SubtitleGroup final{winrt::hstring AddonId,AddonName;std::vector<SubtitleRecord>Subtitles;};
+    struct SubtitlesPayload final{std::vector<SubtitleGroup>Results;std::vector<AddonFailure>Errors;bool HashMatched{};};
 }
 
 namespace HaloDesktop::Api::Mappers
@@ -159,4 +162,5 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] std::vector<Dto::WatchEntry> ParseWatchState(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::MetaDetail ParseMeta(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::SubtitlesPayload ParseSubtitles(winrt::Windows::Data::Json::IJsonValue const& value);
 }

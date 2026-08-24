@@ -156,6 +156,9 @@ namespace HaloDesktop::Playback
         m_audioDelay = seconds;
         NotifyChanged();
     }
+    void NullEngine::AddExternalSubtitle([[maybe_unused]]std::wstring const&path,std::wstring const&identityTitle){for(auto&track:m_state.Tracks)if(track.Type==TrackType::Subtitle)track.Selected=false;m_state.Tracks.push_back({++m_nextTrackId,TrackType::Subtitle,identityTitle,L"External subtitle",L"SRT",true,true});NotifyChanged();}
+    void NullEngine::RemoveTrack(std::int64_t id){std::erase_if(m_state.Tracks,[&](auto const&track){return track.Id==id;});NotifyChanged();}
+    void NullEngine::ApplySubtitleStyle(SubtitleStyle const&style){m_subtitleStyle=style;}
     PlaybackState NullEngine::State() const
     {
         return m_state;
