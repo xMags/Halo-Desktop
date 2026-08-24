@@ -8,6 +8,8 @@
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
 #include "Services/Auth/LocalAuthSession.h"
+#include "Services/Auth/OidcAuthSession.h"
+#include "Services/Auth/OidcSignInFlow.h"
 #include "Services/Auth/SessionController.h"
 #include "Services/Auth/SessionStore.h"
 #include "Services/NavigationService.h"
@@ -31,9 +33,15 @@ namespace winrt::HaloDesktop::implementation
             ::HaloDesktop::Config::ServerBaseUrl,
             m_httpExecutor,
             m_sessionStore);
+        m_oidcAuthSession = std::make_shared<::HaloDesktop::Services::Auth::OidcAuthSession>(
+            m_httpExecutor,
+            m_sessionStore);
+        m_oidcSignInFlow = std::make_shared<::HaloDesktop::Services::Auth::OidcSignInFlow>(
+            m_httpExecutor);
         m_sessionController = std::make_shared<::HaloDesktop::Services::Auth::SessionController>(
             m_sessionStore,
             m_localAuthSession,
+            m_oidcAuthSession,
             m_queryCache,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_apiClient = std::make_shared<::HaloDesktop::Api::ApiClient>(
@@ -43,6 +51,7 @@ namespace winrt::HaloDesktop::implementation
         m_sessionService = std::make_shared<::HaloDesktop::Services::SessionService>(
             m_apiClient,
             m_sessionController,
+            m_oidcSignInFlow,
             m_services.Navigation);
         std::weak_ptr<::HaloDesktop::Services::SessionService> weakSession = m_sessionService;
         m_sessionController->SetRejectedHandler([weakSession]()

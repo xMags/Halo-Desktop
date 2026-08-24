@@ -88,6 +88,9 @@
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
+    <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
+    <ClCompile Include="Services\Auth\OidcAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
+    <ClCompile Include="Services\Auth\OidcSignInFlow.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\SessionController.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\SessionStore.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\MockServices.cpp"><Filter>Services</Filter></ClCompile>
@@ -149,6 +152,9 @@
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
+    <ClInclude Include="Services\Auth\LoopbackListener.h"><Filter>Services\Auth</Filter></ClInclude>
+    <ClInclude Include="Services\Auth\OidcAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
+    <ClInclude Include="Services\Auth\OidcSignInFlow.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\SessionController.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\SessionStore.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\MockDownloadService.h"><Filter>Services</Filter></ClInclude>

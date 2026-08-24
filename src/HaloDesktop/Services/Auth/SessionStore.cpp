@@ -67,6 +67,21 @@ namespace
         return static_cast<std::int64_t>(number);
     }
 
+    std::int64_t RequiredNonnegativeEpochMilliseconds(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* name)
+    {
+        auto const number = object.GetNamedNumber(name);
+        if (!std::isfinite(number)
+            || number < 0
+            || number > static_cast<double>((std::numeric_limits<std::int64_t>::max)())
+            || std::floor(number) != number)
+        {
+            throw std::invalid_argument{ "The protected session contains an invalid expiry." };
+        }
+        return static_cast<std::int64_t>(number);
+    }
+
     std::optional<::HaloDesktop::Services::Auth::StoredSession> ParseSession(std::string const& raw)
     {
         auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
@@ -95,7 +110,7 @@ namespace
                     .AccessToken = RequiredString(oidc, L"accessToken"),
                     .RefreshToken = OptionalString(oidc, L"refreshToken"),
                     .IdToken = OptionalString(oidc, L"idToken"),
-                    .ExpiresAt = RequiredEpochMilliseconds(oidc, L"expiresAt"),
+                    .ExpiresAt = RequiredNonnegativeEpochMilliseconds(oidc, L"expiresAt"),
                 },
             };
         }

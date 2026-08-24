@@ -1,8 +1,10 @@
 #pragma once
 
+#include "Api/Dto.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <memory>
+#include <optional>
 
 namespace HaloDesktop::Api
 {
@@ -12,6 +14,7 @@ namespace HaloDesktop::Api
 namespace HaloDesktop::Services::Auth
 {
     class SessionController;
+    class OidcSignInFlow;
 }
 
 namespace HaloDesktop::Services
@@ -27,6 +30,7 @@ namespace HaloDesktop::Services
         SessionService(
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
             std::shared_ptr<Auth::SessionController> controller,
+            std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
             std::shared_ptr<NavigationService> navigation);
 
         [[nodiscard]] winrt::hstring ServerUrl() const override;
@@ -51,7 +55,9 @@ namespace HaloDesktop::Services
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<Auth::SessionController> m_controller;
+        std::shared_ptr<Auth::OidcSignInFlow> m_oidcSignInFlow;
         std::shared_ptr<NavigationService> m_navigation;
+        std::optional<::HaloDesktop::Api::Dto::AuthConfig> m_oidcConfig;
         winrt::hstring m_userName;
         AuthenticationMode m_mode{ AuthenticationMode::Unknown };
         bool m_isAdmin{};

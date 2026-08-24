@@ -21,6 +21,8 @@ namespace HaloDesktop::Services
 namespace HaloDesktop::Services::Auth
 {
     class LocalAuthSession;
+    class OidcAuthSession;
+    class OidcSignInFlow;
     class SessionController;
     class SessionStore;
 }
@@ -42,6 +44,8 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::QueryCache> m_queryCache;
         std::shared_ptr<::HaloDesktop::Services::Auth::SessionStore> m_sessionStore;
         std::shared_ptr<::HaloDesktop::Services::Auth::LocalAuthSession> m_localAuthSession;
+        std::shared_ptr<::HaloDesktop::Services::Auth::OidcAuthSession> m_oidcAuthSession;
+        std::shared_ptr<::HaloDesktop::Services::Auth::OidcSignInFlow> m_oidcSignInFlow;
         std::shared_ptr<::HaloDesktop::Services::Auth::SessionController> m_sessionController;
         std::shared_ptr<::HaloDesktop::Services::SessionService> m_sessionService;
         ::HaloDesktop::Services::AppServices m_services;

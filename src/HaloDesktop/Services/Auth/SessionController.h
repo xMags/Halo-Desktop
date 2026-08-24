@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Services/Auth/ITokenProvider.h"
+#include "Services/Auth/SessionStore.h"
 
 #include <cstdint>
 #include <functional>
@@ -16,6 +17,7 @@ namespace HaloDesktop::Services
 namespace HaloDesktop::Services::Auth
 {
     class LocalAuthSession;
+    class OidcAuthSession;
     class SessionStore;
 
     enum class SessionKind
@@ -35,6 +37,7 @@ namespace HaloDesktop::Services::Auth
         SessionController(
             std::shared_ptr<SessionStore> store,
             std::shared_ptr<LocalAuthSession> localSession,
+            std::shared_ptr<OidcAuthSession> oidcSession,
             std::shared_ptr<::HaloDesktop::Services::QueryCache> queryCache,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
@@ -42,6 +45,7 @@ namespace HaloDesktop::Services::Auth
         [[nodiscard]] concurrency::task<void> SignInLocalAsync(
             winrt::hstring username,
             winrt::hstring password);
+        [[nodiscard]] concurrency::task<void> SignInOidcAsync(StoredOidcSession session);
         [[nodiscard]] concurrency::task<void> SignOutAsync();
 
         [[nodiscard]] bool IsSignedIn() const noexcept;
@@ -56,6 +60,7 @@ namespace HaloDesktop::Services::Auth
     private:
         std::shared_ptr<SessionStore> m_store;
         std::shared_ptr<LocalAuthSession> m_localSession;
+        std::shared_ptr<OidcAuthSession> m_oidcSession;
         std::shared_ptr<::HaloDesktop::Services::QueryCache> m_queryCache;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         mutable std::mutex m_mutex;

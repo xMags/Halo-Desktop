@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Api/ApiError.h"
 #include "Services/Auth/SessionController.h"
+#include "Services/Auth/OidcSignInFlow.h"
 #include "Services/NavigationService.h"
 
 #include <algorithm>
@@ -51,12 +52,14 @@ namespace HaloDesktop::Services
     SessionService::SessionService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
         std::shared_ptr<Auth::SessionController> controller,
+        std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
         std::shared_ptr<NavigationService> navigation)
         : m_apiClient(std::move(apiClient)),
           m_controller(std::move(controller)),
+          m_oidcSignInFlow(std::move(oidcSignInFlow)),
           m_navigation(std::move(navigation))
     {
-        if (!m_apiClient || !m_controller || !m_navigation)
+        if (!m_apiClient || !m_controller || !m_oidcSignInFlow || !m_navigation)
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
@@ -109,6 +112,9 @@ namespace HaloDesktop::Services
         m_mode = config.Mode == ::HaloDesktop::Api::Dto::AuthMode::Local
             ? AuthenticationMode::Local
             : AuthenticationMode::Oidc;
+        m_oidcConfig = m_mode == AuthenticationMode::Oidc
+            ? std::optional<::HaloDesktop::Api::Dto::AuthConfig>{ config }
+            : std::nullopt;
         co_return m_mode;
     }
 
@@ -163,7 +169,29 @@ namespace HaloDesktop::Services
 
     concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::RequestBrowserSignInAsync()
     {
-        co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+        auto const uiContext = winrt::apartment_context{};
+        if (!m_oidcConfig)
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+        }
+        auto result = co_await m_oidcSignInFlow->SignInAsync(*m_oidcConfig);
+        if (result.Outcome != winrt::HaloDesktop::SignInOutcome::Succeeded || !result.Session)
+        {
+            co_return result.Outcome;
+        }
+        try
+        {
+            co_await m_controller->SignInOidcAsync(std::move(*result.Session));
+        }
+        catch (...)
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+        }
+        co_await uiContext;
+        co_await RefreshIdentityAsync();
+        co_return m_controller->IsSignedIn()
+            ? winrt::HaloDesktop::SignInOutcome::Succeeded
+            : winrt::HaloDesktop::SignInOutcome::Expired;
     }
 
     concurrency::task<void> SessionService::SignOutAsync()

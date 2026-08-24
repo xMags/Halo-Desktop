@@ -103,7 +103,7 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>crypt32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;ole32.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
@@ -169,6 +169,9 @@
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
+    <ClInclude Include="Services\Auth\LoopbackListener.h" />
+    <ClInclude Include="Services\Auth\OidcAuthSession.h" />
+    <ClInclude Include="Services\Auth\OidcSignInFlow.h" />
     <ClInclude Include="Services\Auth\SessionController.h" />
     <ClInclude Include="Services\Auth\SessionStore.h" />
     <ClInclude Include="Services\MockDownloadService.h" />
@@ -289,6 +292,9 @@
     </ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
+    <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
+    <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />
+    <ClCompile Include="Services\Auth\OidcSignInFlow.cpp" />
     <ClCompile Include="Services\Auth\SessionController.cpp" />
     <ClCompile Include="Services\Auth\SessionStore.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
