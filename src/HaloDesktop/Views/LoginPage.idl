@@ -3,13 +3,19 @@ namespace HaloDesktop
     runtimeclass LoginViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String ServerHost { get; };
-        String UserName;
-        String Password;
-        String ErrorText { get; };
-        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
-        void SignIn();
-        void ContinueWithMeridian();
-        void UseDifferentServer();
+        String DisplayName { get; };
+        Microsoft.UI.Xaml.Visibility IdleVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WaitingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SignedInVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DeclinedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ExpiredVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UnreachableVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
+        String DetailsGlyph { get; };
+        void StartSignIn();
+        void Reopen();
+        void Cancel();
+        void ToggleDetails();
     }
 
     [default_interface]

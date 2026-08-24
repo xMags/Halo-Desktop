@@ -14,6 +14,14 @@ namespace HaloDesktop
         OnDisk = 3,
     };
 
+    enum SignInOutcome
+    {
+        Succeeded = 0,
+        Declined = 1,
+        Expired = 2,
+        Unreachable = 3,
+    };
+
     enum DownloadState
     {
         Downloading = 0,

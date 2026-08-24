@@ -45,7 +45,6 @@ namespace HaloDesktop
         void SetFont(Int32 index);
         void SetOutline(Int32 index);
         void SignOut();
-        void SwitchServer();
     }
 
     [default_interface]

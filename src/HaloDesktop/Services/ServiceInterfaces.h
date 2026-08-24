@@ -80,10 +80,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
         [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
-        virtual winrt::Windows::Foundation::IAsyncOperation<bool> TestServerAsync(winrt::hstring url) = 0;
-        virtual void SetServerUrl(winrt::hstring const& url) = 0;
-        virtual bool SignIn(winrt::hstring const& user, winrt::hstring const& password) = 0;
+        // Hands sign-in to the browser and completes when the server answers.
+        // A Succeeded outcome has already persisted the session before it returns.
+        virtual winrt::Windows::Foundation::IAsyncOperation<winrt::HaloDesktop::SignInOutcome>
+            RequestBrowserSignInAsync() = 0;
         virtual void SignOut() = 0;
-        virtual void ClearServer() = 0;
     };
 }

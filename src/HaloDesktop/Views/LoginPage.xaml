@@ -4,80 +4,292 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <Page.Resources>
+    <Style x:Key="LoginTitle" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="Margin" Value="0,26,0,0" />
+    </Style>
+
+    <Style x:Key="LoginHost" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="Margin" Value="0,10,0,0" />
+    </Style>
+
+    <Style x:Key="LoginBody" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloText2Brush}" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
+    <Style x:Key="LoginLinkButton" TargetType="Button">
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
+      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="Padding" Value="8,4" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
+    </Style>
+  </Page.Resources>
+
   <Grid Background="Transparent">
     <StackPanel
       Width="404"
       HorizontalAlignment="Center"
       VerticalAlignment="Center">
-      <StackPanel Orientation="Horizontal" Spacing="10">
-        <Image Width="26" Height="26" Source="ms-appx:///Assets/halo-mark.png" />
+
+      <!-- The lockup is identical in every state, so it lives outside them. -->
+      <StackPanel HorizontalAlignment="Center" Spacing="12">
+        <Image
+          Width="26"
+          Height="26"
+          HorizontalAlignment="Center"
+          Source="ms-appx:///Assets/halo-mark.png" />
         <TextBlock
-          VerticalAlignment="Center"
+          HorizontalAlignment="Center"
           CharacterSpacing="140"
           FontSize="15"
           FontWeight="SemiBold"
           Foreground="{ThemeResource HaloText1Brush}"
           Text="HALO" />
       </StackPanel>
-      <TextBlock
-        Margin="0,26,0,0"
-        FontFamily="Segoe UI Variable Display"
-        FontSize="26"
-        FontWeight="SemiBold"
-        Foreground="{ThemeResource HaloText1Brush}"
-        Text="Sign in" />
-      <TextBlock
-        Margin="0,8,0,0"
-        Foreground="{ThemeResource HaloAccentBrush}"
-        Style="{StaticResource HaloMonoData}"
-        Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
 
-      <TextBox
-        Margin="0,24,0,0"
-        AutomationProperties.Name="Username"
-        Header="Username"
-        Text="{x:Bind ViewModel.UserName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-      <PasswordBox
-        Margin="0,12,0,0"
-        AutomationProperties.Name="Password"
-        Header="Password"
-        Password="{x:Bind ViewModel.Password, Mode=TwoWay}" />
-      <TextBlock
-        Margin="0,8,0,0"
-        Foreground="{ThemeResource HaloCriticalBrush}"
-        Style="{StaticResource HaloMonoData}"
-        Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
-        Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}" />
-      <Button
-        Height="36"
-        Margin="0,18,0,0"
-        Click="OnSignInClick"
-        Content="Sign in"
-        Style="{StaticResource HaloAccentButtonStyle}" />
+      <!-- Idle -->
+      <StackPanel Visibility="{x:Bind ViewModel.IdleVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign in to Halo" />
+        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+        <TextBlock
+          Margin="0,14,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="Your library and account data stay on your server." />
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,24,0,0"
+          AutomationProperties.Name="Continue in browser"
+          Click="OnContinueClick"
+          Style="{StaticResource HaloAccentButtonStyle}">
+          <StackPanel
+            HorizontalAlignment="Center"
+            Orientation="Horizontal"
+            Spacing="9">
+            <FontIcon VerticalAlignment="Center" FontSize="13" Glyph="&#xE8A7;" />
+            <TextBlock VerticalAlignment="Center" Text="Continue in browser" />
+          </StackPanel>
+        </Button>
+        <Button
+          Margin="0,12,0,0"
+          Content="Having trouble signing in?"
+          Style="{StaticResource LoginLinkButton}"
+          ToolTipService.ToolTip="Help is not available in this prototype" />
+      </StackPanel>
 
-      <Grid Margin="0,20,0,0">
-        <Grid.ColumnDefinitions>
-          <ColumnDefinition Width="*" />
-          <ColumnDefinition Width="Auto" />
-          <ColumnDefinition Width="*" />
-        </Grid.ColumnDefinitions>
-        <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-        <TextBlock Grid.Column="1" Margin="12,0" Style="{StaticResource HaloMonoData}" Text="OR" />
-        <Rectangle Grid.Column="2" Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-      </Grid>
-      <Button
-        Height="36"
-        Margin="0,20,0,0"
-        Click="OnMeridianClick"
-        Content="Continue with Meridian ID" />
-      <Button
-        Margin="0,12,0,0"
-        HorizontalAlignment="Center"
-        Background="Transparent"
-        BorderThickness="0"
-        Click="OnDifferentServerClick"
-        Foreground="{ThemeResource HaloAccentBrush}"
-        Content="Use a different server" />
+      <!-- Waiting for the browser round trip -->
+      <StackPanel Visibility="{x:Bind ViewModel.WaitingVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Check your browser" />
+        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+        <Border
+          Margin="0,20,0,0"
+          Padding="14"
+          Background="{ThemeResource HaloCardBrush}"
+          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+          BorderThickness="1"
+          CornerRadius="6">
+          <StackPanel HorizontalAlignment="Center" Spacing="10">
+            <ProgressRing
+              Width="18"
+              Height="18"
+              HorizontalAlignment="Center"
+              IsActive="True" />
+            <TextBlock
+              Style="{StaticResource LoginBody}"
+              Text="We opened a sign-in request in your default browser. Approve it there and this window carries on by itself." />
+          </StackPanel>
+        </Border>
+        <StackPanel
+          Margin="0,12,0,0"
+          HorizontalAlignment="Center"
+          Orientation="Horizontal"
+          Spacing="8">
+          <Ellipse
+            Width="7"
+            Height="7"
+            VerticalAlignment="Center"
+            Fill="{ThemeResource HaloAccentBrush}" />
+          <TextBlock Style="{StaticResource HaloMonoData}" Text="WAITING FOR BROWSER" />
+        </StackPanel>
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,22,0,0"
+          Click="OnReopenClick"
+          Content="Open the link again" />
+        <Button
+          Margin="0,12,0,0"
+          Click="OnCancelClick"
+          Content="Cancel"
+          Style="{StaticResource LoginLinkButton}" />
+      </StackPanel>
+
+      <!-- Signed in, about to hand over to the shell -->
+      <StackPanel Visibility="{x:Bind ViewModel.SignedInVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Signed in" />
+        <StackPanel
+          Margin="0,20,0,0"
+          HorizontalAlignment="Center"
+          Orientation="Horizontal"
+          Spacing="13">
+          <Border
+            Width="40"
+            Height="40"
+            CornerRadius="20">
+            <Image Source="ms-appx:///Assets/user-avatar.png" Stretch="UniformToFill" />
+          </Border>
+          <StackPanel VerticalAlignment="Center" Spacing="3">
+            <TextBlock
+              FontSize="15"
+              FontWeight="SemiBold"
+              Foreground="{ThemeResource HaloText1Brush}"
+              Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" />
+            <TextBlock Style="{StaticResource HaloMonoData}">
+              <Run
+                FontFamily="{StaticResource HaloMonoBoldFont}"
+                Foreground="{ThemeResource HaloAccentBrush}"
+                Text="PREMIUM" />
+              <Run Text=" · " />
+              <Run Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
+            </TextBlock>
+          </StackPanel>
+        </StackPanel>
+        <StackPanel
+          Margin="0,16,0,0"
+          HorizontalAlignment="Center"
+          Orientation="Horizontal"
+          Spacing="8">
+          <Ellipse
+            Width="7"
+            Height="7"
+            VerticalAlignment="Center"
+            Fill="{ThemeResource HaloSuccessBrush}" />
+          <TextBlock
+            FontFamily="{StaticResource HaloMonoFont}"
+            FontSize="10.5"
+            Foreground="{ThemeResource HaloSuccessBrush}"
+            Text="SESSION SAVED ON THIS DEVICE" />
+        </StackPanel>
+        <TextBlock
+          Margin="0,18,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="Halo remembers this machine. You will not see this screen again until you sign out." />
+        <ProgressBar Height="3" Margin="0,22,0,0" IsIndeterminate="True" />
+        <TextBlock
+          Margin="0,10,0,0"
+          HorizontalAlignment="Center"
+          Style="{StaticResource HaloMonoData}"
+          Text="OPENING YOUR LIBRARY" />
+      </StackPanel>
+
+      <!-- Declined at the provider -->
+      <StackPanel Visibility="{x:Bind ViewModel.DeclinedVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign-in was declined" />
+        <TextBlock
+          Margin="0,8,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="You can try again whenever you’re ready." />
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,24,0,0"
+          Click="OnContinueClick"
+          Content="Try again"
+          Style="{StaticResource HaloAccentButtonStyle}" />
+      </StackPanel>
+
+      <!-- Request timed out before anyone approved it -->
+      <StackPanel Visibility="{x:Bind ViewModel.ExpiredVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign-in request expired" />
+        <TextBlock
+          Margin="0,8,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="This sign-in request has expired. Start a new one to continue." />
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,24,0,0"
+          Click="OnContinueClick"
+          Content="Start again"
+          Style="{StaticResource HaloAccentButtonStyle}" />
+      </StackPanel>
+
+      <!-- Could not open a request at all -->
+      <StackPanel Visibility="{x:Bind ViewModel.UnreachableVisibility, Mode=OneWay}">
+        <TextBlock Style="{StaticResource LoginTitle}" Text="Can’t connect to Halo" />
+        <TextBlock
+          Margin="0,8,0,0"
+          Style="{StaticResource LoginBody}"
+          Text="Try again later." />
+        <Button
+          Height="36"
+          HorizontalAlignment="Stretch"
+          Margin="0,24,0,0"
+          Click="OnContinueClick"
+          Content="Retry"
+          Style="{StaticResource HaloAccentButtonStyle}" />
+        <TextBlock
+          Margin="0,16,0,0"
+          HorizontalAlignment="Center"
+          FontSize="12.5"
+          Foreground="{ThemeResource HaloText3Brush}">
+          <Run Text="Need to set up a server? " />
+          <Run Foreground="{ThemeResource HaloAccentBrush}" Text="Read the setup guide" />
+        </TextBlock>
+        <Button
+          Margin="0,14,0,0"
+          AutomationProperties.Name="Technical details"
+          Click="OnDetailsClick"
+          Style="{StaticResource LoginLinkButton}">
+          <StackPanel
+            HorizontalAlignment="Center"
+            Orientation="Horizontal"
+            Spacing="7">
+            <FontIcon
+              VerticalAlignment="Center"
+              FontSize="11"
+              Foreground="{ThemeResource HaloText3Brush}"
+              Glyph="{x:Bind ViewModel.DetailsGlyph, Mode=OneWay}" />
+            <TextBlock
+              VerticalAlignment="Center"
+              Foreground="{ThemeResource HaloText3Brush}"
+              Text="Technical details" />
+          </StackPanel>
+        </Button>
+        <Border
+          Margin="0,4,0,0"
+          Padding="12,10"
+          Background="{ThemeResource HaloCardBrush}"
+          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+          BorderThickness="1"
+          CornerRadius="4"
+          Visibility="{x:Bind ViewModel.DetailsVisibility, Mode=OneWay}">
+          <StackPanel Spacing="5">
+            <TextBlock Style="{StaticResource HaloMonoData}" Text="HTTPS://HALO.DITTO.MOE" />
+            <TextBlock
+              FontFamily="{StaticResource HaloMonoFont}"
+              FontSize="10.5"
+              Foreground="{ThemeResource HaloCriticalBrush}"
+              Text="NO RESPONSE · CONNECTION REFUSED" />
+          </StackPanel>
+        </Border>
+      </StackPanel>
     </StackPanel>
   </Grid>
 </Page>

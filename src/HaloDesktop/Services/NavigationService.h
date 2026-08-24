@@ -16,7 +16,6 @@ namespace HaloDesktop::Services
         Sources,
         Downloads,
         Settings,
-        Connect,
         Login,
         Player,
     };
@@ -63,7 +62,7 @@ namespace HaloDesktop::Services
         winrt::Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_shellNavigatedRevoker{};
         RouteChangedHandler m_routeChangedHandler;
         Page m_currentPage{ Page::Home };
-        Page m_currentOverlayPage{ Page::Connect };
+        Page m_currentOverlayPage{ Page::Login };
         bool m_overlayOpen{};
     };
 }

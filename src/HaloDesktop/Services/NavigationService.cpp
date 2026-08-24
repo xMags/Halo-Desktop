@@ -5,7 +5,6 @@
 #include "Views/DownloadsPage.xaml.h"
 #include "Views/HomePage.xaml.h"
 #include "Views/LibraryPage.xaml.h"
-#include "Views/ConnectPage.xaml.h"
 #include "Views/LoginPage.xaml.h"
 #include "Views/PlayerPage.xaml.h"
 #include "Views/SearchPage.xaml.h"
@@ -39,8 +38,6 @@ namespace
             return winrt::xaml_typename<winrt::HaloDesktop::DownloadsPage>();
         case Page::Settings:
             return winrt::xaml_typename<winrt::HaloDesktop::SettingsPage>();
-        case Page::Connect:
-            return winrt::xaml_typename<winrt::HaloDesktop::ConnectPage>();
         case Page::Login:
             return winrt::xaml_typename<winrt::HaloDesktop::LoginPage>();
         case Page::Player:
@@ -53,7 +50,7 @@ namespace
     bool IsOverlayPage(HaloDesktop::Services::Page page) noexcept
     {
         using HaloDesktop::Services::Page;
-        return page == Page::Connect || page == Page::Login || page == Page::Player;
+        return page == Page::Login || page == Page::Player;
     }
 
     HaloDesktop::Services::Page PageFromType(winrt::Windows::UI::Xaml::Interop::TypeName const& type)

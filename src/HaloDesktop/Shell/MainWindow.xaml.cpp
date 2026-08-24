@@ -35,7 +35,6 @@ namespace
             return L"· Downloads";
         case Page::Settings:
             return L"· Settings";
-        case Page::Connect:
         case Page::Login:
             return L"";
         case Page::Player:
@@ -103,10 +102,7 @@ namespace winrt::HaloDesktop::implementation
 
         if (!App::Services().Session->IsSignedIn())
         {
-            auto const firstPage = App::Services().Session->ServerUrl().empty()
-                ? ::HaloDesktop::Services::Page::Connect
-                : ::HaloDesktop::Services::Page::Login;
-            App::Services().Navigation->ShowOverlay(firstPage);
+            App::Services().Navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
         }
 
         // An explicit token avoids revoking the Window.Closed event after its

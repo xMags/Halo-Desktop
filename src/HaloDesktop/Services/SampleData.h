@@ -15,10 +15,6 @@ namespace HaloDesktop::Services::SampleData
         inline constexpr wchar_t SearchTopMatchMeta[] = L"SERIES · 2024 · 2 SEASONS";
         inline constexpr wchar_t SearchSeedQuery[] = L"northwind";
         inline constexpr wchar_t DetailSynopsis[] = L"Six surveyors walk a border nobody has walked. The map they bring back does not agree with the map they were sent to confirm, and the second season is the argument about which one gets filed.";
-        inline constexpr wchar_t ConnectHeadline[] = L"Point Halo at your server.";
-        inline constexpr wchar_t ConnectBody[] = L"Your library, watch progress and addons live there. Nothing is stored by anyone else.";
-        inline constexpr wchar_t ConnectPlaceholder[] = L"https://halo.mynas.dev";
-        inline constexpr wchar_t ServerReached[] = L"REACHED · LOCAL AUTH · v0.9.4";
         inline constexpr wchar_t SourceTeachingTitle[] = L"Halo ranks sources for you";
         inline constexpr wchar_t SourceTeachingBody[] = L"Cached first, then the highest quality your connection holds, then audio in your language. Change the weighting in Settings · Playback.";
         inline constexpr wchar_t AddonInstallNotice[] = L"Addon install is wired to the server later.";

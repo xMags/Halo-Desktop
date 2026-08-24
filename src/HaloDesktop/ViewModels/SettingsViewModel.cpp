@@ -58,7 +58,7 @@ namespace winrt::HaloDesktop::implementation
         }
         return winrt::hstring{ displayName };
     }
-    winrt::hstring SettingsViewModel::SignedInLine() const { return winrt::hstring(std::wstring(m_userName) + L" · admin"); }
+    winrt::hstring SettingsViewModel::SignedInLine() const { return winrt::hstring(std::wstring(m_userName) + L" · premium"); }
     winrt::Windows::Foundation::IInspectable SettingsViewModel::Addons() const { return m_addons; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::AddonsView() const { return m_addons; }
     winrt::hstring SettingsViewModel::AddonNoticeText() const { return m_addonNoticeText; }
@@ -174,12 +174,6 @@ namespace winrt::HaloDesktop::implementation
         m_session->SignOut();
         Refresh();
         m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
-    }
-    void SettingsViewModel::SwitchServer()
-    {
-        m_session->ClearServer();
-        Refresh();
-        m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Connect);
     }
     winrt::event_token SettingsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void SettingsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }

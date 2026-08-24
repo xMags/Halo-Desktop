@@ -66,7 +66,6 @@ namespace winrt::HaloDesktop::implementation
         void SetFont(std::int32_t index);
         void SetOutline(std::int32_t index);
         void SignOut();
-        void SwitchServer();
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 

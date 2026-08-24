@@ -15,7 +15,8 @@ namespace winrt::HaloDesktop::implementation
     }
 
     winrt::HaloDesktop::LoginViewModel LoginPage::ViewModel() const { return m_viewModel; }
-    void LoginPage::OnSignInClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.SignIn(); }
-    void LoginPage::OnMeridianClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.ContinueWithMeridian(); }
-    void LoginPage::OnDifferentServerClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.UseDifferentServer(); }
+    void LoginPage::OnContinueClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.StartSignIn(); }
+    void LoginPage::OnReopenClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.Reopen(); }
+    void LoginPage::OnCancelClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.Cancel(); }
+    void LoginPage::OnDetailsClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.ToggleDetails(); }
 }

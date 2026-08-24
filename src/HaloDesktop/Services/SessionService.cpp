@@ -2,15 +2,23 @@
 #include "Services/SessionService.h"
 
 #include <chrono>
-#include <stdexcept>
-#include <string_view>
 #include <winrt/Windows.Storage.h>
 
 namespace
 {
-    constexpr wchar_t ServerUrlKey[] = L"Session.ServerUrl";
+    // The server is not user-selectable. Changing deployments is a rebuild, so
+    // this is the one place the address is written down.
+    constexpr wchar_t HaloServerUrl[] = L"https://halo.ditto.moe";
+
+    // Stands in for the identity the server would return once sign-in is real.
+    constexpr wchar_t SignedInUserName[] = L"debashis";
+
     constexpr wchar_t UserNameKey[] = L"Session.UserName";
     constexpr wchar_t SignedInKey[] = L"Session.IsSignedIn";
+
+    // Written by the removed Connect screen. Cleared on load so an upgraded
+    // install does not keep a server address the app can no longer act on.
+    constexpr wchar_t LegacyServerUrlKey[] = L"Session.ServerUrl";
 
     winrt::Windows::Foundation::Collections::IPropertySet LocalValues()
     {
@@ -40,16 +48,16 @@ namespace HaloDesktop::Services
     SessionService::SessionService()
     {
         auto const values = LocalValues();
-        m_serverUrl = winrt::unbox_value_or<winrt::hstring>(ReadValue(values, ServerUrlKey), L"");
+        RemoveIfPresent(values, LegacyServerUrlKey);
+
         m_userName = winrt::unbox_value_or<winrt::hstring>(ReadValue(values, UserNameKey), L"");
         m_isSignedIn = winrt::unbox_value_or<bool>(ReadValue(values, SignedInKey), false)
-            && !m_serverUrl.empty()
             && !m_userName.empty();
     }
 
     winrt::hstring SessionService::ServerUrl() const
     {
-        return m_serverUrl;
+        return winrt::hstring{ HaloServerUrl };
     }
 
     winrt::hstring SessionService::UserName() const
@@ -62,37 +70,21 @@ namespace HaloDesktop::Services
         return m_isSignedIn;
     }
 
-    winrt::Windows::Foundation::IAsyncOperation<bool> SessionService::TestServerAsync(winrt::hstring url)
+    winrt::Windows::Foundation::IAsyncOperation<winrt::HaloDesktop::SignInOutcome>
+        SessionService::RequestBrowserSignInAsync()
     {
+        // Prototype stand-in for the real flow: open the browser, listen on a
+        // loopback redirect, and resolve when the server hands back a session.
+        // The delay is the round trip; the other outcomes are wired through the
+        // UI but cannot be produced until a real server is on the other end.
         auto const uiContext = winrt::apartment_context{};
-        co_await winrt::resume_after(std::chrono::milliseconds(400));
+        co_await winrt::resume_after(std::chrono::milliseconds(3200));
         co_await uiContext;
-        co_return std::wstring_view(url).starts_with(L"https://");
-    }
 
-    void SessionService::SetServerUrl(winrt::hstring const& url)
-    {
-        if (!std::wstring_view(url).starts_with(L"https://"))
-        {
-            throw std::invalid_argument("Server URL must use HTTPS");
-        }
-
-        m_serverUrl = url;
-        auto const values = LocalValues();
-        values.Insert(ServerUrlKey, winrt::box_value(m_serverUrl));
-    }
-
-    bool SessionService::SignIn(winrt::hstring const& user, [[maybe_unused]] winrt::hstring const& password)
-    {
-        if (user.empty() || m_serverUrl.empty())
-        {
-            return false;
-        }
-
-        m_userName = user;
+        m_userName = winrt::hstring{ SignedInUserName };
         m_isSignedIn = true;
         PersistSession();
-        return true;
+        co_return winrt::HaloDesktop::SignInOutcome::Succeeded;
     }
 
     void SessionService::SignOut()
@@ -104,21 +96,9 @@ namespace HaloDesktop::Services
         m_isSignedIn = false;
     }
 
-    void SessionService::ClearServer()
-    {
-        auto const values = LocalValues();
-        RemoveIfPresent(values, SignedInKey);
-        RemoveIfPresent(values, ServerUrlKey);
-        RemoveIfPresent(values, UserNameKey);
-        m_serverUrl.clear();
-        m_userName.clear();
-        m_isSignedIn = false;
-    }
-
     void SessionService::PersistSession()
     {
         auto const values = LocalValues();
-        values.Insert(ServerUrlKey, winrt::box_value(m_serverUrl));
         values.Insert(UserNameKey, winrt::box_value(m_userName));
         values.Insert(SignedInKey, winrt::box_value(m_isSignedIn));
     }
