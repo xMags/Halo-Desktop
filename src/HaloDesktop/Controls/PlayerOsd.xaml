@@ -41,6 +41,38 @@
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="CornerRadius" Value="20" />
     </Style>
+    <Style x:Key="PlayerPlayButtonStyle" TargetType="Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Background" Value="White" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="UseSystemFocusVisuals" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <Storyboard><DoubleAnimation Storyboard.TargetName="PlaySurface" Storyboard.TargetProperty="Opacity" To="0.92" Duration="0" /></Storyboard>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <Storyboard><DoubleAnimation Storyboard.TargetName="PlaySurface" Storyboard.TargetProperty="Opacity" To="0.82" Duration="0" /></Storyboard>
+                  </VisualState>
+                  <VisualState x:Name="Disabled">
+                    <Storyboard><DoubleAnimation Storyboard.TargetName="PlaySurface" Storyboard.TargetProperty="Opacity" To="0.45" Duration="0" /></Storyboard>
+                  </VisualState>
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+              <Ellipse x:Name="PlaySurface" Fill="{TemplateBinding Background}" />
+              <ContentPresenter Content="{TemplateBinding Content}" ContentTemplate="{TemplateBinding ContentTemplate}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
     <Style x:Key="PlayerTrackRadioStyle" TargetType="RadioButton" BasedOn="{StaticResource HaloSegmentedRadioStyle}">
       <Setter Property="Margin" Value="0,2" />
       <Setter Property="Padding" Value="10,8" />
@@ -128,7 +160,7 @@
         </Grid>
         <Grid Margin="0,2,0,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" MinWidth="0" MinHeight="0" Padding="0" Background="White" BorderThickness="0" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" CornerRadius="27">
+          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" Style="{StaticResource PlayerPlayButtonStyle}">
             <Grid Width="14" Height="14">
               <Viewbox Width="14" Height="14" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}">
                 <Canvas Width="12" Height="12"><Path Data="M 2,1 L 11,6 L 2,11 Z" Fill="Black" /></Canvas>
@@ -159,12 +191,17 @@
           <Slider Grid.Column="6" Height="32" Margin="10,0" IsThumbToolTipEnabled="False" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.Volume, Mode=TwoWay}">
             <Slider.Resources>
               <x:Double x:Key="SliderTrackThemeHeight">4</x:Double>
-              <x:Double x:Key="SliderHorizontalThumbWidth">12</x:Double>
-              <x:Double x:Key="SliderHorizontalThumbHeight">12</x:Double>
+              <x:Double x:Key="SliderHorizontalThumbWidth">16</x:Double>
+              <x:Double x:Key="SliderHorizontalThumbHeight">16</x:Double>
+              <x:Double x:Key="SliderInnerThumbWidth">12</x:Double>
+              <x:Double x:Key="SliderInnerThumbHeight">12</x:Double>
               <SolidColorBrush x:Key="SliderTrackFill" Color="#2EFFFFFF" />
               <SolidColorBrush x:Key="SliderTrackValueFill" Color="#DBFFFFFF" />
               <SolidColorBrush x:Key="SliderThumbBackground" Color="#FFFFFFFF" />
-              <SolidColorBrush x:Key="SliderOuterThumbBackground" Color="#FFFFFFFF" />
+              <SolidColorBrush x:Key="SliderThumbBackgroundPointerOver" Color="#FFFFFFFF" />
+              <SolidColorBrush x:Key="SliderThumbBackgroundPressed" Color="#FFFFFFFF" />
+              <SolidColorBrush x:Key="SliderThumbBorderBrush" Color="Transparent" />
+              <SolidColorBrush x:Key="SliderOuterThumbBackground" Color="Transparent" />
             </Slider.Resources>
           </Slider>
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
