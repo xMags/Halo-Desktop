@@ -7,6 +7,7 @@
 #include "SourcesViewModel.g.cpp"
 #endif
 
+#include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -130,8 +131,28 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::Load(winrt::Windows::Foundation::IInspectable const& parameter)
     {
         m_parameters = parameter.try_as<winrt::HaloDesktop::SourcesNavParams>();
-        if (m_parameters) static_cast<void>(LoadAsync());
-        else { m_error = true; RaiseState(); }
+        if (!m_parameters)
+        {
+            if (auto const item = parameter.try_as<winrt::HaloDesktop::ContinueItem>())
+            {
+                m_parameters = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
+                    item.Type(),
+                    item.MetaId(),
+                    item.VideoId(),
+                    item.ItemId(),
+                    item.Name(),
+                    item.Name(),
+                    item.Tag(),
+                    item.Poster());
+            }
+        }
+        if (!m_parameters)
+        {
+            m_error = true;
+            RaiseState();
+            return;
+        }
+        static_cast<void>(LoadAsync());
     }
     void SourcesViewModel::Retry() { if (m_parameters) static_cast<void>(LoadAsync()); }
     void SourcesViewModel::SetFilter(std::int32_t index) { if (index < 0 || index > 3 || index == m_filterIndex) return; m_filterIndex = index; Rebuild(); }
