@@ -213,14 +213,6 @@ namespace winrt::HaloDesktop::implementation
         value << std::setprecision(3) << m_state.Speed << L"×";
         return winrt::hstring(value.str());
     }
-    winrt::hstring PlayerViewModel::PlayPauseGlyph() const
-    {
-        return m_state.Paused ? L"\uE768" : L"\uE769";
-    }
-    winrt::hstring PlayerViewModel::FullscreenGlyph() const
-    {
-        return m_windowPresentation->IsFullscreen() ? L"\uE73F" : L"\uE740";
-    }
     double PlayerViewModel::PlayButtonSize() const noexcept
     {
         return m_windowPresentation->IsFullscreen() ? 54.0 : 44.0;
@@ -312,6 +304,18 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility PlayerViewModel::PausedVisibility() const noexcept
     {
         return m_state.Paused ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::PlayingVisibility() const noexcept
+    {
+        return m_state.Paused ? Collapsed : Visible;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::EnterFullscreenIconVisibility() const noexcept
+    {
+        return m_windowPresentation->IsFullscreen() ? Collapsed : Visible;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::ExitFullscreenIconVisibility() const noexcept
+    {
+        return m_windowPresentation->IsFullscreen() ? Visible : Collapsed;
     }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::PanelVisibility() const noexcept
     {
@@ -561,8 +565,8 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::RaisePlaybackState()
     {
         for (auto const property : { L"Duration", L"Volume", L"VolumeText", L"PositionText", L"DurationText",
-                                     L"SpeedText", L"PlayPauseGlyph", L"BufferedPosition", L"IsPaused",
-                                     L"PausedVisibility" })
+                                     L"SpeedText", L"BufferedPosition", L"IsPaused", L"PausedVisibility",
+                                     L"PlayingVisibility" })
         {
             Raise(property);
         }
@@ -627,7 +631,8 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::RaisePresentationMetrics()
     {
-        for (auto const property : { L"IsFullscreen", L"FullscreenGlyph", L"PlayButtonSize", L"TransportButtonSize",
+        for (auto const property : { L"IsFullscreen", L"EnterFullscreenIconVisibility",
+                                     L"ExitFullscreenIconVisibility", L"PlayButtonSize", L"TransportButtonSize",
                                      L"HeaderPadding", L"TransportPadding", L"TitleFontSize" })
         {
             Raise(property);

@@ -19,8 +19,6 @@ namespace HaloDesktop
         String PositionText { get; };
         String DurationText { get; };
         String SpeedText { get; };
-        String PlayPauseGlyph { get; };
-        String FullscreenGlyph { get; };
         Double PlayButtonSize { get; };
         Double TransportButtonSize { get; };
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
@@ -41,6 +39,9 @@ namespace HaloDesktop
         Boolean SubtitleTabSelected { get; };
         Boolean SpeedTabSelected { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PlayingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EnterFullscreenIconVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ExitFullscreenIconVisibility { get; };
         Microsoft.UI.Xaml.Visibility PanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility AudioPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility SubtitlePanelVisibility { get; };

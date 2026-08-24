@@ -51,8 +51,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PositionText() const;
         [[nodiscard]] winrt::hstring DurationText() const;
         [[nodiscard]] winrt::hstring SpeedText() const;
-        [[nodiscard]] winrt::hstring PlayPauseGlyph() const;
-        [[nodiscard]] winrt::hstring FullscreenGlyph() const;
         [[nodiscard]] double PlayButtonSize() const noexcept;
         [[nodiscard]] double TransportButtonSize() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
@@ -79,6 +77,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool SubtitleTabSelected() const noexcept;
         [[nodiscard]] bool SpeedTabSelected() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PlayingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility EnterFullscreenIconVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ExitFullscreenIconVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AudioPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitlePanelVisibility() const noexcept;

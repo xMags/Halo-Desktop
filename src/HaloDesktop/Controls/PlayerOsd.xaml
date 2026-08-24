@@ -123,15 +123,34 @@
         </Grid>
         <Grid Margin="0,2,0,0">
           <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" MinWidth="0" MinHeight="0" Padding="0" Background="White" BorderThickness="0" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" CornerRadius="27"><TextBlock FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="Black" Text="{x:Bind ViewModel.PlayPauseGlyph, Mode=OneWay}" /></Button>
-          <Button Grid.Column="1" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="14,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Back 10 seconds" Click="OnReplayClick" Style="{StaticResource PlayerTransportButtonStyle}"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A7;" /></Button>
-          <Button Grid.Column="2" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Forward 10 seconds" Click="OnForwardClick" Style="{StaticResource PlayerTransportButtonStyle}"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE7A6;" /></Button>
+          <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" MinWidth="0" MinHeight="0" Padding="0" Background="White" BorderThickness="0" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" CornerRadius="27">
+            <Grid Width="14" Height="14">
+              <Viewbox Width="14" Height="14" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}">
+                <Canvas Width="12" Height="12"><Path Data="M 2,1 L 11,6 L 2,11 Z" Fill="Black" /></Canvas>
+              </Viewbox>
+              <Viewbox Width="14" Height="14" Visibility="{x:Bind ViewModel.PlayingVisibility, Mode=OneWay}">
+                <Canvas Width="12" Height="12"><Rectangle Canvas.Left="2" Canvas.Top="1" Width="3" Height="10" Fill="Black" /><Rectangle Canvas.Left="7" Canvas.Top="1" Width="3" Height="10" Fill="Black" /></Canvas>
+              </Viewbox>
+            </Grid>
+          </Button>
+          <Button Grid.Column="1" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="14,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Back 10 seconds" Click="OnReplayClick" Style="{StaticResource PlayerTransportButtonStyle}">
+            <Viewbox Width="16" Height="16">
+              <Canvas Width="16" Height="16"><Path Data="M 13.5,8 A 5.5,5.5 0 1 1 11.8,4 M 11.6,1.4 V 4.2 H 8.8" Stroke="White" StrokeThickness="1.2" /></Canvas>
+            </Viewbox>
+          </Button>
+          <Button Grid.Column="2" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Forward 10 seconds" Click="OnForwardClick" Style="{StaticResource PlayerTransportButtonStyle}">
+            <Viewbox Width="16" Height="16">
+              <Canvas Width="16" Height="16"><Path Data="M 2.5,8 A 5.5,5.5 0 1 0 4.2,4 M 4.4,1.4 V 4.2 H 7.2" Stroke="White" StrokeThickness="1.2" /></Canvas>
+            </Viewbox>
+          </Button>
           <StackPanel Grid.Column="3" Margin="14,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
             <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#D1FFFFFF" Text="{x:Bind ViewModel.PositionText, Mode=OneWay}" />
             <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#66FFFFFF" Text="/" />
             <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#66FFFFFF" Text="{x:Bind ViewModel.DurationText, Mode=OneWay}" />
           </StackPanel>
-          <TextBlock Grid.Column="5" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Foreground="White" Text="&#xE767;" />
+          <Viewbox Grid.Column="5" Width="16" Height="16" VerticalAlignment="Center">
+            <Canvas Width="16" Height="16"><Path Data="M 3,6 H 5.4 L 9,3 V 13 L 5.4,10 H 3 Z M 11.4,5.6 A 3.4,3.4 0 0 1 11.4,10.4" Opacity="0.8" Stroke="White" StrokeThickness="1.2" /></Canvas>
+          </Viewbox>
           <Slider Grid.Column="6" Height="32" Margin="10,0" IsThumbToolTipEnabled="False" Minimum="0" Maximum="100" Value="{x:Bind ViewModel.Volume, Mode=TwoWay}">
             <Slider.Resources>
               <x:Double x:Key="SliderTrackThemeHeight">4</x:Double>
@@ -144,8 +163,21 @@
             </Slider.Resources>
           </Slider>
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Picture in picture" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}" ToolTipService.ToolTip="Picture in picture is not available in this prototype"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE9A6;" /></Button>
-          <Button Grid.Column="9" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" FontFamily="Segoe Fluent Icons" FontSize="15" Foreground="White" Content="{x:Bind ViewModel.FullscreenGlyph, Mode=OneWay}" Style="{StaticResource PlayerTransportButtonStyle}" />
+          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Picture in picture" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}" ToolTipService.ToolTip="Picture in picture is not available in this prototype">
+            <Viewbox Width="15" Height="15">
+              <Canvas Width="16" Height="16"><Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="13" Height="11" RadiusX="1.5" RadiusY="1.5" Stroke="White" StrokeThickness="1.2" /><Rectangle Canvas.Left="8" Canvas.Top="8" Width="5.5" Height="4.5" RadiusX="1" RadiusY="1" Stroke="White" StrokeThickness="1.2" /></Canvas>
+            </Viewbox>
+          </Button>
+          <Button Grid.Column="9" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
+            <Grid Width="15" Height="15">
+              <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.EnterFullscreenIconVisibility, Mode=OneWay}">
+                <Canvas Width="16" Height="16"><Path Data="M 2,6 V 2 H 6 M 14,6 V 2 H 10 M 2,10 V 14 H 6 M 14,10 V 14 H 10" Stroke="White" StrokeThickness="1.2" /></Canvas>
+              </Viewbox>
+              <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.ExitFullscreenIconVisibility, Mode=OneWay}">
+                <Canvas Width="16" Height="16"><Path Data="M 6,2 V 6 H 2 M 10,2 V 6 H 14 M 6,14 V 10 H 2 M 10,14 V 10 H 14" Stroke="White" StrokeThickness="1.2" /></Canvas>
+              </Viewbox>
+            </Grid>
+          </Button>
         </Grid>
       </StackPanel>
     </Grid>
