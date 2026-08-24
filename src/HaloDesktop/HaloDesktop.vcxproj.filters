@@ -10,6 +10,7 @@
     <Filter Include="Playback"><UniqueIdentifier>{53edc97c-4087-4629-b2ef-b35fe8898600}</UniqueIdentifier></Filter>
     <Filter Include="Services"><UniqueIdentifier>{16768e08-0a73-40c4-9f6e-adcd99549454}</UniqueIdentifier></Filter>
     <Filter Include="Services\Auth"><UniqueIdentifier>{787a89bf-f1c8-432d-b75f-c86f85604fb9}</UniqueIdentifier></Filter>
+    <Filter Include="Services\Downloads"><UniqueIdentifier>{73fa6e79-b842-4140-98dd-34d448728857}</UniqueIdentifier></Filter>
     <Filter Include="Security"><UniqueIdentifier>{3ca27547-236e-4c97-8d35-c2626fc84504}</UniqueIdentifier></Filter>
     <Filter Include="Shell"><UniqueIdentifier>{c5038496-9a9d-41ca-a1d4-2aac12961146}</UniqueIdentifier></Filter>
     <Filter Include="Styles"><UniqueIdentifier>{027d9ad2-09e5-4615-8539-7b2148e83cd0}</UniqueIdentifier></Filter>
@@ -97,6 +98,10 @@
     <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\PlaybackPreferences.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
+    <ClCompile Include="Services\Downloads\DownloadTypes.cpp"><Filter>Services\Downloads</Filter></ClCompile>
+    <ClCompile Include="Services\Downloads\DownloadIndexStore.cpp"><Filter>Services\Downloads</Filter></ClCompile>
+    <ClCompile Include="Services\Downloads\RequestVault.cpp"><Filter>Services\Downloads</Filter></ClCompile>
+    <ClCompile Include="Services\Downloads\TransferEngine.cpp"><Filter>Services\Downloads</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Auth\OidcSignInFlow.cpp"><Filter>Services\Auth</Filter></ClCompile>
@@ -173,6 +178,10 @@
     <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\PlaybackPreferences.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\DownloadTypes.h"><Filter>Services\Downloads</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\DownloadIndexStore.h"><Filter>Services\Downloads</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\RequestVault.h"><Filter>Services\Downloads</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\TransferEngine.h"><Filter>Services\Downloads</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LoopbackListener.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Auth\OidcAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>

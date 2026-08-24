@@ -25,10 +25,18 @@
 #include "Services/SourceService.h"
 #include "Services/WatchStateService.h"
 #include "Services/ThemeService.h"
+#if defined(_DEBUG)
+#include "Services/Downloads/TransferEngine.h"
+#endif
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/WindowPresentationService.h"
 
+#include <array>
+#include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <memory>
+#include <string_view>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -121,10 +129,108 @@ namespace winrt::HaloDesktop::implementation
         return winrt::get_self<App>(overrides)->m_services;
     }
 
-    void App::OnLaunched([[maybe_unused]] Microsoft::UI::Xaml::LaunchActivatedEventArgs const& e)
+    void App::OnLaunched(Microsoft::UI::Xaml::LaunchActivatedEventArgs const& e)
     {
+#if defined(_DEBUG)
+        static_cast<void>(e);
+        std::wstring_view const commandLine{ GetCommandLineW() };
+        auto const probe = commandLine.find(L"halo-download-probe\t");
+        if (probe != std::wstring_view::npos)
+        {
+            StartDownloadProbe(winrt::hstring{ commandLine.substr(probe) });
+        }
+#else
+        static_cast<void>(e);
+#endif
         static_cast<void>(LaunchAsync());
     }
+
+#if defined(_DEBUG)
+    void App::StartDownloadProbe(winrt::hstring const& arguments)
+    {
+        constexpr std::wstring_view prefix = L"halo-download-probe\t";
+        std::wstring_view remaining{ arguments };
+        if (!remaining.starts_with(prefix))
+        {
+            return;
+        }
+        remaining.remove_prefix(prefix.size());
+        std::array<std::wstring_view, 4> fields{};
+        for (std::size_t index = 0; index < fields.size(); ++index)
+        {
+            auto const separator = remaining.find(L'\t');
+            if (index + 1 == fields.size())
+            {
+                fields[index] = remaining;
+                remaining = {};
+                break;
+            }
+            if (separator == std::wstring_view::npos)
+            {
+                return;
+            }
+            fields[index] = remaining.substr(0, separator);
+            remaining.remove_prefix(separator + 1);
+        }
+        auto const mode = fields[0];
+        auto const dataRoot = std::filesystem::path{ fields[1] };
+        auto const source = std::wstring{ fields[2] };
+        std::uint64_t size{};
+        int stage = 1;
+        auto const resultPath = dataRoot / L"probe-result.txt";
+        auto writeResult = [&resultPath](std::string const& value) noexcept
+        {
+            try
+            {
+                std::ofstream output(resultPath, std::ios::binary | std::ios::trunc);
+                output << value;
+            }
+            catch (...)
+            {
+            }
+        };
+        try
+        {
+            size = std::stoull(std::wstring{ fields[3] });
+            ::HaloDesktop::Services::Downloads::RunDownloadEngineUnitChecks();
+            stage = 2;
+            m_downloadProbe = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(dataRoot);
+            stage = 3;
+            m_downloadProbe->SetAccount(L"http://fixture.invalid", L"download-probe-user");
+            stage = 4;
+            if (mode == L"pause")
+            {
+                auto const records = m_downloadProbe->List();
+                if (!records.empty())
+                {
+                    m_downloadProbe->Pause(records.front().JobId);
+                }
+            }
+            if (mode == L"start" && m_downloadProbe->List().empty())
+            {
+                ::HaloDesktop::Services::Downloads::DownloadMedia media{
+                    .VideoId = L"probe:large",
+                    .ItemId = L"probe:large",
+                    .MediaType = L"movie",
+                    .Title = L"Large transfer probe",
+                    .FileName = L"large-probe.mkv",
+                    .VideoSize = size,
+                };
+                ::HaloDesktop::Services::Downloads::DownloadStartRequest request{
+                    .Media = std::move(media),
+                    .Request = ::HaloDesktop::Services::Downloads::ProtectedRequest{ .Url = source },
+                };
+                static_cast<void>(m_downloadProbe->Start(std::move(request)));
+            }
+            writeResult("ready");
+        }
+        catch (...)
+        {
+            writeResult("failed-stage-" + std::to_string(stage) + "-hr-" + std::to_string(winrt::to_hresult()));
+            m_downloadProbe.reset();
+        }
+    }
+#endif
 
     winrt::Windows::Foundation::IAsyncAction App::LaunchAsync()
     {

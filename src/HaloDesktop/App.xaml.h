@@ -27,6 +27,13 @@ namespace HaloDesktop::Services::Auth
     class SessionStore;
 }
 
+#if defined(_DEBUG)
+namespace HaloDesktop::Services::Downloads
+{
+    class TransferEngine;
+}
+#endif
+
 namespace winrt::HaloDesktop::implementation
 {
     struct App : AppT<App>
@@ -38,6 +45,9 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::Windows::Foundation::IAsyncAction LaunchAsync();
+#if defined(_DEBUG)
+        void StartDownloadProbe(winrt::hstring const& arguments);
+#endif
 
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> m_httpExecutor;
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
@@ -48,6 +58,9 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::Auth::OidcSignInFlow> m_oidcSignInFlow;
         std::shared_ptr<::HaloDesktop::Services::Auth::SessionController> m_sessionController;
         std::shared_ptr<::HaloDesktop::Services::SessionService> m_sessionService;
+#if defined(_DEBUG)
+        std::shared_ptr<::HaloDesktop::Services::Downloads::TransferEngine> m_downloadProbe;
+#endif
         ::HaloDesktop::Services::AppServices m_services;
         winrt::Microsoft::UI::Xaml::Window m_window{ nullptr };
     };
