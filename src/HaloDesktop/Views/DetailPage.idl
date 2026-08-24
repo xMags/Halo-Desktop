@@ -22,6 +22,10 @@ namespace HaloDesktop
         String Kicker { get; };
         String MetaLine { get; };
         String Synopsis { get; };
+        String Poster { get; };
+        String Background { get; };
+        String PrimaryActionLabel { get; };
+        String SourceActionLabel { get; };
         String SeasonMeta { get; };
         String LibraryLabel { get; };
         Int32 SeasonIndex { get; };
@@ -32,11 +36,13 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
         Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EpisodeSectionVisibility { get; };
         void Load(Object parameter);
         void SelectSeason(Int32 index);
         void Retry();
         void ToggleLibrary();
         void OpenSources(Object episode);
+        void OpenPrimarySource();
         void BrowseSources();
         void OpenDownloads();
     }

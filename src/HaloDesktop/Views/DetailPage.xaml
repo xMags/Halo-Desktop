@@ -13,6 +13,7 @@
       <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
+        <Image x:Name="BackdropImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnArtworkOpened" ImageFailed="OnArtworkFailed" />
         <Rectangle VerticalAlignment="Bottom" Height="140">
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
@@ -31,16 +32,19 @@
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
 
         <!-- Poster and title block are bottom-aligned, as in the design's hero row. -->
-        <local:PlaceholderArt Width="128" Height="192" VerticalAlignment="Top" />
+        <Grid Width="128" Height="192" VerticalAlignment="Top">
+          <local:PlaceholderArt />
+          <Image x:Name="PosterImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnArtworkOpened" ImageFailed="OnArtworkFailed" />
+        </Grid>
         <StackPanel Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Spacing="8">
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.Kicker, Mode=OneWay}" />
           <TextBlock Style="{StaticResource HaloDetailTitle}" Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
           <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.MetaLine, Mode=OneWay}" />
           <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="10">
-            <Button Height="36" Padding="18,0" AutomationProperties.Name="Resume S02E04" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+            <Button Height="36" Padding="18,0" AutomationProperties.Name="{x:Bind ViewModel.PrimaryActionLabel, Mode=OneWay}" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
-                <TextBlock VerticalAlignment="Center" Text="Resume S02E04 · 18 min left" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.PrimaryActionLabel, Mode=OneWay}" />
               </StackPanel>
             </Button>
             <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="{x:Bind ViewModel.LibraryLabel, Mode=OneWay}" Click="OnLibraryClick" />
@@ -50,12 +54,12 @@
           </StackPanel>
         </StackPanel>
 
-        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="14">
+        <StackPanel Grid.Row="1" Grid.ColumnSpan="2" Spacing="14" Visibility="{x:Bind ViewModel.EpisodeSectionVisibility, Mode=OneWay}">
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <ComboBox x:Name="SeasonPicker" MinWidth="140" SelectedIndex="{x:Bind ViewModel.SeasonIndex, Mode=OneWay}" SelectionChanged="OnSeasonChanged" />
             <TextBlock Grid.Column="1" Margin="12,0,0,4" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SeasonMeta, Mode=OneWay}" />
-            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Click="OnBrowseSourcesClick" Content="Choose episode source" ToolTipService.ToolTip="Choose a source for the first episode shown" />
+            <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" Foreground="{ThemeResource HaloAccentBrush}" Click="OnBrowseSourcesClick" Content="{x:Bind ViewModel.SourceActionLabel, Mode=OneWay}" ToolTipService.ToolTip="Choose a source for the first episode shown" />
           </Grid>
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>
