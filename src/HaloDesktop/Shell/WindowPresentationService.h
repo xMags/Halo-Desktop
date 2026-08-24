@@ -1,17 +1,17 @@
 #pragma once
 
 #include <cstdint>
-#include <winrt/Microsoft.UI.Windowing.h>
+#include <windows.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
 namespace HaloDesktop::Shell
 {
     // UI-thread-only adapter for window presentation. The service does not own
-    // the AppWindow or title row and must be detached before XAML teardown.
+    // the window or title row and must be detached before XAML teardown.
     class WindowPresentationService final
     {
     public:
-        void Attach(std::uintptr_t windowHandle, winrt::Microsoft::UI::Windowing::AppWindow const& appWindow,
+        void Attach(std::uintptr_t windowHandle,
                     winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow);
         void Detach() noexcept;
         void SetFullscreen(bool fullscreen);
@@ -20,9 +20,12 @@ namespace HaloDesktop::Shell
 
     private:
         std::uintptr_t m_windowHandle{};
-        winrt::Microsoft::UI::Windowing::AppWindow m_appWindow{ nullptr };
         winrt::Microsoft::UI::Xaml::Controls::RowDefinition m_titleBarRow{ nullptr };
-        bool m_fullscreen{};
+        WINDOWPLACEMENT m_windowedPlacement{ sizeof(WINDOWPLACEMENT) };
+        RECT m_windowedBounds{};
+        LONG_PTR m_windowedStyle{};
+        LONG_PTR m_windowedExtendedStyle{};
         bool m_wasMaximized{};
+        bool m_fullscreen{};
     };
 } // namespace HaloDesktop::Shell

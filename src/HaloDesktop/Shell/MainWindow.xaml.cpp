@@ -33,7 +33,6 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
         App::Services().WindowPresentation->Attach(
             m_windowSizing->WindowHandle(),
-            m_windowSizing->AppWindow(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
 
         m_appWindowClosingToken = m_windowSizing->AppWindow().Closing(
