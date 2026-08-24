@@ -75,6 +75,7 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
+    <ClCompile Include="Playback\LocalPlaybackQueue.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\NullEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvClient.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
@@ -123,6 +124,7 @@
     <ClInclude Include="Controls\TagChip.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Playback\IPlaybackEngine.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\LocalPlaybackQueue.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvClient.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\NullEngine.h"><Filter>Playback</Filter></ClInclude>

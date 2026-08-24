@@ -31,6 +31,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility OsdWakeVisibility { get; };
         Double UpNextProgress { get; };
         String UpNextKicker { get; };
+        String UpNextTitle { get; };
         String SubtitleDelayText { get; };
         String AudioDelayText { get; };
         Boolean IsPaused { get; };
@@ -48,6 +49,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SubtitlePanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UpNextAvailableVisibility { get; };
         void TogglePause();
         void BeginScrub();
         void ScrubTo(Double seconds);

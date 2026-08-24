@@ -2,6 +2,9 @@
 
 #include "PlayerPage.g.h"
 
+#include <cstdint>
+#include <filesystem>
+#include <optional>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -38,12 +41,16 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget OpenFilePicker();
         void OpenSource(winrt::hstring const& path);
         void ShowMediaPrompt(winrt::hstring const& message);
+        winrt::fire_and_forget UpdateUpNext(std::filesystem::path currentSource);
+        void TryPlayNext();
         void UpdateOverlayLayout();
         void RefreshOverlayAfterPresentationChange();
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
+        std::optional<std::filesystem::path> m_nextSource;
         winrt::event_token m_presentationChangedToken{};
+        std::uint64_t m_upNextRequestId{};
         bool m_loaded{};
         bool m_pickerOpen{};
     };

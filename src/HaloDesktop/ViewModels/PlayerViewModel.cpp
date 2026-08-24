@@ -110,7 +110,7 @@ namespace winrt::HaloDesktop::implementation
                     --self->m_upNextRemaining;
                     if (self->m_upNextRemaining <= 0)
                     {
-                        self->CancelUpNext();
+                        self->PlayNext();
                         return;
                     }
                     ::HaloDesktop::detail::RaisePropertyChanged(self->m_propertyChanged, *self, L"UpNextProgress");
@@ -275,6 +275,10 @@ namespace winrt::HaloDesktop::implementation
     {
         return winrt::hstring(L"UP NEXT IN " + std::to_wstring(m_upNextRemaining) + L" S");
     }
+    winrt::hstring PlayerViewModel::UpNextTitle() const
+    {
+        return m_upNextTitle;
+    }
     winrt::hstring PlayerViewModel::SubtitleDelayText() const
     {
         return winrt::hstring(std::to_wstring(m_subtitleDelayMs) + L" MS");
@@ -341,7 +345,34 @@ namespace winrt::HaloDesktop::implementation
     }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::UpNextVisibility() const noexcept
     {
-        return m_upNextOpen ? Visible : Collapsed;
+        return m_upNextOpen && HasUpNext() ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::UpNextAvailableVisibility() const noexcept
+    {
+        return HasUpNext() ? Visible : Collapsed;
+    }
+    void PlayerViewModel::SetPlayNextHandler(std::function<void()> handler)
+    {
+        m_playNextHandler = std::move(handler);
+        if (!HasUpNext() && m_upNextOpen)
+        {
+            CancelUpNext();
+        }
+        Raise(L"UpNextAvailableVisibility");
+    }
+    void PlayerViewModel::SetUpNextTitle(winrt::hstring const& title)
+    {
+        if (m_upNextTitle == title)
+        {
+            return;
+        }
+
+        m_upNextTitle = title;
+        if (!HasUpNext() && m_upNextOpen)
+        {
+            CancelUpNext();
+        }
+        RaisePanelState();
     }
     void PlayerViewModel::TogglePause()
     {
@@ -470,6 +501,10 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::ToggleUpNext()
     {
+        if (!HasUpNext())
+        {
+            return;
+        }
         if (m_upNextOpen)
         {
             CancelUpNext();
@@ -496,7 +531,19 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::PlayNext()
     {
-        CancelUpNext();
+        if (!HasUpNext())
+        {
+            CancelUpNext();
+            return;
+        }
+
+        StopUpNextTimer();
+        m_upNextOpen = false;
+        m_upNextRemaining = 8;
+        auto const playNext = m_playNextHandler;
+        playNext();
+        RaisePanelState();
+        NotifyUserActivity();
     }
     void PlayerViewModel::ToggleFullscreen()
     {
@@ -589,7 +636,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
                L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
-               L"UpNextProgress", L"UpNextKicker" })
+               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle" })
         {
             Raise(property);
         }
@@ -648,6 +695,10 @@ namespace winrt::HaloDesktop::implementation
     bool PlayerViewModel::KeepsOsdVisible() const noexcept
     {
         return m_state.Paused || m_panelIndex >= 0 || m_upNextOpen || m_scrubbing;
+    }
+    bool PlayerViewModel::HasUpNext() const noexcept
+    {
+        return !m_upNextTitle.empty() && static_cast<bool>(m_playNextHandler);
     }
     double PlayerViewModel::ScrubTarget(double seconds) const noexcept
     {

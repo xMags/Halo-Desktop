@@ -7,12 +7,15 @@
 #include "Controls/PlayerOsd.xaml.h"
 #include "Controls/VideoHostControl.xaml.h"
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/LocalPlaybackQueue.h"
 #include "App.xaml.h"
 #include "Shell/WindowPresentationService.h"
 #include "ViewModels/PlayerViewModel.h"
 
 #include <filesystem>
 #include <shobjidl_core.h>
+#include <winrt/Microsoft.UI.Dispatching.h>
+#include <wil/cppwinrt_helpers.h>
 #include <wil/resource.h>
 #include <winrt/Windows.Storage.Pickers.h>
 #include <winrt/Windows.Storage.h>
@@ -36,6 +39,12 @@ namespace winrt::HaloDesktop::implementation
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
         winrt::get_self<VideoHostControl>(videoHost)->EnsureHostWindow();
         m_viewModel = FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>().ViewModel();
+        winrt::get_self<PlayerViewModel>(m_viewModel)->SetPlayNextHandler([weak = get_weak()] {
+            if (auto const self = weak.get())
+            {
+                self->TryPlayNext();
+            }
+        });
         m_presentationChangedToken = m_viewModel.PropertyChanged(
             [weak = get_weak()]([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                 Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args) {
@@ -56,6 +65,7 @@ namespace winrt::HaloDesktop::implementation
                                 [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_loaded = false;
+        ++m_upNextRequestId;
         if (m_viewModel && m_presentationChangedToken.value != 0)
         {
             m_viewModel.PropertyChanged(m_presentationChangedToken);
@@ -64,8 +74,11 @@ namespace winrt::HaloDesktop::implementation
         OverlayPopup().IsOpen(false);
         if (m_viewModel)
         {
-            winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
+            auto const viewModel = winrt::get_self<PlayerViewModel>(m_viewModel);
+            viewModel->SetPlayNextHandler({});
+            viewModel->Deactivate();
         }
+        m_nextSource.reset();
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
         winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
     }
@@ -200,9 +213,9 @@ namespace winrt::HaloDesktop::implementation
             auto const picker = winrt::Windows::Storage::Pickers::FileOpenPicker{};
             picker.ViewMode(winrt::Windows::Storage::Pickers::PickerViewMode::Thumbnail);
             picker.SuggestedStartLocation(winrt::Windows::Storage::Pickers::PickerLocationId::VideosLibrary);
-            for (auto const extension : { L".mkv", L".mp4", L".webm", L".mov", L".m4v", L".avi" })
+            for (auto const extension : ::HaloDesktop::Playback::LocalPlaybackQueue::SupportedExtensions())
             {
-                picker.FileTypeFilter().Append(extension);
+                picker.FileTypeFilter().Append(winrt::hstring(extension));
             }
 
             // IInitializeWithWindow is a Win32 boundary and requires the exact
@@ -233,13 +246,15 @@ namespace winrt::HaloDesktop::implementation
 
     void PlayerPage::OpenSource(winrt::hstring const& path)
     {
-        App::Services().Playback->Open(std::wstring(path));
+        auto const source = std::filesystem::path(path.c_str());
+        App::Services().Playback->Open(source.wstring());
         winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(LastPlaybackFileKey,
                                                                                             winrt::box_value(path));
 
-        auto const fileName = std::filesystem::path(path.c_str()).filename().wstring();
+        auto const fileName = source.filename().wstring();
         auto const overlay = FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();
         winrt::get_self<PlayerOsd>(overlay)->SourceLabel(winrt::hstring(L"LOCAL FILE · " + fileName));
+        UpdateUpNext(source);
         FindName(L"MediaPrompt")
             .as<Microsoft::UI::Xaml::Controls::Border>()
             .Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
@@ -251,6 +266,63 @@ namespace winrt::HaloDesktop::implementation
         FindName(L"MediaPrompt")
             .as<Microsoft::UI::Xaml::Controls::Border>()
             .Visibility(Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
+    winrt::fire_and_forget PlayerPage::UpdateUpNext(std::filesystem::path currentSource)
+    {
+        auto const lifetime = get_strong();
+        auto const requestId = ++m_upNextRequestId;
+        auto const dispatcher = DispatcherQueue();
+        m_nextSource.reset();
+        winrt::get_self<PlayerViewModel>(m_viewModel)->SetUpNextTitle({});
+
+        co_await winrt::resume_background();
+
+        std::optional<std::filesystem::path> nextSource;
+        try
+        {
+            nextSource = ::HaloDesktop::Playback::LocalPlaybackQueue::NextAfter(currentSource);
+        }
+        catch (...)
+        {
+        }
+
+        try
+        {
+            co_await wil::resume_foreground(dispatcher);
+        }
+        catch (...)
+        {
+            co_return;
+        }
+        if (!m_loaded || requestId != m_upNextRequestId)
+        {
+            co_return;
+        }
+
+        m_nextSource = std::move(nextSource);
+        auto const title = m_nextSource ? winrt::hstring(m_nextSource->filename().wstring()) : winrt::hstring{};
+        winrt::get_self<PlayerViewModel>(m_viewModel)->SetUpNextTitle(title);
+    }
+
+    void PlayerPage::TryPlayNext()
+    {
+        if (!m_loaded || !m_nextSource)
+        {
+            return;
+        }
+
+        auto const nextSource = *m_nextSource;
+        try
+        {
+            OpenSource(winrt::hstring(nextSource.wstring()));
+        }
+        catch (...)
+        {
+            m_nextSource.reset();
+            winrt::get_self<PlayerViewModel>(m_viewModel)->SetUpNextTitle({});
+            ShowMediaPrompt(L"Halo could not open the next local video. Choose another file and try again.");
+        }
     }
 
     void PlayerPage::UpdateOverlayLayout()

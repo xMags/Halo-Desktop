@@ -153,6 +153,7 @@
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
+    <ClInclude Include="Playback\LocalPlaybackQueue.h" />
     <ClInclude Include="Playback\MpvClient.h" />
     <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
@@ -260,6 +261,7 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
+    <ClCompile Include="Playback\LocalPlaybackQueue.cpp" />
     <ClCompile Include="Playback\NullEngine.cpp" />
     <ClCompile Include="Playback\MpvClient.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>

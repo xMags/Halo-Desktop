@@ -7,6 +7,7 @@
 
 #include <chrono>
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
@@ -69,6 +70,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OsdWakeVisibility() const noexcept;
         [[nodiscard]] double UpNextProgress() const noexcept;
         [[nodiscard]] winrt::hstring UpNextKicker() const;
+        [[nodiscard]] winrt::hstring UpNextTitle() const;
         [[nodiscard]] winrt::hstring SubtitleDelayText() const;
         [[nodiscard]] winrt::hstring AudioDelayText() const;
         [[nodiscard]] bool IsPaused() const noexcept;
@@ -86,6 +88,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitlePanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SpeedPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
+        void SetPlayNextHandler(std::function<void()> handler);
+        void SetUpNextTitle(winrt::hstring const& title);
         void TogglePause();
         void BeginScrub();
         void ScrubTo(double seconds);
@@ -121,6 +126,7 @@ namespace winrt::HaloDesktop::implementation
         void RestartHideTimer();
         void StopUpNextTimer() noexcept;
         [[nodiscard]] bool KeepsOsdVisible() const noexcept;
+        [[nodiscard]] bool HasUpNext() const noexcept;
         [[nodiscard]] double ScrubTarget(double seconds) const noexcept;
         static winrt::hstring FormatTime(double seconds, bool withHours);
 
@@ -137,6 +143,8 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_upNextRemaining{ 8 };
         std::int32_t m_subtitleDelayMs{};
         std::int32_t m_audioDelayMs{};
+        winrt::hstring m_upNextTitle;
+        std::function<void()> m_playNextHandler;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_audioTracks{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
