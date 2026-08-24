@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
+    <Filter Include="Api"><UniqueIdentifier>{c4ff6948-3ba7-4a13-bfd4-90d0f39de021}</UniqueIdentifier></Filter>
     <Filter Include="Assets"><UniqueIdentifier>{73b9a894-e514-401a-b788-bb2a13ec0382}</UniqueIdentifier></Filter>
     <Filter Include="Assets\Fonts"><UniqueIdentifier>{587386ee-c526-4613-86e9-7869a89740ee}</UniqueIdentifier></Filter>
     <Filter Include="Controls"><UniqueIdentifier>{664cf318-fab9-49e5-8caf-fe085c75647f}</UniqueIdentifier></Filter>
@@ -8,6 +9,7 @@
     <Filter Include="Models"><UniqueIdentifier>{b2c8e42d-69ac-4b1f-9404-054c69866c89}</UniqueIdentifier></Filter>
     <Filter Include="Playback"><UniqueIdentifier>{53edc97c-4087-4629-b2ef-b35fe8898600}</UniqueIdentifier></Filter>
     <Filter Include="Services"><UniqueIdentifier>{16768e08-0a73-40c4-9f6e-adcd99549454}</UniqueIdentifier></Filter>
+    <Filter Include="Security"><UniqueIdentifier>{3ca27547-236e-4c97-8d35-c2626fc84504}</UniqueIdentifier></Filter>
     <Filter Include="Shell"><UniqueIdentifier>{c5038496-9a9d-41ca-a1d4-2aac12961146}</UniqueIdentifier></Filter>
     <Filter Include="Styles"><UniqueIdentifier>{027d9ad2-09e5-4615-8539-7b2148e83cd0}</UniqueIdentifier></Filter>
     <Filter Include="ViewModels"><UniqueIdentifier>{65a41b22-bd19-4ea3-b7b9-a567c802d73b}</UniqueIdentifier></Filter>
@@ -65,6 +67,9 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ClCompile Include="Api\ApiClient.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\HttpExecutor.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\Mappers.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
@@ -83,10 +88,12 @@
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MockServices.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\NavigationService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\QueryCache.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Controls\WheelScrolling.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Services\SampleData.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ThemeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SessionService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -114,6 +121,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ClInclude Include="Api\ApiClient.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\ApiError.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\Dto.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\HttpExecutor.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="Controls\MediaShelf.xaml.h"><Filter>Controls</Filter></ClInclude>
@@ -135,11 +146,13 @@
     <ClInclude Include="Services\MockDownloadService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MockServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\NavigationService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\QueryCache.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Controls\WheelScrolling.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Services\SampleData.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ThemeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SessionService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>

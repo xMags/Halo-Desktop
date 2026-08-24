@@ -1,10 +1,14 @@
 #include "pch.h"
 #include "App.xaml.h"
+#include "Api/ApiClient.h"
+#include "Api/HttpExecutor.h"
+#include "Config/ServerConfig.h"
 #include "Playback/MpvEngine.h"
 #include "Playback/NullEngine.h"
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
 #include "Services/NavigationService.h"
+#include "Services/QueryCache.h"
 #include "Services/SessionService.h"
 #include "Services/ThemeService.h"
 #include "Shell/MainWindow.xaml.h"
@@ -16,6 +20,12 @@ namespace winrt::HaloDesktop::implementation
 {
     App::App()
     {
+        m_httpExecutor = std::make_shared<::HaloDesktop::Api::HttpExecutor>();
+        m_apiClient = std::make_shared<::HaloDesktop::Api::ApiClient>(
+            ::HaloDesktop::Config::ServerBaseUrl,
+            m_httpExecutor);
+        m_queryCache = std::make_shared<::HaloDesktop::Services::QueryCache>();
+
         m_services.Catalog = std::make_shared<::HaloDesktop::Services::MockCatalogService>();
         m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
         m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();

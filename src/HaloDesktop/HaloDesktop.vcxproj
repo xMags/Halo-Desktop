@@ -102,6 +102,9 @@
            ANSI code page, which turns literals like L"·" into mojibake at runtime. -->
       <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
+    <Link>
+      <AdditionalDependencies>crypt32.lib;ole32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
     <ClCompile>
@@ -135,6 +138,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Api\ApiClient.h" />
+    <ClInclude Include="Api\ApiError.h" />
+    <ClInclude Include="Api\Dto.h" />
+    <ClInclude Include="Api\HttpExecutor.h" />
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
     </ClInclude>
@@ -163,11 +170,13 @@
     <ClInclude Include="Services\MockDownloadService.h" />
     <ClInclude Include="Services\MockServices.h" />
     <ClInclude Include="Services\NavigationService.h" />
+    <ClInclude Include="Services\QueryCache.h" />
     <ClInclude Include="Controls\WheelScrolling.h" />
     <ClInclude Include="Services\SampleData.h" />
     <ClInclude Include="Services\ThemeService.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
+    <ClInclude Include="Security\Dpapi.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClInclude>
@@ -246,6 +255,9 @@
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Api\ApiClient.cpp" />
+    <ClCompile Include="Api\HttpExecutor.cpp" />
+    <ClCompile Include="Api\Mappers.cpp" />
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
     </ClCompile>
@@ -274,10 +286,12 @@
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\MockServices.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
+    <ClCompile Include="Services\QueryCache.cpp" />
     <ClCompile Include="Controls\WheelScrolling.cpp" />
     <ClCompile Include="Services\SampleData.cpp" />
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
+    <ClCompile Include="Security\Dpapi.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>
