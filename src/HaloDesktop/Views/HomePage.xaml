@@ -6,7 +6,11 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
   NavigationCacheMode="Required">
-  <ScrollViewer VerticalScrollBarVisibility="Hidden">
+  <Grid>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Home could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="Install an addon to build your Home shelves." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
+  <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader Title="Home">
         <local:SectionHeader.RightContent>
@@ -51,10 +55,10 @@
           </StackPanel>
           <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind ViewModel.HeroSynopsis, Mode=OneWay}" />
           <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
-            <Button Height="36" Padding="18,0" AutomationProperties.Name="Resume S02E04" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+            <Button Height="36" Padding="18,0" AutomationProperties.Name="Play or resume" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
-                <TextBlock VerticalAlignment="Center" Text="Resume S02E04" />
+                <TextBlock VerticalAlignment="Center" Text="Play" />
               </StackPanel>
             </Button>
             <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />
@@ -67,17 +71,18 @@
       <StackPanel Margin="24,0">
         <StackPanel Margin="0,0,0,12" Orientation="Horizontal" Spacing="10">
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />
-          <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="4 IN PROGRESS" />
+          <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
         </StackPanel>
         <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
           <ItemsControl x:Name="ContinueList" PointerWheelChanged="OnContinueWheelChanged">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">
-                <Button Width="268" Padding="0" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Click="OnContinueItemClick">
+                <Button Width="268" Padding="0" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Click="OnContinueItemClick" Tag="{x:Bind}">
                   <StackPanel>
                     <Grid Height="151">
                       <local:PlaceholderArt />
+                      <Image Source="{x:Bind Poster}" Stretch="UniformToFill" />
                       <local:TagChip Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Text="{x:Bind Tag}" />
                       <local:TagChip Margin="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Text="{x:Bind TimeLeft}" />
                       <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" />
@@ -100,4 +105,5 @@
       </ItemsControl>
     </StackPanel>
   </ScrollViewer>
+  </Grid>
 </Page>

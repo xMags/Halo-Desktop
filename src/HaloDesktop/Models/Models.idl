@@ -37,8 +37,16 @@ namespace HaloDesktop
     {
         MediaSummary();
         String Id { get; };
+        String Type { get; };
         String Title { get; };
         String Meta { get; };
+        String Poster { get; };
+        String Background { get; };
+        String Description { get; };
+        String Rating { get; };
+        String ReleaseInfo { get; };
+        Int64 AddedAt { get; };
+        Int64 UpdatedAt { get; };
         MediaKind Kind { get; };
         String KindLabel { get; };
     };
@@ -131,6 +139,11 @@ namespace HaloDesktop
     {
         ContinueItem();
         String Name { get; };
+        String Type { get; };
+        String MetaId { get; };
+        String VideoId { get; };
+        String ItemId { get; };
+        String Poster { get; };
         String Sub { get; };
         String Tag { get; };
         String TimeLeft { get; };

@@ -4,6 +4,7 @@
 #include "SearchPage.g.cpp"
 #endif
 #include "App.xaml.h"
+#include "Controls/MediaShelf.xaml.h"
 #include "ViewModels/SearchViewModel.h"
 
 namespace winrt::HaloDesktop::implementation
@@ -47,7 +48,8 @@ namespace winrt::HaloDesktop::implementation
     void SearchPage::OnSeriesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
     void SearchPage::OnPeopleFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(3); }
     void SearchPage::OnClearClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Clear(); }
-    void SearchPage::OnTopMatchClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDetail(); }
-    void SearchPage::OnShelfItemClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDetail(); }
+    void SearchPage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
+    void SearchPage::OnTopMatchClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenTopMatch(); }
+    void SearchPage::OnShelfItemClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDetail(sender.as<winrt::HaloDesktop::MediaShelf>().SelectedItem().as<winrt::HaloDesktop::MediaSummary>()); }
     void SearchPage::OnRecentClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.Submit(winrt::unbox_value<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag())); }
 }

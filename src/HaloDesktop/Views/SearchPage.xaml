@@ -78,6 +78,9 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+        <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Searching addons…" /></StackPanel>
+        <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Search could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+        <TextBlock Margin="0,30,0,0" HorizontalAlignment="Center" Text="No matching titles." Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}" />
       </StackPanel>
     </ScrollViewer>
   </Grid>

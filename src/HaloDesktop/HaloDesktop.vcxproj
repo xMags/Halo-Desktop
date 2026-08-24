@@ -168,6 +168,8 @@
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\AddonService.h" />
+    <ClInclude Include="Services\CatalogService.h" />
+    <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
     <ClInclude Include="Services\Auth\LoopbackListener.h" />
@@ -185,6 +187,7 @@
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
     <ClInclude Include="Services\SettingsSyncService.h" />
+    <ClInclude Include="Services\WatchStateService.h" />
     <ClInclude Include="Security\Dpapi.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
@@ -294,6 +297,8 @@
     </ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp" />
     <ClCompile Include="Services\AddonService.cpp" />
+    <ClCompile Include="Services\CatalogService.cpp" />
+    <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />
@@ -308,6 +313,7 @@
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Services\SettingsSyncService.cpp" />
+    <ClCompile Include="Services\WatchStateService.cpp" />
     <ClCompile Include="Security\Dpapi.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>

@@ -26,12 +26,15 @@ namespace HaloDesktop::Services
     {
     public:
         virtual ~ICatalogService() = default;
+        [[nodiscard]] virtual concurrency::task<void> LoadAsync() = 0;
+        [[nodiscard]] virtual concurrency::task<void> SearchAsync(winrt::hstring query) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> Search(winrt::hstring const& query) const = 0;
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const = 0;
+        virtual void RecordRecent(winrt::hstring term) = 0;
     };
 
     class IMetadataService

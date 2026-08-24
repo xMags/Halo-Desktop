@@ -43,5 +43,6 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };
         std::vector<::HaloDesktop::Api::Dto::AddonRecord> m_records;
         bool m_canEditLists{};
+        bool m_seedAttempted{};
     };
 }

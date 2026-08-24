@@ -16,6 +16,8 @@ namespace winrt::HaloDesktop::implementation
         void Title(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring Meta() const;
         void Meta(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring Poster() const;
+        void Poster(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring KindLabel() const;
         void KindLabel(winrt::hstring const& value);
         [[nodiscard]] bool ShowKindBadge() const noexcept;
@@ -27,12 +29,15 @@ namespace winrt::HaloDesktop::implementation
         void OnCardClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCardPointerEntered(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void OnCardPointerExited(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void OnPosterOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnPosterFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&);
 
     private:
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Border ArtBorderControl() const;
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
+        winrt::hstring m_poster;
         winrt::hstring m_kindLabel;
         bool m_showKindBadge{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;

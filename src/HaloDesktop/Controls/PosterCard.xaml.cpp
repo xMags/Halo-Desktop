@@ -5,6 +5,7 @@
 #endif
 
 #include <winrt/Windows.Foundation.Numerics.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -13,6 +14,17 @@ namespace winrt::HaloDesktop::implementation
     void PosterCard::Title(winrt::hstring const& value) { m_title = value; if (auto text = FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
     winrt::hstring PosterCard::Meta() const { return m_meta; }
     void PosterCard::Meta(winrt::hstring const& value) { m_meta = value; if (auto text = FindName(L"MetaText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
+    winrt::hstring PosterCard::Poster() const { return m_poster; }
+    void PosterCard::Poster(winrt::hstring const& value)
+    {
+        m_poster = value;
+        auto const image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        if (!image) return;
+        image.Opacity(0);
+        if (value.empty()) { image.Source(nullptr); return; }
+        try { image.Source(Microsoft::UI::Xaml::Media::Imaging::BitmapImage{ winrt::Windows::Foundation::Uri{ value } }); }
+        catch (...) { image.Source(nullptr); }
+    }
     winrt::hstring PosterCard::KindLabel() const { return m_kindLabel; }
     void PosterCard::KindLabel(winrt::hstring const& value) { m_kindLabel = value; if (auto text = FindName(L"KindText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
     bool PosterCard::ShowKindBadge() const noexcept { return m_showKindBadge; }
@@ -39,4 +51,12 @@ namespace winrt::HaloDesktop::implementation
         ArtBorderControl().BorderBrush(Microsoft::UI::Xaml::Application::Current().Resources().Lookup(winrt::box_value(L"HaloCardStrokeBrush")).as<Microsoft::UI::Xaml::Media::Brush>());
     }
     Microsoft::UI::Xaml::Controls::Border PosterCard::ArtBorderControl() const { return FindName(L"ArtBorder").as<Microsoft::UI::Xaml::Controls::Border>(); }
+    void PosterCard::OnPosterOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (auto image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>()) image.Opacity(1);
+    }
+    void PosterCard::OnPosterFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
+    {
+        if (auto image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>()) image.Opacity(0);
+    }
 }

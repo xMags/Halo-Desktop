@@ -6,27 +6,6 @@ namespace HaloDesktop::Services
 {
     // Mock services are UI-thread-only. They return immutable snapshots except for
     // observable collections explicitly named by their interfaces.
-    class MockCatalogService final : public ICatalogService
-    {
-    public:
-        MockCatalogService();
-
-        [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> Search(winrt::hstring const& query) const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const override;
-
-    private:
-        winrt::HaloDesktop::MediaSummary m_hero{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continueWatching{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_libraryItems{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> m_searchGroups{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> m_recentTerms{ nullptr };
-    };
-
     class MockMetadataService final : public IMetadataService
     {
     public:

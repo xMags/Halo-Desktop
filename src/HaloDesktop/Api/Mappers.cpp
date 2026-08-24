@@ -114,6 +114,69 @@ namespace
         return result;
     }
 
+    std::optional<winrt::hstring> OptionalDisplayString(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        std::size_t maximumLength)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) return std::nullopt;
+        std::wstring text{ value.GetString() };
+        std::replace_if(text.begin(), text.end(), [](wchar_t character) { return std::iswcntrl(character) != 0; }, L' ');
+        if (text.empty()) return std::nullopt;
+        if (text.size() > maximumLength) text.resize(maximumLength);
+        return winrt::hstring{ text };
+    }
+
+    std::optional<winrt::hstring> OptionalHttpUrl(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        auto const value = OptionalDisplayString(object, key, 4096);
+        if (!value) return std::nullopt;
+        try
+        {
+            winrt::Windows::Foundation::Uri const uri{ *value };
+            if (!uri.Host().empty() && (uri.SchemeName() == L"http" || uri.SchemeName() == L"https")) return value;
+        }
+        catch (...) {}
+        return std::nullopt;
+    }
+
+    std::vector<::HaloDesktop::Api::Dto::AddonRecord::Catalog> Catalogs(
+        winrt::Windows::Data::Json::JsonObject const& manifest)
+    {
+        std::vector<::HaloDesktop::Api::Dto::AddonRecord::Catalog> result;
+        auto const catalogs = manifest.GetNamedArray(L"catalogs", winrt::Windows::Data::Json::JsonArray{});
+        result.reserve((std::min)(catalogs.Size(), 128u));
+        for (auto const& item : catalogs)
+        {
+            if (result.size() == 128) break;
+            if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
+            auto const object = item.GetObject();
+            auto const type = OptionalDisplayString(object, L"type", 128);
+            auto const id = OptionalDisplayString(object, L"id", 512);
+            if (!type || !id) continue;
+            auto supportsSearch = false;
+            auto hasRequired = false;
+            for (auto const& extra : object.GetNamedArray(L"extra", winrt::Windows::Data::Json::JsonArray{}))
+            {
+                if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
+                auto const extraObject = extra.GetObject();
+                supportsSearch = supportsSearch || extraObject.GetNamedString(L"name", L"") == L"search";
+                hasRequired = hasRequired || extraObject.GetNamedBoolean(L"isRequired", false);
+            }
+            for (auto const& extra : object.GetNamedArray(L"extraSupported", winrt::Windows::Data::Json::JsonArray{}))
+            {
+                supportsSearch = supportsSearch || (extra.ValueType() == winrt::Windows::Data::Json::JsonValueType::String && extra.GetString() == L"search");
+            }
+            hasRequired = hasRequired || object.GetNamedArray(L"extraRequired", winrt::Windows::Data::Json::JsonArray{}).Size() > 0;
+            result.push_back({ *type, *id, OptionalDisplayString(object, L"name", 512), supportsSearch, hasRequired });
+        }
+        return result;
+    }
+
     ::HaloDesktop::Api::Dto::AddonRecord ParseAddon(
         winrt::Windows::Data::Json::IJsonValue const& value,
         bool isGlobal)
@@ -142,6 +205,7 @@ namespace
             .Version = DisplayString(manifest, L"version", 64),
             .Resources = StringArray(manifest, L"resources"),
             .Types = StringArray(manifest, L"types"),
+            .Catalogs = Catalogs(manifest),
             .Position = static_cast<std::int32_t>(position),
             .HideCatalogs = object.GetNamedBoolean(L"hideCatalogs", false),
             .IsGlobal = isGlobal,
@@ -247,5 +311,66 @@ namespace HaloDesktop::Api::Mappers
             .Value = object.GetNamedObject(L"value"),
             .UpdatedAt = static_cast<std::int64_t>(updatedAt),
         };
+    }
+
+    std::vector<Dto::MetaPreview> ParseCatalog(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const root = RequireObject(value, L"The catalog response must be an object.");
+        auto const metas = root.GetNamedArray(L"metas");
+        std::vector<Dto::MetaPreview> result;
+        result.reserve((std::min)(metas.Size(), 30u));
+        for (auto const& item : metas)
+        {
+            if (result.size() == 30) break;
+            auto const object = RequireObject(item, L"A catalog item must be an object.");
+            result.push_back(Dto::MetaPreview{
+                .Id = DisplayString(object, L"id", 1024),
+                .Type = DisplayString(object, L"type", 128),
+                .Name = DisplayString(object, L"name", 512),
+                .Poster = OptionalHttpUrl(object, L"poster"),
+                .Background = OptionalHttpUrl(object, L"background"),
+                .Description = OptionalDisplayString(object, L"description", 4096),
+                .ReleaseInfo = OptionalDisplayString(object, L"releaseInfo", 128),
+                .Rating = OptionalDisplayString(object, L"imdbRating", 32),
+            });
+        }
+        return result;
+    }
+
+    std::vector<Dto::LibraryRow> ParseLibrary(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const array = value.GetArray();
+        std::vector<Dto::LibraryRow> result;
+        result.reserve(array.Size());
+        for (auto const& item : array)
+        {
+            auto const object = RequireObject(item, L"A library row must be an object.");
+            std::optional<std::int64_t> removedAt;
+            if (object.HasKey(L"removedAt") && object.GetNamedValue(L"removedAt").ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+                removedAt = static_cast<std::int64_t>(object.GetNamedNumber(L"removedAt"));
+            result.push_back({
+                DisplayString(object, L"id", 2048), DisplayString(object, L"type", 128), DisplayString(object, L"name", 512),
+                OptionalHttpUrl(object, L"poster"), RequirePositiveInteger(object, L"addedAt"), removedAt, RequirePositiveInteger(object, L"updatedAt") });
+        }
+        return result;
+    }
+
+    std::vector<Dto::WatchEntry> ParseWatchState(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const array = value.GetArray();
+        std::vector<Dto::WatchEntry> result;
+        result.reserve(array.Size());
+        for (auto const& item : array)
+        {
+            auto const object = RequireObject(item, L"A watch-state row must be an object.");
+            auto const position = object.GetNamedNumber(L"positionSec");
+            auto const duration = object.GetNamedNumber(L"durationSec");
+            if (!std::isfinite(position) || !std::isfinite(duration) || position < 0 || duration < 0) continue;
+            result.push_back({
+                DisplayString(object, L"videoId", 2048), DisplayString(object, L"itemId", 2048), position, duration,
+                object.GetNamedBoolean(L"watched"), OptionalDisplayString(object, L"name", 512), OptionalHttpUrl(object, L"poster"),
+                RequirePositiveInteger(object, L"updatedAt") });
+        }
+        return result;
     }
 }

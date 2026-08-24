@@ -126,7 +126,9 @@ namespace HaloDesktop::Services
 
         auto const requestId = m_queryCache->Issue(AddonsCacheKey);
         auto payload = co_await m_apiClient->GetAddonsAsync();
-        if (payload.Global.empty() && payload.User.empty())
+        auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty();
+        m_seedAttempted = true;
+        if (shouldSeed)
         {
             co_await m_apiClient->PutAddonsAsync({
                 L"https://v3-cinemeta.strem.io/manifest.json",

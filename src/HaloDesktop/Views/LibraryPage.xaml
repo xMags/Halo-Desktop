@@ -14,9 +14,9 @@
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <Border Style="{StaticResource HaloSegmentedTrayStyle}">
             <StackPanel Orientation="Horizontal">
-              <RadioButton GroupName="LibraryFilter" IsChecked="True" Click="OnAllFilterClick" Content="All 42" Style="{StaticResource HaloSegmentedRadioStyle}" />
-              <RadioButton GroupName="LibraryFilter" Click="OnMoviesFilterClick" Content="Movies 19" Style="{StaticResource HaloSegmentedRadioStyle}" />
-              <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="Series 23" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="LibraryFilter" IsChecked="True" Click="OnAllFilterClick" Content="{x:Bind ViewModel.AllLabel, Mode=OneWay}" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="LibraryFilter" Click="OnMoviesFilterClick" Content="{x:Bind ViewModel.MoviesLabel, Mode=OneWay}" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="{x:Bind ViewModel.SeriesLabel, Mode=OneWay}" Style="{StaticResource HaloSegmentedRadioStyle}" />
             </StackPanel>
           </Border>
       <TextBlock Grid.Column="1" Margin="0,0,14,0" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
@@ -29,7 +29,6 @@
               <MenuFlyout>
                 <RadioMenuFlyoutItem GroupName="LibrarySort" IsChecked="True" Text="Recently added" Click="OnSortClick" />
                 <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Title A–Z" Click="OnSortClick" />
-                <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Release year" Click="OnSortClick" />
                 <RadioMenuFlyoutItem GroupName="LibrarySort" Text="Recently watched" Click="OnSortClick" />
               </MenuFlyout>
         </Button.Flyout>
@@ -40,6 +39,7 @@
       ScrollViewer.VerticalScrollBarVisibility="Hidden"
       Grid.Row="2"
       Padding="24,20,24,32"
+      Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}"
       IsItemClickEnabled="False"
       SelectionMode="None">
       <GridView.ItemsPanel>
@@ -47,9 +47,12 @@
       </GridView.ItemsPanel>
       <GridView.ItemTemplate>
         <DataTemplate x:DataType="local:MediaSummary">
-          <local:PosterCard Title="{x:Bind Title}" Meta="{x:Bind Meta}" KindLabel="{x:Bind KindLabel}" ShowKindBadge="True" Click="OnPosterClick" />
+          <local:PosterCard Title="{x:Bind Title}" Meta="{x:Bind Meta}" Poster="{x:Bind Poster}" KindLabel="{x:Bind KindLabel}" ShowKindBadge="True" Tag="{x:Bind}" Click="OnPosterClick" />
         </DataTemplate>
       </GridView.ItemTemplate>
     </GridView>
+    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading library…" /></StackPanel>
+    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Library could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+    <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Text="Your library is empty." Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}" />
   </Grid>
 </Page>

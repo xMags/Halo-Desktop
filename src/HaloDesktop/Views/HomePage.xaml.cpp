@@ -6,6 +6,8 @@
 
 #include "App.xaml.h"
 #include "Controls/WheelScrolling.h"
+#include "Controls/MediaShelf.xaml.h"
+#include "Services/NavigationService.h"
 #include "ViewModels/HomeViewModel.h"
 
 namespace winrt::HaloDesktop::implementation
@@ -46,6 +48,8 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.SetFilter(0);
     }
+    void HomePage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
+    void HomePage::OnOpenSettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Settings); }
 
     void HomePage::OnMoviesFilterClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
@@ -65,21 +69,22 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenPlayer();
+        m_viewModel.OpenHeroSources();
     }
 
     void HomePage::OnDetailsClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenDetail();
+        m_viewModel.OpenHeroDetail();
     }
 
     void HomePage::OnContinueItemClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenPlayer();
+        auto const item = winrt::unbox_value<winrt::HaloDesktop::ContinueItem>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag());
+        m_viewModel.OpenContinue(item);
     }
 
     void HomePage::OnContinueWheelChanged(
@@ -91,9 +96,10 @@ namespace winrt::HaloDesktop::implementation
     }
 
     void HomePage::OnShelfItemClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenDetail();
+        auto const shelf = sender.as<winrt::HaloDesktop::MediaShelf>();
+        m_viewModel.OpenDetail(shelf.SelectedItem().as<winrt::HaloDesktop::MediaSummary>());
     }
 }

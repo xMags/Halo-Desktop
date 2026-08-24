@@ -5,9 +5,17 @@ namespace HaloDesktop
         Object Items { get; };
         Int32 FilterIndex { get; };
         Int32 SortIndex { get; };
+        String AllLabel { get; };
+        String MoviesLabel { get; };
+        String SeriesLabel { get; };
+        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
         void SetFilter(Int32 index);
         void SetSort(Int32 index);
-        void OpenDetail();
+        void Retry();
+        void OpenDetail(Object item);
     }
 
     [default_interface]

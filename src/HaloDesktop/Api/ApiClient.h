@@ -4,6 +4,8 @@
 
 #include <memory>
 #include <optional>
+#include <utility>
+#include <vector>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/Windows.Foundation.h>
@@ -44,6 +46,13 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::SettingsPayload> PutSettingsAsync(
             winrt::Windows::Data::Json::JsonObject value,
             std::int64_t updatedAt);
+        [[nodiscard]] concurrency::task<std::vector<Dto::MetaPreview>> GetCatalogAsync(
+            winrt::hstring addonId,
+            winrt::hstring type,
+            winrt::hstring catalogId,
+            std::vector<std::pair<winrt::hstring, winrt::hstring>> extras = {});
+        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> GetLibraryAsync();
+        [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> GetWatchStateAsync();
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;

@@ -175,6 +175,38 @@ namespace HaloDesktop::Api
         co_return Mappers::ParseSettings(response);
     }
 
+    concurrency::task<std::vector<Dto::MetaPreview>> ApiClient::GetCatalogAsync(
+        winrt::hstring addonId,
+        winrt::hstring type,
+        winrt::hstring catalogId,
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> extras)
+    {
+        std::wstring path = L"/catalog?addon=" + std::wstring{ EncodeUriComponent(addonId) }
+            + L"&type=" + std::wstring{ EncodeUriComponent(type) }
+            + L"&id=" + std::wstring{ EncodeUriComponent(catalogId) };
+        for (auto const& [name, value] : extras)
+        {
+            path.append(L"&").append(EncodeUriComponent(name)).append(L"=").append(EncodeUriComponent(value));
+        }
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
+        co_return Mappers::ParseCatalog(response);
+    }
+
+    concurrency::task<std::vector<Dto::LibraryRow>> ApiClient::GetLibraryAsync()
+    {
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), L"/library");
+        co_return Mappers::ParseLibrary(response);
+    }
+
+    concurrency::task<std::vector<Dto::WatchEntry>> ApiClient::GetWatchStateAsync()
+    {
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), L"/watch-state");
+        co_return Mappers::ParseWatchState(response);
+    }
+
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(
         winrt::Windows::Web::Http::HttpMethod method,
         wchar_t const* path,

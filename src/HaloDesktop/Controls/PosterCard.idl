@@ -6,6 +6,7 @@ namespace HaloDesktop
         PosterCard();
         String Title;
         String Meta;
+        String Poster;
         String KindLabel;
         Boolean ShowKindBadge;
         event Microsoft.UI.Xaml.RoutedEventHandler Click;

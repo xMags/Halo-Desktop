@@ -20,18 +20,46 @@ namespace winrt::HaloDesktop::implementation
     struct MediaSummary : MediaSummaryT<MediaSummary>
     {
         MediaSummary() = default;
-        MediaSummary(hstring id, hstring title, hstring meta, HaloDesktop::MediaKind kind);
+        MediaSummary(
+            hstring id,
+            hstring title,
+            hstring meta,
+            HaloDesktop::MediaKind kind,
+            hstring type = {},
+            hstring poster = {},
+            hstring background = {},
+            hstring description = {},
+            hstring rating = {},
+            hstring releaseInfo = {},
+            std::int64_t addedAt = 0,
+            std::int64_t updatedAt = 0);
 
         [[nodiscard]] hstring Id() const;
+        [[nodiscard]] hstring Type() const;
         [[nodiscard]] hstring Title() const;
         [[nodiscard]] hstring Meta() const;
+        [[nodiscard]] hstring Poster() const;
+        [[nodiscard]] hstring Background() const;
+        [[nodiscard]] hstring Description() const;
+        [[nodiscard]] hstring Rating() const;
+        [[nodiscard]] hstring ReleaseInfo() const;
+        [[nodiscard]] std::int64_t AddedAt() const noexcept;
+        [[nodiscard]] std::int64_t UpdatedAt() const noexcept;
         [[nodiscard]] HaloDesktop::MediaKind Kind() const noexcept;
         [[nodiscard]] hstring KindLabel() const;
 
     private:
         hstring m_id;
+        hstring m_type;
         hstring m_title;
         hstring m_meta;
+        hstring m_poster;
+        hstring m_background;
+        hstring m_description;
+        hstring m_rating;
+        hstring m_releaseInfo;
+        std::int64_t m_addedAt{};
+        std::int64_t m_updatedAt{};
         HaloDesktop::MediaKind m_kind{ HaloDesktop::MediaKind::Movie };
     };
 
@@ -235,9 +263,24 @@ namespace winrt::HaloDesktop::implementation
     struct ContinueItem : ContinueItemT<ContinueItem>
     {
         ContinueItem() = default;
-        ContinueItem(hstring name, hstring sub, hstring tag, hstring timeLeft, double progress);
+        ContinueItem(
+            hstring name,
+            hstring sub,
+            hstring tag,
+            hstring timeLeft,
+            double progress,
+            hstring type = {},
+            hstring metaId = {},
+            hstring videoId = {},
+            hstring itemId = {},
+            hstring poster = {});
 
         [[nodiscard]] hstring Name() const;
+        [[nodiscard]] hstring Type() const;
+        [[nodiscard]] hstring MetaId() const;
+        [[nodiscard]] hstring VideoId() const;
+        [[nodiscard]] hstring ItemId() const;
+        [[nodiscard]] hstring Poster() const;
         [[nodiscard]] hstring Sub() const;
         [[nodiscard]] hstring Tag() const;
         [[nodiscard]] hstring TimeLeft() const;
@@ -245,6 +288,11 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         hstring m_name;
+        hstring m_type;
+        hstring m_metaId;
+        hstring m_videoId;
+        hstring m_itemId;
+        hstring m_poster;
         hstring m_sub;
         hstring m_tag;
         hstring m_timeLeft;

@@ -18,13 +18,19 @@ namespace HaloDesktop
         String TopMatchTitle { get; };
         String TopMatchMeta { get; };
         String TopMatchSynopsis { get; };
+        String TopMatchPoster { get; };
         Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
         Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
         void SetFilter(Int32 index);
         void Submit(String query);
         void Clear();
-        void OpenDetail();
+        void Retry();
+        void OpenDetail(Object item);
+        void OpenTopMatch();
     }
 
     [default_interface]

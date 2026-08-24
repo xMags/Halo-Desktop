@@ -25,7 +25,10 @@
         BorderBrush="{ThemeResource HaloCardStrokeBrush}"
         BorderThickness="1"
         CornerRadius="8">
-        <local:PlaceholderArt />
+        <Grid>
+          <local:PlaceholderArt />
+          <Image x:Name="PosterImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnPosterOpened" ImageFailed="OnPosterFailed" />
+        </Grid>
       </Border>
       <Border
         x:Name="KindBadge"

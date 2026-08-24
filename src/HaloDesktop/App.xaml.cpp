@@ -8,15 +8,18 @@
 #include "Services/MockDownloadService.h"
 #include "Services/MockServices.h"
 #include "Services/AddonService.h"
+#include "Services/CatalogService.h"
 #include "Services/Auth/LocalAuthSession.h"
 #include "Services/Auth/OidcAuthSession.h"
 #include "Services/Auth/OidcSignInFlow.h"
 #include "Services/Auth/SessionController.h"
 #include "Services/Auth/SessionStore.h"
 #include "Services/NavigationService.h"
+#include "Services/LibraryService.h"
 #include "Services/QueryCache.h"
 #include "Services/SessionService.h"
 #include "Services/SettingsSyncService.h"
+#include "Services/WatchStateService.h"
 #include "Services/ThemeService.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/WindowPresentationService.h"
@@ -64,14 +67,22 @@ namespace winrt::HaloDesktop::implementation
             }
         });
 
-        m_services.Catalog = std::make_shared<::HaloDesktop::Services::MockCatalogService>();
-        m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
-        m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();
-        m_services.Downloads = std::make_shared<::HaloDesktop::Services::MockDownloadService>();
-        m_services.Addons = std::make_shared<::HaloDesktop::Services::AddonService>(
+        auto addonService = std::make_shared<::HaloDesktop::Services::AddonService>(
             m_apiClient,
             m_queryCache,
             m_sessionService);
+        m_services.Addons = addonService;
+        m_services.Library = std::make_shared<::HaloDesktop::Services::LibraryService>(m_apiClient);
+        m_services.WatchState = std::make_shared<::HaloDesktop::Services::WatchStateService>(m_apiClient);
+        auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
+            m_apiClient,
+            addonService,
+            m_services.Library,
+            m_services.WatchState);
+        m_services.Catalog = catalogService;
+        m_services.Metadata = std::make_shared<::HaloDesktop::Services::MockMetadataService>();
+        m_services.Sources = std::make_shared<::HaloDesktop::Services::MockSourceService>();
+        m_services.Downloads = std::make_shared<::HaloDesktop::Services::MockDownloadService>();
         m_services.SettingsSync = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
             m_apiClient,
             m_queryCache,

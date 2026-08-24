@@ -6,12 +6,21 @@ namespace HaloDesktop
         String HeroSynopsis { get; };
         String HeroRating { get; };
         String HeroMeta { get; };
+        String HeroBackground { get; };
+        String ContinueCountLabel { get; };
         Object ContinueItems { get; };
         Object Shelves { get; };
         Int32 FilterIndex { get; };
+        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
         void SetFilter(Int32 index);
-        void OpenDetail();
-        void OpenPlayer();
+        void Retry();
+        void OpenDetail(Object item);
+        void OpenHeroDetail();
+        void OpenHeroSources();
+        void OpenContinue(Object item);
         void OpenSearch(String query);
     }
 

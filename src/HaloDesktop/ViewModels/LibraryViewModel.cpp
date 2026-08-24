@@ -6,73 +6,41 @@
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
 #include <algorithm>
-#include <string>
-#include <vector>
-
-namespace
-{
-    int ReleaseYear(winrt::HaloDesktop::MediaSummary const& item)
-    {
-        auto const meta = std::wstring(item.Meta());
-        return meta.size() >= 4 ? std::stoi(meta.substr(0, 4)) : 0;
-    }
-}
-
+namespace { auto const Visible=winrt::Microsoft::UI::Xaml::Visibility::Visible; auto const Collapsed=winrt::Microsoft::UI::Xaml::Visibility::Collapsed; }
 namespace winrt::HaloDesktop::implementation
 {
     LibraryViewModel::LibraryViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_navigation(services.Navigation), m_sourceItems(services.Catalog->LibraryItems()),
-          m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
-    {
-        Rebuild();
-    }
+        : m_catalog(services.Catalog), m_navigation(services.Navigation), m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) { static_cast<void>(LoadAsync()); }
     winrt::Windows::Foundation::IInspectable LibraryViewModel::Items() const { return m_items; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> LibraryViewModel::ItemsView() const { return m_items; }
     std::int32_t LibraryViewModel::FilterIndex() const noexcept { return m_filterIndex; }
     std::int32_t LibraryViewModel::SortIndex() const noexcept { return m_sortIndex; }
-    void LibraryViewModel::SetFilter(std::int32_t index)
+    winrt::hstring LibraryViewModel::AllLabel() const { return L"All " + winrt::to_hstring(m_sourceItems.size()); }
+    winrt::hstring LibraryViewModel::MoviesLabel() const { return L"Movies " + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return i.Kind()==winrt::HaloDesktop::MediaKind::Movie;})); }
+    winrt::hstring LibraryViewModel::SeriesLabel() const { return L"Series " + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return i.Kind()==winrt::HaloDesktop::MediaKind::Series;})); }
+    Microsoft::UI::Xaml::Visibility LibraryViewModel::ContentVisibility() const noexcept { return !m_loading&&!m_error&&!m_sourceItems.empty()?Visible:Collapsed; }
+    Microsoft::UI::Xaml::Visibility LibraryViewModel::LoadingVisibility() const noexcept { return m_loading?Visible:Collapsed; }
+    Microsoft::UI::Xaml::Visibility LibraryViewModel::ErrorVisibility() const noexcept { return m_error?Visible:Collapsed; }
+    Microsoft::UI::Xaml::Visibility LibraryViewModel::EmptyVisibility() const noexcept { return !m_loading&&!m_error&&m_sourceItems.empty()?Visible:Collapsed; }
+    void LibraryViewModel::SetFilter(std::int32_t index){if(index>=0&&index<=2&&index!=m_filterIndex){m_filterIndex=index;Rebuild();Raise(L"FilterIndex");}}
+    void LibraryViewModel::SetSort(std::int32_t index){if(index>=0&&index<=2&&index!=m_sortIndex){m_sortIndex=index;Rebuild();Raise(L"SortIndex");}}
+    void LibraryViewModel::Retry(){static_cast<void>(LoadAsync());}
+    void LibraryViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item){if(item)m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,item);}
+    winrt::event_token LibraryViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler){return m_propertyChanged.add(handler);}
+    void LibraryViewModel::PropertyChanged(winrt::event_token const& token)noexcept{m_propertyChanged.remove(token);}
+    winrt::Windows::Foundation::IAsyncAction LibraryViewModel::LoadAsync()
     {
-        if (index < 0 || index > 2 || index == m_filterIndex) return;
-        m_filterIndex = index; Rebuild();
-        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, L"FilterIndex");
+        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const version=++m_loadVersion;m_loading=true;m_error=false;RaiseState();bool failed{};
+        try{co_await m_catalog->LoadAsync();}catch(...){failed=true;}co_await uiContext;if(version!=m_loadVersion)co_return;m_loading=false;m_error=failed;
+        if(!failed){m_sourceItems.clear();for(auto const&item:m_catalog->LibraryItems())m_sourceItems.push_back(item);Rebuild();}RaiseState();
     }
-    void LibraryViewModel::SetSort(std::int32_t index)
-    {
-        if (index < 0 || index > 3 || index == m_sortIndex) return;
-        m_sortIndex = index; Rebuild();
-        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, L"SortIndex");
-    }
-    void LibraryViewModel::OpenDetail() { m_navigation->GoTo(::HaloDesktop::Services::Page::Detail); }
-    winrt::event_token LibraryViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
-    void LibraryViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     void LibraryViewModel::Rebuild()
     {
-        std::vector<winrt::HaloDesktop::MediaSummary> items;
-        for (auto const& item : m_sourceItems)
-        {
-            auto const include = m_filterIndex == 0
-                || (m_filterIndex == 1 && item.Kind() == winrt::HaloDesktop::MediaKind::Movie)
-                || (m_filterIndex == 2 && item.Kind() == winrt::HaloDesktop::MediaKind::Series);
-            if (include) items.push_back(item);
-        }
-        if (m_sortIndex == 1)
-        {
-            std::sort(items.begin(), items.end(), [](auto const& left, auto const& right) { return left.Title() < right.Title(); });
-        }
-        else if (m_sortIndex == 2)
-        {
-            std::sort(items.begin(), items.end(), [](auto const& left, auto const& right)
-            {
-                auto const leftYear = ReleaseYear(left);
-                auto const rightYear = ReleaseYear(right);
-                return leftYear == rightYear ? left.Title() < right.Title() : leftYear > rightYear;
-            });
-        }
-        else if (m_sortIndex == 3 && items.size() > 5)
-        {
-            std::rotate(items.begin(), items.begin() + 5, items.end());
-        }
-        m_items.Clear();
-        for (auto const& item : items) m_items.Append(item);
+        auto items=m_sourceItems;std::erase_if(items,[this](auto const&i){return m_filterIndex==1&&i.Kind()!=winrt::HaloDesktop::MediaKind::Movie||m_filterIndex==2&&i.Kind()!=winrt::HaloDesktop::MediaKind::Series;});
+        if(m_sortIndex==0)std::sort(items.begin(),items.end(),[](auto const&a,auto const&b){return a.AddedAt()>b.AddedAt();});
+        else if(m_sortIndex==1)std::sort(items.begin(),items.end(),[](auto const&a,auto const&b){return a.Title()<b.Title();});
+        else std::sort(items.begin(),items.end(),[](auto const&a,auto const&b){return a.UpdatedAt()>b.UpdatedAt();});
+        m_items.Clear();for(auto const&i:items)m_items.Append(i);Raise(L"Items");
     }
+    void LibraryViewModel::RaiseState(){for(auto const n:{L"Items",L"AllLabel",L"MoviesLabel",L"SeriesLabel",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility"})Raise(n);}
+    void LibraryViewModel::Raise(wchar_t const*n){::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged,*this,n);}
 }

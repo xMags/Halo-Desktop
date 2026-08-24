@@ -37,14 +37,45 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    MediaSummary::MediaSummary(hstring id, hstring title, hstring meta, HaloDesktop::MediaKind kind)
-        : m_id(std::move(id)), m_title(std::move(title)), m_meta(std::move(meta)), m_kind(kind)
+    MediaSummary::MediaSummary(
+        hstring id,
+        hstring title,
+        hstring meta,
+        HaloDesktop::MediaKind kind,
+        hstring type,
+        hstring poster,
+        hstring background,
+        hstring description,
+        hstring rating,
+        hstring releaseInfo,
+        std::int64_t addedAt,
+        std::int64_t updatedAt)
+        : m_id(std::move(id)),
+          m_type(type.empty() ? (kind == HaloDesktop::MediaKind::Series ? L"series" : L"movie") : std::move(type)),
+          m_title(std::move(title)),
+          m_meta(std::move(meta)),
+          m_poster(std::move(poster)),
+          m_background(std::move(background)),
+          m_description(std::move(description)),
+          m_rating(std::move(rating)),
+          m_releaseInfo(std::move(releaseInfo)),
+          m_addedAt(addedAt),
+          m_updatedAt(updatedAt),
+          m_kind(kind)
     {
     }
 
     hstring MediaSummary::Id() const { return m_id; }
+    hstring MediaSummary::Type() const { return m_type; }
     hstring MediaSummary::Title() const { return m_title; }
     hstring MediaSummary::Meta() const { return m_meta; }
+    hstring MediaSummary::Poster() const { return m_poster; }
+    hstring MediaSummary::Background() const { return m_background; }
+    hstring MediaSummary::Description() const { return m_description; }
+    hstring MediaSummary::Rating() const { return m_rating; }
+    hstring MediaSummary::ReleaseInfo() const { return m_releaseInfo; }
+    std::int64_t MediaSummary::AddedAt() const noexcept { return m_addedAt; }
+    std::int64_t MediaSummary::UpdatedAt() const noexcept { return m_updatedAt; }
     HaloDesktop::MediaKind MediaSummary::Kind() const noexcept { return m_kind; }
     hstring MediaSummary::KindLabel() const
     {
@@ -260,8 +291,23 @@ namespace winrt::HaloDesktop::implementation
     bool Addon::Enabled() const noexcept { return m_enabled; }
     void Addon::Enabled(bool value) noexcept { m_enabled = value; }
 
-    ContinueItem::ContinueItem(hstring name, hstring sub, hstring tag, hstring timeLeft, double progress)
+    ContinueItem::ContinueItem(
+        hstring name,
+        hstring sub,
+        hstring tag,
+        hstring timeLeft,
+        double progress,
+        hstring type,
+        hstring metaId,
+        hstring videoId,
+        hstring itemId,
+        hstring poster)
         : m_name(std::move(name)),
+          m_type(std::move(type)),
+          m_metaId(std::move(metaId)),
+          m_videoId(std::move(videoId)),
+          m_itemId(std::move(itemId)),
+          m_poster(std::move(poster)),
           m_sub(std::move(sub)),
           m_tag(std::move(tag)),
           m_timeLeft(std::move(timeLeft)),
@@ -270,6 +316,11 @@ namespace winrt::HaloDesktop::implementation
     }
 
     hstring ContinueItem::Name() const { return m_name; }
+    hstring ContinueItem::Type() const { return m_type; }
+    hstring ContinueItem::MetaId() const { return m_metaId; }
+    hstring ContinueItem::VideoId() const { return m_videoId; }
+    hstring ContinueItem::ItemId() const { return m_itemId; }
+    hstring ContinueItem::Poster() const { return m_poster; }
     hstring ContinueItem::Sub() const { return m_sub; }
     hstring ContinueItem::Tag() const { return m_tag; }
     hstring ContinueItem::TimeLeft() const { return m_timeLeft; }

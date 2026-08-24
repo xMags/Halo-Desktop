@@ -44,12 +44,22 @@ namespace HaloDesktop::Api::Dto
 
     struct AddonRecord final
     {
+        struct Catalog final
+        {
+            winrt::hstring Type;
+            winrt::hstring Id;
+            std::optional<winrt::hstring> Name;
+            bool SupportsSearch{};
+            bool HasRequiredExtra{};
+        };
+
         winrt::hstring Id;
         std::optional<winrt::hstring> TransportUrl;
         winrt::hstring Name;
         winrt::hstring Version;
         std::vector<winrt::hstring> Resources;
         std::vector<winrt::hstring> Types;
+        std::vector<Catalog> Catalogs;
         std::int32_t Position{};
         bool HideCatalogs{};
         bool IsGlobal{};
@@ -66,6 +76,41 @@ namespace HaloDesktop::Api::Dto
         winrt::Windows::Data::Json::JsonObject Value;
         std::int64_t UpdatedAt{};
     };
+
+    struct MetaPreview final
+    {
+        winrt::hstring Id;
+        winrt::hstring Type;
+        winrt::hstring Name;
+        std::optional<winrt::hstring> Poster;
+        std::optional<winrt::hstring> Background;
+        std::optional<winrt::hstring> Description;
+        std::optional<winrt::hstring> ReleaseInfo;
+        std::optional<winrt::hstring> Rating;
+    };
+
+    struct LibraryRow final
+    {
+        winrt::hstring Id;
+        winrt::hstring Type;
+        winrt::hstring Name;
+        std::optional<winrt::hstring> Poster;
+        std::int64_t AddedAt{};
+        std::optional<std::int64_t> RemovedAt;
+        std::int64_t UpdatedAt{};
+    };
+
+    struct WatchEntry final
+    {
+        winrt::hstring VideoId;
+        winrt::hstring ItemId;
+        double PositionSec{};
+        double DurationSec{};
+        bool Watched{};
+        std::optional<winrt::hstring> Name;
+        std::optional<winrt::hstring> Poster;
+        std::int64_t UpdatedAt{};
+    };
 }
 
 namespace HaloDesktop::Api::Mappers
@@ -76,4 +121,7 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] Dto::Me ParseMe(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::AddonsPayload ParseAddons(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::SettingsPayload ParseSettings(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] std::vector<Dto::MetaPreview> ParseCatalog(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] std::vector<Dto::LibraryRow> ParseLibrary(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] std::vector<Dto::WatchEntry> ParseWatchState(winrt::Windows::Data::Json::IJsonValue const& value);
 }
