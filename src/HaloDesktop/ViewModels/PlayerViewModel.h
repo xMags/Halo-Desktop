@@ -5,6 +5,7 @@
 #include "PlayerViewModel.g.h"
 #include "Services/AppServices.h"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -43,20 +44,20 @@ namespace winrt::HaloDesktop::implementation
         void Activate();
         void Deactivate() noexcept;
         [[nodiscard]] double Position() const noexcept;
-        void Position(double value);
         [[nodiscard]] double Duration() const noexcept;
         [[nodiscard]] double Volume() const noexcept;
         void Volume(double value);
         [[nodiscard]] winrt::hstring VolumeText() const;
-        [[nodiscard]] winrt::hstring TimeText() const;
+        [[nodiscard]] winrt::hstring PositionText() const;
+        [[nodiscard]] winrt::hstring DurationText() const;
         [[nodiscard]] winrt::hstring SpeedText() const;
         [[nodiscard]] winrt::hstring PlayPauseGlyph() const;
         [[nodiscard]] winrt::hstring FullscreenGlyph() const;
         [[nodiscard]] double PlayButtonSize() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Media::Brush AudioChipBackground() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Media::Brush SubtitleChipBackground() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Media::Brush SpeedChipBackground() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Media::Brush UpNextChipBackground() const;
+        [[nodiscard]] double TransportButtonSize() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Thickness TransportPadding() const noexcept;
+        [[nodiscard]] double TitleFontSize() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<
@@ -73,6 +74,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring AudioDelayText() const;
         [[nodiscard]] bool IsPaused() const noexcept;
         [[nodiscard]] bool IsFullscreen() const noexcept;
+        [[nodiscard]] bool UpNextOpen() const noexcept;
         [[nodiscard]] bool AudioTabSelected() const noexcept;
         [[nodiscard]] bool SubtitleTabSelected() const noexcept;
         [[nodiscard]] bool SpeedTabSelected() const noexcept;
@@ -83,6 +85,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SpeedPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
         void TogglePause();
+        void BeginScrub();
+        void ScrubTo(double seconds);
+        void EndScrub(double seconds);
         void SeekRelative(double seconds);
         void ChangeVolume(double delta);
         void SetSpeed(double speed);
@@ -108,13 +113,14 @@ namespace winrt::HaloDesktop::implementation
         void SynchronizeEngine();
         void RaisePlaybackState();
         void RaisePanelState();
+        void RaisePresentationMetrics();
         void RebuildTracks();
         void Raise(wchar_t const* propertyName);
         void RestartHideTimer();
         void StopUpNextTimer() noexcept;
         [[nodiscard]] bool KeepsOsdVisible() const noexcept;
-        static winrt::hstring FormatTime(double seconds);
-        [[nodiscard]] Microsoft::UI::Xaml::Media::Brush ChipBackground(bool active) const;
+        [[nodiscard]] double ScrubTarget(double seconds) const noexcept;
+        static winrt::hstring FormatTime(double seconds, bool withHours);
 
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> m_engine;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
@@ -134,6 +140,9 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_subtitleTracks{ nullptr };
         double m_osdOpacity{ 1.0 };
+        double m_scrubPosition{};
+        std::chrono::steady_clock::time_point m_lastScrubSeek{};
+        bool m_scrubbing{};
         bool m_upNextOpen{};
         bool m_active{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;

@@ -25,6 +25,8 @@ namespace HaloDesktop::Playback
         std::optional<bool> Paused;
         std::optional<bool> Buffering;
         std::optional<bool> Ended;
+        // True while libmpv is between a seek request and the restart that completes it.
+        std::optional<bool> Seeking;
         std::optional<std::vector<TrackInfo>> Tracks;
     };
 

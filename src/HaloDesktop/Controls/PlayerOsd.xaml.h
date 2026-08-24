@@ -21,8 +21,14 @@ namespace winrt::HaloDesktop::implementation
                            Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnForwardClick(winrt::Windows::Foundation::IInspectable const&,
                             Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSeekPointerPressed(winrt::Windows::Foundation::IInspectable const&,
+                                  Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnSeekPointerMoved(winrt::Windows::Foundation::IInspectable const&,
+                                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnSeekPointerReleased(winrt::Windows::Foundation::IInspectable const&,
                                    Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnSeekPointerTerminated(winrt::Windows::Foundation::IInspectable const&,
+                                     Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFullscreenClick(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAudioPanelClick(winrt::Windows::Foundation::IInspectable const&,
@@ -74,6 +80,8 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
+        bool m_seekHandlersRegistered{};
+        bool m_seekPointerActive{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

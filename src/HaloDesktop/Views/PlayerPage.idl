@@ -12,19 +12,20 @@ namespace HaloDesktop
 
     runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        Double Position;
+        Double Position { get; };
         Double Duration { get; };
         Double Volume;
         String VolumeText { get; };
-        String TimeText { get; };
+        String PositionText { get; };
+        String DurationText { get; };
         String SpeedText { get; };
         String PlayPauseGlyph { get; };
         String FullscreenGlyph { get; };
         Double PlayButtonSize { get; };
-        Microsoft.UI.Xaml.Media.Brush AudioChipBackground { get; };
-        Microsoft.UI.Xaml.Media.Brush SubtitleChipBackground { get; };
-        Microsoft.UI.Xaml.Media.Brush SpeedChipBackground { get; };
-        Microsoft.UI.Xaml.Media.Brush UpNextChipBackground { get; };
+        Double TransportButtonSize { get; };
+        Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
+        Microsoft.UI.Xaml.Thickness TransportPadding { get; };
+        Double TitleFontSize { get; };
         Object AudioTracks { get; };
         Object SubtitleTracks { get; };
         Double BufferedPosition { get; };
@@ -35,6 +36,7 @@ namespace HaloDesktop
         String AudioDelayText { get; };
         Boolean IsPaused { get; };
         Boolean IsFullscreen { get; };
+        Boolean UpNextOpen { get; };
         Boolean AudioTabSelected { get; };
         Boolean SubtitleTabSelected { get; };
         Boolean SpeedTabSelected { get; };
@@ -45,6 +47,9 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
         void TogglePause();
+        void BeginScrub();
+        void ScrubTo(Double seconds);
+        void EndScrub(Double seconds);
         void SeekRelative(Double seconds);
         void ChangeVolume(Double delta);
         void SetSpeed(Double speed);

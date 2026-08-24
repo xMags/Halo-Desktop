@@ -183,6 +183,26 @@ namespace
         }
         return update;
     }
+
+    // MPV_EVENT_SEEK opens a window in which time-pos still reports the old
+    // playhead; MPV_EVENT_PLAYBACK_RESTART closes it once the new position is live.
+    std::optional<HaloDesktop::Playback::PlaybackUpdate> TranslateEvent(mpv_event const& event)
+    {
+        HaloDesktop::Playback::PlaybackUpdate update;
+        switch (event.event_id)
+        {
+        case MPV_EVENT_PROPERTY_CHANGE:
+            return TranslateProperty(event);
+        case MPV_EVENT_SEEK:
+            update.Seeking = true;
+            return update;
+        case MPV_EVENT_PLAYBACK_RESTART:
+            update.Seeking = false;
+            return update;
+        default:
+            return std::nullopt;
+        }
+    }
 } // namespace
 
 namespace HaloDesktop::Playback
@@ -354,14 +374,14 @@ namespace HaloDesktop::Playback
             {
                 return;
             }
-            if (m_stopping.load() || event->event_id != MPV_EVENT_PROPERTY_CHANGE)
+            if (m_stopping.load())
             {
                 continue;
             }
 
             try
             {
-                auto update = TranslateProperty(*event);
+                auto update = TranslateEvent(*event);
                 if (update)
                 {
                     DispatchUpdate(std::move(*update));

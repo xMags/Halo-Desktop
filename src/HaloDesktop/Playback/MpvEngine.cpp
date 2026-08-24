@@ -4,10 +4,19 @@
 #include "Playback/MpvClient.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <filesystem>
 #include <stdexcept>
 #include <utility>
+
+namespace
+{
+    // Upper bound on how long the engine trusts a commanded position without a
+    // restart from libmpv, so a dropped or rejected seek cannot freeze the playhead.
+    constexpr std::chrono::milliseconds SeekSettleTimeout{ 3000 };
+    constexpr double SeekTargetToleranceSeconds{ 1.0 };
+} // namespace
 
 namespace HaloDesktop::Playback
 {
@@ -72,6 +81,8 @@ namespace HaloDesktop::Playback
             m_client.reset();
         }
         m_source.clear();
+        m_seekTarget.reset();
+        m_seekRestarted = false;
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Paused = false;
@@ -89,6 +100,8 @@ namespace HaloDesktop::Playback
         }
 
         m_source = path.wstring();
+        m_seekTarget.reset();
+        m_seekRestarted = false;
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
@@ -147,7 +160,10 @@ namespace HaloDesktop::Playback
         auto const next = std::clamp(seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
         if (m_client)
         {
+            m_seekTarget.reset();
+            m_seekRestarted = false;
             m_client->SeekAbsolute(next);
+            BeginSeek(next);
         }
         if (std::abs(next - m_state.PositionSeconds) >= 0.001)
         {
@@ -158,11 +174,14 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekRelative(double seconds)
     {
+        auto const next = std::clamp(m_state.PositionSeconds + seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
         if (m_client)
         {
+            m_seekTarget.reset();
+            m_seekRestarted = false;
             m_client->SeekRelative(seconds);
+            BeginSeek(next);
         }
-        auto const next = std::clamp(m_state.PositionSeconds + seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
         if (std::abs(next - m_state.PositionSeconds) >= 0.001)
         {
             m_state.PositionSeconds = next;
@@ -269,7 +288,21 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::ApplyUpdate(PlaybackUpdate update)
     {
-        if (update.PositionSeconds)
+        if (update.Seeking)
+        {
+            if (*update.Seeking)
+            {
+                if (m_seekTarget)
+                {
+                    m_seekRestarted = false;
+                }
+            }
+            else if (m_seekTarget)
+            {
+                m_seekRestarted = true;
+            }
+        }
+        if (update.PositionSeconds && AcceptPosition(*update.PositionSeconds))
         {
             m_state.PositionSeconds = *update.PositionSeconds;
         }
@@ -302,6 +335,35 @@ namespace HaloDesktop::Playback
             m_state.Tracks = std::move(*update.Tracks);
         }
         NotifyChanged();
+    }
+
+    void MpvEngine::BeginSeek(double targetSeconds) noexcept
+    {
+        m_seekTarget = targetSeconds;
+        m_seekRestarted = false;
+        m_seekIssuedAt = std::chrono::steady_clock::now();
+    }
+
+    bool MpvEngine::AcceptPosition(double positionSeconds) noexcept
+    {
+        if (!m_seekTarget)
+        {
+            return true;
+        }
+        if (std::chrono::steady_clock::now() - m_seekIssuedAt > SeekSettleTimeout)
+        {
+            m_seekTarget.reset();
+            m_seekRestarted = false;
+            return true;
+        }
+        if (!m_seekRestarted || std::abs(positionSeconds - *m_seekTarget) > SeekTargetToleranceSeconds)
+        {
+            return false;
+        }
+
+        m_seekTarget.reset();
+        m_seekRestarted = false;
+        return true;
     }
 
     void MpvEngine::NotifyChanged()

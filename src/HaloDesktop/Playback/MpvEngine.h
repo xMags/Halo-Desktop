@@ -2,6 +2,7 @@
 
 #include "Playback/IPlaybackEngine.h"
 
+#include <chrono>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -46,6 +47,10 @@ namespace HaloDesktop::Playback
     private:
         void ApplyUpdate(PlaybackUpdate update);
         void NotifyChanged();
+        // Keep the newest commanded position on screen until libmpv restarts at that
+        // target, so an older time-pos or restart cannot rewind a rapid scrub.
+        void BeginSeek(double targetSeconds) noexcept;
+        [[nodiscard]] bool AcceptPosition(double positionSeconds) noexcept;
 
         std::unique_ptr<MpvClient> m_client;
         PlaybackState m_state;
@@ -53,6 +58,9 @@ namespace HaloDesktop::Playback
         PlaybackChangedToken m_nextToken{};
         std::wstring m_source;
         std::uintptr_t m_windowHandle{};
+        std::chrono::steady_clock::time_point m_seekIssuedAt{};
+        std::optional<double> m_seekTarget;
+        bool m_seekRestarted{};
         bool m_running{};
     };
 } // namespace HaloDesktop::Playback

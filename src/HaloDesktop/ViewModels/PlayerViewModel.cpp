@@ -18,12 +18,15 @@
 #include <sstream>
 #include <string>
 #include <utility>
-#include <winrt/Windows.UI.h>
 
 namespace
 {
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
+
+    // Preview seeks are frequent enough to feel continuous without flooding
+    // libmpv with one command for every raw pointer sample.
+    constexpr std::chrono::milliseconds ScrubPreviewInterval{ 120 };
 } // namespace
 
 namespace winrt::HaloDesktop::implementation
@@ -177,12 +180,7 @@ namespace winrt::HaloDesktop::implementation
     }
     double PlayerViewModel::Position() const noexcept
     {
-        return m_state.PositionSeconds;
-    }
-    void PlayerViewModel::Position(double value)
-    {
-        m_engine->SeekAbsolute(value);
-        NotifyUserActivity();
+        return m_scrubbing ? m_scrubPosition : m_state.PositionSeconds;
     }
     double PlayerViewModel::Duration() const noexcept
     {
@@ -201,10 +199,13 @@ namespace winrt::HaloDesktop::implementation
     {
         return winrt::to_hstring(static_cast<std::int32_t>(std::lround(m_state.Volume)));
     }
-    winrt::hstring PlayerViewModel::TimeText() const
+    winrt::hstring PlayerViewModel::PositionText() const
     {
-        return winrt::hstring(std::wstring(FormatTime(m_state.PositionSeconds)) + L" / " +
-                              std::wstring(FormatTime(m_state.DurationSeconds)));
+        return FormatTime(Position(), m_state.DurationSeconds >= 3600.0);
+    }
+    winrt::hstring PlayerViewModel::DurationText() const
+    {
+        return FormatTime(m_state.DurationSeconds, m_state.DurationSeconds >= 3600.0);
     }
     winrt::hstring PlayerViewModel::SpeedText() const
     {
@@ -224,21 +225,23 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_windowPresentation->IsFullscreen() ? 54.0 : 44.0;
     }
-    Microsoft::UI::Xaml::Media::Brush PlayerViewModel::AudioChipBackground() const
+    double PlayerViewModel::TransportButtonSize() const noexcept
     {
-        return ChipBackground(m_panelIndex == 0);
+        return m_windowPresentation->IsFullscreen() ? 40.0 : 34.0;
     }
-    Microsoft::UI::Xaml::Media::Brush PlayerViewModel::SubtitleChipBackground() const
+    Microsoft::UI::Xaml::Thickness PlayerViewModel::HeaderPadding() const noexcept
     {
-        return ChipBackground(m_panelIndex == 1);
+        return m_windowPresentation->IsFullscreen() ? Microsoft::UI::Xaml::Thickness{ 40.0, 30.0, 40.0, 30.0 }
+                                                    : Microsoft::UI::Xaml::Thickness{ 22.0, 16.0, 22.0, 16.0 };
     }
-    Microsoft::UI::Xaml::Media::Brush PlayerViewModel::SpeedChipBackground() const
+    Microsoft::UI::Xaml::Thickness PlayerViewModel::TransportPadding() const noexcept
     {
-        return ChipBackground(m_panelIndex == 2);
+        return m_windowPresentation->IsFullscreen() ? Microsoft::UI::Xaml::Thickness{ 44.0, 0.0, 44.0, 30.0 }
+                                                    : Microsoft::UI::Xaml::Thickness{ 24.0, 0.0, 24.0, 18.0 };
     }
-    Microsoft::UI::Xaml::Media::Brush PlayerViewModel::UpNextChipBackground() const
+    double PlayerViewModel::TitleFontSize() const noexcept
     {
-        return ChipBackground(m_upNextOpen);
+        return m_windowPresentation->IsFullscreen() ? 19.0 : 15.0;
     }
     winrt::Windows::Foundation::IInspectable PlayerViewModel::AudioTracks() const
     {
@@ -290,6 +293,10 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_windowPresentation->IsFullscreen();
     }
+    bool PlayerViewModel::UpNextOpen() const noexcept
+    {
+        return m_upNextOpen;
+    }
     bool PlayerViewModel::AudioTabSelected() const noexcept
     {
         return m_panelIndex == 0;
@@ -329,6 +336,49 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::TogglePause()
     {
         m_engine->SetPaused(!m_state.Paused);
+        NotifyUserActivity();
+    }
+    void PlayerViewModel::BeginScrub()
+    {
+        if (m_scrubbing)
+        {
+            return;
+        }
+
+        m_scrubbing = true;
+        m_scrubPosition = m_state.PositionSeconds;
+        m_lastScrubSeek = std::chrono::steady_clock::now() - ScrubPreviewInterval;
+        NotifyUserActivity();
+    }
+    void PlayerViewModel::ScrubTo(double seconds)
+    {
+        if (!m_scrubbing)
+        {
+            return;
+        }
+
+        m_scrubPosition = ScrubTarget(seconds);
+        Raise(L"PositionText");
+        auto const now = std::chrono::steady_clock::now();
+        if (now - m_lastScrubSeek >= ScrubPreviewInterval)
+        {
+            m_lastScrubSeek = now;
+            m_engine->SeekAbsolute(m_scrubPosition);
+        }
+        NotifyUserActivity();
+    }
+    void PlayerViewModel::EndScrub(double seconds)
+    {
+        if (!m_scrubbing)
+        {
+            return;
+        }
+
+        m_scrubPosition = ScrubTarget(seconds);
+        m_scrubbing = false;
+        m_engine->SeekAbsolute(m_scrubPosition);
+        Raise(L"Position");
+        Raise(L"PositionText");
         NotifyUserActivity();
     }
     void PlayerViewModel::SeekRelative(double seconds)
@@ -441,9 +491,7 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::ToggleFullscreen()
     {
         m_windowPresentation->SetFullscreen(!m_windowPresentation->IsFullscreen());
-        Raise(L"IsFullscreen");
-        Raise(L"FullscreenGlyph");
-        Raise(L"PlayButtonSize");
+        RaisePresentationMetrics();
         NotifyUserActivity();
     }
     void PlayerViewModel::HandleEscape()
@@ -512,18 +560,24 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::RaisePlaybackState()
     {
-        for (auto const property : { L"Position", L"Duration", L"Volume", L"VolumeText", L"TimeText", L"SpeedText",
-                                     L"PlayPauseGlyph", L"BufferedPosition", L"IsPaused", L"PausedVisibility" })
+        for (auto const property : { L"Duration", L"Volume", L"VolumeText", L"PositionText", L"DurationText",
+                                     L"SpeedText", L"PlayPauseGlyph", L"BufferedPosition", L"IsPaused",
+                                     L"PausedVisibility" })
         {
             Raise(property);
+        }
+        // The pointer owns the thumb during a scrub. Publishing engine position
+        // notifications here would fight the gesture and snap it backwards.
+        if (!m_scrubbing)
+        {
+            Raise(L"Position");
         }
     }
     void PlayerViewModel::RaisePanelState()
     {
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
-               L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"AudioChipBackground",
-               L"SubtitleChipBackground", L"SpeedChipBackground", L"UpNextChipBackground", L"UpNextVisibility",
+               L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
                L"UpNextProgress", L"UpNextKicker" })
         {
             Raise(property);
@@ -571,22 +625,37 @@ namespace winrt::HaloDesktop::implementation
         {
         }
     }
+    void PlayerViewModel::RaisePresentationMetrics()
+    {
+        for (auto const property : { L"IsFullscreen", L"FullscreenGlyph", L"PlayButtonSize", L"TransportButtonSize",
+                                     L"HeaderPadding", L"TransportPadding", L"TitleFontSize" })
+        {
+            Raise(property);
+        }
+    }
     bool PlayerViewModel::KeepsOsdVisible() const noexcept
     {
-        return m_state.Paused || m_panelIndex >= 0 || m_upNextOpen;
+        return m_state.Paused || m_panelIndex >= 0 || m_upNextOpen || m_scrubbing;
     }
-    winrt::hstring PlayerViewModel::FormatTime(double seconds)
+    double PlayerViewModel::ScrubTarget(double seconds) const noexcept
+    {
+        return std::clamp(seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
+    }
+    winrt::hstring PlayerViewModel::FormatTime(double seconds, bool withHours)
     {
         auto const totalSeconds = static_cast<std::int32_t>((std::max)(0.0, seconds));
         std::wostringstream value;
-        value << totalSeconds / 60 << L":" << std::setw(2) << std::setfill(L'0') << totalSeconds % 60;
+        if (withHours)
+        {
+            value << totalSeconds / 3600 << L":" << std::setw(2) << std::setfill(L'0')
+                  << totalSeconds % 3600 / 60;
+        }
+        else
+        {
+            value << totalSeconds / 60;
+        }
+        value << L":" << std::setw(2) << std::setfill(L'0') << totalSeconds % 60;
         return winrt::hstring(value.str());
-    }
-    Microsoft::UI::Xaml::Media::Brush PlayerViewModel::ChipBackground(bool active) const
-    {
-        auto const color = active ? winrt::Windows::UI::Color{ 0x66, 0x60, 0xCD, 0xFF }
-                                  : winrt::Windows::UI::Color{ 0x99, 0x18, 0x18, 0x1A };
-        return Microsoft::UI::Xaml::Media::SolidColorBrush{ color };
     }
     void PlayerViewModel::Raise(wchar_t const* propertyName)
     {

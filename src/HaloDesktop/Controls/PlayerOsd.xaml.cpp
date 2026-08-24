@@ -7,6 +7,8 @@
 #include "App.xaml.h"
 #include "ViewModels/PlayerViewModel.h"
 
+#include <winrt/Microsoft.UI.Input.h>
+
 namespace winrt::HaloDesktop::implementation
 {
     PlayerOsd::PlayerOsd() : m_viewModel(winrt::make<PlayerViewModel>(App::Services()))
@@ -30,6 +32,33 @@ namespace winrt::HaloDesktop::implementation
         FindName(L"SubtitleTrackList")
             .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
             .ItemsSource(viewModel->SubtitleTracksView());
+        if (m_seekHandlersRegistered)
+        {
+            return;
+        }
+
+        auto const slider = FindName(L"SeekSlider").as<Microsoft::UI::Xaml::Controls::Slider>();
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
+                          winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+                              this, &PlayerOsd::OnSeekPointerPressed
+                          }),
+                          true);
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerMovedEvent(),
+                          winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+                              this, &PlayerOsd::OnSeekPointerMoved
+                          }),
+                          true);
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerReleasedEvent(),
+                          winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+                              this, &PlayerOsd::OnSeekPointerReleased
+                          }),
+                          true);
+        auto const terminationHandler = winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+            this, &PlayerOsd::OnSeekPointerTerminated
+        });
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerCaptureLostEvent(), terminationHandler, true);
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerCanceledEvent(), terminationHandler, true);
+        m_seekHandlersRegistered = true;
     }
     void PlayerOsd::OnOsdPointerMoved([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                       [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
@@ -56,12 +85,56 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.SeekRelative(10.0);
     }
+    void PlayerOsd::OnSeekPointerPressed(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (m_seekPointerActive)
+        {
+            return;
+        }
+
+        m_seekPointerActive = true;
+        m_viewModel.BeginScrub();
+    }
+    void PlayerOsd::OnSeekPointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
+                                       Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
+        auto const point = args.GetCurrentPoint(slider);
+        if (!m_seekPointerActive && (point.IsInContact() || point.Properties().IsLeftButtonPressed()))
+        {
+            m_seekPointerActive = true;
+            m_viewModel.BeginScrub();
+        }
+        if (m_seekPointerActive)
+        {
+            m_viewModel.ScrubTo(slider.Value());
+        }
+    }
     void PlayerOsd::OnSeekPointerReleased(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
-        m_viewModel.Position(slider.Value());
+        if (!m_seekPointerActive)
+        {
+            m_viewModel.BeginScrub();
+        }
+        m_seekPointerActive = false;
+        m_viewModel.EndScrub(slider.Value());
+    }
+    void PlayerOsd::OnSeekPointerTerminated(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (!m_seekPointerActive)
+        {
+            return;
+        }
+
+        m_seekPointerActive = false;
+        m_viewModel.EndScrub(sender.as<Microsoft::UI::Xaml::Controls::Slider>().Value());
     }
     void PlayerOsd::OnFullscreenClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                       [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
