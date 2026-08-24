@@ -114,6 +114,18 @@ namespace
         return result;
     }
 
+    std::vector<winrt::hstring> OptionalStringArray(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        if (!object.HasKey(key)
+            || object.GetNamedValue(key).ValueType() != winrt::Windows::Data::Json::JsonValueType::Array)
+        {
+            return {};
+        }
+        return StringArray(object, key);
+    }
+
     std::optional<winrt::hstring> OptionalDisplayString(
         winrt::Windows::Data::Json::JsonObject const& object,
         wchar_t const* key,
@@ -144,37 +156,41 @@ namespace
         return std::nullopt;
     }
 
+    std::optional<std::int32_t> OptionalNonNegativeInteger(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        if (!object.HasKey(key))
+        {
+            return std::nullopt;
+        }
+        auto const field = object.GetNamedValue(key);
+        if (field.ValueType() != winrt::Windows::Data::Json::JsonValueType::Number)
+        {
+            return std::nullopt;
+        }
+        auto const value = field.GetNumber();
+        if (!std::isfinite(value) || value < 0 || std::floor(value) != value
+            || value > static_cast<double>((std::numeric_limits<std::int32_t>::max)()))
+        {
+            return std::nullopt;
+        }
+        return static_cast<std::int32_t>(value);
+    }
+
     ::HaloDesktop::Api::Dto::MetaVideo ParseMetaVideo(
         winrt::Windows::Data::Json::JsonObject const& video)
     {
         auto const title = OptionalDisplayString(video, L"title", 512)
             .value_or(OptionalDisplayString(video, L"name", 512).value_or(L"Episode"));
-        std::optional<std::int32_t> season;
-        std::optional<std::int32_t> episode;
-        if (video.HasKey(L"season"))
-        {
-            auto const value = video.GetNamedNumber(L"season");
-            if (std::isfinite(value) && value >= 0 && std::floor(value) == value)
-            {
-                season = static_cast<std::int32_t>(value);
-            }
-        }
-        if (video.HasKey(L"episode"))
-        {
-            auto const value = video.GetNamedNumber(L"episode");
-            if (std::isfinite(value) && value >= 0 && std::floor(value) == value)
-            {
-                episode = static_cast<std::int32_t>(value);
-            }
-        }
         return {
             DisplayString(video, L"id", 2048),
             title,
             OptionalDisplayString(video, L"released", 128),
             OptionalHttpUrl(video, L"thumbnail"),
             OptionalDisplayString(video, L"overview", 4096),
-            season,
-            episode };
+            OptionalNonNegativeInteger(video, L"season"),
+            OptionalNonNegativeInteger(video, L"episode") };
     }
 
     std::optional<::HaloDesktop::Api::Dto::StreamRecord> ParseStreamRecord(
@@ -477,8 +493,15 @@ namespace HaloDesktop::Api::Mappers
         auto const root=RequireObject(value,L"The metadata response must be an object.");auto const object=root.GetNamedObject(L"meta");
         Dto::MetaDetail result;
         result.Preview={DisplayString(object,L"id",1024),DisplayString(object,L"type",128),DisplayString(object,L"name",512),OptionalHttpUrl(object,L"poster"),OptionalHttpUrl(object,L"background"),OptionalDisplayString(object,L"description",4096),OptionalDisplayString(object,L"releaseInfo",128),OptionalDisplayString(object,L"imdbRating",32)};
-        result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Genres=StringArray(object,L"genres");result.Cast=StringArray(object,L"cast");result.Director=StringArray(object,L"director");result.Writer=StringArray(object,L"writer");
-        for(auto const&item:object.GetNamedArray(L"videos",winrt::Windows::Data::Json::JsonArray{}))
+        result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Genres=OptionalStringArray(object,L"genres");result.Cast=OptionalStringArray(object,L"cast");result.Director=OptionalStringArray(object,L"director");result.Writer=OptionalStringArray(object,L"writer");
+        auto const videos = object.GetNamedValue(
+            L"videos",
+            winrt::Windows::Data::Json::JsonValue::CreateNullValue());
+        if (videos.ValueType() != winrt::Windows::Data::Json::JsonValueType::Array)
+        {
+            return result;
+        }
+        for(auto const&item:videos.GetArray())
         {
             if(item.ValueType()!=winrt::Windows::Data::Json::JsonValueType::Object)continue;
             result.Videos.push_back(ParseMetaVideo(item.GetObject()));
