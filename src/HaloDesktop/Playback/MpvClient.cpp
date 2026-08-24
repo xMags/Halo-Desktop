@@ -264,7 +264,8 @@ namespace HaloDesktop::Playback
             CheckMpv("set wid", mpv_set_option(handle, "wid", MPV_FORMAT_INT64, &windowId));
             CheckMpv("set vo", mpv_set_option_string(handle, "vo", videoOutput));
             CheckMpv("set hwdec", mpv_set_option_string(handle, "hwdec", "auto-safe"));
-            CheckMpv("set keep-open", mpv_set_option_string(handle, "keep-open", "yes"));
+            // keep-open suppresses the EOF end-file event on the retained last
+            // frame. Up-next is deliberately driven only by that real event.
             CheckMpv("set idle", mpv_set_option_string(handle, "idle", "yes"));
             CheckMpv("disable input bindings", mpv_set_option_string(handle, "input-default-bindings", "no"));
             CheckMpv("disable video keyboard", mpv_set_option_string(handle, "input-vo-keyboard", "no"));

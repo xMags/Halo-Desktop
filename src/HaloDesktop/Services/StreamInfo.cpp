@@ -202,6 +202,18 @@ namespace
 
 namespace HaloDesktop::Services
 {
+    winrt::hstring BuildSourceTagLine(ParsedStreamInfo const& info)
+    {
+        std::wstring result;
+        for (auto const& value : { info.Quality, info.DynamicRange, info.Codec, info.Audio })
+        {
+            if (!value || value->empty()) continue;
+            if (!result.empty()) result.append(L" \x00B7 ");
+            result.append(value->c_str());
+        }
+        return result.empty() ? winrt::hstring{ L"Source" } : winrt::hstring{ result };
+    }
+
     ParsedStreamInfo ParseStreamInfo(Api::Dto::StreamRecord const& stream)
     {
         auto const text = SearchText(stream);

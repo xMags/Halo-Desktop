@@ -166,6 +166,7 @@
     <ClInclude Include="Playback\MpvClient.h" />
     <ClInclude Include="Playback\PlaybackSessionController.h" />
     <ClInclude Include="Playback\SubtitleController.h" />
+    <ClInclude Include="Playback\UpNextResolver.h" />
     <ClInclude Include="Playback\WatchReporter.h" />
     <ClInclude Include="Playback\MpvEngine.h" />
     <ClInclude Include="Playback\NullEngine.h" />
@@ -301,6 +302,7 @@
     </ClCompile>
     <ClCompile Include="Playback\PlaybackSessionController.cpp" />
     <ClCompile Include="Playback\SubtitleController.cpp" />
+    <ClCompile Include="Playback\UpNextResolver.cpp" />
     <ClCompile Include="Playback\WatchReporter.cpp" />
     <ClCompile Include="Playback\MpvEngine.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>

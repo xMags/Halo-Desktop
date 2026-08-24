@@ -28,14 +28,10 @@ namespace winrt::HaloDesktop::implementation
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->EnsureHostWindow();
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();m_viewModel=overlay.ViewModel();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);
         viewModel->SetCloseRequestedHandler([weak=get_weak()](){if(auto self=weak.get())self->BeginClose();});
+        viewModel->SetPlayNextHandler([weak=get_weak()](){if(auto self=weak.get())self->AdvanceUpNextAsync();});
         auto const subtitles=App::Services().Subtitles;viewModel->SetAddonSubtitleHandler([subtitles](winrt::hstring key){subtitles->SelectAsync(std::move(key)).then([](concurrency::task<void>task){try{task.get();}catch(...){}});});
         subtitles->SetChoicesChangedHandler([weak=get_weak()](){if(auto self=weak.get();self&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->SetAddonSubtitles(App::Services().Subtitles->Choices());});
         m_presentationChangedToken=m_viewModel.PropertyChanged([weak=get_weak()](auto const&,Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const&args){if(args.PropertyName()==L"IsFullscreen")if(auto self=weak.get())self->RefreshOverlayAfterPresentationChange();});
-        if(m_request)
-        {
-            winrt::get_self<PlayerOsd>(overlay)->TitleLabel(m_request.ShowName().empty()?m_request.Title():m_request.ShowName());
-            auto line=m_request.EpisodeLabel();if(!line.empty()&&!m_request.SourceTagLine().empty())line=line+L" \x00B7 ";line=line+m_request.SourceTagLine();winrt::get_self<PlayerOsd>(overlay)->SourceLabel(line);
-        }
         UpdateOverlayLayout();
         try{viewModel->Activate();InitializePlaybackAsync();}
         catch(...){ShowMediaPrompt(L"The player could not start this source.");}
@@ -47,7 +43,7 @@ namespace winrt::HaloDesktop::implementation
         if(m_viewModel&&m_presentationChangedToken.value!=0){m_viewModel.PropertyChanged(m_presentationChangedToken);m_presentationChangedToken={};}
         OverlayPopup().IsOpen(false);
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
-        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
+        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
         m_session.reset();
     }
@@ -56,11 +52,46 @@ namespace winrt::HaloDesktop::implementation
     {
         auto lifetime=get_strong();
         if(!m_request){ShowMediaPrompt(L"This source is no longer available. Return to Sources and choose it again.");co_return;}
-        auto&services=App::Services();m_session=std::make_shared<::HaloDesktop::Playback::PlaybackSessionController>(services.Playback,services.WatchState);
-        m_session->SetErrorHandler([weak=get_weak()](){if(auto self=weak.get())self->ShowMediaPrompt(L"Playback failed for this source. Return to Sources and choose another one.");});
-        try{co_await services.Subtitles->PrepareAsync(m_request);}catch(...){}
-        try{co_await m_session->StartAsync(m_request);}
-        catch(...){if(m_loaded)ShowMediaPrompt(L"The player could not start this source. Return to Sources and try another one.");}
+        co_await StartRequestAsync(m_request);
+    }
+
+    winrt::Windows::Foundation::IAsyncAction PlayerPage::StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request)
+    {
+        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_advancing=false;
+        auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"");
+        auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();winrt::get_self<PlayerOsd>(overlay)->TitleLabel(request.ShowName().empty()?request.Title():request.ShowName());
+        auto line=request.EpisodeLabel();if(!line.empty()&&!request.SourceTagLine().empty())line=line+L" \x00B7 ";line=line+request.SourceTagLine();winrt::get_self<PlayerOsd>(overlay)->SourceLabel(line);
+        FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
+
+        auto session=std::make_shared<::HaloDesktop::Playback::PlaybackSessionController>(services.Playback,services.WatchState);m_session=session;
+        session->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration)self->ShowMediaPrompt(L"Playback failed for this source. Return to Sources and choose another one.");});
+        session->SetEndOfFileHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_upNext&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->BeginUpNextCountdown();});
+        PrefetchUpNextAsync(request,generation);
+        try{co_await services.Subtitles->PrepareAsync(request);}catch(...){}
+        co_await uiContext;
+        if(!m_loaded||m_closing||generation!=m_playbackGeneration)co_return;
+        try{co_await session->StartAsync(request);}
+        catch(...){if(m_loaded&&generation==m_playbackGeneration)ShowMediaPrompt(L"The player could not start this source. Return to Sources and try another one.");}
+    }
+
+    winrt::fire_and_forget PlayerPage::PrefetchUpNextAsync(winrt::HaloDesktop::PlaybackRequest request,std::uint64_t generation)
+    {
+        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto result=co_await App::Services().UpNext->ResolveAsync(request);co_await uiContext;
+        if(!m_loaded||m_closing||generation!=m_playbackGeneration||!result)co_return;
+        m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel);
+        if(App::Services().Playback->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)viewModel->BeginUpNextCountdown();
+    }
+
+    winrt::fire_and_forget PlayerPage::AdvanceUpNextAsync()
+    {
+        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};if(m_advancing||m_closing||!m_upNext)co_return;m_advancing=true;auto next=*m_upNext;auto currentSession=m_session;
+        if(currentSession)co_await currentSession->CloseAsync();
+        co_await uiContext;
+        if(!m_loaded||m_closing)co_return;
+        App::Services().Subtitles->Stop();
+        if(next.Playback){co_await StartRequestAsync(next.Playback);co_return;}
+        co_await PrepareForWindowCloseAsync();
+        auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->GoTo(::HaloDesktop::Services::Page::Sources,next.Sources);
     }
 
     winrt::fire_and_forget PlayerPage::BeginClose()

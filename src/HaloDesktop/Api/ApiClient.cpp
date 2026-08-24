@@ -228,6 +228,14 @@ namespace HaloDesktop::Api
         auto const response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Put(),L"/library",body.Stringify());co_return Mappers::ParseLibrary(response);
     }
     concurrency::task<Dto::StreamsPayload> ApiClient::GetStreamsAsync(winrt::hstring type,winrt::hstring videoId){auto path=winrt::hstring{L"/streams?type="}+EncodeUriComponent(type)+L"&videoId="+EncodeUriComponent(videoId);auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());co_return Mappers::ParseStreams(response);}
+    concurrency::task<Dto::NextEpisodePayload> ApiClient::GetNextEpisodeAsync(winrt::hstring type,winrt::hstring metaId,winrt::hstring videoId,winrt::hstring addonId,winrt::hstring bingeGroup)
+    {
+        auto path=winrt::hstring{L"/next-episode?type="}+EncodeUriComponent(type)+L"&metaId="+EncodeUriComponent(metaId)+L"&videoId="+EncodeUriComponent(videoId);
+        if(!addonId.empty())path=path+L"&addon="+EncodeUriComponent(addonId);
+        if(!bingeGroup.empty())path=path+L"&bingeGroup="+EncodeUriComponent(bingeGroup);
+        auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());
+        co_return Mappers::ParseNextEpisode(response);
+    }
     concurrency::task<Dto::SubtitlesPayload> ApiClient::GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename){auto path=winrt::hstring{L"/subtitles?type="}+EncodeUriComponent(type)+L"&videoId="+EncodeUriComponent(videoId);if(videoHash)path=path+L"&videoHash="+EncodeUriComponent(*videoHash);if(videoSize)path=path+L"&videoSize="+winrt::to_hstring(*videoSize);if(filename)path=path+L"&filename="+EncodeUriComponent(*filename);auto response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Get(),path.c_str());co_return Mappers::ParseSubtitles(response);}
 
     concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> ApiClient::OpenAddonProxyAsync(winrt::hstring targetUrl)

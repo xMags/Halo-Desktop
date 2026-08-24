@@ -28,18 +28,6 @@ namespace
         return winrt::hstring{ result };
     }
 
-    winrt::hstring SourceTagLine(HaloDesktop::Services::ParsedStreamInfo const& info)
-    {
-        std::wstring result;
-        for (auto const& value : { info.Quality, info.DynamicRange, info.Codec, info.Audio })
-        {
-            if (!value || value->empty()) continue;
-            if (!result.empty()) result.append(L" \x00B7 ");
-            result.append(value->c_str());
-        }
-        return result.empty() ? winrt::hstring{ L"Source" } : winrt::hstring{ result };
-    }
-
     winrt::HaloDesktop::StreamStatus DisplayStatus(
         HaloDesktop::Services::ParsedStreamInfo const& info,
         bool onDisk) noexcept
@@ -201,7 +189,7 @@ namespace HaloDesktop::Services
             resolved.Info.Filename,
             resolved.Info.SizeBytes.value_or(0),
             stream.VideoHash.value_or(L""),
-            SourceTagLine(resolved.Info));
+            BuildSourceTagLine(resolved.Info));
     }
 
     winrt::hstring SourceService::ResolveSummary() const { return m_summary; }

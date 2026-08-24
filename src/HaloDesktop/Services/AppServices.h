@@ -6,6 +6,7 @@ namespace HaloDesktop::Playback
 {
     class IPlaybackEngine;
     class SubtitleController;
+    class UpNextResolver;
 }
 
 namespace HaloDesktop::Shell
@@ -42,6 +43,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<WatchStateService> WatchState;
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> Playback;
         std::shared_ptr<::HaloDesktop::Playback::SubtitleController> Subtitles;
+        std::shared_ptr<::HaloDesktop::Playback::UpNextResolver> UpNext;
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> WindowPresentation;
     };
 }

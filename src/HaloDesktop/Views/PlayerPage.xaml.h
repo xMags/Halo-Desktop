@@ -1,9 +1,11 @@
 #pragma once
 
 #include "PlayerPage.g.h"
+#include "Playback/UpNextResolver.h"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <winrt/Windows.Foundation.h>
 
 namespace HaloDesktop::Playback { class PlaybackSessionController; }
@@ -40,6 +42,9 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::fire_and_forget InitializePlaybackAsync();
+        winrt::Windows::Foundation::IAsyncAction StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request);
+        winrt::fire_and_forget PrefetchUpNextAsync(winrt::HaloDesktop::PlaybackRequest request, std::uint64_t generation);
+        winrt::fire_and_forget AdvanceUpNextAsync();
         winrt::fire_and_forget BeginClose();
         void ShowMediaPrompt(winrt::hstring const& message);
         void UpdateOverlayLayout();
@@ -49,9 +54,12 @@ namespace winrt::HaloDesktop::implementation
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
         winrt::HaloDesktop::PlaybackRequest m_request{ nullptr };
         std::shared_ptr<::HaloDesktop::Playback::PlaybackSessionController> m_session;
+        std::optional<::HaloDesktop::Playback::UpNextResult> m_upNext;
         winrt::event_token m_presentationChangedToken{};
+        std::uint64_t m_playbackGeneration{};
         bool m_loaded{};
         bool m_closing{};
+        bool m_advancing{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

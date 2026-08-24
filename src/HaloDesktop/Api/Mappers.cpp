@@ -144,6 +144,88 @@ namespace
         return std::nullopt;
     }
 
+    ::HaloDesktop::Api::Dto::MetaVideo ParseMetaVideo(
+        winrt::Windows::Data::Json::JsonObject const& video)
+    {
+        auto const title = OptionalDisplayString(video, L"title", 512)
+            .value_or(OptionalDisplayString(video, L"name", 512).value_or(L"Episode"));
+        std::optional<std::int32_t> season;
+        std::optional<std::int32_t> episode;
+        if (video.HasKey(L"season"))
+        {
+            auto const value = video.GetNamedNumber(L"season");
+            if (std::isfinite(value) && value >= 0 && std::floor(value) == value)
+            {
+                season = static_cast<std::int32_t>(value);
+            }
+        }
+        if (video.HasKey(L"episode"))
+        {
+            auto const value = video.GetNamedNumber(L"episode");
+            if (std::isfinite(value) && value >= 0 && std::floor(value) == value)
+            {
+                episode = static_cast<std::int32_t>(value);
+            }
+        }
+        return {
+            DisplayString(video, L"id", 2048),
+            title,
+            OptionalDisplayString(video, L"released", 128),
+            OptionalHttpUrl(video, L"thumbnail"),
+            OptionalDisplayString(video, L"overview", 4096),
+            season,
+            episode };
+    }
+
+    std::optional<::HaloDesktop::Api::Dto::StreamRecord> ParseStreamRecord(
+        winrt::Windows::Data::Json::JsonObject const& stream)
+    {
+        auto const url = OptionalHttpUrl(stream, L"url");
+        if (!url)
+        {
+            return std::nullopt;
+        }
+
+        ::HaloDesktop::Api::Dto::StreamRecord record;
+        record.Url = *url;
+        record.Name = OptionalDisplayString(stream, L"name", 2048);
+        record.Title = OptionalDisplayString(stream, L"title", 4096);
+        record.Description = OptionalDisplayString(stream, L"description", 4096);
+        if (!stream.HasKey(L"behaviorHints"))
+        {
+            return record;
+        }
+
+        auto const hints = stream.GetNamedObject(L"behaviorHints");
+        record.Filename = OptionalDisplayString(hints, L"filename", 1024);
+        record.BingeGroup = OptionalDisplayString(hints, L"bingeGroup", 512);
+        record.VideoHash = OptionalDisplayString(hints, L"videoHash", 64);
+        if (hints.HasKey(L"videoSize"))
+        {
+            auto const value = hints.GetNamedNumber(L"videoSize");
+            if (std::isfinite(value) && value > 0)
+            {
+                record.VideoSize = static_cast<std::uint64_t>(value);
+            }
+        }
+        if (hints.HasKey(L"proxyHeaders"))
+        {
+            auto const proxyHeaders = hints.GetNamedObject(L"proxyHeaders");
+            if (proxyHeaders.HasKey(L"request"))
+            {
+                for (auto const& pair : proxyHeaders.GetNamedObject(L"request"))
+                {
+                    if (pair.Value().ValueType() == winrt::Windows::Data::Json::JsonValueType::String
+                        && record.RequestHeaders.size() < 64)
+                    {
+                        record.RequestHeaders.emplace_back(pair.Key(), pair.Value().GetString());
+                    }
+                }
+            }
+        }
+        return record;
+    }
+
     std::vector<::HaloDesktop::Api::Dto::AddonRecord::Catalog> Catalogs(
         winrt::Windows::Data::Json::JsonObject const& manifest)
     {
@@ -382,12 +464,8 @@ namespace HaloDesktop::Api::Mappers
         result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Genres=StringArray(object,L"genres");result.Cast=StringArray(object,L"cast");result.Director=StringArray(object,L"director");result.Writer=StringArray(object,L"writer");
         for(auto const&item:object.GetNamedArray(L"videos",winrt::Windows::Data::Json::JsonArray{}))
         {
-            if(item.ValueType()!=winrt::Windows::Data::Json::JsonValueType::Object)continue;auto const video=item.GetObject();
-            auto title=OptionalDisplayString(video,L"title",512).value_or(OptionalDisplayString(video,L"name",512).value_or(L"Episode"));
-            std::optional<std::int32_t> season,episode;
-            if(video.HasKey(L"season")){auto n=video.GetNamedNumber(L"season");if(std::isfinite(n)&&n>=0&&std::floor(n)==n)season=static_cast<std::int32_t>(n);}
-            if(video.HasKey(L"episode")){auto n=video.GetNamedNumber(L"episode");if(std::isfinite(n)&&n>=0&&std::floor(n)==n)episode=static_cast<std::int32_t>(n);}
-            result.Videos.push_back({DisplayString(video,L"id",2048),title,OptionalDisplayString(video,L"released",128),OptionalHttpUrl(video,L"thumbnail"),OptionalDisplayString(video,L"overview",4096),season,episode});
+            if(item.ValueType()!=winrt::Windows::Data::Json::JsonValueType::Object)continue;
+            result.Videos.push_back(ParseMetaVideo(item.GetObject()));
         }
         return result;
     }
@@ -395,8 +473,25 @@ namespace HaloDesktop::Api::Mappers
     Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value)
     {
         auto const root=RequireObject(value,L"The streams response must be an object.");Dto::StreamsPayload result;
-        for(auto const&entry:root.GetNamedArray(L"results")){auto const object=RequireObject(entry,L"A stream group must be an object.");auto const addon=object.GetNamedObject(L"addon");Dto::StreamGroup group{DisplayString(addon,L"id",1024),DisplayString(addon,L"name",80),{}};for(auto const&item:object.GetNamedArray(L"streams")){auto const stream=RequireObject(item,L"A stream must be an object.");auto const url=OptionalHttpUrl(stream,L"url");if(!url)continue;Dto::StreamRecord record;record.Url=*url;record.Name=OptionalDisplayString(stream,L"name",2048);record.Title=OptionalDisplayString(stream,L"title",4096);record.Description=OptionalDisplayString(stream,L"description",4096);if(stream.HasKey(L"behaviorHints")){auto const hints=stream.GetNamedObject(L"behaviorHints");record.Filename=OptionalDisplayString(hints,L"filename",1024);record.BingeGroup=OptionalDisplayString(hints,L"bingeGroup",512);record.VideoHash=OptionalDisplayString(hints,L"videoHash",64);if(hints.HasKey(L"videoSize")){auto n=hints.GetNamedNumber(L"videoSize");if(std::isfinite(n)&&n>0)record.VideoSize=static_cast<std::uint64_t>(n);}if(hints.HasKey(L"proxyHeaders")){auto ph=hints.GetNamedObject(L"proxyHeaders");if(ph.HasKey(L"request")){for(auto const&pair:ph.GetNamedObject(L"request")){if(pair.Value().ValueType()==winrt::Windows::Data::Json::JsonValueType::String&&record.RequestHeaders.size()<64)record.RequestHeaders.emplace_back(pair.Key(),pair.Value().GetString());}}}}group.Streams.push_back(std::move(record));}if(!group.Streams.empty())result.Results.push_back(std::move(group));}
+        for(auto const&entry:root.GetNamedArray(L"results")){auto const object=RequireObject(entry,L"A stream group must be an object.");auto const addon=object.GetNamedObject(L"addon");Dto::StreamGroup group{DisplayString(addon,L"id",1024),DisplayString(addon,L"name",80),{}};for(auto const&item:object.GetNamedArray(L"streams")){auto record=ParseStreamRecord(RequireObject(item,L"A stream must be an object."));if(record)group.Streams.push_back(std::move(*record));}if(!group.Streams.empty())result.Results.push_back(std::move(group));}
         for(auto const&entry:root.GetNamedArray(L"errors")){auto const object=RequireObject(entry,L"An addon error must be an object.");result.Errors.push_back({OptionalDisplayString(object,L"name",80),OptionalDisplayString(object,L"code",32)});}
+        return result;
+    }
+
+    Dto::NextEpisodePayload ParseNextEpisode(winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        auto const root = RequireObject(value, L"The next-episode response must be an object.");
+        Dto::NextEpisodePayload result;
+        if (root.HasKey(L"video")
+            && root.GetNamedValue(L"video").ValueType() == winrt::Windows::Data::Json::JsonValueType::Object)
+        {
+            result.Video = ParseMetaVideo(root.GetNamedObject(L"video"));
+        }
+        if (root.HasKey(L"stream")
+            && root.GetNamedValue(L"stream").ValueType() == winrt::Windows::Data::Json::JsonValueType::Object)
+        {
+            result.Stream = ParseStreamRecord(root.GetNamedObject(L"stream"));
+        }
         return result;
     }
 

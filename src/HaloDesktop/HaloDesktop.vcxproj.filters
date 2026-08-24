@@ -87,6 +87,7 @@
     <ClCompile Include="Playback\MpvClient.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\PlaybackSessionController.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\SubtitleController.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\UpNextResolver.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\WatchReporter.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvEngine.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Services\MockDownloadService.cpp"><Filter>Services</Filter></ClCompile>
@@ -161,6 +162,7 @@
     <ClInclude Include="Playback\MpvClient.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\PlaybackSessionController.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\SubtitleController.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\UpNextResolver.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\WatchReporter.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\NullEngine.h"><Filter>Playback</Filter></ClInclude>

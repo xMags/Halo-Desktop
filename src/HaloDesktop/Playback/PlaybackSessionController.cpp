@@ -46,12 +46,13 @@ namespace HaloDesktop::Playback
     }
 
     void PlaybackSessionController::SetErrorHandler(std::function<void()>handler){m_errorHandler=std::move(handler);}
+    void PlaybackSessionController::SetEndOfFileHandler(std::function<void()>handler){m_endOfFileHandler=std::move(handler);}
 
     void PlaybackSessionController::OnEngineChanged()
     {
         if(!m_started)return;auto const state=m_engine->State();
         if(state.FileSerial!=m_seenFileSerial){m_seenFileSerial=state.FileSerial;ApplyResume();}
-        if(state.EndSerial!=m_seenEndSerial){m_seenEndSerial=state.EndSerial;ReportNow();if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();}
+        if(state.EndSerial!=m_seenEndSerial){m_seenEndSerial=state.EndSerial;ReportNow();if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();else if(state.EndReason==PlaybackEndReason::Eof&&m_endOfFileHandler)m_endOfFileHandler();}
         auto const wasPlaying=IsPlaying(m_lastState),playing=IsPlaying(state);if(wasPlaying&&!playing)ReportNow();
         if(playing&&!wasPlaying&&m_reportTimer)m_reportTimer.Start();else if(!playing&&wasPlaying&&m_reportTimer)m_reportTimer.Stop();
         m_lastState=state;

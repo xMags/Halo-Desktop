@@ -27,4 +27,5 @@ namespace HaloDesktop::Services
     [[nodiscard]] ParsedStreamInfo ParseStreamInfo(Api::Dto::StreamRecord const& stream);
     [[nodiscard]] int CompareStreams(ParsedStreamInfo const& left, ParsedStreamInfo const& right) noexcept;
     [[nodiscard]] winrt::hstring FormatStreamSize(std::optional<std::uint64_t> bytes);
+    [[nodiscard]] winrt::hstring BuildSourceTagLine(ParsedStreamInfo const& info);
 }

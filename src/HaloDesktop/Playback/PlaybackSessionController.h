@@ -31,6 +31,7 @@ namespace HaloDesktop::Playback
         [[nodiscard]] concurrency::task<void> CloseAsync();
         void Stop()noexcept;
         void SetErrorHandler(std::function<void()> handler);
+        void SetEndOfFileHandler(std::function<void()> handler);
 
     private:
         void OnEngineChanged();
@@ -49,6 +50,7 @@ namespace HaloDesktop::Playback
         PlaybackChangedToken m_engineToken{};
         PlaybackState m_lastState;
         std::function<void()>m_errorHandler;
+        std::function<void()>m_endOfFileHandler;
         std::uint64_t m_seenFileSerial{},m_seenEndSerial{},m_startVersion{};
         bool m_started{},m_closing{};
     };

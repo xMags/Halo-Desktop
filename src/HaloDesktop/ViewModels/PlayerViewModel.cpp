@@ -278,12 +278,14 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring PlayerViewModel::UpNextKicker() const
     {
+        if (!m_upNextCountdown) return L"UP NEXT";
         return winrt::hstring(L"UP NEXT IN " + std::to_wstring(m_upNextRemaining) + L" S");
     }
     winrt::hstring PlayerViewModel::UpNextTitle() const
     {
         return m_upNextTitle;
     }
+    winrt::hstring PlayerViewModel::UpNextEpisodeLabel() const{return m_upNextEpisodeLabel;}
     winrt::hstring PlayerViewModel::SubtitleDelayText() const
     {
         return winrt::hstring(std::to_wstring(m_subtitleDelayMs) + L" MS");
@@ -368,19 +370,27 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler){m_addonSubtitleHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonSubtitles.Clear();for(auto&value:values)m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(std::move(value)));Raise(L"AddonSubtitles");}
-    void PlayerViewModel::SetUpNextTitle(winrt::hstring const& title)
+    void PlayerViewModel::SetUpNext(winrt::hstring const& title, winrt::hstring const& episodeLabel)
     {
-        if (m_upNextTitle == title)
-        {
-            return;
-        }
-
+        StopUpNextTimer();
         m_upNextTitle = title;
-        if (!HasUpNext() && m_upNextOpen)
-        {
-            CancelUpNext();
-        }
+        m_upNextEpisodeLabel = episodeLabel;
+        m_upNextRemaining = 8;
+        m_upNextOpen = false;
+        m_upNextCountdown = false;
+        m_upNextClaimed = false;
         RaisePanelState();
+    }
+    void PlayerViewModel::BeginUpNextCountdown()
+    {
+        if (!HasUpNext() || !m_upNextTimer) return;
+        m_panelIndex = -1;
+        m_upNextOpen = true;
+        m_upNextCountdown = true;
+        m_upNextRemaining = 8;
+        m_upNextTimer.Start();
+        RaisePanelState();
+        NotifyUserActivity();
     }
     void PlayerViewModel::TogglePause()
     {
@@ -522,32 +532,35 @@ namespace winrt::HaloDesktop::implementation
         m_panelIndex = -1;
         m_upNextOpen = true;
         m_upNextRemaining = 8;
-        m_upNextTimer.Start();
+        m_upNextCountdown = false;
         RaisePanelState();
         NotifyUserActivity();
     }
     void PlayerViewModel::CancelUpNext()
     {
-        if (!m_upNextOpen)
+        if (!m_upNextOpen || m_upNextClaimed)
         {
             return;
         }
+        m_upNextClaimed = true;
         StopUpNextTimer();
         m_upNextOpen = false;
+        m_upNextCountdown = false;
         m_upNextRemaining = 8;
         RaisePanelState();
         RestartHideTimer();
     }
     void PlayerViewModel::PlayNext()
     {
-        if (!HasUpNext())
+        if (!HasUpNext() || m_upNextClaimed)
         {
-            CancelUpNext();
             return;
         }
 
+        m_upNextClaimed = true;
         StopUpNextTimer();
         m_upNextOpen = false;
+        m_upNextCountdown = false;
         m_upNextRemaining = 8;
         auto const playNext = m_playNextHandler;
         playNext();
@@ -645,7 +658,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
                L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
-               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle" })
+               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel" })
         {
             Raise(property);
         }
@@ -707,7 +720,7 @@ namespace winrt::HaloDesktop::implementation
     }
     bool PlayerViewModel::HasUpNext() const noexcept
     {
-        return !m_upNextTitle.empty() && static_cast<bool>(m_playNextHandler);
+        return !m_upNextClaimed && !m_upNextTitle.empty() && static_cast<bool>(m_playNextHandler);
     }
     double PlayerViewModel::ScrubTarget(double seconds) const noexcept
     {
