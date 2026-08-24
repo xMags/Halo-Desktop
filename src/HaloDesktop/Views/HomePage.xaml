@@ -62,7 +62,7 @@
               </StackPanel>
             </Button>
             <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />
-            <Button AutomationProperties.Name="Add to bookmarks" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Bookmarking is not available in this prototype">
+            <Button AutomationProperties.Name="Add to bookmarks" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Bookmarking is not available">
               <FontIcon FontSize="14" Glyph="&#xE734;" />
             </Button>
           </StackPanel>

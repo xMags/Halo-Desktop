@@ -8,7 +8,7 @@
 
 namespace HaloDesktop::Playback
 {
-    // UI-thread-only simulation. All state changes and callbacks run on the
+    // UI-thread-only fallback engine. All state changes and callbacks run on the
     // DispatcherQueue that calls Start.
     class NullEngine final : public IPlaybackEngine
     {

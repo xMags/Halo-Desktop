@@ -2,6 +2,7 @@
 
 #include "SettingsPage.g.h"
 
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -21,6 +22,7 @@ namespace winrt::HaloDesktop::implementation
         void OnSubtitlesRailClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAccountRailClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAddAddonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnRetrySettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAddonToggled(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnDeleteAddonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSystemFontClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -36,6 +38,8 @@ namespace winrt::HaloDesktop::implementation
         void ScrollTo(wchar_t const* elementName);
         winrt::fire_and_forget ShowDeleteAddonDialog(winrt::hstring name);
         winrt::HaloDesktop::SettingsViewModel m_viewModel{ nullptr };
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_healthTimer{ nullptr };
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_healthTickRevoker{};
         bool m_loaded{};
     };
 }

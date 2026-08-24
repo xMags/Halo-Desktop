@@ -205,7 +205,7 @@
             </Slider.Resources>
           </Slider>
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Picture in picture" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}" ToolTipService.ToolTip="Picture in picture is not available in this prototype">
+          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Picture in picture" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}" ToolTipService.ToolTip="Picture in picture is not available">
             <Viewbox Width="15" Height="15">
               <Canvas Width="16" Height="16"><Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="13" Height="11" RadiusX="1.5" RadiusY="1.5" Stroke="White" StrokeThickness="1.2" /><Rectangle Canvas.Left="8" Canvas.Top="8" Width="5.5" Height="4.5" RadiusX="1" RadiusY="1" Stroke="White" StrokeThickness="1.2" /></Canvas>
             </Viewbox>

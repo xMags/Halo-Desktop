@@ -3,6 +3,7 @@
 #include "Api/Dto.h"
 #include "Services/Downloads/DownloadTypes.h"
 
+#include <chrono>
 #include <cstdint>
 #include <functional>
 #include <filesystem>
@@ -146,6 +147,8 @@ namespace HaloDesktop::Services
             SignInLocalAsync(winrt::hstring username, winrt::hstring password) = 0;
         [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() = 0;
+        [[nodiscard]] virtual concurrency::task<std::optional<std::chrono::milliseconds>>
+            ProbeHealthAsync() = 0;
         [[nodiscard]] virtual concurrency::task<void> SignOutAsync() = 0;
     };
 }

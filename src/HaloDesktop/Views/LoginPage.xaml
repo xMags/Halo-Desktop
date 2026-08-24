@@ -145,7 +145,7 @@
           Margin="0,12,0,0"
           Content="Having trouble signing in?"
           Style="{StaticResource LoginLinkButton}"
-          ToolTipService.ToolTip="Help is not available in this prototype" />
+          ToolTipService.ToolTip="Help is not available" />
       </StackPanel>
 
       <!-- Waiting for the browser round trip -->
@@ -216,7 +216,7 @@
               FontWeight="SemiBold"
               Foreground="{ThemeResource HaloText1Brush}"
               Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="PREMIUM" />
+            <TextBlock Style="{StaticResource HaloMonoData}" Text="HALO ACCOUNT" />
           </StackPanel>
         </StackPanel>
         <TextBlock

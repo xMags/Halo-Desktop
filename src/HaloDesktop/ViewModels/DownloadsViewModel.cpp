@@ -202,6 +202,9 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::PauseVisibility() const noexcept { return SelectedItem() && SelectedItem().State() == winrt::HaloDesktop::DownloadState::Downloading ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::ResumeVisibility() const noexcept { auto const item=SelectedItem();return item&&(item.State()==winrt::HaloDesktop::DownloadState::Paused||(item.State()==winrt::HaloDesktop::DownloadState::Failed&&!item.RequiresNewSource()))?Visible:Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::ChooseSourceVisibility() const noexcept { return SelectedItem() && SelectedItem().State() == winrt::HaloDesktop::DownloadState::Failed && SelectedItem().RequiresNewSource() ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::TransferSectionVisibility() const noexcept { return m_transfers.Size() > 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ReadySectionVisibility() const noexcept { return m_ready.Size() > 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::EmptyVisibility() const noexcept { return m_transfers.Size() == 0 && m_ready.Size() == 0 ? Visible : Collapsed; }
     void DownloadsViewModel::Select(winrt::hstring const& id) { m_selectedId = id; ResolveSelection(); RaiseState(); }
     void DownloadsViewModel::PauseAll() { m_downloads->PauseAll(); }
     void DownloadsViewModel::ResumeAll() { m_downloads->ResumeAll(); }
@@ -340,7 +343,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility" })
+        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const

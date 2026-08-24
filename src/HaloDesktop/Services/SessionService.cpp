@@ -14,6 +14,7 @@
 #include <string>
 #include <utility>
 #include <winrt/Windows.Storage.h>
+#include <winrt/Windows.System.Threading.h>
 
 namespace
 {
@@ -35,7 +36,7 @@ namespace
         return first < last ? winrt::hstring{ std::wstring(first, last) } : winrt::hstring{};
     }
 
-    void RemoveLegacyPrototypeSession()
+    void RemoveLegacySessionKeys()
     {
         auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
         for (auto const key : { LegacyServerUrlKey, LegacyUserNameKey, LegacySignedInKey })
@@ -66,7 +67,7 @@ namespace HaloDesktop::Services
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
-        RemoveLegacyPrototypeSession();
+        RemoveLegacySessionKeys();
     }
 
     winrt::hstring SessionService::ServerUrl() const
@@ -213,6 +214,31 @@ namespace HaloDesktop::Services
         co_return m_controller->IsSignedIn()
             ? winrt::HaloDesktop::SignInOutcome::Succeeded
             : winrt::HaloDesktop::SignInOutcome::Expired;
+    }
+
+    concurrency::task<std::optional<std::chrono::milliseconds>> SessionService::ProbeHealthAsync()
+    {
+        concurrency::task_completion_event<std::optional<std::chrono::milliseconds>> completion;
+        m_apiClient->GetHealthAsync().then([completion](concurrency::task<::HaloDesktop::Api::Dto::HealthStatus> task) mutable
+        {
+            try
+            {
+                auto const health = task.get();
+                completion.set(health.Ok
+                    ? std::optional<std::chrono::milliseconds>{ health.RoundTrip }
+                    : std::nullopt);
+            }
+            catch (...)
+            {
+                completion.set(std::nullopt);
+            }
+        });
+        auto const timeout = winrt::Windows::System::Threading::ThreadPoolTimer::CreateTimer(
+            [completion](auto const&) mutable { completion.set(std::nullopt); },
+            std::chrono::seconds{ 6 });
+        auto result = co_await concurrency::create_task(completion);
+        timeout.Cancel();
+        co_return result;
     }
 
     concurrency::task<void> SessionService::SignOutAsync()

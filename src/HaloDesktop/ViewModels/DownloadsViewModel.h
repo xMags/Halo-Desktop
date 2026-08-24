@@ -93,6 +93,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PauseVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResumeVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ChooseSourceVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility TransferSectionVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ReadySectionVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
         void Select(winrt::hstring const& id);
         void PauseAll();
         void ResumeAll();

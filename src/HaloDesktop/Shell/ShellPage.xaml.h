@@ -5,6 +5,8 @@
 #include "Services/NavigationService.h"
 #include "Services/ServiceInterfaces.h"
 
+#include <array>
+#include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Microsoft.UI.Xaml.Navigation.h>
@@ -59,8 +61,12 @@ namespace winrt::HaloDesktop::implementation
         void NavigateFromTag(winrt::hstring const& tag);
         void UpdateNavigationState(::HaloDesktop::Services::Page page);
         void UpdateDownloadBadge();
+        void RefreshJumpBackIn();
+        void RefreshAccountIdentity();
 
         bool m_attached{ false };
+        bool m_paneOpen{ true };
+        std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

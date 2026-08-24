@@ -201,6 +201,13 @@ namespace HaloDesktop::Services
             co_return;
         }
 
+        co_await m_addons->LoadAsync();
+        co_await uiContext;
+        if (version != m_searchVersion)
+        {
+            co_return;
+        }
+
         std::vector<CatalogQuery> queries;
         for (auto const& addon : m_addons->Records()) for (auto const& catalog : addon.Catalogs)
             if (catalog.SupportsSearch) queries.push_back({ addon.Id, addon.Name, catalog });

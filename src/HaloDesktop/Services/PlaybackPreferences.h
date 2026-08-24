@@ -9,5 +9,7 @@ namespace HaloDesktop::Services
     public:
         [[nodiscard]] static bool ResumeEnabled() noexcept;
         static void ResumeEnabled(bool value);
+        [[nodiscard]] static bool HardwareDecodingEnabled() noexcept;
+        static void HardwareDecodingEnabled(bool value);
     };
 }

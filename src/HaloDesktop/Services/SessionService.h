@@ -3,9 +3,10 @@
 #include "Api/Dto.h"
 #include "Services/ServiceInterfaces.h"
 
+#include <chrono>
+#include <functional>
 #include <memory>
 #include <optional>
-#include <functional>
 
 namespace HaloDesktop::Api
 {
@@ -49,6 +50,8 @@ namespace HaloDesktop::Services
             SignInLocalAsync(winrt::hstring username, winrt::hstring password) override;
         [[nodiscard]] concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() override;
+        [[nodiscard]] concurrency::task<std::optional<std::chrono::milliseconds>>
+            ProbeHealthAsync() override;
         [[nodiscard]] concurrency::task<void> SignOutAsync() override;
 
         [[nodiscard]] concurrency::task<void> RefreshIdentityAsync();

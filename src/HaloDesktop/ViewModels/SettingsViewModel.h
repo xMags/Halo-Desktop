@@ -38,11 +38,20 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring UserName() const;
         [[nodiscard]] winrt::hstring DisplayName() const;
         [[nodiscard]] winrt::hstring SignedInLine() const;
+        [[nodiscard]] winrt::hstring AccountRoleLine() const;
+        [[nodiscard]] winrt::hstring ServerStatusLine() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerCheckingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerConnectedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerUnavailableVisibility() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Addons() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AddonsView() const;
         [[nodiscard]] winrt::hstring AddonNoticeText() const;
         [[nodiscard]] bool CanEditAddons() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonNoticeVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonLoadingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonErrorVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonEmptyVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonContentVisibility() const noexcept;
         [[nodiscard]] double SubtitleSize() const noexcept;
         void SubtitleSize(double value);
         [[nodiscard]] winrt::hstring SubtitleSizeLabel() const;
@@ -73,6 +82,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool HardwareDecoding() const noexcept;
         void HardwareDecoding(bool value);
         void Refresh();
+        void ProbeHealth();
+        void CancelHealthProbe();
         void AddAddon(winrt::hstring const& url);
         void ToggleAddon(winrt::hstring const& name, bool enabled);
         void RemoveAddon(winrt::hstring const& name);
@@ -89,12 +100,21 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
+        winrt::Windows::Foundation::IAsyncAction ProbeHealthAsync(std::uint64_t version);
         winrt::Windows::Foundation::IAsyncAction AddAddonAsync(winrt::hstring url);
         winrt::Windows::Foundation::IAsyncAction ToggleAddonAsync(winrt::hstring id, bool enabled);
         winrt::Windows::Foundation::IAsyncAction RemoveAddonAsync(winrt::hstring id);
         winrt::Windows::Foundation::IAsyncAction RunSignOutAsync();
         void SynchronizeAddons();
+        void RaiseAddonState();
         void Raise(wchar_t const* propertyName);
+
+        enum class HealthState
+        {
+            Checking,
+            Connected,
+            Unavailable,
+        };
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
@@ -103,16 +123,22 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_serverUrl;
         winrt::hstring m_userName;
         winrt::hstring m_addonNoticeText;
+        winrt::hstring m_serverStatusLine{ L"CHECKING…" };
         double m_subtitleSize{ 100.0 };
         std::int32_t m_fontIndex{};
         std::int32_t m_outlineIndex{ 1 };
         std::int32_t m_audioLanguageIndex{ 2 };
         std::int32_t m_subtitleLanguageIndex{};
         bool m_addonNoticeVisible{};
+        bool m_addonsLoading{};
+        bool m_addonsError{};
         bool m_autoplayNext{ true };
         bool m_subtitleShadow{ true };
         bool m_resumePlayback{ true };
         bool m_hardwareDecoding{};
+        HealthState m_healthState{ HealthState::Checking };
+        std::uint64_t m_loadVersion{};
+        std::uint64_t m_healthRequestVersion{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }

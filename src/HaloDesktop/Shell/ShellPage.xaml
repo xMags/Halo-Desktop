@@ -84,7 +84,7 @@
         selection. They are hidden with the pane, matching the design's expanded-only rule.
       -->
       <NavigationViewItemHeader x:Name="JumpHeader" Margin="0,14,0,0" Content="JUMP BACK IN" Style="{StaticResource HaloNavSectionHeaderStyle}" />
-      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Detail">
+      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Jump0">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
@@ -92,12 +92,12 @@
           </Grid.ColumnDefinitions>
           <controls:PlaceholderArt Width="24" Height="34" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText1Brush}" Text="Northwind Divide" TextTrimming="CharacterEllipsis" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="S02E04 · 18 MIN LEFT" />
+            <TextBlock x:Name="JumpTitle1" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpMeta1" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
       </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Detail">
+      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Jump1">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
@@ -105,12 +105,12 @@
           </Grid.ColumnDefinitions>
           <controls:PlaceholderArt Width="24" Height="34" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText1Brush}" Text="The Long Sunday" TextTrimming="CharacterEllipsis" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="52 MIN LEFT" />
+            <TextBlock x:Name="JumpTitle2" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpMeta2" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
       </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Detail">
+      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Jump2">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
@@ -118,8 +118,8 @@
           </Grid.ColumnDefinitions>
           <controls:PlaceholderArt Width="24" Height="34" VerticalAlignment="Center" />
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText1Brush}" Text="Harbour Lights" TextTrimming="CharacterEllipsis" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="S01E07 · 6 MIN LEFT" />
+            <TextBlock x:Name="JumpTitle3" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpMeta3" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
       </NavigationViewItem>
@@ -141,8 +141,8 @@
               Stretch="UniformToFill" />
           </Border>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
-            <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" Text="Debashis" />
-            <TextBlock CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloAccentBrush}" Text="PREMIUM" />
+            <TextBlock x:Name="AccountName" FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" />
+            <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloAccentBrush}" />
           </StackPanel>
         </Grid>
       </Button>

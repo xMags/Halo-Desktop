@@ -6,6 +6,8 @@
 
 #include "App.xaml.h"
 
+#include <array>
+
 namespace winrt::HaloDesktop::implementation
 {
     ShellPage::ShellPage() = default;
@@ -41,6 +43,8 @@ namespace winrt::HaloDesktop::implementation
                 }
             });
         UpdateDownloadBadge();
+        RefreshAccountIdentity();
+        RefreshJumpBackIn();
     }
 
     void ShellPage::OnUnloaded(
@@ -137,6 +141,8 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
     {
+        RefreshAccountIdentity();
+        RefreshJumpBackIn();
         SetJumpBackVisibility(true);
     }
 
@@ -149,14 +155,20 @@ namespace winrt::HaloDesktop::implementation
 
     void ShellPage::SetJumpBackVisibility(bool visible)
     {
-        auto const visibility = visible
+        m_paneOpen = visible;
+        std::array items{ JumpItem1(), JumpItem2(), JumpItem3() };
+        auto anyVisible = false;
+        for (std::size_t index = 0; index < items.size(); ++index)
+        {
+            auto const show = visible && static_cast<bool>(m_jumpItems[index]);
+            items[index].Visibility(show
+                ? Microsoft::UI::Xaml::Visibility::Visible
+                : Microsoft::UI::Xaml::Visibility::Collapsed);
+            anyVisible = anyVisible || show;
+        }
+        JumpHeader().Visibility(anyVisible
             ? Microsoft::UI::Xaml::Visibility::Visible
-            : Microsoft::UI::Xaml::Visibility::Collapsed;
-
-        JumpHeader().Visibility(visibility);
-        JumpItem1().Visibility(visibility);
-        JumpItem2().Visibility(visibility);
-        JumpItem3().Visibility(visibility);
+            : Microsoft::UI::Xaml::Visibility::Collapsed);
     }
 
     void ShellPage::OnFrameNavigated(
@@ -164,6 +176,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
     {
         UpdateNavigationState(App::Services().Navigation->CurrentPage());
+        RefreshJumpBackIn();
     }
 
     Microsoft::UI::Xaml::Controls::Frame ShellPage::ContentFrameControl() const
@@ -215,6 +228,15 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Navigation->GoTo(Page::Settings);
             return;
         }
+        if (tag == L"Jump0" || tag == L"Jump1" || tag == L"Jump2")
+        {
+            auto const index = static_cast<std::size_t>(tag[4] - L'0');
+            if (m_jumpItems[index])
+            {
+                App::Services().Navigation->GoTo(Page::Sources, m_jumpItems[index]);
+            }
+            return;
+        }
         if (tag == L"Detail")
         {
             App::Services().Navigation->GoTo(Page::Detail);
@@ -259,5 +281,47 @@ namespace winrt::HaloDesktop::implementation
         badge.Visibility(count == 0
             ? Microsoft::UI::Xaml::Visibility::Collapsed
             : Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
+    void ShellPage::RefreshJumpBackIn()
+    {
+        std::array titles{
+            FindName(L"JumpTitle1").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+            FindName(L"JumpTitle2").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+            FindName(L"JumpTitle3").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+        };
+        std::array metadata{
+            FindName(L"JumpMeta1").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+            FindName(L"JumpMeta2").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+            FindName(L"JumpMeta3").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
+        };
+        auto const continued = App::Services().Catalog->ContinueWatching();
+        for (std::size_t index = 0; index < m_jumpItems.size(); ++index)
+        {
+            m_jumpItems[index] = index < static_cast<std::size_t>(continued.Size())
+                ? continued.GetAt(static_cast<std::uint32_t>(index))
+                : nullptr;
+            titles[index].Text(m_jumpItems[index] ? m_jumpItems[index].Name() : L"");
+            if (!m_jumpItems[index])
+            {
+                metadata[index].Text(L"");
+                continue;
+            }
+            auto line = m_jumpItems[index].Tag();
+            if (!line.empty() && !m_jumpItems[index].TimeLeft().empty())
+            {
+                line = line + L" · ";
+            }
+            metadata[index].Text(line + m_jumpItems[index].TimeLeft());
+        }
+        SetJumpBackVisibility(m_paneOpen);
+    }
+
+    void ShellPage::RefreshAccountIdentity()
+    {
+        auto const session = App::Services().Session;
+        FindName(L"AccountName").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(session->UserName());
+        FindName(L"AccountRole").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(
+            session->IsAdmin() ? L"ADMIN" : L"HALO ACCOUNT");
     }
 }

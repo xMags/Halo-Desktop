@@ -60,6 +60,9 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
         Microsoft.UI.Xaml.Visibility ChooseSourceVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TransferSectionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ReadySectionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
         void Select(String id);
         void PauseAll();
         void ResumeAll();

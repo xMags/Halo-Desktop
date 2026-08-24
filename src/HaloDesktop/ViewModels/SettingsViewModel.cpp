@@ -48,6 +48,7 @@ namespace winrt::HaloDesktop::implementation
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         m_resumePlayback=::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled();
+        m_hardwareDecoding=::HaloDesktop::Services::PlaybackPreferences::HardwareDecodingEnabled();
         Refresh();
     }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
@@ -61,12 +62,24 @@ namespace winrt::HaloDesktop::implementation
         }
         return winrt::hstring{ displayName };
     }
-    winrt::hstring SettingsViewModel::SignedInLine() const { return winrt::hstring(std::wstring(m_userName) + L" · premium"); }
+    winrt::hstring SettingsViewModel::SignedInLine() const { return m_userName; }
+    winrt::hstring SettingsViewModel::AccountRoleLine() const
+    {
+        return m_session->IsAdmin() ? winrt::hstring{ L"ADMIN · HALO ACCOUNT" } : winrt::hstring{ L"HALO ACCOUNT" };
+    }
+    winrt::hstring SettingsViewModel::ServerStatusLine() const { return m_serverStatusLine; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerCheckingVisibility() const noexcept { return m_healthState == HealthState::Checking ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerConnectedVisibility() const noexcept { return m_healthState == HealthState::Connected ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerUnavailableVisibility() const noexcept { return m_healthState == HealthState::Unavailable ? Visible : Collapsed; }
     winrt::Windows::Foundation::IInspectable SettingsViewModel::Addons() const { return m_addons; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::AddonsView() const { return m_addons; }
     winrt::hstring SettingsViewModel::AddonNoticeText() const { return m_addonNoticeText; }
-    bool SettingsViewModel::CanEditAddons() const noexcept { return m_addonService->CanEditLists(); }
+    bool SettingsViewModel::CanEditAddons() const noexcept { return !m_addonsLoading && !m_addonsError && m_addonService->CanEditLists(); }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonNoticeVisibility() const noexcept { return m_addonNoticeVisible ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonLoadingVisibility() const noexcept { return m_addonsLoading ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonErrorVisibility() const noexcept { return !m_addonsLoading && m_addonsError ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonEmptyVisibility() const noexcept { return !m_addonsLoading && !m_addonsError && m_addons.Size() == 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonContentVisibility() const noexcept { return !m_addonsLoading && !m_addonsError && m_addons.Size() > 0 ? Visible : Collapsed; }
     double SettingsViewModel::SubtitleSize() const noexcept { return m_subtitleSize; }
     void SettingsViewModel::SubtitleSize(double value)
     {
@@ -128,7 +141,7 @@ namespace winrt::HaloDesktop::implementation
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
     void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; ::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
-    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; Raise(L"HardwareDecoding"); } }
+    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; ::HaloDesktop::Services::PlaybackPreferences::HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
     void SettingsViewModel::Refresh()
     {
         m_serverUrl = m_session->ServerUrl();
@@ -137,7 +150,27 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"UserName");
         Raise(L"DisplayName");
         Raise(L"SignedInLine");
+        Raise(L"AccountRoleLine");
         static_cast<void>(LoadAsync());
+        ProbeHealth();
+    }
+    void SettingsViewModel::ProbeHealth()
+    {
+        auto const version = ++m_healthRequestVersion;
+        if (m_healthState != HealthState::Connected)
+        {
+            m_healthState = HealthState::Checking;
+            m_serverStatusLine = L"CHECKING…";
+            Raise(L"ServerStatusLine");
+            Raise(L"ServerCheckingVisibility");
+            Raise(L"ServerConnectedVisibility");
+            Raise(L"ServerUnavailableVisibility");
+        }
+        static_cast<void>(ProbeHealthAsync(version));
+    }
+    void SettingsViewModel::CancelHealthProbe()
+    {
+        ++m_healthRequestVersion;
     }
     void SettingsViewModel::AddAddon(winrt::hstring const& url)
     {
@@ -211,6 +244,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void SettingsViewModel::SignOut()
     {
+        CancelHealthProbe();
         static_cast<void>(RunSignOutAsync());
     }
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::RunSignOutAsync()
@@ -223,6 +257,7 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"UserName");
         Raise(L"DisplayName");
         Raise(L"SignedInLine");
+        Raise(L"AccountRoleLine");
     }
     winrt::event_token SettingsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void SettingsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
@@ -232,31 +267,86 @@ namespace winrt::HaloDesktop::implementation
         for (auto const& addon : m_addonService->Items()) m_addons.Append(winrt::make<AddonRowViewModel>(addon));
     }
 
+    void SettingsViewModel::RaiseAddonState()
+    {
+        Raise(L"CanEditAddons");
+        Raise(L"AddonLoadingVisibility");
+        Raise(L"AddonErrorVisibility");
+        Raise(L"AddonEmptyVisibility");
+        Raise(L"AddonContentVisibility");
+    }
+
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::ProbeHealthAsync(std::uint64_t version)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const latency = co_await m_session->ProbeHealthAsync();
+        co_await uiContext;
+        if (version != m_healthRequestVersion)
+        {
+            co_return;
+        }
+        if (latency)
+        {
+            m_healthState = HealthState::Connected;
+            m_serverStatusLine = L"CONNECTED · " + winrt::to_hstring(latency->count()) + L" MS";
+        }
+        else
+        {
+            m_healthState = HealthState::Unavailable;
+            m_serverStatusLine = L"UNREACHABLE";
+        }
+        Raise(L"ServerStatusLine");
+        Raise(L"ServerCheckingVisibility");
+        Raise(L"ServerConnectedVisibility");
+        Raise(L"ServerUnavailableVisibility");
+    }
+
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::LoadAsync()
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
-        bool failed{};
+        auto const version = ++m_loadVersion;
+        m_addonsLoading = true;
+        m_addonsError = false;
+        m_addonNoticeVisible = false;
+        Raise(L"AddonNoticeVisibility");
+        RaiseAddonState();
+        bool settingsFailed{};
         try
         {
             co_await m_settings->LoadAsync();
+        }
+        catch (...)
+        {
+            settingsFailed = true;
+        }
+        co_await uiContext;
+        bool addonsFailed{};
+        try
+        {
             co_await m_addonService->LoadAsync();
         }
         catch (...)
         {
-            failed = true;
+            addonsFailed = true;
         }
         co_await uiContext;
-        if (failed)
+        if (version != m_loadVersion)
         {
-            m_addonNoticeVisible = true;
-            m_addonNoticeText = L"Settings could not be refreshed. Your last saved preferences remain available.";
-            Raise(L"AddonNoticeText");
-            Raise(L"AddonNoticeVisibility");
             co_return;
         }
+        m_addonsLoading = false;
+        m_addonsError = addonsFailed;
+        if (!addonsFailed)
+        {
+            SynchronizeAddons();
+        }
+        RaiseAddonState();
 
-        m_subtitleSize = m_settings->SubtitleScalePercent();
+        if (!settingsFailed)
+        {
+            m_subtitleSize = m_settings->SubtitleScalePercent();
             auto const family = m_settings->SubtitleFontFamily();
             m_fontIndex = family == L"Georgia" ? 1 : family == L"JetBrains Mono" ? 2 : 0;
             auto const outline = m_settings->SubtitleOutline();
@@ -267,8 +357,6 @@ namespace winrt::HaloDesktop::implementation
             m_audioLanguageIndex = !audio ? 4 : *audio == L"jpn" ? 1 : *audio == L"ger" ? 2 : *audio == L"spa" ? 3 : 0;
             auto const subtitles = m_settings->PreferredSubtitleLanguage();
             m_subtitleLanguageIndex = !subtitles ? 0 : *subtitles == L"jpn" ? 2 : *subtitles == L"ger" ? 3 : *subtitles == L"spa" ? 4 : 1;
-            SynchronizeAddons();
-            Raise(L"CanEditAddons");
             Raise(L"SubtitleSize");
             Raise(L"SubtitleSizeLabel");
             Raise(L"PreviewFontFamily");
@@ -288,7 +376,15 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"AutoplayNext");
             Raise(L"AudioLanguageIndex");
             Raise(L"SubtitleLanguageIndex");
-        if (!m_addonService->CanEditLists())
+        }
+        else
+        {
+            m_addonNoticeVisible = true;
+            m_addonNoticeText = L"Synced settings could not be refreshed. Device-local choices remain available.";
+            Raise(L"AddonNoticeText");
+            Raise(L"AddonNoticeVisibility");
+        }
+        if (!addonsFailed && !m_addonService->CanEditLists())
         {
             m_addonNoticeVisible = true;
             m_addonNoticeText = L"This addon list cannot be edited safely because one or more transport URLs are hidden.";
@@ -312,6 +408,7 @@ namespace winrt::HaloDesktop::implementation
         }
         co_await uiContext;
         SynchronizeAddons();
+        RaiseAddonState();
         m_addonNoticeVisible = true;
         m_addonNoticeText = failed
             ? winrt::hstring{ L"The addon could not be installed. Check the URL and try again." }
@@ -335,6 +432,7 @@ namespace winrt::HaloDesktop::implementation
         }
         co_await uiContext;
         SynchronizeAddons();
+        RaiseAddonState();
         if (failed)
         {
             m_addonNoticeVisible = true;
@@ -359,6 +457,7 @@ namespace winrt::HaloDesktop::implementation
         }
         co_await uiContext;
         SynchronizeAddons();
+        RaiseAddonState();
         if (failed)
         {
             m_addonNoticeVisible = true;

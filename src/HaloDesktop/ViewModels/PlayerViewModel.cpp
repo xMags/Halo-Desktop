@@ -27,7 +27,7 @@ namespace
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
     // Preview seeks are frequent enough to feel continuous without flooding
-    // libmpv with one command for every raw pointer sample.
+    // libmpv with one command for every raw pointer update.
     constexpr std::chrono::milliseconds ScrubPreviewInterval{ 120 };
 } // namespace
 

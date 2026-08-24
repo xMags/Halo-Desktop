@@ -7,6 +7,8 @@
 #include "App.xaml.h"
 #include "ViewModels/SettingsViewModel.h"
 
+#include <chrono>
+
 namespace winrt::HaloDesktop::implementation
 {
     SettingsPage::SettingsPage()
@@ -19,9 +21,33 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.Refresh();
         auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
         FindName(L"AddonList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->AddonsView());
+        if (!m_healthTimer)
+        {
+            m_healthTimer = DispatcherQueue().CreateTimer();
+            m_healthTimer.Interval(std::chrono::seconds{ 30 });
+            m_healthTimer.IsRepeating(true);
+            m_healthTickRevoker = m_healthTimer.Tick(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->m_viewModel.ProbeHealth();
+                }
+            });
+        }
+        m_healthTimer.Start();
         m_loaded = true;
     }
-    void SettingsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_loaded = false; }
+    void SettingsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_loaded = false;
+        if (m_healthTimer)
+        {
+            m_healthTimer.Stop();
+        }
+        m_healthTickRevoker.revoke();
+        m_healthTimer = nullptr;
+        m_viewModel.CancelHealthProbe();
+    }
     void SettingsPage::OnAppearanceRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"AppearanceSection"); }
     void SettingsPage::OnLightThemeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetTheme(0); }
     void SettingsPage::OnDarkThemeClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetTheme(1); }
@@ -34,6 +60,7 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.AddAddon(FindName(L"AddonUrlBox").as<Microsoft::UI::Xaml::Controls::TextBox>().Text());
     }
+    void SettingsPage::OnRetrySettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Refresh(); }
     void SettingsPage::OnAddonToggled(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (!m_loaded) return;
