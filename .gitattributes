@@ -4,3 +4,4 @@
 *.dll binary
 *.sln* text eol=crlf
 *.vcxproj* text eol=crlf
+licenses/third-party/** -whitespace

@@ -1,0 +1,23 @@
+HALO DESKTOP LIBMPV DEPENDENCY NOTICE
+
+Halo Desktop's fetch script selects the baseline x64 LGPL libmpv developer
+archive published by zhongfly/mpv-winbuild:
+
+  https://github.com/zhongfly/mpv-winbuild
+
+The build provider describes this archive as containing mpv under LGPL 2.1 or
+later and statically linked FFmpeg under LGPL 3. The provider also publishes
+the complete package list used to produce each build.
+
+GNU LGPL 2.1 text:
+
+  GNU-LGPL-2.1.txt
+
+GNU LGPL 3 text:
+
+  GNU-LGPL-3.0.txt
+
+The generated external/mpv payload is ignored by Git and is not part of this
+source repository. Redistribution of an application binary with libmpv must
+include the notices and corresponding-source information required by the exact
+libmpv build and all components it contains.

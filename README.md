@@ -14,6 +14,7 @@
   <img alt="WinUI 3" src="https://img.shields.io/badge/UI-WinUI%203-512BD4?style=flat-square" />
   <img alt="libmpv" src="https://img.shields.io/badge/playback-libmpv-691A99?style=flat-square" />
   <img alt="Architecture" src="https://img.shields.io/badge/architecture-x64-brightgreen?style=flat-square" />
+  <img alt="Source available" src="https://img.shields.io/badge/license-source--available-C62828?style=flat-square" />
 </p>
 
 > [!NOTE]
@@ -49,7 +50,7 @@ The upstream project said native desktop apps would come later. One remaining br
 The desktop client deliberately uses native platform pieces where they make sense:
 
 - **C++/WinRT and WinUI 3** for the application, navigation, controls, and Windows integration.
-- **libmpv** for playback of the formats browsers look at and quietly walk away from.
+- **libmpv** using its LGPL Windows build for playback of the formats browsers look at and quietly walk away from.
 - **Windows App SDK** for the packaged desktop runtime.
 - **DPAPI** for protected local session and download-request storage.
 - **Native child-window video hosting** instead of piping frames through a browser or inventing a new GPU-shaped disaster.
@@ -126,7 +127,7 @@ $package = Get-AppxPackage -Name "56fcb18b-d21c-4111-93fb-bef0ffa36c43"
 Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!App"
 ```
 
-`tools/fetch-mpv.ps1` is safe to run again. It downloads the pinned x64 developer archive, creates the MSVC import library, and places the ignored payload under `external/mpv/`.
+`tools/fetch-mpv.ps1` is safe to run again. It downloads the latest baseline x64 LGPL developer archive, creates the MSVC import library, and places the ignored payload under `external/mpv/`. The fetched release is recorded locally in `external/mpv/VERSION.txt`.
 
 If you update `Assets/halo-mark.png`, regenerate the package artwork with:
 
@@ -201,19 +202,28 @@ Halo-Desktop/
 |   `-- Views/               WinUI pages
 |-- tools/                   Reproducible mpv and asset scripts
 |-- external/mpv/            Ignored local mpv payload plus tracked instructions
-|-- docs/HANDOFF-2.md        Backend integration specification and progress log
-|-- docs/HANDOFF.md          Original native UI implementation record
+|-- licenses/                End-user terms and third-party notices
 |-- design/                  Local reference canvas, intentionally ignored
 `-- packages/                Restored NuGet packages, intentionally ignored
 ```
 
 The local `design/` reference stays outside public source. The configured deployment address stays outside tracked source too. Some things are private, even when the C++ compiler has already seen me at my weakest.
 
+## License
+
+Halo Desktop is **source available, not open source**. The source is published under the [Last Projects License 1.0](LICENSE).
+
+In short, personal noncommercial study, building, running, forking, and modification are permitted subject to the full license. Organizational use, commercial use, private derivatives beyond the publication window, binary redistribution, and AI use require separate permission. The license text controls if this summary misses a detail.
+
+Installed applications and official binaries are also governed by [Last Projects End-User Terms](licenses/TERMS.txt). Third-party components retain their own licenses, collected under [licenses/](licenses/THIRD-PARTY-NOTICES.txt).
+
+For commercial or other permissions, contact `info@lastprojects.com`.
+
 ## Project status
 
 This is an actively developed personal Windows client, not an official upstream desktop release. It currently targets Windows 11 x64 Debug builds and expects a separately running Halo backend.
 
-Bug reports with exact reproduction steps are welcome. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
+Bug reports with exact reproduction steps are welcome. Code contributions are accepted only after a separate Contributor License Agreement is arranged, as required by the license. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
 
 ## Credits
 

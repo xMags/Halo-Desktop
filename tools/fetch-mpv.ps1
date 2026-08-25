@@ -82,10 +82,10 @@ try {
         -Uri 'https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest' `
         -Headers @{ 'User-Agent' = 'HaloDesktop-mpv-fetcher' }
     $asset = $release.assets |
-        Where-Object { $_.name -match '^mpv-dev-x86_64-\d' } |
+        Where-Object { $_.name -match '^mpv-dev-lgpl-x86_64-\d' } |
         Select-Object -First 1
     if (-not $asset) {
-        throw 'The latest release has no baseline x64 libmpv developer archive.'
+        throw 'The latest release has no LGPL x64 libmpv developer archive.'
     }
 
     New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null

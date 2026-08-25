@@ -10,6 +10,7 @@ packages/
 **/AppPackages/
 **/BundleArtifacts/
 design/
+/docs/
 external/mpv/*
 !external/mpv/README.md
 tools/nuget.exe

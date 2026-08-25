@@ -1,0 +1,59 @@
+HALO DESKTOP - THIRD-PARTY NOTICES
+
+Halo Desktop includes, downloads, or is built with third-party software. Those
+components are governed by their own terms, not the Last Projects License.
+
+Copies of license and notice files supplied by the restored NuGet packages are
+stored in:
+
+  licenses/third-party/
+
+The notice bundle covers the dependency versions declared in
+src/HaloDesktop/packages.config:
+
+  Microsoft.Web.WebView2 1.0.3719.77
+  Microsoft.Windows.AI.MachineLearning 2.1.74
+  Microsoft.Windows.CppWinRT 3.0.260818.1
+  Microsoft.Windows.ImplementationLibrary 1.0.260126.7
+  Microsoft.Windows.SDK.BuildTools 10.0.28000.2526
+  Microsoft.Windows.SDK.BuildTools.MSIX 1.7.251221100
+  Microsoft.WindowsAppSDK 2.4.0
+  Microsoft.WindowsAppSDK.AI 2.4.4
+  Microsoft.WindowsAppSDK.Base 2.0.4
+  Microsoft.WindowsAppSDK.DWrite 2.1.0
+  Microsoft.WindowsAppSDK.Foundation 2.3.9
+  Microsoft.WindowsAppSDK.InteractiveExperiences 2.1.6
+  Microsoft.WindowsAppSDK.ML 2.1.74
+  Microsoft.WindowsAppSDK.Runtime 2.4.0
+  Microsoft.WindowsAppSDK.Search 2.4.4
+  Microsoft.WindowsAppSDK.Widgets 2.0.5
+  Microsoft.WindowsAppSDK.WinUI 2.3.6
+
+Some Microsoft packages include software from additional authors. Their full
+attributions and license texts appear in the corresponding NOTICE or
+ThirdPartyNotices files in licenses/third-party. Do not remove those files from
+a redistributed release.
+
+libmpv
+------
+
+tools/fetch-mpv.ps1 downloads the baseline x64 LGPL developer build from:
+
+  https://github.com/zhongfly/mpv-winbuild
+
+The provider identifies mpv in that build as LGPL 2.1 or later and FFmpeg as
+LGPL 3. Copies of those license texts are included as GNU-LGPL-2.1.txt and
+GNU-LGPL-3.0.txt. Additional libraries in the fetched build retain their own
+licenses. See the provider's package list and the exact release selected by the
+fetcher for complete build-specific information.
+
+The libmpv binary and generated import payload under external/mpv are ignored
+and are not distributed in this source repository. Anyone preparing an
+official binary release must refresh the third-party notice bundle against the
+exact fetched libmpv release and satisfy all source, notice, and relinking
+obligations imposed by its component licenses.
+
+No endorsement by any third-party author or licensor is implied.
+
+When a dependency version changes, refresh this notice bundle from the exact
+restored or fetched dependency before publishing a release.
