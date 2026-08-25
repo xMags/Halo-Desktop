@@ -203,6 +203,11 @@ namespace HaloDesktop::Playback
         return endChanged||(wasPlaying&&!isPlaying);
     }
 
+    bool ShouldExitMpvEventLoop(bool stopping,bool shutdownEvent)noexcept
+    {
+        return stopping||shutdownEvent;
+    }
+
     bool IsPlaybackSpeedSelected(double actual,double choice)noexcept
     {
         return std::abs(actual-choice)<0.001;

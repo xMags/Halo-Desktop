@@ -63,6 +63,9 @@ namespace HaloDesktop::Playback
         bool endChanged,
         bool wasPlaying,
         bool isPlaying) noexcept;
+    [[nodiscard]] bool ShouldExitMpvEventLoop(
+        bool stopping,
+        bool shutdownEvent) noexcept;
     [[nodiscard]] bool IsPlaybackSpeedSelected(double actual, double choice) noexcept;
     [[nodiscard]] std::int32_t AdjustPlaybackDelayMilliseconds(
         std::int32_t current,

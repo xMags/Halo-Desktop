@@ -174,15 +174,9 @@ namespace winrt::HaloDesktop::implementation
         m_engineToken = 0;
         m_engine->Stop();
         m_engine->DetachVideoWindow();
-        try
+        if (m_windowPresentation->IsFullscreen())
         {
-            if (m_windowPresentation->IsFullscreen())
-            {
-                m_windowPresentation->SetFullscreen(false);
-            }
-        }
-        catch (...)
-        {
+            static_cast<void>(m_windowPresentation->TrySetFullscreen(false));
         }
     }
     double PlayerViewModel::Position() const noexcept
@@ -587,7 +581,11 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::ToggleFullscreen()
     {
-        m_windowPresentation->SetFullscreen(!m_windowPresentation->IsFullscreen());
+        auto const fullscreen = !m_windowPresentation->IsFullscreen();
+        if (!m_windowPresentation->TrySetFullscreen(fullscreen))
+        {
+            return;
+        }
         RaisePresentationMetrics();
         NotifyUserActivity();
     }
@@ -610,7 +608,7 @@ namespace winrt::HaloDesktop::implementation
     {
         if (m_windowPresentation->IsFullscreen())
         {
-            m_windowPresentation->SetFullscreen(false);
+            static_cast<void>(m_windowPresentation->TrySetFullscreen(false));
         }
         if(m_closeRequestedHandler)m_closeRequestedHandler();
     }

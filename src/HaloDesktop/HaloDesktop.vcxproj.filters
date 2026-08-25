@@ -72,9 +72,11 @@
 
   <ItemGroup>
     <ClCompile Include="Api\ApiClient.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\BoundedHttpContent.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\HttpExecutor.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\OpenSubtitlesHash.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\ResponseSizePolicy.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\Mappers.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
@@ -127,6 +129,7 @@
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Shell\WindowPresentationPolicy.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowPresentationService.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="ViewModels\DetailViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -152,10 +155,12 @@
   <ItemGroup>
     <ClInclude Include="Api\ApiClient.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\ApiError.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\BoundedHttpContent.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\Dto.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\HttpExecutor.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\OpenSubtitlesHash.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\OpenSubtitlesHashPolicy.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\ResponseSizePolicy.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="Controls\ArtworkImage.xaml.h"><Filter>Controls</Filter></ClInclude>
@@ -212,6 +217,7 @@
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Shell\WindowPresentationPolicy.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowPresentationService.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="ViewModels\DetailViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DownloadsViewModel.h"><Filter>ViewModels</Filter></ClInclude>

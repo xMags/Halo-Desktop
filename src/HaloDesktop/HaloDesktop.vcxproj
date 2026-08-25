@@ -103,7 +103,7 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>bcrypt.lib;crypt32.lib;ole32.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;gdi32.lib;ole32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
@@ -111,7 +111,7 @@
       <AdditionalIncludeDirectories>$(SolutionDir)external\mpv\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(SolutionDir)external\mpv\lib\mpv.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(SolutionDir)external\mpv\lib\mpv.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -140,10 +140,12 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Api\ApiClient.h" />
     <ClInclude Include="Api\ApiError.h" />
+    <ClInclude Include="Api\BoundedHttpContent.h" />
     <ClInclude Include="Api\Dto.h" />
     <ClInclude Include="Api\HttpExecutor.h" />
     <ClInclude Include="Api\OpenSubtitlesHash.h" />
     <ClInclude Include="Api\OpenSubtitlesHashPolicy.h" />
+    <ClInclude Include="Api\ResponseSizePolicy.h" />
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
     </ClInclude>
@@ -216,6 +218,7 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Shell\WindowSizing.h" />
+    <ClInclude Include="Shell\WindowPresentationPolicy.h" />
     <ClInclude Include="Shell\WindowPresentationService.h" />
     <ClInclude Include="ViewModels\DetailViewModel.h" />
     <ClInclude Include="ViewModels\DownloadsViewModel.h" />
@@ -286,9 +289,13 @@
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Api\ApiClient.cpp" />
+    <ClCompile Include="Api\BoundedHttpContent.cpp" />
     <ClCompile Include="Api\HttpExecutor.cpp" />
     <ClCompile Include="Api\OpenSubtitlesHash.cpp" />
     <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Api\ResponseSizePolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Api\Mappers.cpp" />
@@ -373,6 +380,9 @@
       <DependentUpon>TitleBar.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp" />
+    <ClCompile Include="Shell\WindowPresentationPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Shell\WindowPresentationService.cpp" />
     <ClCompile Include="ViewModels\DetailViewModel.cpp" />
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp" />

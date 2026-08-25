@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/Auth/OidcSignInFlow.h"
 
+#include "Api/BoundedHttpContent.h"
 #include "Api/HttpExecutor.h"
 #include "Services/Auth/LoopbackListener.h"
 
@@ -399,7 +400,7 @@ namespace HaloDesktop::Services::Auth
             auto const tokenResponse = co_await m_executor->SendFormWithoutRedirectAsync(
                 winrt::Windows::Foundation::Uri{ discovery.TokenEndpoint },
                 form);
-            auto const tokenBody = co_await tokenResponse.Content().ReadAsStringAsync();
+            auto const tokenBody = co_await Api::ReadBoundedJsonTextAsync(tokenResponse.Content());
             auto const tokens = ParseTokenResponse(tokenResponse, tokenBody);
             co_return OidcSignInResult{
                 .Outcome = winrt::HaloDesktop::SignInOutcome::Succeeded,

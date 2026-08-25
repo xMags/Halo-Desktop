@@ -320,8 +320,6 @@ namespace HaloDesktop::Playback
         LoadMpvSource(m_handle,source);
     }
 
-    void MpvClient::Replay(){ReplayMpvSource(m_handle);}
-
     void MpvClient::SetPaused(bool paused)
     {
         auto value = paused ? 1 : 0;
@@ -409,15 +407,13 @@ namespace HaloDesktop::Playback
         while (m_handle)
         {
             auto const event = mpv_wait_event(m_handle, -1.0);
-            if (!event || event->event_id == MPV_EVENT_SHUTDOWN)
+            if (!event || ShouldExitMpvEventLoop(
+                m_stopping.load(),
+                event->event_id == MPV_EVENT_SHUTDOWN))
             {
                 return;
             }
-            if (event->event_id == MPV_EVENT_NONE && m_stopping.load())
-            {
-                return;
-            }
-            if (m_stopping.load())
+            if (event->event_id == MPV_EVENT_NONE)
             {
                 continue;
             }

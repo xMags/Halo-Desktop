@@ -57,11 +57,17 @@
     <ClCompile Include="..\..\src\HaloDesktop\Api\OpenSubtitlesHashPolicy.cpp">
       <Link>OpenSubtitlesHashPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\ResponseSizePolicy.cpp">
+      <Link>ResponseSizePolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp">
       <Link>ProtectedHttpHeaders.cpp</Link>
     </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Playback\TemporaryFileCollection.cpp">
       <Link>TemporaryFileCollection.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Shell\WindowPresentationPolicy.cpp">
+      <Link>WindowPresentationPolicy.cpp</Link>
     </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

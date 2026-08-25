@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Api/HttpExecutor.h"
 #include "Api/ApiError.h"
+#include "Api/BoundedHttpContent.h"
 
 #include <algorithm>
 #include <cwctype>
@@ -147,7 +148,7 @@ namespace HaloDesktop::Api
         {
             response = co_await m_apiClient.SendRequestAsync(
                 request,
-                winrt::Windows::Web::Http::HttpCompletionOption::ResponseContentRead);
+                winrt::Windows::Web::Http::HttpCompletionOption::ResponseHeadersRead);
         }
         catch (winrt::hresult_error const& error)
         {
@@ -160,7 +161,7 @@ namespace HaloDesktop::Api
             winrt::hstring responseBody;
             try
             {
-                responseBody = co_await response.Content().ReadAsStringAsync();
+                responseBody = co_await ReadBoundedJsonTextAsync(response.Content());
             }
             catch (...)
             {
@@ -173,7 +174,7 @@ namespace HaloDesktop::Api
         winrt::hstring responseBody;
         try
         {
-            responseBody = co_await response.Content().ReadAsStringAsync();
+            responseBody = co_await ReadBoundedJsonTextAsync(response.Content());
         }
         catch (winrt::hresult_error const& error)
         {
@@ -228,7 +229,7 @@ namespace HaloDesktop::Api
         {
             co_return co_await m_noRedirectClient.SendRequestAsync(
                 request,
-                winrt::Windows::Web::Http::HttpCompletionOption::ResponseContentRead);
+                winrt::Windows::Web::Http::HttpCompletionOption::ResponseHeadersRead);
         }
         catch (winrt::hresult_error const& error)
         {

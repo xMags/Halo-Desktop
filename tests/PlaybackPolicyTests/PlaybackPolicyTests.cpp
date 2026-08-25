@@ -1,13 +1,16 @@
 #include "Api/OpenSubtitlesHashPolicy.h"
+#include "Api/ResponseSizePolicy.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Playback/TemporaryFileCollection.h"
 #include "Security/ProtectedHttpHeaders.h"
+#include "Shell/WindowPresentationPolicy.h"
 
 #include <chrono>
 #include <filesystem>
 #include <fstream>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -99,6 +102,9 @@ namespace
         Require(ShouldReportPlaybackChange(true,true,false),"combined EOF transition did not request a report");
         Require(ShouldReportPlaybackChange(false,true,false),"playing-to-stopped transition did not request a report");
         Require(!ShouldReportPlaybackChange(false,true,true),"unchanged playing state requested a report");
+        Require(ShouldExitMpvEventLoop(true,false),"mpv event loop ignored a shutdown request while events remained queued");
+        Require(ShouldExitMpvEventLoop(false,true),"mpv event loop ignored the shutdown event");
+        Require(!ShouldExitMpvEventLoop(false,false),"mpv event loop stopped during normal playback");
 
         Require(IsPlaybackSpeedSelected(1.75,1.75),"active speed was not selected");
         Require(!IsPlaybackSpeedSelected(1.75,1.5),"inactive speed was selected");
@@ -155,6 +161,53 @@ namespace
         Require(ComputeOpenSubtitlesMovieHash(OpenSubtitlesHashChunkSize*2,zeros,zeros)==OpenSubtitlesHashChunkSize*2,"moviehash calculation changed");
     }
 
+    void TestResponseSizePolicy()
+    {
+        using HaloDesktop::Api::CheckedResponseSize;
+        using HaloDesktop::Api::MaximumJsonResponseBytes;
+        using HaloDesktop::Api::ValidateDeclaredResponseSize;
+
+        ValidateDeclaredResponseSize(MaximumJsonResponseBytes);
+        RequireThrows([]{HaloDesktop::Api::ValidateDeclaredResponseSize(HaloDesktop::Api::MaximumJsonResponseBytes+1u);},"oversized declared JSON response was accepted");
+        Require(CheckedResponseSize(MaximumJsonResponseBytes-1u,1u)==MaximumJsonResponseBytes,"exact JSON response limit was rejected");
+        RequireThrows([]{static_cast<void>(HaloDesktop::Api::CheckedResponseSize(HaloDesktop::Api::MaximumJsonResponseBytes,1u));},"streamed JSON response exceeded its limit");
+        RequireThrows([]{static_cast<void>(HaloDesktop::Api::CheckedResponseSize((std::numeric_limits<std::size_t>::max)(),1u));},"JSON response size overflow was accepted");
+    }
+
+    void TestWindowPresentationPolicy()
+    {
+        using HaloDesktop::Shell::CalculateFullscreenWindowPolicy;
+        using HaloDesktop::Shell::FullscreenTransitionOutcome;
+        using HaloDesktop::Shell::FullscreenZOrder;
+        using HaloDesktop::Shell::ResolveFullscreenState;
+
+        auto const unrelatedStyle = static_cast<LONG_PTR>(WS_VISIBLE | WS_CLIPCHILDREN);
+        auto const unrelatedExtendedStyle = static_cast<LONG_PTR>(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+        auto const policy = CalculateFullscreenWindowPolicy(
+            static_cast<LONG_PTR>(WS_OVERLAPPEDWINDOW) | unrelatedStyle,
+            static_cast<LONG_PTR>(WS_EX_WINDOWEDGE | WS_EX_TOPMOST) | unrelatedExtendedStyle);
+
+        Require((policy.Style & static_cast<LONG_PTR>(WS_POPUP)) != 0,
+                "fullscreen policy did not apply the popup style");
+        Require((policy.Style & unrelatedStyle) == unrelatedStyle,
+                "fullscreen policy removed unrelated window style bits");
+        Require((policy.ExtendedStyle & static_cast<LONG_PTR>(WS_EX_TOPMOST)) == 0,
+                "fullscreen policy retained WS_EX_TOPMOST");
+        Require((policy.ExtendedStyle & unrelatedExtendedStyle) == unrelatedExtendedStyle,
+                "fullscreen policy removed unrelated extended style bits");
+        Require(policy.ZOrder == FullscreenZOrder::ForegroundNonTopmost,
+                "fullscreen policy selected a popup-obscuring z-order");
+
+        Require(ResolveFullscreenState(false, true, FullscreenTransitionOutcome::Succeeded),
+                "successful fullscreen entry did not commit fullscreen state");
+        Require(!ResolveFullscreenState(true, false, FullscreenTransitionOutcome::Succeeded),
+                "successful fullscreen exit did not commit windowed state");
+        Require(!ResolveFullscreenState(false, true, FullscreenTransitionOutcome::Failed),
+                "failed fullscreen entry changed presentation state");
+        Require(ResolveFullscreenState(true, false, FullscreenTransitionOutcome::Failed),
+                "failed fullscreen exit changed presentation state");
+    }
+
     void TestTemporaryFileCleanup()
     {
         auto const suffix=std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -187,6 +240,8 @@ int main()
         TestPlaybackTransitions();
         TestSubtitleIntents();
         TestProtectedHashPolicy();
+        TestResponseSizePolicy();
+        TestWindowPresentationPolicy();
         TestTemporaryFileCleanup();
         std::cout<<"Playback policy tests passed.\n";
         return 0;

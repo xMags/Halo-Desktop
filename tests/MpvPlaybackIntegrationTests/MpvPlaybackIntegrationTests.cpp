@@ -1,4 +1,5 @@
 #include "Playback/MpvCommand.h"
+#include "Playback/PlaybackPolicy.h"
 
 #include <mpv/client.h>
 
@@ -69,6 +70,18 @@ namespace
         result.resize(44+dataBytes,0);return result;
     }
 
+    std::vector<std::uint8_t> StreamingWaveHeader(std::uint32_t dataBytes)
+    {
+        constexpr std::uint32_t sampleRate=8000;
+        constexpr std::uint16_t channels=1;
+        constexpr std::uint16_t bitsPerSample=16;
+        std::vector<std::uint8_t>result;result.reserve(44);
+        AppendText(result,"RIFF");Append32(result,36+dataBytes);AppendText(result,"WAVEfmt ");Append32(result,16);
+        Append16(result,1);Append16(result,channels);Append32(result,sampleRate);Append32(result,sampleRate*channels*bitsPerSample/8);
+        Append16(result,channels*bitsPerSample/8);Append16(result,bitsPerSample);AppendText(result,"data");Append32(result,dataBytes);
+        return result;
+    }
+
     class ProtectedHttpServer final
     {
     public:
@@ -106,10 +119,12 @@ namespace
 
         [[nodiscard]] std::wstring Url()const{return L"http://127.0.0.1:"+std::to_wstring(m_port)+L"/protected.wav";}
         [[nodiscard]] std::wstring PublicUrl()const{return L"http://127.0.0.1:"+std::to_wstring(m_port)+L"/public.wav";}
+        [[nodiscard]] std::wstring SlowUrl()const{return L"http://127.0.0.1:"+std::to_wstring(m_port)+L"/slow.wav";}
         [[nodiscard]] int AuthorizedRequests()const noexcept{return m_authorized.load();}
         [[nodiscard]] int RejectedRequests()const noexcept{return m_rejected.load();}
         [[nodiscard]] int PublicRequests()const noexcept{return m_public.load();}
         [[nodiscard]] int LeakedRequests()const noexcept{return m_leaked.load();}
+        [[nodiscard]] int SlowRequests()const noexcept{return m_slow.load();}
 
     private:
         void Run()noexcept
@@ -134,17 +149,35 @@ namespace
             }
             auto const protectedHeader=request.find("\r\nX-Halo-Test: integration-value\r\n")!=std::string::npos;
             auto const publicRequest=request.starts_with("GET /public.wav ");
-            if(publicRequest&&protectedHeader)
+            auto const slowRequest=request.starts_with("GET /slow.wav ");
+            auto const unprotectedRequest=publicRequest||slowRequest;
+            if(unprotectedRequest&&protectedHeader)
             {
                 ++m_leaked;
                 constexpr char response[]="HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
                 SendAll(client,response,sizeof(response)-1);return;
             }
-            if(!publicRequest&&!protectedHeader)
+            if(!unprotectedRequest&&!protectedHeader)
             {
                 ++m_rejected;
                 constexpr char response[]="HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
                 SendAll(client,response,sizeof(response)-1);return;
+            }
+            if(slowRequest)
+            {
+                ++m_slow;
+                constexpr std::uint32_t dataBytes=32u*1024u*1024u;
+                auto const waveHeader=StreamingWaveHeader(dataBytes);
+                auto const header="HTTP/1.1 200 OK\r\nContent-Type: audio/wav\r\nContent-Length: "+std::to_string(waveHeader.size()+dataBytes)+"\r\nConnection: close\r\n\r\n";
+                SendAll(client,header.data(),header.size());
+                SendAll(client,reinterpret_cast<char const*>(waveHeader.data()),waveHeader.size());
+                std::array<std::uint8_t,4096>silence{};
+                while(!m_stopping.load())
+                {
+                    SendAll(client,reinterpret_cast<char const*>(silence.data()),silence.size());
+                    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+                }
+                return;
             }
             if(publicRequest)++m_public;else ++m_authorized;
             auto const body=SilentWave();
@@ -160,6 +193,7 @@ namespace
         std::atomic_int m_rejected{};
         std::atomic_int m_public{};
         std::atomic_int m_leaked{};
+        std::atomic_int m_slow{};
         std::jthread m_thread;
     };
 
@@ -198,6 +232,63 @@ namespace
         }
         throw std::runtime_error("mpv playback timed out.");
     }
+
+    void VerifyStreamingShutdown(ProtectedHttpServer&server)
+    {
+        auto*handle=mpv_create();Require(handle!=nullptr,"shutdown probe mpv_create returned null");
+        std::atomic_bool stopping{},loaded{},playbackRestarted{};
+        std::jthread eventThread;
+        try
+        {
+            CheckMpv(mpv_set_option_string(handle,"vo","null"),"shutdown probe set vo");
+            CheckMpv(mpv_set_option_string(handle,"ao","null"),"shutdown probe set ao");
+            CheckMpv(mpv_set_option_string(handle,"idle","yes"),"shutdown probe set idle");
+            CheckMpv(mpv_set_option_string(handle,"terminal","no"),"shutdown probe disable terminal");
+            CheckMpv(mpv_initialize(handle),"shutdown probe mpv_initialize");
+            eventThread=std::jthread([handle,&stopping,&loaded,&playbackRestarted]
+            {
+                for(;;)
+                {
+                    auto const event=mpv_wait_event(handle,-1.0);
+                    if(!event||HaloDesktop::Playback::ShouldExitMpvEventLoop(
+                        stopping.load(),
+                        event->event_id==MPV_EVENT_SHUTDOWN))return;
+                    if(event->event_id==MPV_EVENT_FILE_LOADED)loaded.store(true);
+                    if(event->event_id==MPV_EVENT_PLAYBACK_RESTART)playbackRestarted.store(true);
+                }
+            });
+            HaloDesktop::Playback::LoadMpvSource(handle,{server.SlowUrl(),{}});
+            auto const readyDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(10);
+            while(std::chrono::steady_clock::now()<readyDeadline
+                &&(!loaded.load()||!playbackRestarted.load()))
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            }
+
+            auto const shutdownStarted=std::chrono::steady_clock::now();
+            char const*quitArguments[]={"quit",nullptr};
+            auto const quitResult=mpv_command(handle,quitArguments);
+            stopping.store(true);
+            mpv_wakeup(handle);
+            eventThread.join();
+            mpv_terminate_destroy(handle);
+            handle=nullptr;
+            auto const shutdownElapsed=std::chrono::steady_clock::now()-shutdownStarted;
+
+            Require(quitResult>=0,"mpv rejected shutdown while streaming");
+            Require(server.SlowRequests()>0,"the stalled HTTP stream was not requested");
+            Require(loaded.load()&&playbackRestarted.load(),"the stalled HTTP stream did not begin playback");
+            Require(shutdownElapsed<std::chrono::seconds(5),"mpv shutdown exceeded five seconds while streaming");
+        }
+        catch(...)
+        {
+            stopping.store(true);
+            if(handle)mpv_wakeup(handle);
+            if(eventThread.joinable())eventThread.join();
+            if(handle)mpv_terminate_destroy(handle);
+            throw;
+        }
+    }
 }
 
 int main()
@@ -217,7 +308,7 @@ int main()
             int cachePauseUpdates{};
             HaloDesktop::Playback::LoadMpvSource(handle,{server.Url(),{{L"X-Halo-Test",L"integration-value"}}});
             WaitForSuccessfulPlayback(handle,cachePauseUpdates);
-            HaloDesktop::Playback::ReplayMpvSource(handle);
+            HaloDesktop::Playback::LoadMpvSource(handle,{server.Url(),{{L"X-Halo-Test",L"integration-value"}}});
             WaitForSuccessfulPlayback(handle,cachePauseUpdates);
             HaloDesktop::Playback::LoadMpvSource(handle,{server.PublicUrl(),{}});
             WaitForSuccessfulPlayback(handle,cachePauseUpdates);
@@ -232,7 +323,8 @@ int main()
             mpv_terminate_destroy(handle);throw;
         }
         mpv_terminate_destroy(handle);
-        std::cout<<"mpv protected playback and replay tests passed.\n";
+        VerifyStreamingShutdown(server);
+        std::cout<<"mpv protected playback, replay, and streaming shutdown tests passed.\n";
         return 0;
     }
     catch(std::exception const&error)

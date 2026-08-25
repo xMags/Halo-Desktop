@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/Auth/OidcAuthSession.h"
 
+#include "Api/BoundedHttpContent.h"
 #include "Api/HttpExecutor.h"
 
 #include <chrono>
@@ -300,7 +301,7 @@ namespace HaloDesktop::Services::Auth
                 { L"client_id", observed.ClientId },
                 { L"refresh_token", *observed.RefreshToken },
             }));
-        auto const body = co_await response.Content().ReadAsStringAsync();
+        auto const body = co_await Api::ReadBoundedJsonTextAsync(response.Content());
 
         winrt::Windows::Data::Json::JsonObject object;
         try

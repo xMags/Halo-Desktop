@@ -1,88 +1,230 @@
 #include "pch.h"
 #include "Shell/WindowPresentationService.h"
 
+#include "Shell/WindowPresentationPolicy.h"
+
+#include <optional>
+#include <shobjidl_core.h>
 #include <stdexcept>
+#include <wrl/client.h>
 
 namespace
 {
-    LONG_PTR ReadWindowStyle(HWND window, int index)
+    struct WindowedPresentation final
+    {
+        WINDOWPLACEMENT Placement{ sizeof(WINDOWPLACEMENT) };
+        RECT Bounds{};
+        LONG_PTR Style{};
+        LONG_PTR ExtendedStyle{};
+        winrt::Microsoft::UI::Xaml::GridLength TitleBarHeight{};
+        bool WasMaximized{};
+    };
+
+    [[nodiscard]] HWND NativeWindow(std::uintptr_t windowHandle) noexcept
+    {
+        return reinterpret_cast<HWND>(windowHandle);
+    }
+
+    [[nodiscard]] std::optional<LONG_PTR> TryReadWindowStyle(HWND window, int index) noexcept
     {
         SetLastError(ERROR_SUCCESS);
         auto const value = GetWindowLongPtrW(window, index);
-        if (value == 0)
+        if (value == 0 && GetLastError() != ERROR_SUCCESS)
         {
-            auto const error = GetLastError();
-            if (error != ERROR_SUCCESS)
-            {
-                winrt::throw_hresult(HRESULT_FROM_WIN32(error));
-            }
+            return std::nullopt;
         }
         return value;
     }
 
-    void WriteWindowStyle(HWND window, int index, LONG_PTR value)
+    [[nodiscard]] bool TryWriteWindowStyle(HWND window, int index, LONG_PTR value) noexcept
     {
         SetLastError(ERROR_SUCCESS);
         auto const previous = SetWindowLongPtrW(window, index, value);
-        if (previous == 0)
-        {
-            auto const error = GetLastError();
-            if (error != ERROR_SUCCESS)
-            {
-                winrt::throw_hresult(HRESULT_FROM_WIN32(error));
-            }
-        }
+        return previous != 0 || GetLastError() == ERROR_SUCCESS;
     }
 
-    MONITORINFO MonitorInfoForWindow(HWND window)
+    [[nodiscard]] std::optional<MONITORINFO> TryMonitorInfoForWindow(HWND window) noexcept
     {
         auto const monitor = MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST);
         if (!monitor)
         {
-            winrt::throw_last_error();
+            return std::nullopt;
         }
 
         MONITORINFO info{ sizeof(MONITORINFO) };
-        winrt::check_bool(GetMonitorInfoW(monitor, &info));
+        if (!GetMonitorInfoW(monitor, &info))
+        {
+            return std::nullopt;
+        }
         return info;
     }
 
-    void SizeWindowToMonitor(HWND window, HWND insertAfter)
+    [[nodiscard]] bool TrySizeWindowToMonitor(HWND window, HWND insertAfter) noexcept
     {
-        auto const monitor = MonitorInfoForWindow(window);
-        auto const& bounds = monitor.rcMonitor;
-        winrt::check_bool(SetWindowPos(window, insertAfter, bounds.left, bounds.top, bounds.right - bounds.left,
-                                       bounds.bottom - bounds.top,
-                                       SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_FRAMECHANGED));
-    }
-
-    void RestoreWindow(HWND window, LONG_PTR style, LONG_PTR extendedStyle, WINDOWPLACEMENT const& placement,
-                       RECT const& bounds, bool wasMaximized)
-    {
-        WriteWindowStyle(window, GWL_STYLE, style);
-        WriteWindowStyle(window, GWL_EXSTYLE, extendedStyle);
-        auto const insertAfter = (extendedStyle & static_cast<LONG_PTR>(WS_EX_TOPMOST)) != 0
-            ? HWND_TOPMOST
-            : HWND_NOTOPMOST;
-        if (wasMaximized)
+        auto const monitor = TryMonitorInfoForWindow(window);
+        if (!monitor)
         {
-            winrt::check_bool(SetWindowPlacement(window, &placement));
-            winrt::check_bool(SetWindowPos(window, insertAfter, 0, 0, 0, 0,
-                                           SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER |
-                                               SWP_NOACTIVATE | SWP_FRAMECHANGED));
-            return;
+            return false;
         }
 
-        winrt::check_bool(SetWindowPos(window, insertAfter, bounds.left, bounds.top, bounds.right - bounds.left,
-                                       bounds.bottom - bounds.top,
-                                       SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_NOACTIVATE | SWP_FRAMECHANGED));
+        auto const& bounds = monitor->rcMonitor;
+        return SetWindowPos(
+                   window,
+                   insertAfter,
+                   bounds.left,
+                   bounds.top,
+                   bounds.right - bounds.left,
+                   bounds.bottom - bounds.top,
+                   SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_FRAMECHANGED) != FALSE;
+    }
+
+    [[nodiscard]] bool TryMarkTaskbarFullscreen(HWND window, bool fullscreen) noexcept
+    {
+        Microsoft::WRL::ComPtr<ITaskbarList2> taskbar;
+        if (FAILED(CoCreateInstance(
+                CLSID_TaskbarList,
+                nullptr,
+                CLSCTX_INPROC_SERVER,
+                IID_PPV_ARGS(&taskbar))) ||
+            FAILED(taskbar->HrInit()))
+        {
+            return false;
+        }
+        return SUCCEEDED(taskbar->MarkFullscreenWindow(window, fullscreen ? TRUE : FALSE));
+    }
+
+    [[nodiscard]] HWND FullscreenInsertAfter(HaloDesktop::Shell::FullscreenZOrder zOrder) noexcept
+    {
+        switch (zOrder)
+        {
+        case HaloDesktop::Shell::FullscreenZOrder::ForegroundNonTopmost:
+            return HWND_TOP;
+        }
+        return HWND_TOP;
+    }
+
+    [[nodiscard]] bool TrySetTitleBarHeight(
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+        winrt::Microsoft::UI::Xaml::GridLength const& height) noexcept
+    {
+        try
+        {
+            titleBarRow.Height(height);
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
+    [[nodiscard]] std::optional<WindowedPresentation> TryCaptureWindowedPresentation(
+        HWND window,
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
+    {
+        WindowedPresentation presentation;
+        if (!GetWindowPlacement(window, &presentation.Placement) ||
+            !GetWindowRect(window, &presentation.Bounds))
+        {
+            return std::nullopt;
+        }
+
+        auto const style = TryReadWindowStyle(window, GWL_STYLE);
+        auto const extendedStyle = TryReadWindowStyle(window, GWL_EXSTYLE);
+        if (!style || !extendedStyle)
+        {
+            return std::nullopt;
+        }
+
+        try
+        {
+            presentation.TitleBarHeight = titleBarRow.Height();
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+
+        presentation.Style = *style;
+        presentation.ExtendedStyle = *extendedStyle;
+        presentation.WasMaximized = IsZoomed(window) != FALSE;
+        return presentation;
+    }
+
+    [[nodiscard]] bool TryApplyFullscreenWindow(
+        HWND window,
+        HaloDesktop::Shell::FullscreenWindowPolicy const& policy) noexcept
+    {
+        auto succeeded = TryWriteWindowStyle(window, GWL_STYLE, policy.Style);
+        succeeded = TryWriteWindowStyle(window, GWL_EXSTYLE, policy.ExtendedStyle) && succeeded;
+        succeeded = TrySizeWindowToMonitor(window, FullscreenInsertAfter(policy.ZOrder)) && succeeded;
+        return succeeded;
+    }
+
+    [[nodiscard]] bool TryRestoreWindow(HWND window, WindowedPresentation const& presentation) noexcept
+    {
+        auto succeeded = TryWriteWindowStyle(window, GWL_STYLE, presentation.Style);
+        succeeded = TryWriteWindowStyle(window, GWL_EXSTYLE, presentation.ExtendedStyle) && succeeded;
+
+        auto const insertAfter =
+            (presentation.ExtendedStyle & static_cast<LONG_PTR>(WS_EX_TOPMOST)) != 0
+                ? HWND_TOPMOST
+                : HWND_NOTOPMOST;
+        if (presentation.WasMaximized)
+        {
+            succeeded = SetWindowPlacement(window, &presentation.Placement) != FALSE && succeeded;
+            succeeded = SetWindowPos(
+                            window,
+                            insertAfter,
+                            0,
+                            0,
+                            0,
+                            0,
+                            SWP_NOMOVE | SWP_NOSIZE | SWP_NOOWNERZORDER |
+                                SWP_NOACTIVATE | SWP_FRAMECHANGED) != FALSE && succeeded;
+            return succeeded;
+        }
+
+        succeeded = SetWindowPos(
+                        window,
+                        insertAfter,
+                        presentation.Bounds.left,
+                        presentation.Bounds.top,
+                        presentation.Bounds.right - presentation.Bounds.left,
+                        presentation.Bounds.bottom - presentation.Bounds.top,
+                        SWP_SHOWWINDOW | SWP_NOOWNERZORDER | SWP_NOACTIVATE |
+                            SWP_FRAMECHANGED) != FALSE && succeeded;
+        return succeeded;
+    }
+
+    [[nodiscard]] bool TryApplyFullscreenPresentation(
+        HWND window,
+        HaloDesktop::Shell::FullscreenWindowPolicy const& policy,
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
+    {
+        auto const windowApplied = TryApplyFullscreenWindow(window, policy);
+        auto const titleBarApplied = TrySetTitleBarHeight(
+            titleBarRow,
+            { 0.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
+        return windowApplied && titleBarApplied;
+    }
+
+    [[nodiscard]] bool TryRestoreWindowedPresentation(
+        HWND window,
+        WindowedPresentation const& presentation,
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
+    {
+        auto const windowRestored = TryRestoreWindow(window, presentation);
+        auto const titleBarRestored = TrySetTitleBarHeight(titleBarRow, presentation.TitleBarHeight);
+        return windowRestored && titleBarRestored;
     }
 } // namespace
 
 namespace HaloDesktop::Shell
 {
-    void WindowPresentationService::Attach(std::uintptr_t windowHandle,
-                                           winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow)
+    void WindowPresentationService::Attach(
+        std::uintptr_t windowHandle,
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow)
     {
         if (windowHandle == 0 || !titleBarRow)
         {
@@ -91,110 +233,169 @@ namespace HaloDesktop::Shell
         m_windowHandle = windowHandle;
         m_titleBarRow = titleBarRow;
     }
+
     void WindowPresentationService::Detach() noexcept
     {
+        if (m_windowHandle != 0)
+        {
+            if (m_fullscreen)
+            {
+                static_cast<void>(TrySetFullscreen(false));
+            }
+            if (m_taskbarFullscreenMarked &&
+                TryMarkTaskbarFullscreen(NativeWindow(m_windowHandle), false))
+            {
+                m_taskbarFullscreenMarked = false;
+            }
+        }
+
         m_windowHandle = 0;
         m_titleBarRow = nullptr;
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };
         m_windowedBounds = {};
         m_windowedStyle = 0;
         m_windowedExtendedStyle = 0;
+        m_windowedTitleBarHeight = {};
         m_wasMaximized = false;
         m_fullscreen = false;
-        m_windowActive = true;
+        m_taskbarFullscreenMarked = false;
     }
-    void WindowPresentationService::SetFullscreen(bool fullscreen)
+
+    bool WindowPresentationService::TrySetFullscreen(bool fullscreen) noexcept
     {
         if (m_windowHandle == 0 || !m_titleBarRow)
         {
-            throw std::logic_error("Window presentation is not attached");
+            return false;
         }
         if (m_fullscreen == fullscreen)
         {
-            if (fullscreen)
-            {
-                SizeWindowToMonitor(
-                    reinterpret_cast<HWND>(m_windowHandle),
-                    m_windowActive ? HWND_TOPMOST : HWND_NOTOPMOST);
-            }
-            return;
+            RefreshFullscreenShellState();
+            return true;
         }
 
-        auto const window = reinterpret_cast<HWND>(m_windowHandle);
+        auto const window = NativeWindow(m_windowHandle);
         if (fullscreen)
         {
-            WINDOWPLACEMENT placement{ sizeof(WINDOWPLACEMENT) };
-            winrt::check_bool(GetWindowPlacement(window, &placement));
-            RECT windowedBounds{};
-            winrt::check_bool(GetWindowRect(window, &windowedBounds));
-
-            auto const windowedStyle = ReadWindowStyle(window, GWL_STYLE);
-            auto const windowedExtendedStyle = ReadWindowStyle(window, GWL_EXSTYLE);
-            auto const wasMaximized = IsZoomed(window) != FALSE;
-            auto const fullscreenStyle =
-                (windowedStyle & ~static_cast<LONG_PTR>(WS_OVERLAPPEDWINDOW)) | static_cast<LONG_PTR>(WS_POPUP);
-            auto const fullscreenExtendedStyle =
-                windowedExtendedStyle & ~static_cast<LONG_PTR>(WS_EX_WINDOWEDGE);
-
-            // The taskbar is itself topmost, so monitor-sized popup geometry alone can
-            // leave it over the transport controls. Promote Halo while it is active;
-            // SetWindowActive demotes it as soon as the user switches to another app.
-            WriteWindowStyle(window, GWL_STYLE, fullscreenStyle);
-            try
+            auto const windowed = TryCaptureWindowedPresentation(window, m_titleBarRow);
+            if (!windowed)
             {
-                WriteWindowStyle(window, GWL_EXSTYLE, fullscreenExtendedStyle);
-                SizeWindowToMonitor(window, m_windowActive ? HWND_TOPMOST : HWND_NOTOPMOST);
-            }
-            catch (...)
-            {
-                try
-                {
-                    RestoreWindow(window, windowedStyle, windowedExtendedStyle, placement, windowedBounds,
-                                  wasMaximized);
-                }
-                catch (...)
-                {
-                }
-                throw;
+                return false;
             }
 
-            m_windowedPlacement = placement;
-            m_windowedBounds = windowedBounds;
-            m_windowedStyle = windowedStyle;
-            m_windowedExtendedStyle = windowedExtendedStyle;
-            m_wasMaximized = wasMaximized;
-            m_titleBarRow.Height({ 0.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
-            m_fullscreen = true;
-            return;
+            auto const fullscreenPolicy =
+                CalculateFullscreenWindowPolicy(windowed->Style, windowed->ExtendedStyle);
+            if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+            {
+                if (TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow))
+                {
+                    m_fullscreen = ResolveFullscreenState(
+                        m_fullscreen,
+                        fullscreen,
+                        FullscreenTransitionOutcome::Failed);
+                    return false;
+                }
+                if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+                {
+                    static_cast<void>(TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow));
+                    m_fullscreen = ResolveFullscreenState(
+                        m_fullscreen,
+                        fullscreen,
+                        FullscreenTransitionOutcome::Failed);
+                    return false;
+                }
+            }
+
+            m_windowedPlacement = windowed->Placement;
+            m_windowedBounds = windowed->Bounds;
+            m_windowedStyle = windowed->Style;
+            m_windowedExtendedStyle = windowed->ExtendedStyle;
+            m_windowedTitleBarHeight = windowed->TitleBarHeight;
+            m_wasMaximized = windowed->WasMaximized;
+            m_fullscreen = ResolveFullscreenState(
+                m_fullscreen,
+                fullscreen,
+                FullscreenTransitionOutcome::Succeeded);
+            if (TryMarkTaskbarFullscreen(window, true))
+            {
+                m_taskbarFullscreenMarked = true;
+            }
+            return true;
         }
 
-        RestoreWindow(window, m_windowedStyle, m_windowedExtendedStyle, m_windowedPlacement, m_windowedBounds,
-                      m_wasMaximized);
-        m_titleBarRow.Height({ 32.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
+        WindowedPresentation const windowed{
+            m_windowedPlacement,
+            m_windowedBounds,
+            m_windowedStyle,
+            m_windowedExtendedStyle,
+            m_windowedTitleBarHeight,
+            m_wasMaximized,
+        };
+        if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow))
+        {
+            auto const fullscreenPolicy =
+                CalculateFullscreenWindowPolicy(windowed.Style, windowed.ExtendedStyle);
+            if (TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+            {
+                RefreshFullscreenShellState();
+                m_fullscreen = ResolveFullscreenState(
+                    m_fullscreen,
+                    fullscreen,
+                    FullscreenTransitionOutcome::Failed);
+                return false;
+            }
+            if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow))
+            {
+                static_cast<void>(TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow));
+                RefreshFullscreenShellState();
+                m_fullscreen = ResolveFullscreenState(
+                    m_fullscreen,
+                    fullscreen,
+                    FullscreenTransitionOutcome::Failed);
+                return false;
+            }
+        }
+
+        if (TryMarkTaskbarFullscreen(window, false))
+        {
+            m_taskbarFullscreenMarked = false;
+        }
+
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };
         m_windowedBounds = {};
         m_windowedStyle = 0;
         m_windowedExtendedStyle = 0;
+        m_windowedTitleBarHeight = {};
         m_wasMaximized = false;
-        m_fullscreen = false;
+        m_fullscreen = ResolveFullscreenState(
+            m_fullscreen,
+            fullscreen,
+            FullscreenTransitionOutcome::Succeeded);
+        return true;
     }
-    void WindowPresentationService::SetWindowActive(bool active) noexcept
+
+    void WindowPresentationService::RefreshFullscreenShellState() noexcept
     {
-        m_windowActive = active;
-        if (!m_fullscreen || m_windowHandle == 0)
+        if (m_windowHandle == 0)
         {
             return;
         }
-        auto const window = reinterpret_cast<HWND>(m_windowHandle);
-        static_cast<void>(SetWindowPos(
-            window,
-            active ? HWND_TOPMOST : HWND_NOTOPMOST,
-            0,
-            0,
-            0,
-            0,
-            SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER));
+
+        auto const window = NativeWindow(m_windowHandle);
+        if (m_fullscreen && !m_taskbarFullscreenMarked)
+        {
+            if (TryMarkTaskbarFullscreen(window, true))
+            {
+                m_taskbarFullscreenMarked = true;
+            }
+            return;
+        }
+        if (!m_fullscreen && m_taskbarFullscreenMarked &&
+            TryMarkTaskbarFullscreen(window, false))
+        {
+            m_taskbarFullscreenMarked = false;
+        }
     }
+
     bool WindowPresentationService::IsFullscreen() const noexcept
     {
         return m_fullscreen;

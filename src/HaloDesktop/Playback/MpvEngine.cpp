@@ -390,7 +390,7 @@ namespace HaloDesktop::Playback
         m_state.Tracks.clear();
         if (m_client)
         {
-            m_client->Replay();
+            m_client->Open(m_source);
         }
         NotifyChanged();
     }

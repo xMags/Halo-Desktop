@@ -50,7 +50,6 @@ namespace HaloDesktop::Playback
         MpvClient& operator=(MpvClient&&) = delete;
 
         void Open(PlaybackSource const& source);
-        void Replay();
         void SetPaused(bool paused);
         void SeekAbsolute(double seconds);
         void SeekRelative(double seconds);

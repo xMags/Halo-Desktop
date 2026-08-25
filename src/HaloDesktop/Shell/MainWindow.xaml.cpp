@@ -40,8 +40,10 @@ namespace winrt::HaloDesktop::implementation
                 [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                 Microsoft::UI::Xaml::WindowActivatedEventArgs const& args)
             {
-                App::Services().WindowPresentation->SetWindowActive(
-                    args.WindowActivationState() != Microsoft::UI::Xaml::WindowActivationState::Deactivated);
+                if (args.WindowActivationState() != Microsoft::UI::Xaml::WindowActivationState::Deactivated)
+                {
+                    App::Services().WindowPresentation->RefreshFullscreenShellState();
+                }
             });
 
         m_appWindowClosingToken = m_windowSizing->AppWindow().Closing(

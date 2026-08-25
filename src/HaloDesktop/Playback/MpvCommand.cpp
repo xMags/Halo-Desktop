@@ -75,9 +75,4 @@ namespace HaloDesktop::Playback
         mpv_free_node_contents(&result);
         CheckMpv("mpv loadfile",code);
     }
-
-    void ReplayMpvSource(mpv_handle*handle)
-    {
-        Command(handle,{"playlist-play-index","current"});
-    }
 }

@@ -14,8 +14,8 @@ namespace HaloDesktop::Shell
         void Attach(std::uintptr_t windowHandle,
                     winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow);
         void Detach() noexcept;
-        void SetFullscreen(bool fullscreen);
-        void SetWindowActive(bool active) noexcept;
+        [[nodiscard]] bool TrySetFullscreen(bool fullscreen) noexcept;
+        void RefreshFullscreenShellState() noexcept;
         [[nodiscard]] bool IsFullscreen() const noexcept;
         [[nodiscard]] std::uintptr_t WindowHandle() const;
 
@@ -26,8 +26,9 @@ namespace HaloDesktop::Shell
         RECT m_windowedBounds{};
         LONG_PTR m_windowedStyle{};
         LONG_PTR m_windowedExtendedStyle{};
+        winrt::Microsoft::UI::Xaml::GridLength m_windowedTitleBarHeight{};
         bool m_wasMaximized{};
         bool m_fullscreen{};
-        bool m_windowActive{ true };
+        bool m_taskbarFullscreenMarked{};
     };
 } // namespace HaloDesktop::Shell
