@@ -286,6 +286,7 @@ namespace winrt::HaloDesktop::implementation
         return m_upNextTitle;
     }
     winrt::hstring PlayerViewModel::UpNextEpisodeLabel() const{return m_upNextEpisodeLabel;}
+    winrt::hstring PlayerViewModel::UpNextPoster() const{return m_upNextPoster;}
     winrt::hstring PlayerViewModel::SubtitleDelayText() const
     {
         return winrt::hstring(std::to_wstring(m_subtitleDelayMs) + L" MS");
@@ -370,11 +371,15 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler){m_addonSubtitleHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonSubtitles.Clear();for(auto&value:values)m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(std::move(value)));Raise(L"AddonSubtitles");}
-    void PlayerViewModel::SetUpNext(winrt::hstring const& title, winrt::hstring const& episodeLabel)
+    void PlayerViewModel::SetUpNext(
+        winrt::hstring const& title,
+        winrt::hstring const& episodeLabel,
+        winrt::hstring const& poster)
     {
         StopUpNextTimer();
         m_upNextTitle = title;
         m_upNextEpisodeLabel = episodeLabel;
+        m_upNextPoster = poster;
         m_upNextRemaining = 8;
         m_upNextOpen = false;
         m_upNextCountdown = false;
@@ -658,7 +663,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
                L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
-               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel" })
+               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel", L"UpNextPoster" })
         {
             Raise(property);
         }

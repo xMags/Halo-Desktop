@@ -20,13 +20,13 @@ namespace winrt::HaloDesktop::implementation
           m_continueItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_shelves(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        static_cast<void>(LoadAsync());
     }
     winrt::hstring HomeViewModel::HeroTitle() const { return m_hero ? m_hero.Title() : L""; }
     winrt::hstring HomeViewModel::HeroSynopsis() const { return m_hero ? m_hero.Description() : L""; }
     winrt::hstring HomeViewModel::HeroRating() const { return m_hero && !m_hero.Rating().empty() ? L"★ " + m_hero.Rating() : L""; }
     winrt::hstring HomeViewModel::HeroMeta() const { return m_hero ? m_hero.ReleaseInfo() : L""; }
     winrt::hstring HomeViewModel::HeroBackground() const { return m_hero ? (!m_hero.Background().empty() ? m_hero.Background() : m_hero.Poster()) : L""; }
+    winrt::hstring HomeViewModel::HeroActionLabel() const { return m_hero && m_hero.Kind() == winrt::HaloDesktop::MediaKind::Series ? L"Choose episode" : L"Play"; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::Shelves() const { return m_shelves; }
@@ -39,7 +39,29 @@ namespace winrt::HaloDesktop::implementation
     void HomeViewModel::Retry() { static_cast<void>(LoadAsync()); }
     void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));} }
     void HomeViewModel::OpenHeroDetail() { OpenDetail(m_hero); }
-    void HomeViewModel::OpenHeroSources() { if (m_hero) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, m_hero); }
+    void HomeViewModel::OpenHeroSources()
+    {
+        if (!m_hero)
+        {
+            return;
+        }
+        if (m_hero.Kind() == winrt::HaloDesktop::MediaKind::Series)
+        {
+            OpenHeroDetail();
+            return;
+        }
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Sources,
+            winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
+                m_hero.Type(),
+                m_hero.Id(),
+                m_hero.Id(),
+                m_hero.Type() + L":" + m_hero.Id(),
+                m_hero.Title(),
+                m_hero.Title(),
+                L"",
+                m_hero.Poster()));
+    }
     void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, item); }
     void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
@@ -72,7 +94,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void HomeViewModel::RaiseState()
     {
-        for (auto const name : { L"HeroTitle", L"HeroSynopsis", L"HeroRating", L"HeroMeta", L"HeroBackground", L"ContinueItems", L"ContinueCountLabel", L"Shelves", L"ContentVisibility", L"LoadingVisibility", L"ErrorVisibility", L"EmptyVisibility" }) Raise(name);
+        for (auto const name : { L"HeroTitle", L"HeroSynopsis", L"HeroRating", L"HeroMeta", L"HeroBackground", L"HeroActionLabel", L"ContinueItems", L"ContinueCountLabel", L"Shelves", L"ContentVisibility", L"LoadingVisibility", L"ErrorVisibility", L"EmptyVisibility" }) Raise(name);
     }
     void HomeViewModel::Raise(wchar_t const* name) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, name); }
 }

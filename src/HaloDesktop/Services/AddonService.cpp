@@ -117,6 +117,31 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> AddonService::LoadAsync()
     {
+        // Home, Search, and Settings can request addons at the same time. Every
+        // caller must await the one snapshot that will actually be applied.
+        if (m_loadTask)
+        {
+            auto task = *m_loadTask;
+            co_await task;
+            co_return;
+        }
+
+        auto task = LoadCoreAsync();
+        m_loadTask = task;
+        try
+        {
+            co_await task;
+        }
+        catch (...)
+        {
+            m_loadTask.reset();
+            throw;
+        }
+        m_loadTask.reset();
+    }
+
+    concurrency::task<void> AddonService::LoadCoreAsync()
+    {
         auto const uiContext = winrt::apartment_context{};
         if (auto const cached = m_queryCache->TryGet<::HaloDesktop::Api::Dto::AddonsPayload>(AddonsCacheKey))
         {
@@ -170,7 +195,7 @@ namespace HaloDesktop::Services
         co_await m_apiClient->PutAddonsAsync(std::move(urls), false);
         co_await uiContext;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadAsync();
+        co_await LoadCoreAsync();
     }
 
     concurrency::task<void> AddonService::RemoveAsync(winrt::hstring addonId)
@@ -191,7 +216,7 @@ namespace HaloDesktop::Services
         co_await m_apiClient->PutAddonsAsync(std::move(urls), found->IsGlobal);
         co_await uiContext;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadAsync();
+        co_await LoadCoreAsync();
     }
 
     concurrency::task<void> AddonService::SetCatalogsVisibleAsync(
@@ -210,7 +235,7 @@ namespace HaloDesktop::Services
         co_await m_apiClient->PatchAddonAsync(found->Id, found->IsGlobal, !visible);
         co_await uiContext;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadAsync();
+        co_await LoadCoreAsync();
     }
 
     void AddonService::Apply(::HaloDesktop::Api::Dto::AddonsPayload payload)

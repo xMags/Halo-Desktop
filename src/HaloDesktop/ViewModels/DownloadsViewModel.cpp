@@ -76,6 +76,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring DownloadRowViewModel::QualityLine() const { return winrt::hstring(std::wstring(m_item.Quality()) + L" · " + std::wstring(m_item.Codec())); }
     winrt::hstring DownloadRowViewModel::Size() const { return m_item.Size(); }
     winrt::hstring DownloadRowViewModel::Subs() const { return m_item.Subs(); }
+    winrt::hstring DownloadRowViewModel::Poster() const { return m_item.Poster(); }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::DownloadingVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Downloading ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::QueuedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Queued ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PausedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Paused ? Visible : Collapsed; }
@@ -84,7 +85,7 @@ namespace winrt::HaloDesktop::implementation
     void DownloadRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     void DownloadRowViewModel::RaiseState()
     {
-        for (auto const property : { L"Tag", L"Name", L"Sub", L"StateLabel", L"Progress", L"Detail", L"QualityLine", L"Size", L"Subs", L"DownloadingVisibility", L"QueuedVisibility", L"PausedVisibility", L"FailedVisibility" })
+        for (auto const property : { L"Tag", L"Name", L"Sub", L"StateLabel", L"Progress", L"Detail", L"QualityLine", L"Size", L"Subs", L"Poster", L"DownloadingVisibility", L"QueuedVisibility", L"PausedVisibility", L"FailedVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
 
@@ -168,6 +169,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring DownloadsViewModel::SelectedQualityLine() const { return m_selected ? m_selected.QualityLine() : L""; }
     winrt::hstring DownloadsViewModel::SelectedSize() const { return m_selected ? m_selected.Size() : L""; }
     winrt::hstring DownloadsViewModel::SelectedSubs() const { return m_selected ? m_selected.Subs() : L""; }
+    winrt::hstring DownloadsViewModel::SelectedPoster() const { return m_selected ? m_selected.Poster() : L""; }
     winrt::hstring DownloadsViewModel::ReadyActionLabel() const { return L"Play offline"; }
     winrt::hstring DownloadsViewModel::StorageLine() const
     {
@@ -343,7 +345,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
+        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"SelectedPoster", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const

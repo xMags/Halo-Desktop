@@ -58,6 +58,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable QualityItems() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ItemsView() const;
         [[nodiscard]] winrt::hstring Title() const;
+        [[nodiscard]] winrt::hstring Poster() const;
         [[nodiscard]] winrt::hstring EpisodeLabel() const;
         [[nodiscard]] winrt::hstring ResolveSummary() const;
         [[nodiscard]] winrt::hstring AllFilterLabel() const;

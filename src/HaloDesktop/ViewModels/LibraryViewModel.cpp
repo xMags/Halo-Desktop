@@ -11,7 +11,7 @@ namespace { auto const Visible=winrt::Microsoft::UI::Xaml::Visibility::Visible; 
 namespace winrt::HaloDesktop::implementation
 {
     LibraryViewModel::LibraryViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_catalog(services.Catalog), m_navigation(services.Navigation), m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) { static_cast<void>(LoadAsync()); }
+        : m_catalog(services.Catalog), m_navigation(services.Navigation), m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
     winrt::Windows::Foundation::IInspectable LibraryViewModel::Items() const { return m_items; }
     std::int32_t LibraryViewModel::FilterIndex() const noexcept { return m_filterIndex; }
     std::int32_t LibraryViewModel::SortIndex() const noexcept { return m_sortIndex; }

@@ -9,7 +9,7 @@
 namespace winrt::HaloDesktop::implementation
 {
     struct DetailEpisodeViewModel:DetailEpisodeViewModelT<DetailEpisodeViewModel>
-    {explicit DetailEpisodeViewModel(winrt::HaloDesktop::Episode episode);winrt::hstring Tag()const;winrt::hstring Title()const;winrt::hstring Blurb()const;winrt::hstring Runtime()const;winrt::hstring Aired()const;winrt::hstring VideoId()const;double Progress()const noexcept;Microsoft::UI::Xaml::Visibility SavedVisibility()const noexcept;Microsoft::UI::Xaml::Visibility WatchedVisibility()const noexcept;Microsoft::UI::Xaml::Visibility InProgressVisibility()const noexcept;Microsoft::UI::Xaml::Visibility IdleVisibility()const noexcept;winrt::HaloDesktop::Episode Episode()const;private:winrt::HaloDesktop::Episode m_episode{nullptr};};
+    {explicit DetailEpisodeViewModel(winrt::HaloDesktop::Episode episode);winrt::hstring Tag()const;winrt::hstring Title()const;winrt::hstring Blurb()const;winrt::hstring Runtime()const;winrt::hstring Aired()const;winrt::hstring VideoId()const;winrt::hstring Thumbnail()const;double Progress()const noexcept;Microsoft::UI::Xaml::Visibility SavedVisibility()const noexcept;Microsoft::UI::Xaml::Visibility WatchedVisibility()const noexcept;Microsoft::UI::Xaml::Visibility InProgressVisibility()const noexcept;Microsoft::UI::Xaml::Visibility IdleVisibility()const noexcept;winrt::HaloDesktop::Episode Episode()const;private:winrt::HaloDesktop::Episode m_episode{nullptr};};
     struct DetailViewModel:DetailViewModelT<DetailViewModel>
     {
         explicit DetailViewModel(::HaloDesktop::Services::AppServices const& services);

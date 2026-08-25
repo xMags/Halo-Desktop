@@ -13,7 +13,7 @@
       <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
-        <Image x:Name="BackdropImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnArtworkOpened" ImageFailed="OnArtworkFailed" />
+        <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Background, Mode=OneWay}" FallbackUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
         <Rectangle VerticalAlignment="Bottom" Height="140">
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
@@ -34,7 +34,7 @@
         <!-- Poster and title block are bottom-aligned, as in the design's hero row. -->
         <Grid Width="128" Height="192" VerticalAlignment="Top">
           <local:PlaceholderArt />
-          <Image x:Name="PosterImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnArtworkOpened" ImageFailed="OnArtworkFailed" />
+          <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
         </Grid>
         <StackPanel Grid.Column="1" Margin="0,0,0,4" VerticalAlignment="Bottom" Spacing="8">
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.Kicker, Mode=OneWay}" />
@@ -69,6 +69,7 @@
                     <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <Grid Width="118" Height="66">
                       <local:PlaceholderArt />
+                      <Image Source="{x:Bind Thumbnail}" Stretch="UniformToFill" />
                       <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" />
                     </Grid>
                     <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">

@@ -20,6 +20,7 @@
 
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+    <Page Include="Controls\ArtworkImage.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\MediaShelf.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PlaceholderArt.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PlayerOsd.xaml"><Filter>Controls</Filter></Page>
@@ -46,6 +47,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Midl Include="Controls\ArtworkImage.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\PlaceholderArt.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\VideoHostControl.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\MediaShelf.idl"><Filter>Controls</Filter></Midl>
@@ -76,6 +78,7 @@
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="Controls\ArtworkImage.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\MediaShelf.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\VideoHostControl.xaml.cpp"><Filter>Controls</Filter></ClCompile>
@@ -152,6 +155,7 @@
     <ClInclude Include="Api\OpenSubtitlesHash.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
+    <ClInclude Include="Controls\ArtworkImage.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\MediaShelf.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\VideoHostControl.xaml.h"><Filter>Controls</Filter></ClInclude>

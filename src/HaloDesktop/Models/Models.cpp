@@ -215,6 +215,7 @@ namespace winrt::HaloDesktop::implementation
         hstring size,
         hstring subs,
         hstring videoId,
+        hstring poster,
         bool requiresNewSource)
         : m_id(std::move(id)),
           m_tag(std::move(tag)),
@@ -228,6 +229,7 @@ namespace winrt::HaloDesktop::implementation
           m_size(std::move(size)),
           m_subs(std::move(subs)),
           m_videoId(std::move(videoId)),
+          m_poster(std::move(poster)),
           m_requiresNewSource(requiresNewSource)
     {
     }
@@ -244,6 +246,7 @@ namespace winrt::HaloDesktop::implementation
     hstring DownloadItem::Size() const { return m_size; }
     hstring DownloadItem::Subs() const { return m_subs; }
     hstring DownloadItem::VideoId() const { return m_videoId; }
+    hstring DownloadItem::Poster() const { return m_poster; }
     bool DownloadItem::RequiresNewSource() const noexcept { return m_requiresNewSource; }
 
     winrt::event_token DownloadItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)

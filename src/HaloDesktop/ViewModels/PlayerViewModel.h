@@ -77,6 +77,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring UpNextKicker() const;
         [[nodiscard]] winrt::hstring UpNextTitle() const;
         [[nodiscard]] winrt::hstring UpNextEpisodeLabel() const;
+        [[nodiscard]] winrt::hstring UpNextPoster() const;
         [[nodiscard]] winrt::hstring SubtitleDelayText() const;
         [[nodiscard]] winrt::hstring AudioDelayText() const;
         [[nodiscard]] bool IsPaused() const noexcept;
@@ -99,7 +100,10 @@ namespace winrt::HaloDesktop::implementation
         void SetCloseRequestedHandler(std::function<void()> handler);
         void SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler);
         void SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay> values);
-        void SetUpNext(winrt::hstring const& title, winrt::hstring const& episodeLabel);
+        void SetUpNext(
+            winrt::hstring const& title,
+            winrt::hstring const& episodeLabel,
+            winrt::hstring const& poster);
         void BeginUpNextCountdown();
         void TogglePause();
         void BeginScrub();
@@ -155,6 +159,7 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_audioDelayMs{};
         winrt::hstring m_upNextTitle;
         winrt::hstring m_upNextEpisodeLabel;
+        winrt::hstring m_upNextPoster;
         std::function<void()> m_playNextHandler;
         std::function<void()> m_closeRequestedHandler;
         std::function<void(winrt::hstring)>m_addonSubtitleHandler;

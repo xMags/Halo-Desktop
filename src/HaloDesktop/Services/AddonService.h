@@ -3,6 +3,7 @@
 #include "Services/ServiceInterfaces.h"
 
 #include <memory>
+#include <optional>
 
 namespace HaloDesktop::Api
 {
@@ -34,6 +35,7 @@ namespace HaloDesktop::Services
             bool visible) override;
 
     private:
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync();
         void Apply(::HaloDesktop::Api::Dto::AddonsPayload payload);
         [[nodiscard]] std::vector<winrt::hstring> TransportUrls(bool global) const;
 
@@ -42,6 +44,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<ISessionService> m_session;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };
         std::vector<::HaloDesktop::Api::Dto::AddonRecord> m_records;
+        std::optional<concurrency::task<void>> m_loadTask;
         bool m_canEditLists{};
         bool m_seedAttempted{};
     };

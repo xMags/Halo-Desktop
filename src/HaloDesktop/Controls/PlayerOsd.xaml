@@ -312,7 +312,7 @@
         </Grid>
         <Grid Margin="0,10,0,0" ColumnSpacing="11">
           <Grid.ColumnDefinitions><ColumnDefinition Width="84" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-          <local:PlaceholderArt Width="84" Height="48" />
+          <Grid Width="84" Height="48"><local:PlaceholderArt /><local:ArtworkImage SourceUrl="{x:Bind ViewModel.UpNextPoster, Mode=OneWay}" /></Grid>
           <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="#99FFFFFF" Text="{x:Bind ViewModel.UpNextEpisodeLabel, Mode=OneWay}" /><TextBlock MaxWidth="205" Margin="0,4,0,0" FontSize="13.5" FontWeight="SemiBold" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel>
         </Grid>
         <ProgressBar Height="3" Margin="0,11,0,0" Maximum="100" Value="{x:Bind ViewModel.UpNextProgress, Mode=OneWay}" />

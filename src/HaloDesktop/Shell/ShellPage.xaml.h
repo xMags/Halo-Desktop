@@ -62,6 +62,7 @@ namespace winrt::HaloDesktop::implementation
         void UpdateNavigationState(::HaloDesktop::Services::Page page);
         void UpdateDownloadBadge();
         void RefreshJumpBackIn();
+        winrt::fire_and_forget RefreshJumpBackInAsync();
         void RefreshAccountIdentity();
 
         bool m_attached{ false };

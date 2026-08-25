@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.ArtworkImage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Loaded="OnLoaded">
+  <Image
+    x:Name="Artwork"
+    Opacity="0"
+    Stretch="UniformToFill"
+    ImageOpened="OnImageOpened"
+    ImageFailed="OnImageFailed" />
+</UserControl>

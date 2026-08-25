@@ -3,6 +3,7 @@
 #include "Services/ServiceInterfaces.h"
 
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace HaloDesktop::Api { class ApiClient; }
@@ -35,6 +36,7 @@ namespace HaloDesktop::Services
         void RecordRecent(winrt::hstring term) override;
 
     private:
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync();
         void BuildLibraryAndContinue();
         void LoadRecentTerms();
         void SaveRecentTerms();
@@ -49,7 +51,7 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_libraryItems{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> m_searchResults{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> m_recentTerms{ nullptr };
+        std::optional<concurrency::task<void>> m_loadTask;
         std::uint64_t m_searchVersion{};
-        std::uint64_t m_loadVersion{};
     };
 }

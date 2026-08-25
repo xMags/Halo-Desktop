@@ -142,13 +142,36 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> CatalogService::LoadAsync()
     {
+        // Shell and Home both load at startup. Sharing the in-flight task keeps
+        // either caller from observing a superseded but apparently successful load.
+        if (m_loadTask)
+        {
+            auto task = *m_loadTask;
+            co_await task;
+            co_return;
+        }
+
+        auto task = LoadCoreAsync();
+        m_loadTask = task;
+        try
+        {
+            co_await task;
+        }
+        catch (...)
+        {
+            m_loadTask.reset();
+            throw;
+        }
+        m_loadTask.reset();
+    }
+
+    concurrency::task<void> CatalogService::LoadCoreAsync()
+    {
         auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_loadVersion;
         co_await m_addons->LoadAsync();
         co_await m_library->LoadAsync();
         co_await m_watchState->LoadAsync();
         co_await uiContext;
-        if (version != m_loadVersion) co_return;
 
         std::vector<CatalogQuery> queries;
         for (auto const& addon : m_addons->Records())
@@ -170,7 +193,6 @@ namespace HaloDesktop::Services
             catch (...) { results.emplace_back(); }
         }
         co_await uiContext;
-        if (version != m_loadVersion) co_return;
 
         std::vector<winrt::HaloDesktop::Shelf> shelves;
         for (std::size_t index = 0; index < queries.size(); ++index)
@@ -292,6 +314,7 @@ namespace HaloDesktop::Services
     void CatalogService::LoadRecentTerms()
     {
         std::vector<winrt::hstring> terms;
+        std::set<std::wstring> seen;
         try
         {
             auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
@@ -299,7 +322,32 @@ namespace HaloDesktop::Services
             {
                 auto const raw = winrt::unbox_value<winrt::hstring>(values.Lookup(SearchHistoryKey));
                 for (auto const& item : winrt::Windows::Data::Json::JsonArray::Parse(raw))
-                    if (item.ValueType() == winrt::Windows::Data::Json::JsonValueType::String && terms.size() < 20) terms.push_back(item.GetString());
+                {
+                    if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::String
+                        || terms.size() == 20)
+                    {
+                        continue;
+                    }
+                    auto term = item.GetString();
+                    std::wstring trimmed{ term };
+                    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](wchar_t value)
+                    {
+                        return std::iswspace(value) == 0;
+                    }));
+                    trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](wchar_t value)
+                    {
+                        return std::iswspace(value) == 0;
+                    }).base(), trimmed.end());
+                    if (trimmed.empty())
+                    {
+                        continue;
+                    }
+                    term = winrt::hstring{ trimmed };
+                    if (seen.insert(Lower(term)).second)
+                    {
+                        terms.push_back(term);
+                    }
+                }
             }
         }
         catch (...) {}
@@ -311,7 +359,18 @@ namespace HaloDesktop::Services
         if (term.empty()) return;
         std::vector<winrt::hstring> terms{ term };
         auto const lowerTerm = Lower(term);
-        for (auto const& existing : m_recentTerms) if (Lower(existing) != lowerTerm && terms.size() < 20) terms.push_back(existing);
+        std::set<std::wstring> seen{ lowerTerm };
+        for (auto const& existing : m_recentTerms)
+        {
+            if (terms.size() == 20)
+            {
+                break;
+            }
+            if (seen.insert(Lower(existing)).second)
+            {
+                terms.push_back(existing);
+            }
+        }
         m_recentTerms = winrt::single_threaded_vector(std::move(terms)).GetView();
         SaveRecentTerms();
     }

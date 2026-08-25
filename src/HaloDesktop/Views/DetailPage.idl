@@ -9,6 +9,7 @@ namespace HaloDesktop
         String Runtime { get; };
         String Aired { get; };
         String VideoId { get; };
+        String Thumbnail { get; };
         Double Progress { get; };
         Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
         Microsoft.UI.Xaml.Visibility WatchedVisibility { get; };

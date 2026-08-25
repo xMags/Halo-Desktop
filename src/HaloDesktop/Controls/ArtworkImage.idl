@@ -1,0 +1,10 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass ArtworkImage : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        ArtworkImage();
+        String SourceUrl;
+        String FallbackUrl;
+    }
+}

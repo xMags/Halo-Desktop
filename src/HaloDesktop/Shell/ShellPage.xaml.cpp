@@ -45,6 +45,7 @@ namespace winrt::HaloDesktop::implementation
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
+        RefreshJumpBackInAsync();
     }
 
     void ShellPage::OnUnloaded(
@@ -295,6 +296,11 @@ namespace winrt::HaloDesktop::implementation
             FindName(L"JumpMeta2").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
             FindName(L"JumpMeta3").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
         };
+        std::array posters{
+            FindName(L"JumpPoster1").as<winrt::HaloDesktop::ArtworkImage>(),
+            FindName(L"JumpPoster2").as<winrt::HaloDesktop::ArtworkImage>(),
+            FindName(L"JumpPoster3").as<winrt::HaloDesktop::ArtworkImage>(),
+        };
         auto const continued = App::Services().Catalog->ContinueWatching();
         for (std::size_t index = 0; index < m_jumpItems.size(); ++index)
         {
@@ -302,6 +308,7 @@ namespace winrt::HaloDesktop::implementation
                 ? continued.GetAt(static_cast<std::uint32_t>(index))
                 : nullptr;
             titles[index].Text(m_jumpItems[index] ? m_jumpItems[index].Name() : L"");
+            posters[index].SourceUrl(m_jumpItems[index] ? m_jumpItems[index].Poster() : L"");
             if (!m_jumpItems[index])
             {
                 metadata[index].Text(L"");
@@ -315,6 +322,25 @@ namespace winrt::HaloDesktop::implementation
             metadata[index].Text(line + m_jumpItems[index].TimeLeft());
         }
         SetJumpBackVisibility(m_paneOpen);
+    }
+
+    winrt::fire_and_forget ShellPage::RefreshJumpBackInAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        try
+        {
+            co_await App::Services().Catalog->LoadAsync();
+        }
+        catch (...)
+        {
+            co_return;
+        }
+        co_await uiContext;
+        if (m_attached)
+        {
+            RefreshJumpBackIn();
+        }
     }
 
     void ShellPage::RefreshAccountIdentity()

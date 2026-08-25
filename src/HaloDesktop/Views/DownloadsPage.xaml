@@ -78,7 +78,7 @@
               <DataTemplate x:DataType="local:DownloadRowViewModel">
                 <Grid ColumnSpacing="14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="74" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                  <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /></Grid>
+                  <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /><Image Source="{x:Bind Poster}" Stretch="UniformToFill" /></Grid>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <StackPanel Orientation="Horizontal" Spacing="9">
                       <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag}" />
@@ -103,7 +103,7 @@
               <DataTemplate x:DataType="local:DownloadRowViewModel">
                 <Grid ColumnSpacing="14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="74" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /><ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" /></Grid>
+                  <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /><Image Source="{x:Bind Poster}" Stretch="UniformToFill" /><ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" /></Grid>
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
                     <StackPanel Orientation="Horizontal" Spacing="9">
                       <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag}" />
@@ -121,7 +121,7 @@
 
         <StackPanel Grid.Column="1" Spacing="12" Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}">
           <Button Height="164" Padding="0" Click="OnPlaySelectedClick" Visibility="{x:Bind ViewModel.SelectedReadyVisibility, Mode=OneWay}">
-            <Grid><local:PlaceholderArt /><Border Width="46" Height="46" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#C0000000" CornerRadius="23"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="White" Text="&#xE768;" /></Border></Grid>
+            <Grid><local:PlaceholderArt /><local:ArtworkImage SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" /><Border Width="46" Height="46" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#C0000000" CornerRadius="23"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="White" Text="&#xE768;" /></Border></Grid>
           </Button>
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.SelectedTag, Mode=OneWay}" />
           <TextBlock FontSize="18" FontWeight="SemiBold" Text="{x:Bind ViewModel.SelectedTitle, Mode=OneWay}" />

@@ -27,7 +27,6 @@
           <RadioButton GroupName="SearchFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
           <RadioButton GroupName="SearchFilter" Click="OnMoviesFilterClick" Content="Movies" Style="{StaticResource HaloChipRadioStyle}" />
           <RadioButton GroupName="SearchFilter" Click="OnSeriesFilterClick" Content="Series" Style="{StaticResource HaloChipRadioStyle}" />
-          <RadioButton GroupName="SearchFilter" Click="OnPeopleFilterClick" Content="People" Style="{StaticResource HaloChipRadioStyle}" />
         </StackPanel>
 
         <Grid Margin="0,22,0,0" ColumnSpacing="16">
@@ -37,15 +36,14 @@
             <Button HorizontalContentAlignment="Stretch" Click="OnTopMatchClick" Style="{StaticResource HaloCardButtonStyle}">
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <local:PlaceholderArt Width="92" Height="138" VerticalAlignment="Top" />
+                <Grid Width="92" Height="138" VerticalAlignment="Top">
+                  <local:PlaceholderArt />
+                  <local:ArtworkImage SourceUrl="{x:Bind ViewModel.TopMatchPoster, Mode=OneWay}" />
+                </Grid>
                 <StackPanel Grid.Column="1" Margin="16,2,0,0" Spacing="7">
                   <TextBlock FontSize="19" FontWeight="SemiBold" Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}" />
                   <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TopMatchMeta, Mode=OneWay}" />
                   <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.TopMatchSynopsis, Mode=OneWay}" />
-                  <StackPanel Margin="0,5,0,0" Orientation="Horizontal" Spacing="8">
-                    <Border Padding="9,3" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloAccentBrush}" Text="IN LIBRARY" /></Border>
-                    <Border Padding="9,3" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloText2Brush}" Text="4 DOWNLOADED" /></Border>
-                  </StackPanel>
                 </StackPanel>
               </Grid>
             </Button>

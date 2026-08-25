@@ -26,6 +26,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring QualityLine() const;
         [[nodiscard]] winrt::hstring Size() const;
         [[nodiscard]] winrt::hstring Subs() const;
+        [[nodiscard]] winrt::hstring Poster() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DownloadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QueuedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
@@ -80,6 +81,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring SelectedQualityLine() const;
         [[nodiscard]] winrt::hstring SelectedSize() const;
         [[nodiscard]] winrt::hstring SelectedSubs() const;
+        [[nodiscard]] winrt::hstring SelectedPoster() const;
         [[nodiscard]] winrt::hstring ReadyActionLabel() const;
         [[nodiscard]] winrt::hstring StorageLine() const;
         [[nodiscard]] winrt::hstring FreeLine() const;

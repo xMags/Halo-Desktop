@@ -57,7 +57,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IAsyncAction PlayerPage::StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request)
     {
         auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_advancing=false;
-        auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"");
+        auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"",L"");
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();winrt::get_self<PlayerOsd>(overlay)->TitleLabel(request.ShowName().empty()?request.Title():request.ShowName());
         auto line=request.EpisodeLabel();if(!line.empty()&&!request.SourceTagLine().empty())line=line+L" \x00B7 ";line=line+request.SourceTagLine();winrt::get_self<PlayerOsd>(overlay)->SourceLabel(line);
         FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
@@ -77,7 +77,7 @@ namespace winrt::HaloDesktop::implementation
     {
         auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto result=co_await App::Services().UpNext->ResolveAsync(request);co_await uiContext;
         if(!m_loaded||m_closing||generation!=m_playbackGeneration||!result)co_return;
-        m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel);
+        m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster);
         if(App::Services().Playback->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)viewModel->BeginUpNextCountdown();
     }
 

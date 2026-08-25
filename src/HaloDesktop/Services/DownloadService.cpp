@@ -124,6 +124,7 @@ namespace
             FormatBytes(total),
             subtitle,
             winrt::hstring{ record.Media.VideoId },
+            winrt::hstring{ record.Media.Poster.value_or(L"") },
             requiresNewSource);
     }
 

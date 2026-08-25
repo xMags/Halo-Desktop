@@ -144,12 +144,13 @@ namespace HaloDesktop::Services
                 records.emplace(std::wstring(key.c_str()), std::move(resolved));
                 orderedKeys.push_back(key);
             }
-            sourceCount += sources.size();
+            auto const groupSourceCount = sources.size();
+            sourceCount += groupSourceCount;
             groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(
                 payloadGroup.AddonId,
                 SanitizeAddonName(payloadGroup.AddonName),
                 L"RESOLVED",
-                static_cast<std::int32_t>(sources.size()),
+                static_cast<std::int32_t>(groupSourceCount),
                 winrt::single_threaded_vector(std::move(sources)).GetView()));
         }
 

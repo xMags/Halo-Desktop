@@ -204,6 +204,7 @@ namespace winrt::HaloDesktop::implementation
             hstring size,
             hstring subs,
             hstring videoId = {},
+            hstring poster = {},
             bool requiresNewSource = false);
 
         [[nodiscard]] hstring Id() const;
@@ -218,6 +219,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring Size() const;
         [[nodiscard]] hstring Subs() const;
         [[nodiscard]] hstring VideoId() const;
+        [[nodiscard]] hstring Poster() const;
         [[nodiscard]] bool RequiresNewSource() const noexcept;
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
@@ -241,6 +243,7 @@ namespace winrt::HaloDesktop::implementation
         hstring m_size;
         hstring m_subs;
         hstring m_videoId;
+        hstring m_poster;
         bool m_requiresNewSource{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };

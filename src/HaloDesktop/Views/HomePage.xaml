@@ -36,6 +36,7 @@
       </local:SectionHeader>
       <Grid Height="304" Margin="24,0" CornerRadius="8">
         <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
+        <local:ArtworkImage SourceUrl="{x:Bind ViewModel.HeroBackground, Mode=OneWay}" />
         <Rectangle>
           <Rectangle.Fill>
             <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
@@ -55,10 +56,10 @@
           </StackPanel>
           <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind ViewModel.HeroSynopsis, Mode=OneWay}" />
           <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
-            <Button Height="36" Padding="18,0" AutomationProperties.Name="Play or resume" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
+            <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="9">
                 <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
-                <TextBlock VerticalAlignment="Center" Text="Play" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.HeroActionLabel, Mode=OneWay}" />
               </StackPanel>
             </Button>
             <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />

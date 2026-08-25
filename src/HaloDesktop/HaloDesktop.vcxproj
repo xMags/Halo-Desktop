@@ -146,6 +146,7 @@
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Controls\ArtworkImage.xaml.h"><DependentUpon>ArtworkImage.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\PlaceholderArt.xaml.h">
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>
     </ClInclude>
@@ -250,6 +251,7 @@
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
+    <Page Include="Controls\ArtworkImage.xaml" />
     <Page Include="Controls\MediaShelf.xaml" />
     <Page Include="Controls\PlaceholderArt.xaml" />
     <Page Include="Controls\PlayerOsd.xaml" />
@@ -285,6 +287,7 @@
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Controls\ArtworkImage.xaml.cpp"><DependentUpon>ArtworkImage.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\MediaShelf.xaml.cpp"><DependentUpon>MediaShelf.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp">
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>
@@ -388,6 +391,7 @@
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
     <Midl Include="Controls\PlaceholderArt.idl">
       <SubType>Code</SubType>
       <DependentUpon>PlaceholderArt.xaml</DependentUpon>

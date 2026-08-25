@@ -102,6 +102,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable SourcesViewModel::QualityItems() const { return m_qualityItems; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SourcesViewModel::ItemsView() const { return m_items; }
     winrt::hstring SourcesViewModel::Title() const { return m_parameters ? m_parameters.ShowName() : L""; }
+    winrt::hstring SourcesViewModel::Poster() const { return m_parameters ? m_parameters.Poster() : L""; }
     winrt::hstring SourcesViewModel::EpisodeLabel() const { return m_parameters && !m_parameters.EpisodeLabel().empty() ? m_parameters.EpisodeLabel() + L" \x00B7 " + m_parameters.Title() : L"MOVIE"; }
     winrt::hstring SourcesViewModel::ResolveSummary() const { return m_sources->ResolveSummary(); }
     winrt::hstring SourcesViewModel::AllFilterLabel() const { return FilterLabel(L"All", m_sources->Count(L"All")); }
@@ -242,7 +243,7 @@ namespace winrt::HaloDesktop::implementation
 
     void SourcesViewModel::RaiseState()
     {
-        for (auto const* property : { L"Title",L"EpisodeLabel",L"ResolveSummary",L"AllFilterLabel",L"InstantFilterLabel",L"Quality2160FilterLabel",L"Quality1080FilterLabel",L"BestQuality",L"BestRange",L"BestFile",L"BestCodec",L"BestAudio",L"BestLanguages",L"BestSize",L"BestStatusLine",L"BestStatusBadge",L"PickerAudio",L"PickerSubtitles",L"PickerAutoplay",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility" }) Raise(property);
+        for (auto const* property : { L"Title",L"Poster",L"EpisodeLabel",L"ResolveSummary",L"AllFilterLabel",L"InstantFilterLabel",L"Quality2160FilterLabel",L"Quality1080FilterLabel",L"BestQuality",L"BestRange",L"BestFile",L"BestCodec",L"BestAudio",L"BestLanguages",L"BestSize",L"BestStatusLine",L"BestStatusBadge",L"PickerAudio",L"PickerSubtitles",L"PickerAutoplay",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility" }) Raise(property);
     }
     void SourcesViewModel::Raise(wchar_t const* property) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property); }
     bool SourcesViewModel::MatchesFilter(winrt::HaloDesktop::StreamSource const& source) const

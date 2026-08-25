@@ -14,6 +14,7 @@ namespace winrt::HaloDesktop::implementation
     void LibraryPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         auto const viewModel = winrt::get_self<LibraryViewModel>(m_viewModel);
+        m_viewModel.Retry();
         FindName(L"LibraryGrid").as<Microsoft::UI::Xaml::Controls::GridView>().ItemsSource(viewModel->ItemsView());
     }
     void LibraryPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }

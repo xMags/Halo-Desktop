@@ -12,6 +12,7 @@ namespace HaloDesktop
         String QualityLine { get; };
         String Size { get; };
         String Subs { get; };
+        String Poster { get; };
         Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
@@ -47,6 +48,7 @@ namespace HaloDesktop
         String SelectedQualityLine { get; };
         String SelectedSize { get; };
         String SelectedSubs { get; };
+        String SelectedPoster { get; };
         String ReadyActionLabel { get; };
         String StorageLine { get; };
         String FreeLine { get; };

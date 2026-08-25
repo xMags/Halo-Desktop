@@ -20,13 +20,9 @@ namespace winrt::HaloDesktop::implementation
         void OnBrowseSourcesClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnResumeClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnDownloadsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnArtworkOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnArtworkFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&);
 
     private:
-        void RefreshArtwork();
         winrt::HaloDesktop::DetailViewModel m_viewModel{ nullptr };
-        winrt::event_token m_viewModelChangedToken{};
     };
 }
 

@@ -130,6 +130,7 @@ namespace HaloDesktop
         String Size { get; };
         String Subs { get; };
         String VideoId { get; };
+        String Poster { get; };
         Boolean RequiresNewSource { get; };
     };
 

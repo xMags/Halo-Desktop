@@ -23,7 +23,7 @@ namespace
     std::wstring SearchText(HaloDesktop::Api::Dto::StreamRecord const& stream)
     {
         std::wstring result;
-        for (auto const& value : { stream.Name, stream.Title, stream.Description })
+        for (auto const& value : { stream.Name, stream.Title, stream.Description, stream.Filename })
         {
             if (!value || value->empty()) continue;
             if (!result.empty()) result.push_back(L'\n');

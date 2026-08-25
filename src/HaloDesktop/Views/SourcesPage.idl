@@ -34,6 +34,7 @@ namespace HaloDesktop
         Object ResolutionItems { get; };
         Object QualityItems { get; };
         String Title { get; };
+        String Poster { get; };
         String EpisodeLabel { get; };
         String ResolveSummary { get; };
         String AllFilterLabel { get; };
