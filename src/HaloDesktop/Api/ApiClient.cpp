@@ -262,7 +262,15 @@ namespace HaloDesktop::Api
             .Headers = { { L"Authorization", winrt::hstring{ L"Bearer " } + *token } },
         };
     }
-    concurrency::task<VideoHashResult> ApiClient::ComputeVideoHashAsync(winrt::hstring streamUrl){co_return co_await ComputeRemoteVideoHashAsync(std::move(streamUrl),m_executor);}
+    concurrency::task<VideoHashResult> ApiClient::ComputeVideoHashAsync(
+        winrt::hstring streamUrl,
+        Security::ProtectedHttpHeaders headers)
+    {
+        co_return co_await ComputeRemoteVideoHashAsync(
+            std::move(streamUrl),
+            std::move(headers),
+            m_executor);
+    }
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(
         winrt::Windows::Web::Http::HttpMethod method,

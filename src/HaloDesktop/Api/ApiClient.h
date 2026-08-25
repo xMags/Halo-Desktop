@@ -74,7 +74,9 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> OpenAddonProxyAsync(winrt::hstring targetUrl);
         [[nodiscard]] concurrency::task<AuthenticatedDownloadRequest> BuildAddonProxyDownloadRequestAsync(
             winrt::hstring targetUrl);
-        [[nodiscard]] concurrency::task<VideoHashResult> ComputeVideoHashAsync(winrt::hstring streamUrl);
+        [[nodiscard]] concurrency::task<VideoHashResult> ComputeVideoHashAsync(
+            winrt::hstring streamUrl,
+            Security::ProtectedHttpHeaders headers = {});
 
     private:
         [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;

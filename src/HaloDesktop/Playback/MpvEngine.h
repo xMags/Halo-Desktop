@@ -72,6 +72,7 @@ namespace HaloDesktop::Playback
         std::optional<double> m_seekTarget;
         bool m_seekRestarted{};
         bool m_running{};
+        bool m_pausedForCache{};
         std::uint64_t m_audioSessionSerial{};
         SubtitleStyle m_subtitleStyle;
     };

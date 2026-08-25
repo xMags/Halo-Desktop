@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Services/Downloads/DownloadTypes.h"
 
+#include "Security/ProtectedHttpHeaders.h"
+
 #include <algorithm>
 #include <array>
 #include <bcrypt.h>
@@ -59,20 +61,6 @@ namespace
         return value;
     }
 
-    bool IsHeaderToken(std::wstring const& value) noexcept
-    {
-        if (value.empty())
-        {
-            return false;
-        }
-        constexpr std::wstring_view separators = L"()<>@,;:\\\"/[]?={} \t";
-        return std::all_of(value.begin(), value.end(), [separators](wchar_t character)
-        {
-            return character > 31 && character < 127
-                && separators.find(character) == std::wstring_view::npos;
-        });
-    }
-
     void ValidateUrl(std::wstring const& url)
     {
         if (url.empty() || url.size() > 32768 || url.find(L'\0') != std::wstring::npos)
@@ -88,31 +76,6 @@ namespace
                 && components.nScheme != INTERNET_SCHEME_HTTPS))
         {
             throw std::invalid_argument{ "Choose a valid HTTP(S) source." };
-        }
-    }
-
-    void ValidateHeaders(std::map<std::wstring, std::wstring, std::less<>> const& headers)
-    {
-        if (headers.size() > 64)
-        {
-            throw std::invalid_argument{ "The source supplied too many request headers." };
-        }
-        constexpr std::array<std::wstring_view, 10> denied{
-            L"connection", L"content-length", L"host", L"if-range", L"proxy-connection",
-            L"range", L"te", L"trailer", L"transfer-encoding", L"upgrade",
-        };
-        for (auto const& [key, value] : headers)
-        {
-            auto const lower = Lower(key);
-            if (key.size() > 128
-                || value.size() > 8192
-                || !IsHeaderToken(key)
-                || value.find_first_of(L"\r\n") != std::wstring::npos
-                || value.find(L'\0') != std::wstring::npos
-                || std::find(denied.begin(), denied.end(), lower) != denied.end())
-            {
-                throw std::invalid_argument{ "The source headers are not safe for downloading." };
-            }
         }
     }
 
@@ -366,11 +329,11 @@ namespace HaloDesktop::Services::Downloads
     void ValidateProtectedRequest(ProtectedRequest const& request)
     {
         ValidateUrl(request.Url);
-        ValidateHeaders(request.Headers);
+        Security::ValidateProtectedHttpHeaders(request.Headers);
         if (request.Subtitle)
         {
             ValidateUrl(request.Subtitle->Url);
-            ValidateHeaders(request.Subtitle->Headers);
+            Security::ValidateProtectedHttpHeaders(request.Subtitle->Headers);
             if (request.Subtitle->Language.empty() || request.Subtitle->Language.size() > 32)
             {
                 throw std::invalid_argument{ "The subtitle language is invalid." };

@@ -74,6 +74,7 @@
     <ClCompile Include="Api\ApiClient.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\HttpExecutor.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\OpenSubtitlesHash.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\Mappers.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
@@ -121,6 +122,7 @@
     <ClCompile Include="Services\StreamInfo.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\WatchStateService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
+    <ClCompile Include="Security\ProtectedHttpHeaders.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -153,6 +155,7 @@
     <ClInclude Include="Api\Dto.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\HttpExecutor.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\OpenSubtitlesHash.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\OpenSubtitlesHashPolicy.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="Controls\ArtworkImage.xaml.h"><Filter>Controls</Filter></ClInclude>
@@ -204,6 +207,7 @@
     <ClInclude Include="Services\StreamInfo.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\WatchStateService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
+    <ClInclude Include="Security\ProtectedHttpHeaders.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>

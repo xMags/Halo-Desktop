@@ -14,6 +14,7 @@
 #include <iostream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -169,19 +170,30 @@ namespace
         throw std::runtime_error(std::string(operation)+": "+(description?description:"unknown mpv error"));
     }
 
-    void WaitForSuccessfulPlayback(mpv_handle*handle)
+    void WaitForSuccessfulPlayback(mpv_handle*handle,int&cachePauseUpdates)
     {
         auto const deadline=std::chrono::steady_clock::now()+std::chrono::seconds(10);
-        bool loaded{};
+        bool loaded{},playbackRestarted{};
         while(std::chrono::steady_clock::now()<deadline)
         {
             auto const event=mpv_wait_event(handle,0.25);
             if(!event)continue;
             if(event->event_id==MPV_EVENT_FILE_LOADED)loaded=true;
+            if(event->event_id==MPV_EVENT_PLAYBACK_RESTART)playbackRestarted=true;
+            if(event->event_id==MPV_EVENT_PROPERTY_CHANGE)
+            {
+                auto const property=static_cast<mpv_event_property const*>(event->data);
+                if(property&&property->name&&std::string_view{property->name}=="paused-for-cache"
+                    &&property->format==MPV_FORMAT_FLAG&&property->data)
+                {
+                    ++cachePauseUpdates;
+                }
+            }
             if(event->event_id!=MPV_EVENT_END_FILE)continue;
             auto const end=static_cast<mpv_event_end_file const*>(event->data);
             Require(end&&end->reason==MPV_END_FILE_REASON_EOF,"mpv did not reach EOF successfully");
             Require(loaded,"mpv reached EOF before reporting FileLoaded");
+            Require(playbackRestarted,"mpv reached EOF before reporting PlaybackRestart");
             return;
         }
         throw std::runtime_error("mpv playback timed out.");
@@ -201,16 +213,19 @@ int main()
             CheckMpv(mpv_set_option_string(handle,"idle","yes"),"set idle");
             CheckMpv(mpv_set_option_string(handle,"terminal","no"),"disable terminal");
             CheckMpv(mpv_initialize(handle),"mpv_initialize");
+            CheckMpv(mpv_observe_property(handle,0,"paused-for-cache",MPV_FORMAT_FLAG),"observe cache pause");
+            int cachePauseUpdates{};
             HaloDesktop::Playback::LoadMpvSource(handle,{server.Url(),{{L"X-Halo-Test",L"integration-value"}}});
-            WaitForSuccessfulPlayback(handle);
+            WaitForSuccessfulPlayback(handle,cachePauseUpdates);
             HaloDesktop::Playback::ReplayMpvSource(handle);
-            WaitForSuccessfulPlayback(handle);
+            WaitForSuccessfulPlayback(handle,cachePauseUpdates);
             HaloDesktop::Playback::LoadMpvSource(handle,{server.PublicUrl(),{}});
-            WaitForSuccessfulPlayback(handle);
+            WaitForSuccessfulPlayback(handle,cachePauseUpdates);
             Require(server.AuthorizedRequests()>=2,"protected headers were not preserved for replay");
             Require(server.RejectedRequests()==0,"mpv attempted the protected source without its header");
             Require(server.PublicRequests()>=1,"the unprotected source was not requested");
             Require(server.LeakedRequests()==0,"protected headers leaked into the next source");
+            Require(cachePauseUpdates>0,"mpv did not publish cache pause state changes");
         }
         catch(...)
         {

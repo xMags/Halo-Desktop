@@ -158,7 +158,7 @@
           </Slider>
         </Grid>
         <Grid Margin="0,2,0,0">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
           <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" Style="{StaticResource PlayerPlayButtonStyle}">
             <Grid Width="14" Height="14">
               <Viewbox Width="14" Height="14" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}">
@@ -204,12 +204,7 @@
             </Slider.Resources>
           </Slider>
           <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Picture in picture" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}" ToolTipService.ToolTip="Picture in picture is not available">
-            <Viewbox Width="15" Height="15">
-              <Canvas Width="16" Height="16"><Rectangle Canvas.Left="1.5" Canvas.Top="2.5" Width="13" Height="11" RadiusX="1.5" RadiusY="1.5" Stroke="White" StrokeThickness="1.2" /><Rectangle Canvas.Left="8" Canvas.Top="8" Width="5.5" Height="4.5" RadiusX="1" RadiusY="1" Stroke="White" StrokeThickness="1.2" /></Canvas>
-            </Viewbox>
-          </Button>
-          <Button Grid.Column="9" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
+          <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
             <Grid Width="15" Height="15">
               <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.EnterFullscreenIconVisibility, Mode=OneWay}">
                 <Canvas Width="16" Height="16"><Path Data="M 2,6 V 2 H 6 M 14,6 V 2 H 10 M 2,10 V 14 H 6 M 14,10 V 14 H 10" Stroke="White" StrokeThickness="1.2" /></Canvas>
@@ -288,12 +283,12 @@
                 <Grid ColumnSpacing="8" RowSpacing="8">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                  <RadioButton GroupName="SpeedChoice" Click="OnSpeedHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="0.5×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Half" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Column="1" GroupName="SpeedChoice" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="0.75×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% slower" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="True" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Normal" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" GroupName="SpeedChoice" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.25×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% faster" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.5×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="50% faster" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="2×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Double" /></StackPanel></RadioButton>
+                  <RadioButton GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedThreeQuarter, Mode=OneWay}" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="0.75×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% slower" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedNormal, Mode=OneWay}" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Normal" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneQuarter, Mode=OneWay}" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.25×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneHalf, Mode=OneWay}" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.5×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="50% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneThreeQuarter, Mode=OneWay}" Click="OnSpeedOneThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.75×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="75% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedDouble, Mode=OneWay}" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="2×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Double" /></StackPanel></RadioButton>
                 </Grid>
                 <TextBlock FontSize="12" Foreground="#99FFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
               </StackPanel>

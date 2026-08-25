@@ -143,6 +143,7 @@
     <ClInclude Include="Api\Dto.h" />
     <ClInclude Include="Api\HttpExecutor.h" />
     <ClInclude Include="Api\OpenSubtitlesHash.h" />
+    <ClInclude Include="Api\OpenSubtitlesHashPolicy.h" />
     <ClInclude Include="App.xaml.h">
       <DependentUpon>App.xaml</DependentUpon>
     </ClInclude>
@@ -163,6 +164,7 @@
     <ClInclude Include="Config\ServerConfig.h" />
     <ClInclude Include="Config\ServerConfig.example.h" />
     <ClInclude Include="Models\Models.h" />
+    <ClInclude Include="Security\ProtectedHttpHeaders.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
     <ClInclude Include="Playback\PlaybackPolicy.h" />
     <ClInclude Include="Playback\MpvClient.h" />
@@ -286,6 +288,9 @@
     <ClCompile Include="Api\ApiClient.cpp" />
     <ClCompile Include="Api\HttpExecutor.cpp" />
     <ClCompile Include="Api\OpenSubtitlesHash.cpp" />
+    <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Api\Mappers.cpp" />
     <ClCompile Include="App.xaml.cpp">
       <DependentUpon>App.xaml</DependentUpon>
@@ -305,6 +310,9 @@
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Models\Models.cpp" />
+    <ClCompile Include="Security\ProtectedHttpHeaders.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Playback\NullEngine.cpp" />
     <ClCompile Include="Playback\MpvClient.cpp">
       <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>

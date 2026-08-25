@@ -67,8 +67,6 @@ namespace winrt::HaloDesktop::implementation
                                    Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAudioDelayUpClick(winrt::Windows::Foundation::IInspectable const&,
                                  Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnSpeedHalfClick(winrt::Windows::Foundation::IInspectable const&,
-                              Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSpeedThreeQuarterClick(winrt::Windows::Foundation::IInspectable const&,
                                       Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSpeedNormalClick(winrt::Windows::Foundation::IInspectable const&,
@@ -77,6 +75,8 @@ namespace winrt::HaloDesktop::implementation
                                     Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSpeedOneHalfClick(winrt::Windows::Foundation::IInspectable const&,
                                  Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSpeedOneThreeQuarterClick(winrt::Windows::Foundation::IInspectable const&,
+                                         Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSpeedDoubleClick(winrt::Windows::Foundation::IInspectable const&,
                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnCancelUpNextClick(winrt::Windows::Foundation::IInspectable const&,

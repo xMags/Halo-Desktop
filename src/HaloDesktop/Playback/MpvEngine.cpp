@@ -4,6 +4,7 @@
 #include "Playback/MpvClient.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Playback/WindowsAudioSession.h"
+#include "Security/ProtectedHttpHeaders.h"
 
 #include <algorithm>
 #include <chrono>
@@ -91,6 +92,8 @@ namespace HaloDesktop::Playback
         m_state.DurationSeconds = 0.0;
         m_state.Paused = false;
         m_state.Buffering = false;
+        m_pausedForCache = false;
+        m_state.TracksReady = false;
         m_state.Tracks.clear();
         m_audioSessionSerial = 0;
     }
@@ -108,7 +111,7 @@ namespace HaloDesktop::Playback
         {
             throw std::invalid_argument("Local playback sources cannot include HTTP request headers");
         }
-        ValidatePlaybackHeaders(source.Headers);
+        Security::ValidateProtectedHttpHeaders(source.Headers);
 
         source.Location = remote ? std::move(source.Location) : path.wstring();
         m_source = std::move(source);
@@ -117,6 +120,8 @@ namespace HaloDesktop::Playback
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
+        m_pausedForCache = false;
+        m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
         if (m_client)
@@ -344,10 +349,15 @@ namespace HaloDesktop::Playback
         {
             m_state.Paused = *update.Paused;
         }
-        if (update.Buffering)
+        if(update.Buffering)
         {
-            m_state.Buffering = *update.Buffering;
+            m_pausedForCache=*update.Buffering;
         }
+        m_state.Buffering = ResolveBufferingState(
+            m_state.Buffering,
+            update.Buffering,
+            update.PlaybackReady.value_or(false),
+            m_pausedForCache);
         if (update.Ended && *update.Ended)
         {
             m_state.Paused = true;
@@ -355,6 +365,7 @@ namespace HaloDesktop::Playback
         if (update.Tracks)
         {
             m_state.Tracks = std::move(*update.Tracks);
+            m_state.TracksReady = true;
         }
         if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
         if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
@@ -373,6 +384,8 @@ namespace HaloDesktop::Playback
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
+        m_pausedForCache = false;
+        m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
         if (m_client)

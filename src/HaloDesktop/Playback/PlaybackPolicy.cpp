@@ -1,7 +1,9 @@
 #include "Playback/PlaybackPolicy.h"
 
+#include "Security/ProtectedHttpHeaders.h"
+
 #include <algorithm>
-#include <array>
+#include <cmath>
 #include <cwctype>
 #include <limits>
 #include <stdexcept>
@@ -12,27 +14,33 @@ namespace
 {
     constexpr std::wstring_view ExternalSubtitleMarker=L"halo-subtitle:";
 
-    std::wstring Lowercase(std::wstring value)
+    std::wstring NormalizeFingerprintComponent(std::wstring value)
     {
-        std::transform(value.begin(),value.end(),value.begin(),[](wchar_t character)
+        std::wstring result;
+        result.reserve(value.size());
+        bool pendingSpace{};
+        for (auto const character : value)
         {
-            return static_cast<wchar_t>(std::towlower(character));
-        });
-        return value;
+            if (std::iswspace(character) != 0)
+            {
+                pendingSpace = !result.empty();
+                continue;
+            }
+            if (pendingSpace)
+            {
+                result.push_back(L' ');
+                pendingSpace = false;
+            }
+            result.push_back(static_cast<wchar_t>(std::towlower(character)));
+        }
+        return result;
     }
 
-    bool IsHeaderToken(std::wstring const& value) noexcept
+    void AppendFingerprintComponent(std::wstring& output, std::wstring const& value)
     {
-        if (value.empty())
-        {
-            return false;
-        }
-        constexpr std::wstring_view separators = L"()<>@,;:\\\"/[]?={} \t";
-        return std::all_of(value.begin(), value.end(), [separators](wchar_t character)
-        {
-            return character > 31 && character < 127
-                && separators.find(character) == std::wstring_view::npos;
-        });
+        output += std::to_wstring(value.size());
+        output.push_back(L':');
+        output += value;
     }
 
     void AppendEscapedListValue(std::wstring& output, std::wstring const& value)
@@ -180,33 +188,82 @@ namespace HaloDesktop::Playback
         return positionSeconds / durationSeconds < 0.95;
     }
 
-    void ValidatePlaybackHeaders(std::vector<PlaybackHeader> const& headers)
+    bool ResolveBufferingState(
+        bool current,
+        std::optional<bool> pausedForCache,
+        bool playbackReady,
+        bool pausedForCacheActive)noexcept
     {
-        if (headers.size() > 64)
+        if(pausedForCache)return *pausedForCache;
+        return playbackReady&&!pausedForCacheActive?false:current;
+    }
+
+    bool ShouldReportPlaybackChange(bool endChanged,bool wasPlaying,bool isPlaying)noexcept
+    {
+        return endChanged||(wasPlaying&&!isPlaying);
+    }
+
+    bool IsPlaybackSpeedSelected(double actual,double choice)noexcept
+    {
+        return std::abs(actual-choice)<0.001;
+    }
+
+    std::int32_t AdjustPlaybackDelayMilliseconds(std::int32_t current,std::int32_t delta)noexcept
+    {
+        return std::clamp(current+delta,-5000,5000);
+    }
+
+    std::wstring SubtitleTrackFingerprint(TrackInfo const&track)
+    {
+        auto const language=NormalizeLanguage(track.Language);
+        auto const title=NormalizeFingerprintComponent(track.Title);
+        auto const codec=NormalizeFingerprintComponent(track.Codec);
+        std::wstring result;
+        result.reserve(language.size()+title.size()+codec.size()+32);
+        AppendFingerprintComponent(result,language);
+        AppendFingerprintComponent(result,title);
+        AppendFingerprintComponent(result,codec);
+        return result;
+    }
+
+    std::optional<std::int64_t> FindEmbeddedSubtitleByFingerprint(
+        std::vector<TrackInfo>const&tracks,std::wstring const&fingerprint)
+    {
+        auto const found=std::find_if(tracks.begin(),tracks.end(),[&fingerprint](TrackInfo const&track)
         {
-            throw std::invalid_argument{ "The source supplied too many request headers." };
-        }
-        constexpr std::array<std::wstring_view, 13> denied{
-            L"connection", L"content-length", L"host", L"if-range", L"keep-alive",
-            L"proxy-authenticate", L"proxy-authorization", L"proxy-connection", L"range",
-            L"te", L"trailer", L"transfer-encoding", L"upgrade",
-        };
-        for (auto const& header : headers)
+            return track.Type==TrackType::Subtitle&&!track.External
+                && SubtitleTrackFingerprint(track)==fingerprint;
+        });
+        return found==tracks.end()?std::nullopt:std::optional<std::int64_t>{found->Id};
+    }
+
+    SubtitleIntentResolution ResolveSubtitleIntent(
+        SubtitleIntentKind intent,
+        bool exactVideo) noexcept
+    {
+        switch(intent)
         {
-            auto const lower = Lowercase(header.Name);
-            if (header.Name.size() > 128 || header.Value.size() > 8192 || !IsHeaderToken(header.Name)
-                || header.Value.find_first_of(L"\r\n") != std::wstring::npos
-                || header.Value.find(L'\0') != std::wstring::npos
-                || std::find(denied.begin(), denied.end(), lower) != denied.end())
-            {
-                throw std::invalid_argument{ "The source headers are not safe for playback." };
-            }
+        case SubtitleIntentKind::Off:
+            return exactVideo
+                ? SubtitleIntentResolution::Disable
+                : SubtitleIntentResolution::GlobalPreference;
+        case SubtitleIntentKind::Embedded:
+            return exactVideo
+                ? SubtitleIntentResolution::ExactOnly
+                : SubtitleIntentResolution::LanguageFallback;
+        case SubtitleIntentKind::Addon:
+            return exactVideo
+                ? SubtitleIntentResolution::ExactThenLanguage
+                : SubtitleIntentResolution::LanguageFallback;
+        case SubtitleIntentKind::Automatic:
+        default:
+            return SubtitleIntentResolution::GlobalPreference;
         }
     }
 
     std::wstring SerializePlaybackHeaders(std::vector<PlaybackHeader> const& headers)
     {
-        ValidatePlaybackHeaders(headers);
+        Security::ValidateProtectedHttpHeaders(headers);
         std::wstring result;
         for (auto const& header : headers)
         {

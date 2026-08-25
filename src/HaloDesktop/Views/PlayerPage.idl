@@ -28,6 +28,12 @@ namespace HaloDesktop
         String PositionText { get; };
         String DurationText { get; };
         String SpeedText { get; };
+        Boolean IsSpeedThreeQuarter { get; };
+        Boolean IsSpeedNormal { get; };
+        Boolean IsSpeedOneQuarter { get; };
+        Boolean IsSpeedOneHalf { get; };
+        Boolean IsSpeedOneThreeQuarter { get; };
+        Boolean IsSpeedDouble { get; };
         String AudioSummary { get; };
         String SubtitleSummary { get; };
         Double PlayButtonSize { get; };

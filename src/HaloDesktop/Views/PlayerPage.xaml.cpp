@@ -30,7 +30,10 @@ namespace winrt::HaloDesktop::implementation
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();m_viewModel=overlay.ViewModel();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);
         viewModel->SetCloseRequestedHandler([weak=get_weak()](){if(auto self=weak.get())self->BeginClose();});
         viewModel->SetPlayNextHandler([weak=get_weak()](){if(auto self=weak.get())self->AdvanceUpNextAsync();});
-        auto const subtitles=App::Services().Subtitles;viewModel->SetAddonSubtitleHandler([subtitles](winrt::hstring key){subtitles->SelectAsync(std::move(key)).then([](concurrency::task<void>task){try{task.get();}catch(...){}});});
+        auto const subtitles=App::Services().Subtitles;
+        viewModel->SetSubtitleTrackHandler([subtitles](std::int64_t id){subtitles->SelectTrack(id);});
+        viewModel->SetSubtitlesOffHandler([subtitles](){subtitles->Disable();});
+        viewModel->SetAddonSubtitleHandler([subtitles](winrt::hstring key){subtitles->SelectAsync(std::move(key)).then([](concurrency::task<void>task){try{task.get();}catch(...){}});});
         m_presentationChangedToken=m_viewModel.PropertyChanged([weak=get_weak()](auto const&,Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const&args){if(args.PropertyName()==L"IsFullscreen")if(auto self=weak.get())self->RefreshOverlayAfterPresentationChange();});
         UpdateOverlayLayout();
         try{viewModel->Activate();InitializePlaybackAsync();}
@@ -43,7 +46,7 @@ namespace winrt::HaloDesktop::implementation
         if(m_viewModel&&m_presentationChangedToken.value!=0){m_viewModel.PropertyChanged(m_presentationChangedToken);m_presentationChangedToken={};}
         CloseOverlayPopup(true);
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
-        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
+        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetSubtitleTrackHandler({});vm->SetSubtitlesOffHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         App::Services().Subtitles->CleanupTemporaryFiles();
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
         m_session.reset();

@@ -227,27 +227,22 @@ namespace winrt::HaloDesktop::implementation
     void PlayerOsd::OnSubtitleDelayDownClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.AdjustSubtitleDelay(-100);
+        m_viewModel.AdjustSubtitleDelay(-50);
     }
     void PlayerOsd::OnSubtitleDelayUpClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                            [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.AdjustSubtitleDelay(100);
+        m_viewModel.AdjustSubtitleDelay(50);
     }
     void PlayerOsd::OnAudioDelayDownClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                           [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.AdjustAudioDelay(-100);
+        m_viewModel.AdjustAudioDelay(-50);
     }
     void PlayerOsd::OnAudioDelayUpClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.AdjustAudioDelay(100);
-    }
-    void PlayerOsd::OnSpeedHalfClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-                                     [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetSpeed(0.5);
+        m_viewModel.AdjustAudioDelay(50);
     }
     void PlayerOsd::OnSpeedThreeQuarterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -268,6 +263,11 @@ namespace winrt::HaloDesktop::implementation
                                         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_viewModel.SetSpeed(1.5);
+    }
+    void PlayerOsd::OnSpeedOneThreeQuarterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                                [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SetSpeed(1.75);
     }
     void PlayerOsd::OnSpeedDoubleClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)

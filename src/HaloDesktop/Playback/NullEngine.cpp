@@ -20,6 +20,7 @@ namespace HaloDesktop::Playback
             { 2, TrackType::Subtitle, L"English SDH", L"Track 2 · hearing impaired", L"SRT", false, false, L"eng" },
             { 3, TrackType::Subtitle, L"Japanese", L"Track 3 · signs & songs", L"ASS", false, false, L"jpn" },
         };
+        m_state.TracksReady = true;
     }
     NullEngine::~NullEngine()
     {

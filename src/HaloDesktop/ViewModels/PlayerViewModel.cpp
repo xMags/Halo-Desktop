@@ -130,6 +130,7 @@ namespace winrt::HaloDesktop::implementation
         m_active = true;
         try
         {
+            m_engine->SetSpeed(1.0);
             m_engine->Start();
             SynchronizeEngine();
             RestartHideTimer();
@@ -219,6 +220,12 @@ namespace winrt::HaloDesktop::implementation
         value << std::setprecision(3) << m_state.Speed << L"×";
         return winrt::hstring(value.str());
     }
+    bool PlayerViewModel::IsSpeedThreeQuarter()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,0.75);}
+    bool PlayerViewModel::IsSpeedNormal()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,1.0);}
+    bool PlayerViewModel::IsSpeedOneQuarter()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,1.25);}
+    bool PlayerViewModel::IsSpeedOneHalf()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,1.5);}
+    bool PlayerViewModel::IsSpeedOneThreeQuarter()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,1.75);}
+    bool PlayerViewModel::IsSpeedDouble()const noexcept{return ::HaloDesktop::Playback::IsPlaybackSpeedSelected(m_state.Speed,2.0);}
     winrt::hstring PlayerViewModel::AudioSummary()const{return winrt::hstring(::HaloDesktop::Playback::TrackSummary(m_state.Tracks,::HaloDesktop::Playback::TrackType::Audio));}
     winrt::hstring PlayerViewModel::SubtitleSummary()const{return winrt::hstring(::HaloDesktop::Playback::TrackSummary(m_state.Tracks,::HaloDesktop::Playback::TrackType::Subtitle));}
     double PlayerViewModel::PlayButtonSize() const noexcept
@@ -369,6 +376,8 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"UpNextAvailableVisibility");
     }
     void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
+    void PlayerViewModel::SetSubtitleTrackHandler(std::function<void(std::int64_t)>handler){m_subtitleTrackHandler=std::move(handler);}
+    void PlayerViewModel::SetSubtitlesOffHandler(std::function<void()>handler){m_subtitlesOffHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler){m_addonSubtitleHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonSubtitles.Clear();for(auto&value:values)m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(std::move(value)));Raise(L"AddonSubtitles");}
     void PlayerViewModel::SetUpNext(
@@ -504,25 +513,25 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::SelectSubtitle(std::int64_t id)
     {
-        m_engine->SetSubtitleTrack(id);
+        if(m_subtitleTrackHandler)m_subtitleTrackHandler(id);
         NotifyUserActivity();
     }
     void PlayerViewModel::DisableSubtitles()
     {
-        m_engine->SetSubtitleTrack(std::nullopt);
+        if(m_subtitlesOffHandler)m_subtitlesOffHandler();
         NotifyUserActivity();
     }
     void PlayerViewModel::SelectAddonSubtitle(winrt::hstring const&key){if(m_addonSubtitleHandler)m_addonSubtitleHandler(key);NotifyUserActivity();}
     void PlayerViewModel::AdjustSubtitleDelay(std::int32_t milliseconds)
     {
-        m_subtitleDelayMs = std::clamp(m_subtitleDelayMs + milliseconds, -5000, 5000);
+        m_subtitleDelayMs = ::HaloDesktop::Playback::AdjustPlaybackDelayMilliseconds(m_subtitleDelayMs,milliseconds);
         m_engine->SetSubtitleDelay(m_subtitleDelayMs / 1000.0);
         Raise(L"SubtitleDelayText");
         NotifyUserActivity();
     }
     void PlayerViewModel::AdjustAudioDelay(std::int32_t milliseconds)
     {
-        m_audioDelayMs = std::clamp(m_audioDelayMs + milliseconds, -5000, 5000);
+        m_audioDelayMs = ::HaloDesktop::Playback::AdjustPlaybackDelayMilliseconds(m_audioDelayMs,milliseconds);
         m_engine->SetAudioDelay(m_audioDelayMs / 1000.0);
         Raise(L"AudioDelayText");
         NotifyUserActivity();
@@ -650,7 +659,9 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::RaisePlaybackState()
     {
         for (auto const property : { L"Duration", L"Volume", L"VolumeText", L"PositionText", L"DurationText",
-                                     L"SpeedText", L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
+                                     L"SpeedText", L"IsSpeedThreeQuarter", L"IsSpeedNormal", L"IsSpeedOneQuarter",
+                                     L"IsSpeedOneHalf", L"IsSpeedOneThreeQuarter", L"IsSpeedDouble",
+                                     L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
                                      L"IsPaused", L"PausedVisibility", L"PlayingVisibility" })
         {
             Raise(property);

@@ -212,6 +212,7 @@ namespace
             return update;
         case MPV_EVENT_PLAYBACK_RESTART:
             update.Seeking = false;
+            update.PlaybackReady = true;
             return update;
         case MPV_EVENT_FILE_LOADED:
             update.FileLoaded = true;

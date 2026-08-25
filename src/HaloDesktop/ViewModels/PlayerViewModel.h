@@ -55,6 +55,12 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PositionText() const;
         [[nodiscard]] winrt::hstring DurationText() const;
         [[nodiscard]] winrt::hstring SpeedText() const;
+        [[nodiscard]] bool IsSpeedThreeQuarter() const noexcept;
+        [[nodiscard]] bool IsSpeedNormal() const noexcept;
+        [[nodiscard]] bool IsSpeedOneQuarter() const noexcept;
+        [[nodiscard]] bool IsSpeedOneHalf() const noexcept;
+        [[nodiscard]] bool IsSpeedOneThreeQuarter() const noexcept;
+        [[nodiscard]] bool IsSpeedDouble() const noexcept;
         [[nodiscard]] winrt::hstring AudioSummary() const;
         [[nodiscard]] winrt::hstring SubtitleSummary() const;
         [[nodiscard]] double PlayButtonSize() const noexcept;
@@ -100,6 +106,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
         void SetPlayNextHandler(std::function<void()> handler);
         void SetCloseRequestedHandler(std::function<void()> handler);
+        void SetSubtitleTrackHandler(std::function<void(std::int64_t)> handler);
+        void SetSubtitlesOffHandler(std::function<void()> handler);
         void SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler);
         void SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay> values);
         void SetUpNext(
@@ -164,6 +172,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_upNextPoster;
         std::function<void()> m_playNextHandler;
         std::function<void()> m_closeRequestedHandler;
+        std::function<void(std::int64_t)> m_subtitleTrackHandler;
+        std::function<void()> m_subtitlesOffHandler;
         std::function<void(winrt::hstring)>m_addonSubtitleHandler;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_audioTracks{ nullptr };

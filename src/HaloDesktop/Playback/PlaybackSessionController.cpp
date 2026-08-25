@@ -62,8 +62,10 @@ namespace HaloDesktop::Playback
     {
         if(!m_started)return;auto state=m_engine->State();
         if(state.FileSerial!=m_seenFileSerial){m_seenFileSerial=state.FileSerial;m_fileReady=true;ApplyResume();state=m_engine->State();}
-        if(state.EndSerial!=m_seenEndSerial){m_seenEndSerial=state.EndSerial;ReportNow();if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();else if(state.EndReason==PlaybackEndReason::Eof&&m_endOfFileHandler)m_endOfFileHandler();}
-        auto const wasPlaying=IsPlaying(m_lastState),playing=IsPlaying(state);if(wasPlaying&&!playing)ReportNow();
+        auto const endChanged=state.EndSerial!=m_seenEndSerial;
+        if(endChanged){m_seenEndSerial=state.EndSerial;if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();else if(state.EndReason==PlaybackEndReason::Eof&&m_endOfFileHandler)m_endOfFileHandler();}
+        auto const wasPlaying=IsPlaying(m_lastState),playing=IsPlaying(state);
+        if(ShouldReportPlaybackChange(endChanged,wasPlaying,playing))ReportNow();
         if(playing&&!wasPlaying&&m_reportTimer)m_reportTimer.Start();else if(!playing&&wasPlaying&&m_reportTimer)m_reportTimer.Stop();
         ApplyAudioPreference();m_lastState=m_engine->State();
     }

@@ -3,6 +3,7 @@
 
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
+#include "Security/ProtectedHttpHeaders.h"
 #include "Services/SettingsSyncService.h"
 
 #include <algorithm>
@@ -94,6 +95,18 @@ namespace
         for (auto const& [key, value] : values)
         {
             result.emplace(std::wstring{ key.c_str() }, std::wstring{ value.c_str() });
+        }
+        return result;
+    }
+
+    HaloDesktop::Security::ProtectedHttpHeaders HashHeaders(
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> const& values)
+    {
+        HaloDesktop::Security::ProtectedHttpHeaders result;
+        result.reserve(values.size());
+        for (auto const& [name, value] : values)
+        {
+            result.push_back({ std::wstring{ name.c_str() }, std::wstring{ value.c_str() } });
         }
         return result;
     }
@@ -317,7 +330,9 @@ namespace HaloDesktop::Services
                     {
                         try
                         {
-                            auto const computed = co_await m_api->ComputeVideoHashAsync(stream.Url);
+                            auto const computed = co_await m_api->ComputeVideoHashAsync(
+                                stream.Url,
+                                HashHeaders(stream.RequestHeaders));
                             hash = computed.Hash;
                             size = computed.Size;
                         }

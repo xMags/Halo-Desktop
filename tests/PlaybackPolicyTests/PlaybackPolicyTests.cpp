@@ -1,5 +1,7 @@
+#include "Api/OpenSubtitlesHashPolicy.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Playback/TemporaryFileCollection.h"
+#include "Security/ProtectedHttpHeaders.h"
 
 #include <chrono>
 #include <filesystem>
@@ -24,6 +26,19 @@ namespace
             action();
         }
         catch(std::invalid_argument const&)
+        {
+            return;
+        }
+        throw std::runtime_error(message);
+    }
+
+    void RequireThrows(std::function<void()> const& action,char const* message)
+    {
+        try
+        {
+            action();
+        }
+        catch(std::exception const&)
         {
             return;
         }
@@ -68,10 +83,76 @@ namespace
     {
         auto const serialized=HaloDesktop::Playback::SerializePlaybackHeaders({{L"X-Test",L"a,b\\c"},{L"Authorization",L"Bearer test"}});
         Require(serialized==L"X-Test: a\\,b\\\\c,Authorization: Bearer test","header list escaping changed");
-        RequireInvalid([]{HaloDesktop::Playback::ValidatePlaybackHeaders({{L"Range",L"bytes=0-1"}});},"caller range header was accepted");
-        RequireInvalid([]{HaloDesktop::Playback::ValidatePlaybackHeaders({{L"Keep-Alive",L"timeout=30"}});},"hop-by-hop header was accepted");
-        RequireInvalid([]{HaloDesktop::Playback::ValidatePlaybackHeaders({{L"X-Test",L"safe\r\ninjected"}});},"header injection was accepted");
-        RequireInvalid([]{HaloDesktop::Playback::ValidatePlaybackHeaders({{L"Bad Header",L"value"}});},"invalid header name was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Range",L"bytes=0-1"}});},"caller range header was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Keep-Alive",L"timeout=30"}});},"hop-by-hop header was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"X-Test",L"safe\r\ninjected"}});},"header injection was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Bad Header",L"value"}});},"invalid header name was accepted");
+    }
+
+    void TestPlaybackTransitions()
+    {
+        using namespace HaloDesktop::Playback;
+        Require(!ResolveBufferingState(true,std::nullopt,true,false),"playback restart did not clear startup buffering");
+        Require(ResolveBufferingState(false,true,true,true),"cache pause did not override playback-ready state");
+        Require(ResolveBufferingState(true,std::nullopt,true,true),"playback restart overrode active cache buffering");
+        Require(!ResolveBufferingState(true,false,false,false),"cache resume did not clear rebuffering");
+        Require(ShouldReportPlaybackChange(true,true,false),"combined EOF transition did not request a report");
+        Require(ShouldReportPlaybackChange(false,true,false),"playing-to-stopped transition did not request a report");
+        Require(!ShouldReportPlaybackChange(false,true,true),"unchanged playing state requested a report");
+
+        Require(IsPlaybackSpeedSelected(1.75,1.75),"active speed was not selected");
+        Require(!IsPlaybackSpeedSelected(1.75,1.5),"inactive speed was selected");
+        Require(AdjustPlaybackDelayMilliseconds(0,50)==50,"delay did not advance by 50 ms");
+        Require(AdjustPlaybackDelayMilliseconds(4990,50)==5000,"positive delay limit was not enforced");
+        Require(AdjustPlaybackDelayMilliseconds(-4990,-50)==-5000,"negative delay limit was not enforced");
+    }
+
+    void TestSubtitleIntents()
+    {
+        using namespace HaloDesktop::Playback;
+        TrackInfo normalized{7,TrackType::Subtitle,L"  English   SDH ",L"",L" SRT ",false,false,L"EN-us"};
+        TrackInfo equivalent{8,TrackType::Subtitle,L"english sdh",L"",L"srt",false,false,L"eng"};
+        TrackInfo different{9,TrackType::Subtitle,L"English",L"",L"ASS",false,false,L"eng"};
+        auto const fingerprint=SubtitleTrackFingerprint(normalized);
+        Require(fingerprint==SubtitleTrackFingerprint(equivalent),"subtitle fingerprint normalization was unstable");
+        Require(fingerprint!=SubtitleTrackFingerprint(different),"different embedded tracks shared a fingerprint");
+        Require(FindEmbeddedSubtitleByFingerprint({different,equivalent},fingerprint)==8,"embedded replay did not resolve the exact fingerprint");
+        equivalent.External=true;
+        Require(!FindEmbeddedSubtitleByFingerprint({equivalent},fingerprint),"external subtitle satisfied an embedded fingerprint");
+
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Off,true)==SubtitleIntentResolution::Disable,"Off was not preserved for replay");
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Off,false)==SubtitleIntentResolution::GlobalPreference,"Off incorrectly carried into the next episode");
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Embedded,true)==SubtitleIntentResolution::ExactOnly,"embedded replay was not exact");
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Embedded,false)==SubtitleIntentResolution::LanguageFallback,"embedded intent did not fall back by language on the next episode");
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Addon,true)==SubtitleIntentResolution::ExactThenLanguage,"addon replay compatibility changed");
+        Require(ResolveSubtitleIntent(SubtitleIntentKind::Addon,false)==SubtitleIntentResolution::LanguageFallback,"addon language memory did not carry into the next episode");
+    }
+
+    void TestProtectedHashPolicy()
+    {
+        using namespace HaloDesktop::Api;
+        HaloDesktop::Security::ProtectedHttpHeaders protectedHeaders{
+            {L"Authorization",L"Bearer protected"},
+            {L"Referer",L"https://trusted.example/"},
+        };
+        auto const headHeaders=BuildHashRequestHeaders(protectedHeaders);
+        auto const rangeHeaders=BuildHashRequestHeaders(protectedHeaders,HashByteRange{0,OpenSubtitlesHashChunkSize-1});
+        auto const isolatedHeaders=BuildHashRequestHeaders({});
+        Require(headHeaders==protectedHeaders,"required headers were not applied to HEAD");
+        Require(rangeHeaders.size()==3&&rangeHeaders[0]==protectedHeaders[0]&&rangeHeaders[1]==protectedHeaders[1],"required headers were not isolated on the range request");
+        Require(rangeHeaders[2].Name==L"Range"&&rangeHeaders[2].Value==L"bytes=0-65535","generated hash range was incorrect");
+        Require(protectedHeaders.size()==2&&isolatedHeaders.empty(),"protected headers leaked between hash requests");
+        RequireInvalid([]{static_cast<void>(BuildHashRequestHeaders({{L"Range",L"bytes=0-1"}}));},"unsafe supplied hash header was accepted");
+
+        HashByteRange const requested{0,OpenSubtitlesHashChunkSize-1};
+        HashContentRange const exact{0,OpenSubtitlesHashChunkSize-1,200'000};
+        Require(ValidateHashRangeResponse(206,exact,requested,200'000,OpenSubtitlesHashChunkSize)==200'000,"exact hash range was rejected");
+        RequireThrows([&]{static_cast<void>(ValidateHashRangeResponse(200,exact,requested,200'000,OpenSubtitlesHashChunkSize));},"non-206 hash response was accepted");
+        RequireThrows([&]{static_cast<void>(ValidateHashRangeResponse(206,HashContentRange{1,OpenSubtitlesHashChunkSize,200'000},requested,200'000,OpenSubtitlesHashChunkSize));},"wrong hash range boundaries were accepted");
+        RequireThrows([&]{static_cast<void>(ValidateHashRangeResponse(206,exact,requested,200'000,OpenSubtitlesHashChunkSize-1));},"short hash body was accepted");
+        RequireThrows([&]{static_cast<void>(ValidateHashRangeResponse(206,exact,requested,210'000,OpenSubtitlesHashChunkSize));},"inconsistent head and tail totals were accepted");
+        std::vector<std::uint8_t> zeros(OpenSubtitlesHashChunkSize);
+        Require(ComputeOpenSubtitlesMovieHash(OpenSubtitlesHashChunkSize*2,zeros,zeros)==OpenSubtitlesHashChunkSize*2,"moviehash calculation changed");
     }
 
     void TestTemporaryFileCleanup()
@@ -103,6 +184,9 @@ int main()
         TestLanguages();
         TestResume();
         TestHeaders();
+        TestPlaybackTransitions();
+        TestSubtitleIntents();
+        TestProtectedHashPolicy();
         TestTemporaryFileCleanup();
         std::cout<<"Playback policy tests passed.\n";
         return 0;

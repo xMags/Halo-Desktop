@@ -2,7 +2,9 @@
 #include "Playback/SubtitleController.h"
 
 #include "Api/ApiClient.h"
+#include "Models/Models.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Security/ProtectedHttpHeaders.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/SourceService.h"
@@ -147,7 +149,14 @@ namespace HaloDesktop::Playback
         {
             try
             {
-                auto computed=co_await m_api->ComputeVideoHashAsync(request.Url());
+                Security::ProtectedHttpHeaders headers;
+                auto const implementation=winrt::get_self<winrt::HaloDesktop::implementation::PlaybackRequest>(request);
+                headers.reserve(implementation->RequestHeaders().size());
+                for(auto const&[name,value]:implementation->RequestHeaders())
+                {
+                    headers.push_back({std::wstring{name.c_str()},std::wstring{value.c_str()}});
+                }
+                auto computed=co_await m_api->ComputeVideoHashAsync(request.Url(),std::move(headers));
                 hash=computed.Hash;
                 videoSize=computed.Size;
             }
@@ -216,7 +225,7 @@ namespace HaloDesktop::Playback
                 try{m_engine->SetSubtitleTrack(track.Id);}
                 catch(...){m_pendingSelectionAttempt=0;m_pendingSelectionDeliberate=false;NotifyError();co_return;}
                 if(!deliberate)m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
-                if(deliberate)Remember(choice);
+                if(deliberate)RememberAddon(choice);
                 m_appliedSerial=m_fileSerial;
                 m_appliedPreferenceRevision=m_preferenceRevision;
                 if(m_pendingSelectionAttempt==attempt){m_pendingSelectionAttempt=0;m_pendingSelectionDeliberate=false;}
@@ -263,10 +272,55 @@ namespace HaloDesktop::Playback
             co_return;
         }
         if(!deliberate)m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
-        if(deliberate)Remember(choice);
+        if(deliberate)RememberAddon(choice);
         m_appliedSerial=m_fileSerial;
         m_appliedPreferenceRevision=m_preferenceRevision;
         m_pendingSelectionAttempt=0;m_pendingSelectionDeliberate=false;
+    }
+
+    void SubtitleController::SelectTrack(std::int64_t id)
+    {
+        if(!m_request)return;
+        auto const state=m_engine->State();
+        auto const found=std::find_if(state.Tracks.begin(),state.Tracks.end(),[id](TrackInfo const&track)
+        {
+            return track.Type==TrackType::Subtitle&&track.Id==id;
+        });
+        if(found==state.Tracks.end())return;
+
+        ++m_selectionAttempt;
+        m_pendingSelectionAttempt=0;
+        m_pendingSelectionDeliberate=false;
+        try
+        {
+            m_engine->SetSubtitleTrack(id);
+            RememberTrack(*found);
+            m_appliedSerial=m_fileSerial;
+            m_appliedPreferenceRevision=m_preferenceRevision;
+        }
+        catch(...)
+        {
+            NotifyError();
+        }
+    }
+
+    void SubtitleController::Disable()
+    {
+        if(!m_request)return;
+        ++m_selectionAttempt;
+        m_pendingSelectionAttempt=0;
+        m_pendingSelectionDeliberate=false;
+        try
+        {
+            m_engine->SetSubtitleTrack(std::nullopt);
+            RememberOff();
+            m_appliedSerial=m_fileSerial;
+            m_appliedPreferenceRevision=m_preferenceRevision;
+        }
+        catch(...)
+        {
+            NotifyError();
+        }
     }
 
     std::vector<AddonSubtitleDisplay> SubtitleController::Choices()const{return m_display;}
@@ -334,11 +388,24 @@ namespace HaloDesktop::Playback
             ++m_selectionAttempt;
             m_pendingSelectionAttempt=0;m_pendingSelectionDeliberate=false;
         }
+        if(!state.TracksReady)return;
         if(m_request.IsLocalFile())
         {
             if(m_appliedSerial==m_fileSerial)return;
-            if(m_localSubtitlePath)
+            auto const memory=ReadSelectionMemory();
+            auto const resolution=ResolveSubtitleIntent(memory.Intent,memory.ExactVideo);
+            auto selectTrack=[this](std::int64_t id)
             {
+                try
+                {
+                    m_engine->SetSubtitleTrack(id);
+                    m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
+                }
+                catch(...){NotifyError();}
+            };
+            auto addSidecar=[this]()
+            {
+                if(!m_localSubtitlePath)return;
                 auto const language=std::wstring(m_request.SubtitleLang().c_str());
                 auto const display=language.empty()?std::wstring{L"Offline subtitle"}:std::wstring(SubtitleLanguageLabel(m_request.SubtitleLang()).c_str());
                 try
@@ -347,6 +414,79 @@ namespace HaloDesktop::Playback
                     m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
                 }
                 catch(...){NotifyError();}
+            };
+            auto disable=[this]()
+            {
+                try
+                {
+                    m_engine->SetSubtitleTrack(std::nullopt);
+                    m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
+                }
+                catch(...){NotifyError();}
+            };
+
+            if(resolution==SubtitleIntentResolution::Disable)
+            {
+                disable();
+            }
+            else if(resolution==SubtitleIntentResolution::ExactOnly)
+            {
+                bool selectedExact{};
+                if(memory.Fingerprint)
+                {
+                    auto const track=FindEmbeddedSubtitleByFingerprint(
+                        state.Tracks,
+                        std::wstring{memory.Fingerprint->c_str()});
+                    if(track)
+                    {
+                        selectTrack(*track);
+                        selectedExact=true;
+                    }
+                }
+                if(!selectedExact)disable();
+            }
+            else if(resolution==SubtitleIntentResolution::LanguageFallback
+                || resolution==SubtitleIntentResolution::ExactThenLanguage)
+            {
+                auto const exactOffline=resolution==SubtitleIntentResolution::ExactThenLanguage
+                    &&memory.Identity&&*memory.Identity==L"offline:"+m_request.DownloadId();
+                if(exactOffline)
+                {
+                    addSidecar();
+                }
+                else if(memory.Language)
+                {
+                    auto const embedded=FindLanguageTrack(
+                        state.Tracks,
+                        TrackType::Subtitle,
+                        std::wstring{memory.Language->c_str()},
+                        true);
+                    if(embedded)selectTrack(*embedded);
+                    else if(LanguageMatches(
+                        std::wstring{memory.Language->c_str()},
+                        std::wstring{m_request.SubtitleLang().c_str()}))addSidecar();
+                }
+            }
+            else
+            {
+                auto const preferred=m_settings->PreferredSubtitleLanguage();
+                if(!preferred)
+                {
+                    disable();
+                }
+                else
+                {
+                    auto const embedded=FindLanguageTrack(
+                        state.Tracks,
+                        TrackType::Subtitle,
+                        std::wstring{preferred->c_str()},
+                        true);
+                    if(embedded)selectTrack(*embedded);
+                    else if(LanguageMatches(
+                        std::wstring{preferred->c_str()},
+                        std::wstring{m_request.SubtitleLang().c_str()}))addSidecar();
+                    else disable();
+                }
             }
             m_appliedSerial=m_fileSerial;
             m_appliedPreferenceRevision=m_preferenceRevision;
@@ -375,8 +515,42 @@ namespace HaloDesktop::Playback
             m_appliedPreferenceRevision=m_preferenceRevision;
         };
 
+        auto disable=[this,&state](bool force)
+        {
+            auto const selected=std::any_of(state.Tracks.begin(),state.Tracks.end(),[](TrackInfo const&track)
+            {
+                return track.Type==TrackType::Subtitle&&track.Selected;
+            });
+            try{if(force||selected)m_engine->SetSubtitleTrack(std::nullopt);}
+            catch(...){NotifyError();}
+            m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
+            m_appliedSerial=m_fileSerial;
+            m_appliedPreferenceRevision=m_preferenceRevision;
+        };
+
         auto const memory=ReadSelectionMemory();
-        if(memory.Identity)
+        auto const resolution=ResolveSubtitleIntent(memory.Intent,memory.ExactVideo);
+        if(resolution==SubtitleIntentResolution::Disable)
+        {
+            disable(true);
+            return;
+        }
+        if(resolution==SubtitleIntentResolution::ExactOnly)
+        {
+            if(memory.Fingerprint)
+            {
+                auto const track=FindEmbeddedSubtitleByFingerprint(
+                    state.Tracks,
+                    std::wstring{memory.Fingerprint->c_str()});
+                if(track)applyTrack(*track);
+            }
+            if(m_appliedSerial!=m_fileSerial)
+            {
+                disable(true);
+            }
+            return;
+        }
+        if(resolution==SubtitleIntentResolution::ExactThenLanguage&&memory.Identity)
         {
             auto const identity=std::wstring(memory.Identity->c_str());
             auto const existing=std::find_if(state.Tracks.begin(),state.Tracks.end(),[&identity](TrackInfo const&track)
@@ -387,8 +561,13 @@ namespace HaloDesktop::Playback
             if(auto const key=ChoiceByIdentity(*memory.Identity)){SelectAsync(*key,false).then([](concurrency::task<void>task){try{task.get();}catch(...){}});return;}
         }
 
-        auto language=memory.Language;
-        if(!language&&!memory.Present)language=m_settings->PreferredSubtitleLanguage();
+        auto language=resolution==SubtitleIntentResolution::GlobalPreference
+            ? m_settings->PreferredSubtitleLanguage()
+            : memory.Language;
+        if(!language&&resolution==SubtitleIntentResolution::LanguageFallback)
+        {
+            language=m_settings->PreferredSubtitleLanguage();
+        }
         if(language)
         {
             if(auto const track=FindLanguageTrack(state.Tracks,TrackType::Subtitle,std::wstring(language->c_str()),true)){applyTrack(*track);return;}
@@ -397,35 +576,69 @@ namespace HaloDesktop::Playback
             m_appliedPreferenceRevision=m_preferenceRevision;
             return;
         }
-        if(memory.Present)
-        {
-            m_appliedSerial=m_fileSerial;
-            m_appliedPreferenceRevision=m_preferenceRevision;
-            return;
-        }
-
-        auto const selected=std::any_of(state.Tracks.begin(),state.Tracks.end(),[](TrackInfo const&track)
-        {
-            return track.Type==TrackType::Subtitle&&track.Selected;
-        });
-        try{if(selected)m_engine->SetSubtitleTrack(std::nullopt);}
-        catch(...){NotifyError();}
-        m_autoSubtitleSelectionSerial=m_engine->State().SubtitleSelectionSerial;
-        m_appliedSerial=m_fileSerial;
-        m_appliedPreferenceRevision=m_preferenceRevision;
+        disable(false);
     }
 
-    void SubtitleController::Remember(NativeChoice const&choice)
+    void SubtitleController::RememberAddon(NativeChoice const&choice)
+    {
+        StoreIntent(
+            SubtitleIntentKind::Addon,
+            choice.AddonId+L":"+choice.SubtitleId,
+            std::nullopt,
+            choice.Lang,
+            true);
+    }
+
+    void SubtitleController::RememberTrack(TrackInfo const&track)
+    {
+        if(track.External&&!track.Identity.empty())
+        {
+            StoreIntent(
+                SubtitleIntentKind::Addon,
+                winrt::hstring{track.Identity},
+                std::nullopt,
+                track.Language.empty()?std::nullopt:std::optional<winrt::hstring>{track.Language},
+                true);
+            return;
+        }
+        StoreIntent(
+            SubtitleIntentKind::Embedded,
+            std::nullopt,
+            winrt::hstring{SubtitleTrackFingerprint(track)},
+            track.Language.empty()?std::nullopt:std::optional<winrt::hstring>{track.Language},
+            true);
+    }
+
+    void SubtitleController::RememberOff()
+    {
+        StoreIntent(SubtitleIntentKind::Off,std::nullopt,std::nullopt,std::nullopt,false);
+    }
+
+    void SubtitleController::StoreIntent(
+        SubtitleIntentKind intent,
+        std::optional<winrt::hstring> identity,
+        std::optional<winrt::hstring> fingerprint,
+        std::optional<winrt::hstring> language,
+        bool includeItem)
     {
         auto value=ReadMemory();
-        for(auto const&key:{L"video:"+m_request.VideoId(),L"item:"+m_request.ItemId()})
+        auto const kind=intent==SubtitleIntentKind::Addon?L"addon"
+            :intent==SubtitleIntentKind::Embedded?L"embedded"
+            :intent==SubtitleIntentKind::Off?L"off":L"automatic";
+        auto makeEntry=[&](bool exact)
         {
             winrt::Windows::Data::Json::JsonObject entry;
-            entry.Insert(L"identity",winrt::Windows::Data::Json::JsonValue::CreateStringValue(choice.AddonId+L":"+choice.SubtitleId));
-            entry.Insert(L"lang",winrt::Windows::Data::Json::JsonValue::CreateStringValue(choice.Lang));
+            entry.Insert(L"kind",winrt::Windows::Data::Json::JsonValue::CreateStringValue(kind));
+            if(exact&&identity)entry.Insert(L"identity",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*identity));
+            if(exact&&fingerprint)entry.Insert(L"fingerprint",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*fingerprint));
+            if(language)entry.Insert(L"lang",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*language));
             entry.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(NowMs())));
-            value.Insert(key,entry);
-        }
+            return entry;
+        };
+        value.Insert(L"video:"+m_request.VideoId(),makeEntry(true));
+        auto const itemKey=L"item:"+m_request.ItemId();
+        if(includeItem)value.Insert(itemKey,makeEntry(false));
+        else if(value.HasKey(itemKey))value.Remove(itemKey);
         if(value.Size()>300)
         {
             std::vector<std::pair<winrt::hstring,double>>rows;
@@ -445,23 +658,33 @@ namespace HaloDesktop::Playback
         try
         {
             auto const value=ReadMemory();
+            auto readEntry=[](winrt::Windows::Data::Json::JsonObject const&entry,bool exactVideo)
+            {
+                SelectionMemory memory;
+                auto const kind=entry.GetNamedString(L"kind",L"");
+                auto const identity=entry.GetNamedString(L"identity",L"");
+                auto const fingerprint=entry.GetNamedString(L"fingerprint",L"");
+                auto const language=entry.GetNamedString(L"lang",L"");
+                if(kind==L"off")memory.Intent=SubtitleIntentKind::Off;
+                else if(kind==L"embedded")memory.Intent=SubtitleIntentKind::Embedded;
+                else if(kind==L"addon"||(kind.empty()&&(!identity.empty()||!language.empty())))memory.Intent=SubtitleIntentKind::Addon;
+                else memory.Intent=SubtitleIntentKind::Automatic;
+                if(!identity.empty())memory.Identity=identity;
+                if(!fingerprint.empty())memory.Fingerprint=fingerprint;
+                if(!language.empty())memory.Language=language;
+                memory.ExactVideo=exactVideo;
+                return memory;
+            };
             auto const video=L"video:"+m_request.VideoId();
             if(value.HasKey(video))
             {
-                auto const entry=value.GetNamedObject(video);
-                auto const identity=entry.GetNamedString(L"identity",L"");
-                auto const language=entry.GetNamedString(L"lang",L"");
-                if(!identity.empty())result.Identity=identity;
-                if(!language.empty())result.Language=language;
-                result.Present=true;
-                return result;
+                return readEntry(value.GetNamedObject(video),true);
             }
             auto const item=L"item:"+m_request.ItemId();
             if(value.HasKey(item))
             {
-                auto const language=value.GetNamedObject(item).GetNamedString(L"lang",L"");
-                if(!language.empty())result.Language=language;
-                result.Present=true;
+                result=readEntry(value.GetNamedObject(item),false);
+                if(result.Intent==SubtitleIntentKind::Off)return {};
             }
         }
         catch(...)

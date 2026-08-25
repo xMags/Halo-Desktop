@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Security/ProtectedHttpHeaders.h"
+
 #include <cstdint>
 #include <functional>
 #include <optional>
@@ -8,13 +10,7 @@
 
 namespace HaloDesktop::Playback
 {
-    struct PlaybackHeader final
-    {
-        std::wstring Name;
-        std::wstring Value;
-
-        bool operator==(PlaybackHeader const&) const = default;
-    };
+    using PlaybackHeader = Security::ProtectedHttpHeader;
 
     struct PlaybackSource final
     {
@@ -59,6 +55,7 @@ namespace HaloDesktop::Playback
         double Speed{ 1.0 };
         bool Paused{};
         bool Buffering{};
+        bool TracksReady{};
         std::uint64_t FileSerial{};
         std::uint64_t EndSerial{};
         std::uint64_t SeekSerial{};

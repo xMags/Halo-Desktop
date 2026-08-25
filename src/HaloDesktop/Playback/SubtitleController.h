@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Playback/TemporaryFileCollection.h"
 
 #include <functional>
@@ -33,6 +34,8 @@ namespace HaloDesktop::Playback
         ~SubtitleController();
         [[nodiscard]] concurrency::task<void> PrepareAsync(winrt::HaloDesktop::PlaybackRequest request);
         [[nodiscard]] concurrency::task<void> SelectAsync(winrt::hstring key,bool deliberate=true);
+        void SelectTrack(std::int64_t id);
+        void Disable();
         [[nodiscard]] std::vector<AddonSubtitleDisplay> Choices()const;
         void SetChoicesChangedHandler(std::function<void()> handler);
         void SetErrorHandler(std::function<void()> handler);
@@ -42,12 +45,27 @@ namespace HaloDesktop::Playback
 
     private:
         struct NativeChoice final{AddonSubtitleDisplay Display;winrt::hstring AddonId,SubtitleId,Url,Lang;};
-        struct SelectionMemory final{std::optional<winrt::hstring>Identity;std::optional<winrt::hstring>Language;bool Present{};};
+        struct SelectionMemory final
+        {
+            SubtitleIntentKind Intent{SubtitleIntentKind::Automatic};
+            std::optional<winrt::hstring>Identity;
+            std::optional<winrt::hstring>Fingerprint;
+            std::optional<winrt::hstring>Language;
+            bool ExactVideo{};
+        };
         void ApplyStyle();
         void SweepExternalTracks();
         void OnEngineChanged();
         void TryApplySelection();
-        void Remember(NativeChoice const& choice);
+        void RememberAddon(NativeChoice const& choice);
+        void RememberTrack(TrackInfo const& track);
+        void RememberOff();
+        void StoreIntent(
+            SubtitleIntentKind intent,
+            std::optional<winrt::hstring> identity,
+            std::optional<winrt::hstring> fingerprint,
+            std::optional<winrt::hstring> language,
+            bool includeItem);
         [[nodiscard]] SelectionMemory ReadSelectionMemory()const;
         [[nodiscard]] std::optional<winrt::hstring> ChoiceByIdentity(winrt::hstring const&identity)const;
         [[nodiscard]] std::optional<winrt::hstring> ChoiceByLanguage(winrt::hstring const&language)const;

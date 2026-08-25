@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Security/ProtectedHttpHeaders.h"
+
 #include <cstdint>
 #include <memory>
 #include <ppltasks.h>
@@ -10,5 +12,8 @@ namespace HaloDesktop::Api
 {
     class HttpExecutor;
     struct VideoHashResult final{winrt::hstring Hash;std::uint64_t Size{};};
-    [[nodiscard]] concurrency::task<VideoHashResult> ComputeRemoteVideoHashAsync(winrt::hstring url,std::shared_ptr<HttpExecutor> executor);
+    [[nodiscard]] concurrency::task<VideoHashResult> ComputeRemoteVideoHashAsync(
+        winrt::hstring url,
+        Security::ProtectedHttpHeaders headers,
+        std::shared_ptr<HttpExecutor> executor);
 }
