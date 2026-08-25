@@ -41,6 +41,7 @@ namespace winrt::HaloDesktop::implementation
     {
         m_loaded=false;
         if(m_viewModel&&m_presentationChangedToken.value!=0){m_viewModel.PropertyChanged(m_presentationChangedToken);m_presentationChangedToken={};}
+        CloseOverlayPopup(true);
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
         if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
@@ -128,6 +129,7 @@ namespace winrt::HaloDesktop::implementation
         co_await uiContext;
         if (!m_loaded) co_return;
 
+        CloseOverlayPopup(true);
         App::Services().Subtitles->Stop();
         if (m_viewModel) winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
@@ -153,12 +155,49 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerPage::CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){if(m_viewModel)m_viewModel.NotifyUserActivity();args.Handled(true);}
 
+    void PlayerPage::CloseOverlayPopup(bool detachChild) noexcept
+    {
+        try
+        {
+            auto const popup = FindName(L"OverlayPopup").try_as<Microsoft::UI::Xaml::Controls::Primitives::Popup>();
+            if (!popup)
+            {
+                return;
+            }
+            popup.IsOpen(false);
+            if (detachChild)
+            {
+                popup.Child(nullptr);
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+
     void PlayerPage::UpdateOverlayLayout()
     {
-        if (m_loaded) OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+        auto const root = PlayerRoot();
+        if (!m_loaded || m_closing || root.ActualWidth() <= 0.0 || root.ActualHeight() <= 0.0)
+        {
+            CloseOverlayPopup(false);
+            return;
+        }
+
+        auto const popup = OverlayPopup();
+        auto const overlay = OverlayHost();
+        overlay.Width(root.ActualWidth());
+        overlay.Height(root.ActualHeight());
+        popup.HorizontalOffset(0.0);
+        popup.VerticalOffset(0.0);
+        if (!popup.IsOpen())
+        {
+            popup.IsOpen(true);
+        }
+        overlay.Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
     }
     void PlayerPage::RefreshOverlayAfterPresentationChange()
     {
-        if(!m_loaded)return;auto const enqueued=DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,[weak=get_weak()](){if(auto self=weak.get();self&&self->m_loaded)self->UpdateOverlayLayout();});if(!enqueued)UpdateOverlayLayout();
+        if(!m_loaded||m_closing)return;CloseOverlayPopup(false);auto const enqueued=DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,[weak=get_weak()](){if(auto self=weak.get();self&&self->m_loaded&&!self->m_closing)self->UpdateOverlayLayout();});if(!enqueued)UpdateOverlayLayout();
     }
 }

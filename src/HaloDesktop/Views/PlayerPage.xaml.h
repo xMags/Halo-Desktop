@@ -47,6 +47,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget AdvanceUpNextAsync();
         winrt::fire_and_forget BeginClose();
         void ShowMediaPrompt(winrt::hstring const& message);
+        void CloseOverlayPopup(bool detachChild) noexcept;
         void UpdateOverlayLayout();
         void RefreshOverlayAfterPresentationChange();
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);

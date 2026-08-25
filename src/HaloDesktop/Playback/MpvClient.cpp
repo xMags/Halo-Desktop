@@ -376,11 +376,11 @@ namespace HaloDesktop::Playback
 
         m_dispatchAlive->store(false);
         char const* quitArguments[] = { "quit", nullptr };
-        auto const quitResult = mpv_command(m_handle, quitArguments);
-        if (quitResult < 0)
-        {
-            mpv_wakeup(m_handle);
-        }
+        static_cast<void>(mpv_command(m_handle, quitArguments));
+        // quit is asynchronous. Wake the blocking event wait even when mpv
+        // accepted the command, otherwise an active network demuxer can leave
+        // this thread asleep and make the UI hang forever in join().
+        mpv_wakeup(m_handle);
         if (m_eventThread.joinable())
         {
             m_eventThread.join();

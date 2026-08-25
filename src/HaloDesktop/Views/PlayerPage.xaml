@@ -23,55 +23,51 @@
     x:Name="PlayerRoot"
     Background="#FF050506"
     SizeChanged="OnPlayerSizeChanged">
-    <Grid.RowDefinitions>
-      <RowDefinition Height="*" />
-      <RowDefinition Height="300" />
-    </Grid.RowDefinitions>
 
-    <!-- mpv owns a child HWND and therefore always paints above XAML in the same
-         region. Keep the controls in a separate row so neither surface can cover
-         the other. A transparent Popup is not a reliable bridge between HWND and
-         WinUI composition on every GPU and codec path. -->
+    <!-- mpv paints through a native child HWND. The Popup owns the only XAML
+         surface that can composite controls above that child window. PlayerPage
+         closes and detaches it explicitly before XAML teardown. -->
     <local:VideoHostControl
       x:Name="VideoHost"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch" />
 
-    <Grid
-      x:Name="OverlayHost"
-      Grid.Row="1"
-      Background="#FF050506"
-      IsTabStop="True"
-      PreviewKeyDown="OnOverlayPreviewKeyDown"
-      UseSystemFocusVisuals="False">
-      <local:PlayerOsd x:Name="PlayerOverlay" />
-      <Border
-        x:Name="MediaPrompt"
-        Width="360"
-        Padding="24"
-        HorizontalAlignment="Center"
-        VerticalAlignment="Center"
-        Background="#EC1A1A1E"
-        CornerRadius="10">
-        <Border.Visibility>Collapsed</Border.Visibility>
-        <StackPanel Spacing="12">
-          <TextBlock
-            FontSize="20"
-            FontWeight="SemiBold"
-            Foreground="White"
-            Text="Playback unavailable" />
-          <TextBlock
-            x:Name="MediaPromptMessage"
-            Foreground="#A8FFFFFF"
-            Text="Return to Sources and choose another source."
-            TextWrapping="Wrap" />
-          <Button
-            HorizontalAlignment="Left"
-            Click="OnCloseErrorClick"
-            Content="Back to Sources"
-            Style="{StaticResource HaloAccentButtonStyle}" />
-        </StackPanel>
-      </Border>
-    </Grid>
+    <Popup x:Name="OverlayPopup" ShouldConstrainToRootBounds="False">
+      <Grid
+        x:Name="OverlayHost"
+        Background="Transparent"
+        IsTabStop="True"
+        PreviewKeyDown="OnOverlayPreviewKeyDown"
+        UseSystemFocusVisuals="False">
+        <local:PlayerOsd x:Name="PlayerOverlay" />
+        <Border
+          x:Name="MediaPrompt"
+          Width="360"
+          Padding="24"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          Background="#EC1A1A1E"
+          CornerRadius="10">
+          <Border.Visibility>Collapsed</Border.Visibility>
+          <StackPanel Spacing="12">
+            <TextBlock
+              FontSize="20"
+              FontWeight="SemiBold"
+              Foreground="White"
+              Text="Playback unavailable" />
+            <TextBlock
+              x:Name="MediaPromptMessage"
+              Foreground="#A8FFFFFF"
+              Text="Return to Sources and choose another source."
+              TextWrapping="Wrap" />
+            <Button
+              HorizontalAlignment="Left"
+              Click="OnCloseErrorClick"
+              Content="Back to Sources"
+              Style="{StaticResource HaloAccentButtonStyle}" />
+          </StackPanel>
+        </Border>
+      </Grid>
+    </Popup>
   </Grid>
 </Page>
