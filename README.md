@@ -1,22 +1,80 @@
-# Halo Desktop
+<p align="center">
+  <img src="src/HaloDesktop/Assets/halo-mark.png" width="96" alt="Halo logo" />
+</p>
 
-Halo Desktop is a native Windows 11 client for a self-hosted Halo server. It is built with C++/WinRT and WinUI 3, and uses libmpv in a native child window for playback.
+<h1 align="center">Halo Desktop</h1>
 
-The client reads real server catalogs, library rows, watch progress, metadata, stream sources, addons, and synced settings. Downloads are stored on the Windows device, scoped to the signed-in server account, and can be played without the server being reachable.
+<p align="center">
+  <strong>A native Windows 11 client for Halo, built with C++/WinRT, WinUI 3, and a medically inadvisable amount of Windows API.</strong>
+</p>
 
-## Prerequisites
+<p align="center">
+  <img alt="Windows 11" src="https://img.shields.io/badge/Windows-11-0078D4?style=flat-square&logo=windows11&logoColor=white" />
+  <img alt="C++" src="https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white" />
+  <img alt="WinUI 3" src="https://img.shields.io/badge/UI-WinUI%203-512BD4?style=flat-square" />
+  <img alt="libmpv" src="https://img.shields.io/badge/playback-libmpv-691A99?style=flat-square" />
+  <img alt="Architecture" src="https://img.shields.io/badge/architecture-x64-brightgreen?style=flat-square" />
+</p>
 
-- Windows 11 with Developer Mode enabled for loose MSIX registration
-- Visual Studio 2026 with Desktop development with C++ and C++/WinRT
-- PowerShell 7
-- Node.js 22 and Corepack only when running the backend fixture server
-- Internet access when fetching the ignored libmpv development payload
+> [!NOTE]
+> This is basically the same project as [cryguy/halo](https://github.com/cryguy/halo). I just had an itch in my three left-over brain cells to write the Windows desktop app in the most native way possible. Apparently those brain cells chose C++/WinRT, COM, child windows, and manual lifetime management instead of peace.
+>
+> **This repository does not include the Halo backend.** For the API, server setup, and the rest of the actual responsible engineering, go to the [original Halo repository](https://github.com/cryguy/halo) and use the backend from there.
 
-The supported development target is x64 Debug.
+## What is this thing?
 
-## Configure the server
+Halo Desktop is a packaged Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
 
-The server address is intentionally local and untracked. Copy the example once:
+It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering into a native child window. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles. Downloads stay on the Windows device and remain available offline.
+
+The upstream project said native desktop apps would come later. One remaining brain cell took that personally.
+
+## What currently works?
+
+| Area | Current behavior |
+| --- | --- |
+| Home | Real addon catalogs, featured media, artwork, and Continue Watching |
+| Search | Searches supported addon catalogs and groups results by source |
+| Library | Synced movies and series with filtering and sorting |
+| Details | Metadata, seasons, episodes, progress, watched state, and artwork |
+| Sources | Fresh addon resolution, source ranking, quality filters, and technical metadata |
+| Player | Native libmpv video, audio and subtitle tracks, seeking, speed, volume, resume, fullscreen, and up next |
+| Subtitles | Embedded tracks, addon subtitles, language preferences, styling, delay, and offline sidecars |
+| Downloads | Device-local transfers, pause and resume, progress, replacement safety, offline playback, and account isolation |
+| Settings | Synced playback preferences, addon management, theme, health status, and account controls |
+| Authentication | Local Halo accounts plus OIDC browser sign-in support |
+
+## Native, because apparently I enjoy problems
+
+The desktop client deliberately uses native platform pieces where they make sense:
+
+- **C++/WinRT and WinUI 3** for the application, navigation, controls, and Windows integration.
+- **libmpv** for playback of the formats browsers look at and quietly walk away from.
+- **Windows App SDK** for the packaged desktop runtime.
+- **DPAPI** for protected local session and download-request storage.
+- **Native child-window video hosting** instead of piping frames through a browser or inventing a new GPU-shaped disaster.
+- **Windows audio sessions** so Halo behaves like an actual Windows media app in the Volume Mixer.
+
+No browser frontend is hidden in here. The only HTML involved is the kind GitHub uses to render this README and judge my life choices.
+
+## Before building
+
+You need:
+
+- Windows 11.
+- Developer Mode enabled for loose MSIX registration.
+- Visual Studio 2026 with **Desktop development with C++** and **C++/WinRT**.
+- PowerShell 7.
+- Internet access for the pinned libmpv development payload.
+- Node.js 22 and Corepack only if you want to run the upstream fixture backend.
+
+The supported development target is **x64 Debug**.
+
+## Bring your own backend
+
+First, set up a Halo backend from [cryguy/halo](https://github.com/cryguy/halo). This repository contains the Windows client only. There is no surprise Node server under the sofa.
+
+Then create the local, ignored server configuration:
 
 ```powershell
 Copy-Item `
@@ -24,11 +82,19 @@ Copy-Item `
   ".\src\HaloDesktop\Config\ServerConfig.local.h"
 ```
 
-Edit `ServerConfig.local.h` and set `HaloDesktop::Config::ServerBaseUrl` to the server base URL without a trailing slash. Do not commit that file. The tracked example points to the local fixture at `http://127.0.0.1:18790`.
+Edit `ServerConfig.local.h` and set:
 
-## Restore, build, and run
+```cpp
+HaloDesktop::Config::ServerBaseUrl
+```
 
-Run these commands from this repository root in PowerShell:
+Use the server base URL without a trailing slash. The file is intentionally ignored by Git. Please keep real deployment addresses and private configuration out of commits, because the application already has enough opportunities for chaos.
+
+The tracked example points to the local fixture server at `http://127.0.0.1:18790`.
+
+## Restore, build, and launch
+
+Run the following from this repository root in PowerShell:
 
 ```powershell
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
@@ -60,51 +126,98 @@ $package = Get-AppxPackage -Name "56fcb18b-d21c-4111-93fb-bef0ffa36c43"
 Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!App"
 ```
 
-`tools/fetch-mpv.ps1` is safe to rerun. It downloads the pinned baseline x64 developer archive, generates the MSVC import library, and writes the ignored payload under `external/mpv/`.
+`tools/fetch-mpv.ps1` is safe to run again. It downloads the pinned x64 developer archive, creates the MSVC import library, and places the ignored payload under `external/mpv/`.
 
-Run `tools/make-app-assets.ps1` after updating `Assets/halo-mark.png` to regenerate the MSIX icons, wide tile, and splash image without changing the logo artwork.
+If you update `Assets/halo-mark.png`, regenerate the package artwork with:
 
-## Fixture workflow
+```powershell
+& ".\tools\make-app-assets.ps1"
+```
 
-The backend repository includes the real API wired to deterministic local data. From the backend repository root:
+## Local fixture workflow
+
+For deterministic development, the original Halo repository provides a fixture mode. Run this from a checkout of the upstream backend repository:
 
 ```powershell
 corepack pnpm --filter @halo/api dev:fixtures
+```
 
-# Use a real video for playback and download testing.
+To test real playback and downloads, give the fixture a real media file:
+
+```powershell
 corepack pnpm --filter @halo/api dev:fixtures --media "C:\path\to\test.mkv"
 ```
 
-The fixture listens on port `18790`, uses in-memory storage, and resets whenever it restarts. Sign in with username `admin` and password `fixture-pass`. Keep the desktop `ServerConfig.local.h` on the tracked example URL while using it.
+The fixture listens on port `18790`, uses in-memory storage, and resets on restart. Its local test account is:
 
-Use an H.264 MKV or another libmpv-compatible video for playback tests. A generated byte file is suitable for transfer and resume tests, but not for playback.
+```text
+Username: admin
+Password: fixture-pass
+```
 
-## Playback and downloads
+Use an H.264 MKV or another libmpv-compatible file for playback checks. A file full of random bytes may exercise transfer logic, but libmpv will correctly identify it as nonsense, much like a compiler reviewing half of my decisions.
 
-Playback always begins from a freshly resolved addon source or a completed local download. Watch progress is reported while online. Addon subtitles are fetched through the authenticated Halo proxy and handed to libmpv as local files. Completed downloads retain an optional subtitle sidecar for offline playback.
+## Player shortcuts
 
-Player shortcuts:
+| Key | Action |
+| --- | --- |
+| `Space` | Play or pause |
+| `Left` / `Right` | Seek backward or forward 10 seconds |
+| `Up` / `Down` | Change volume by 5 |
+| `F` | Toggle fullscreen |
+| `Escape` | Leave fullscreen first, then close the player |
 
-- `Space`: play or pause
-- `Left` and `Right`: seek backward or forward 10 seconds
-- `Up` and `Down`: change volume by 5
-- `F`: toggle fullscreen
-- `Escape`: leave fullscreen first, then close the Player
+Playback always starts from a freshly resolved addon source or a completed local download. Watch progress is reported while online. Completed downloads can include a subtitle sidecar for offline playback.
 
-Download metadata lives in the app's local storage. Source URLs and request headers are stored only in per-download DPAPI-protected vault files. Signing out pauses the old account's active transfers and hides all of its rows from the next account.
+## Local data and security
 
-## Repository layout
+Some stream providers return short-lived URLs or protected request headers. Those do not belong in UI bindings, logs, screenshots, or plain-text indexes.
+
+Halo Desktop therefore keeps:
+
+- Authentication state protected with Windows DPAPI.
+- Download source URLs and headers inside per-download DPAPI-protected vault files.
+- The ordinary download index free of raw source URLs and credentials.
+- Download rows scoped to the signed-in server account.
+- Old-account transfers paused and hidden after sign-out.
+- Server configuration local and untracked.
+
+In less formal terms: secrets go in the Windows vault-shaped hole, not in a `TextBlock`.
+
+## Repository map
 
 ```text
 Halo-Desktop/
 |-- Halo-Desktop.slnx
-|-- src/HaloDesktop/       WinUI 3 application project
-|-- tools/                 Reproducible asset and libmpv setup scripts
-|-- external/mpv/          Tracked instructions plus ignored local payload
-|-- docs/HANDOFF-2.md      Backend integration specification and progress log
-|-- docs/HANDOFF.md        Original native UI implementation record
-|-- design/                Local reference canvas, intentionally ignored by Git
-`-- packages/              Restored NuGet packages, intentionally ignored by Git
+|-- src/HaloDesktop/
+|   |-- Api/                 HTTP client, DTOs, mapping, and error taxonomy
+|   |-- Controls/            Reusable native XAML controls
+|   |-- Models/              WinRT models shared with XAML
+|   |-- Playback/            libmpv engine, subtitles, watch reporting, up next
+|   |-- Security/            DPAPI helpers
+|   |-- Services/            Auth, catalogs, library, downloads, settings, sources
+|   |-- Shell/               Window, title bar, navigation, and presentation
+|   |-- ViewModels/          Screen state and commands
+|   `-- Views/               WinUI pages
+|-- tools/                   Reproducible mpv and asset scripts
+|-- external/mpv/            Ignored local mpv payload plus tracked instructions
+|-- docs/HANDOFF-2.md        Backend integration specification and progress log
+|-- docs/HANDOFF.md          Original native UI implementation record
+|-- design/                  Local reference canvas, intentionally ignored
+`-- packages/                Restored NuGet packages, intentionally ignored
 ```
 
-The design reference remains local and must not be committed. The app does not contain a deployment hostname in tracked source.
+The local `design/` reference stays outside public source. The configured deployment address stays outside tracked source too. Some things are private, even when the C++ compiler has already seen me at my weakest.
+
+## Project status
+
+This is an actively developed personal Windows client, not an official upstream desktop release. It currently targets Windows 11 x64 Debug builds and expects a separately running Halo backend.
+
+Bug reports with exact reproduction steps are welcome. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
+
+## Credits
+
+- [cryguy/halo](https://github.com/cryguy/halo) for the original Halo project, backend, shared protocol work, and the excellent idea that caused all of this.
+- [Stremio](https://www.stremio.com/) and its addon ecosystem for the protocol and compatible providers.
+- [mpv](https://mpv.io/) for playing the media formats that browsers keep putting in the "someone else's problem" folder.
+- Microsoft for C++/WinRT, WinUI 3, the Windows App SDK, and enough lifetime rules to keep every remaining brain cell employed.
