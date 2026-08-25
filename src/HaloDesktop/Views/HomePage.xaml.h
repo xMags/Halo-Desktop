@@ -2,7 +2,6 @@
 
 #include "HomePage.g.h"
 
-#include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -23,10 +22,13 @@ namespace winrt::HaloDesktop::implementation
         void OnResumeClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnContinueScrollLeft(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnContinueScrollRight(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShelfItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnContinueWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
 
     private:
+        void ScrollContinueBy(double direction);
+
         winrt::HaloDesktop::HomeViewModel m_viewModel{ nullptr };
     };
 }

@@ -116,7 +116,6 @@
     <ClCompile Include="Services\Auth\SessionStore.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\NavigationService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\QueryCache.cpp"><Filter>Services</Filter></ClCompile>
-    <ClCompile Include="Controls\WheelScrolling.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Services\ThemeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SessionService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SettingsSyncService.cpp"><Filter>Services</Filter></ClCompile>
@@ -203,7 +202,6 @@
     <ClInclude Include="Services\DownloadService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\NavigationService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\QueryCache.h"><Filter>Services</Filter></ClInclude>
-    <ClInclude Include="Controls\WheelScrolling.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Services\ThemeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ServiceInterfaces.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SessionService.h"><Filter>Services</Filter></ClInclude>

@@ -70,12 +70,25 @@
         </StackPanel>
       </Grid>
       <StackPanel Margin="24,0">
-        <StackPanel Margin="0,0,0,12" Orientation="Horizontal" Spacing="10">
+        <Grid Margin="0,0,0,12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />
-          <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
-        </StackPanel>
-        <ScrollViewer HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Enabled" VerticalScrollMode="Disabled">
-          <ItemsControl x:Name="ContinueList" PointerWheelChanged="OnContinueWheelChanged">
+          <TextBlock Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
+          <Button Grid.Column="3" Width="28" Height="28" MinWidth="0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
+            <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
+          </Button>
+          <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
+            <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
+          </Button>
+        </Grid>
+        <ScrollViewer x:Name="ContinueScroller" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled">
+          <ItemsControl x:Name="ContinueList">
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">

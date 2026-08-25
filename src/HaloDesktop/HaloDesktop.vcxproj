@@ -199,7 +199,6 @@
     <ClInclude Include="Services\DownloadService.h" />
     <ClInclude Include="Services\NavigationService.h" />
     <ClInclude Include="Services\QueryCache.h" />
-    <ClInclude Include="Controls\WheelScrolling.h" />
     <ClInclude Include="Services\ThemeService.h" />
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
@@ -362,7 +361,6 @@
     <ClCompile Include="Services\Auth\SessionStore.cpp" />
     <ClCompile Include="Services\NavigationService.cpp" />
     <ClCompile Include="Services\QueryCache.cpp" />
-    <ClCompile Include="Controls\WheelScrolling.cpp" />
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Services\SettingsSyncService.cpp" />

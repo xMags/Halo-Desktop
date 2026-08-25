@@ -32,16 +32,14 @@
       x:Name="ShelfScroller"
       Grid.Row="1"
       HorizontalScrollBarVisibility="Hidden"
-      HorizontalScrollMode="Enabled"
+      HorizontalScrollMode="Disabled"
       VerticalScrollMode="Disabled"
       ZoomMode="Disabled">
-      <ItemsControl x:Name="ShelfItems" PointerWheelChanged="OnShelfWheelChanged">
-        <ItemsControl.ItemsPanel>
-          <ItemsPanelTemplate>
-            <StackPanel Orientation="Horizontal" Spacing="14" />
-          </ItemsPanelTemplate>
-        </ItemsControl.ItemsPanel>
-        <ItemsControl.ItemTemplate>
+      <ItemsRepeater x:Name="ShelfItems">
+        <ItemsRepeater.Layout>
+          <StackLayout Orientation="Horizontal" Spacing="14" />
+        </ItemsRepeater.Layout>
+        <ItemsRepeater.ItemTemplate>
           <DataTemplate x:DataType="local:MediaSummary">
             <local:PosterCard
               Title="{x:Bind Title}"
@@ -52,8 +50,8 @@
               Tag="{x:Bind}"
               Click="OnPosterClick" />
           </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+        </ItemsRepeater.ItemTemplate>
+      </ItemsRepeater>
     </ScrollViewer>
   </Grid>
 </UserControl>

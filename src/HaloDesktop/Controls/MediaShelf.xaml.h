@@ -2,7 +2,6 @@
 
 #include "MediaShelf.g.h"
 
-#include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
 
@@ -26,7 +25,6 @@ namespace winrt::HaloDesktop::implementation
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollLeft(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollRight(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
-        void OnShelfWheelChanged(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
 
     private:
         void ScrollBy(double direction);

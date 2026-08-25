@@ -5,7 +5,6 @@
 #endif
 
 #include "App.xaml.h"
-#include "Controls/WheelScrolling.h"
 #include "Controls/MediaShelf.xaml.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/HomeViewModel.h"
@@ -88,12 +87,28 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.OpenContinue(item);
     }
 
-    void HomePage::OnContinueWheelChanged(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    void HomePage::OnContinueScrollLeft(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        ::HaloDesktop::Controls::RedirectWheelToVerticalAncestor(
-            sender.try_as<Microsoft::UI::Xaml::UIElement>(), args);
+        ScrollContinueBy(-1.0);
+    }
+
+    void HomePage::OnContinueScrollRight(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        ScrollContinueBy(1.0);
+    }
+
+    void HomePage::ScrollContinueBy(double direction)
+    {
+        auto const scroller = FindName(L"ContinueScroller").as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
+        scroller.ChangeView(
+            scroller.HorizontalOffset() + direction * scroller.ViewportWidth() * 0.8,
+            nullptr,
+            nullptr,
+            false);
     }
 
     void HomePage::OnShelfItemClick(
