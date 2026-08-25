@@ -258,6 +258,14 @@ namespace winrt::HaloDesktop::implementation
         case Page::Search:
             selectedItem = NavigationItem(L"SearchItem");
             break;
+        case Page::Catalog:
+            selectedItem = NavigationControl().SelectedItem().try_as<
+                Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+            if (!selectedItem)
+            {
+                selectedItem = NavigationItem(L"HomeItem");
+            }
+            break;
         case Page::Library:
         case Page::Sources:
             selectedItem = NavigationItem(L"LibraryItem");

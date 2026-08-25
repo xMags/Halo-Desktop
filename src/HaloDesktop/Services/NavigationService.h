@@ -12,6 +12,7 @@ namespace HaloDesktop::Services
         Home,
         Search,
         Library,
+        Catalog,
         Detail,
         Sources,
         Downloads,

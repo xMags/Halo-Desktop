@@ -35,6 +35,7 @@
     <Page Include="Styles\Controls.xaml"><Filter>Styles</Filter></Page>
     <Page Include="Styles\Tokens.xaml"><Filter>Styles</Filter></Page>
     <Page Include="Styles\Typography.xaml"><Filter>Styles</Filter></Page>
+    <Page Include="Views\CatalogPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\DetailPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\DownloadsPage.xaml"><Filter>Views</Filter></Page>
     <Page Include="Views\HomePage.xaml"><Filter>Views</Filter></Page>
@@ -59,6 +60,7 @@
     <Midl Include="Shell\MainWindow.idl"><Filter>Shell</Filter></Midl>
     <Midl Include="Shell\ShellPage.idl"><Filter>Shell</Filter></Midl>
     <Midl Include="Shell\TitleBar.idl"><Filter>Shell</Filter></Midl>
+    <Midl Include="Views\CatalogPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\DetailPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\DownloadsPage.idl"><Filter>Views</Filter></Midl>
     <Midl Include="Views\HomePage.idl"><Filter>Views</Filter></Midl>
@@ -130,6 +132,7 @@
     <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowPresentationPolicy.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowPresentationService.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="ViewModels\CatalogViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DetailViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\HomeViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -139,6 +142,7 @@
     <ClCompile Include="ViewModels\SearchViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SettingsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SourcesViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="Views\CatalogPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\DetailPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\DownloadsPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\HomePage.xaml.cpp"><Filter>Views</Filter></ClCompile>
@@ -217,6 +221,7 @@
     <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowPresentationPolicy.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowPresentationService.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="ViewModels\CatalogViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DetailViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DownloadsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\HomeViewModel.h"><Filter>ViewModels</Filter></ClInclude>
@@ -227,6 +232,7 @@
     <ClInclude Include="ViewModels\SettingsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SearchViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SourcesViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="Views\CatalogPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\DetailPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\DownloadsPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\HomePage.xaml.h"><Filter>Views</Filter></ClInclude>

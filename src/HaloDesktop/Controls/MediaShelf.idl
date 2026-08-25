@@ -9,5 +9,6 @@ namespace HaloDesktop
         Object ItemsSource;
         Object SelectedItem { get; };
         event Microsoft.UI.Xaml.RoutedEventHandler ItemClick;
+        event Microsoft.UI.Xaml.RoutedEventHandler SeeAllClick;
     }
 }

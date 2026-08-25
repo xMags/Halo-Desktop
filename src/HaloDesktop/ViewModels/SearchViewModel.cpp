@@ -31,6 +31,13 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::Clear(){Query(L"");}void SearchViewModel::Retry(){static_cast<void>(SearchAsync(false));}
     void SearchViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const&item){if(item){m_catalog->RecordRecent(m_query);LoadRecents();auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));}}
     void SearchViewModel::OpenTopMatch(){OpenDetail(m_topMatch);}winrt::event_token SearchViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&h){return m_propertyChanged.add(h);}void SearchViewModel::PropertyChanged(winrt::event_token const&t)noexcept{m_propertyChanged.remove(t);}
+    void SearchViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
+    {
+        if (auto const snapshot = shelf.try_as<winrt::HaloDesktop::Shelf>())
+        {
+            m_navigation->GoTo(::HaloDesktop::Services::Page::Catalog, snapshot);
+        }
+    }
     winrt::Windows::Foundation::IAsyncAction SearchViewModel::SearchAsync(bool deliberate)
     {auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const version=++m_searchVersion;if(m_query.size()<2){RaiseState();co_return;}m_loading=true;m_error=false;RaiseState();bool failed{};try{co_await m_catalog->SearchAsync(m_query);}catch(...){failed=true;}co_await uiContext;if(version!=m_searchVersion)co_return;m_loading=false;m_error=failed;if(!failed){if(deliberate)m_catalog->RecordRecent(m_query);LoadRecents();Rebuild();}RaiseState();}
     void SearchViewModel::Rebuild(){m_results.Clear();m_movieCount=m_seriesCount=0;m_topMatch=nullptr;for(auto const&group:m_catalog->SearchResults()){std::vector<winrt::HaloDesktop::MediaSummary>items;for(auto const&i:group.Items()){if(i.Kind()==winrt::HaloDesktop::MediaKind::Movie)++m_movieCount;else++m_seriesCount;if(!m_topMatch)m_topMatch=i;if(m_filterIndex==0||(m_filterIndex==1&&i.Kind()==winrt::HaloDesktop::MediaKind::Movie)||(m_filterIndex==2&&i.Kind()==winrt::HaloDesktop::MediaKind::Series))items.push_back(i);}if(!items.empty())m_results.Append(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(group.Title(),group.SourceLabel(),winrt::single_threaded_vector(std::move(items)).GetView()));}RaiseState();}

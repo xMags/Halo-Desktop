@@ -64,6 +64,13 @@ namespace winrt::HaloDesktop::implementation
     }
     void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, item); }
     void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
+    void HomeViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
+    {
+        if (auto const snapshot = shelf.try_as<winrt::HaloDesktop::Shelf>())
+        {
+            m_navigation->GoTo(::HaloDesktop::Services::Page::Catalog, snapshot);
+        }
+    }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     winrt::Windows::Foundation::IAsyncAction HomeViewModel::LoadAsync()

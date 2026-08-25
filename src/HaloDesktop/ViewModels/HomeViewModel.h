@@ -33,6 +33,7 @@ namespace winrt::HaloDesktop::implementation
         void OpenHeroSources();
         void OpenContinue(winrt::Windows::Foundation::IInspectable const& item);
         void OpenSearch(winrt::hstring const& query);
+        void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:

@@ -1,0 +1,22 @@
+namespace HaloDesktop
+{
+    runtimeclass CatalogViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Title { get; };
+        String SourceLabel { get; };
+        String CountLabel { get; };
+        Object Items { get; };
+        Microsoft.UI.Xaml.Visibility SourceVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        void Load(Object parameter);
+        void OpenDetail(Object item);
+    }
+
+    [default_interface]
+    runtimeclass CatalogPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        CatalogPage();
+        CatalogViewModel ViewModel { get; };
+    }
+}

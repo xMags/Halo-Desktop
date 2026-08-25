@@ -219,6 +219,7 @@
     <ClInclude Include="Shell\WindowSizing.h" />
     <ClInclude Include="Shell\WindowPresentationPolicy.h" />
     <ClInclude Include="Shell\WindowPresentationService.h" />
+    <ClInclude Include="ViewModels\CatalogViewModel.h" />
     <ClInclude Include="ViewModels\DetailViewModel.h" />
     <ClInclude Include="ViewModels\DownloadsViewModel.h" />
     <ClInclude Include="ViewModels\HomeViewModel.h" />
@@ -229,6 +230,9 @@
     <ClInclude Include="ViewModels\SettingsViewModel.h" />
     <ClInclude Include="ViewModels\SearchViewModel.h" />
     <ClInclude Include="ViewModels\SourcesViewModel.h" />
+    <ClInclude Include="Views\CatalogPage.xaml.h">
+      <DependentUpon>CatalogPage.xaml</DependentUpon>
+    </ClInclude>
     <ClInclude Include="Views\DetailPage.xaml.h">
       <DependentUpon>DetailPage.xaml</DependentUpon>
     </ClInclude>
@@ -273,6 +277,7 @@
     <Page Include="Styles\Controls.xaml" />
     <Page Include="Styles\Tokens.xaml" />
     <Page Include="Styles\Typography.xaml" />
+    <Page Include="Views\CatalogPage.xaml" />
     <Page Include="Views\DetailPage.xaml" />
     <Page Include="Views\DownloadsPage.xaml" />
     <Page Include="Views\HomePage.xaml" />
@@ -382,6 +387,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Shell\WindowPresentationService.cpp" />
+    <ClCompile Include="ViewModels\CatalogViewModel.cpp" />
     <ClCompile Include="ViewModels\DetailViewModel.cpp" />
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp" />
     <ClCompile Include="ViewModels\HomeViewModel.cpp" />
@@ -391,6 +397,9 @@
     <ClCompile Include="ViewModels\SearchViewModel.cpp" />
     <ClCompile Include="ViewModels\SettingsViewModel.cpp" />
     <ClCompile Include="ViewModels\SourcesViewModel.cpp" />
+    <ClCompile Include="Views\CatalogPage.xaml.cpp">
+      <DependentUpon>CatalogPage.xaml</DependentUpon>
+    </ClCompile>
     <ClCompile Include="Views\DetailPage.xaml.cpp">
       <DependentUpon>DetailPage.xaml</DependentUpon>
     </ClCompile>
@@ -450,6 +459,10 @@
     <Midl Include="Shell\TitleBar.idl">
       <SubType>Code</SubType>
       <DependentUpon>TitleBar.xaml</DependentUpon>
+    </Midl>
+    <Midl Include="Views\CatalogPage.idl">
+      <SubType>Code</SubType>
+      <DependentUpon>CatalogPage.xaml</DependentUpon>
     </Midl>
     <Midl Include="Views\DetailPage.idl">
       <SubType>Code</SubType>

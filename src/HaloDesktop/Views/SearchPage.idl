@@ -31,6 +31,7 @@ namespace HaloDesktop
         void Retry();
         void OpenDetail(Object item);
         void OpenTopMatch();
+        void OpenCatalog(Object shelf);
     }
 
     [default_interface]

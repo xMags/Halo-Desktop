@@ -72,7 +72,7 @@
         <ItemsControl x:Name="ResultsList" Margin="0,26,0,0" Visibility="{x:Bind ViewModel.ResultsVisibility, Mode=OneWay}">
           <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="local:SearchGroup">
-              <local:MediaShelf Margin="0,0,0,26" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" />
+              <local:MediaShelf Margin="0,0,0,26" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>

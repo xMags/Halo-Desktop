@@ -6,8 +6,36 @@
 
 #include "App.xaml.h"
 #include "Controls/MediaShelf.xaml.h"
+#include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/HomeViewModel.h"
+
+#include <vector>
+
+namespace
+{
+    winrt::HaloDesktop::Shelf CreateShelfSnapshot(winrt::HaloDesktop::MediaShelf const& shelf)
+    {
+        std::vector<winrt::HaloDesktop::MediaSummary> items;
+        if (auto const currentItems = shelf.ItemsSource().try_as<
+                winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>>())
+        {
+            items.reserve(currentItems.Size());
+            for (auto const& item : currentItems)
+            {
+                if (item)
+                {
+                    items.push_back(item);
+                }
+            }
+        }
+
+        return winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+            shelf.Title(),
+            shelf.SourceLabel(),
+            winrt::single_threaded_vector(std::move(items)).GetView());
+    }
+}
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -117,5 +145,18 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const shelf = sender.as<winrt::HaloDesktop::MediaShelf>();
         m_viewModel.OpenDetail(shelf.SelectedItem().as<winrt::HaloDesktop::MediaSummary>());
+    }
+
+    void HomePage::OnShelfSeeAllClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        auto const shelf = sender.try_as<winrt::HaloDesktop::MediaShelf>();
+        if (!shelf)
+        {
+            return;
+        }
+
+        m_viewModel.OpenCatalog(CreateShelfSnapshot(shelf));
     }
 }

@@ -34,10 +34,18 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable MediaShelf::SelectedItem() const { return m_selectedItem; }
     winrt::event_token MediaShelf::ItemClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_itemClick.add(handler); }
     void MediaShelf::ItemClick(winrt::event_token const& token) noexcept { m_itemClick.remove(token); }
+    winrt::event_token MediaShelf::SeeAllClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_seeAllClick.add(handler); }
+    void MediaShelf::SeeAllClick(winrt::event_token const& token) noexcept { m_seeAllClick.remove(token); }
     void MediaShelf::OnPosterClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         m_selectedItem = sender.as<winrt::HaloDesktop::PosterCard>().Tag();
         m_itemClick(*this, args);
+    }
+    void MediaShelf::OnSeeAllClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        m_seeAllClick(*this, args);
     }
     void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1.0); }
     void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1.0); }

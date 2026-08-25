@@ -113,7 +113,7 @@
       <ItemsControl x:Name="ShelfList" Margin="24,0">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="local:Shelf">
-            <local:MediaShelf Margin="0,0,0,28" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" />
+            <local:MediaShelf Margin="0,0,0,28" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
           </DataTemplate>
         </ItemsControl.ItemTemplate>
       </ItemsControl>

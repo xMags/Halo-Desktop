@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/NavigationService.h"
 
+#include "Views/CatalogPage.xaml.h"
 #include "Views/DetailPage.xaml.h"
 #include "Views/DownloadsPage.xaml.h"
 #include "Views/HomePage.xaml.h"
@@ -30,6 +31,8 @@ namespace
             return winrt::xaml_typename<winrt::HaloDesktop::SearchPage>();
         case Page::Library:
             return winrt::xaml_typename<winrt::HaloDesktop::LibraryPage>();
+        case Page::Catalog:
+            return winrt::xaml_typename<winrt::HaloDesktop::CatalogPage>();
         case Page::Detail:
             return winrt::xaml_typename<winrt::HaloDesktop::DetailPage>();
         case Page::Sources:
@@ -64,6 +67,10 @@ namespace
         if (type.Name == PageType(Page::Library).Name)
         {
             return Page::Library;
+        }
+        if (type.Name == PageType(Page::Catalog).Name)
+        {
+            return Page::Catalog;
         }
         if (type.Name == PageType(Page::Detail).Name)
         {

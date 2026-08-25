@@ -21,8 +21,11 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::event_token ItemClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
         void ItemClick(winrt::event_token const& token) noexcept;
+        winrt::event_token SeeAllClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
+        void SeeAllClick(winrt::event_token const& token) noexcept;
 
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnSeeAllClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollLeft(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollRight(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
@@ -35,6 +38,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_bindableItems{ nullptr };
         winrt::Windows::Foundation::IInspectable m_selectedItem{ nullptr };
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_itemClick;
+        winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_seeAllClick;
     };
 }
 

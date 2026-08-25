@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.CatalogPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  NavigationCacheMode="Disabled">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}">
+      <local:SectionHeader.RightContent>
+        <StackPanel Orientation="Horizontal" Spacing="12">
+          <TextBlock
+            VerticalAlignment="Center"
+            Style="{StaticResource HaloMonoData}"
+            Text="{x:Bind ViewModel.SourceLabel, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.SourceVisibility, Mode=OneWay}" />
+          <TextBlock
+            VerticalAlignment="Center"
+            Style="{StaticResource HaloMonoData}"
+            Text="{x:Bind ViewModel.CountLabel, Mode=OneWay}" />
+        </StackPanel>
+      </local:SectionHeader.RightContent>
+    </local:SectionHeader>
+    <GridView
+      x:Name="CatalogGrid"
+      Grid.Row="1"
+      Padding="24,20,24,32"
+      IsItemClickEnabled="False"
+      ScrollViewer.VerticalScrollBarVisibility="Hidden"
+      SelectionMode="None"
+      Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+      <GridView.ItemsPanel>
+        <ItemsPanelTemplate>
+          <ItemsWrapGrid ItemWidth="154" ItemHeight="250" Orientation="Horizontal" />
+        </ItemsPanelTemplate>
+      </GridView.ItemsPanel>
+      <GridView.ItemTemplate>
+        <DataTemplate x:DataType="local:MediaSummary">
+          <local:PosterCard
+            Title="{x:Bind Title}"
+            Meta="{x:Bind Meta}"
+            Poster="{x:Bind Poster}"
+            KindLabel="{x:Bind KindLabel}"
+            ShowKindBadge="True"
+            Tag="{x:Bind}"
+            Click="OnPosterClick" />
+        </DataTemplate>
+      </GridView.ItemTemplate>
+    </GridView>
+    <StackPanel
+      Grid.Row="1"
+      HorizontalAlignment="Center"
+      VerticalAlignment="Center"
+      Spacing="8"
+      Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}">
+      <TextBlock FontSize="17" FontWeight="SemiBold" Text="Nothing to show" />
+      <TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="No titles are available in this catalog." />
+    </StackPanel>
+  </Grid>
+</Page>
