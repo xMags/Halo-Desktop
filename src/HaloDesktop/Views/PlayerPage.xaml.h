@@ -17,6 +17,7 @@ namespace winrt::HaloDesktop::implementation
         PlayerPage();
         [[nodiscard]] winrt::HaloDesktop::PlayerViewModel ViewModel() const;
         [[nodiscard]] winrt::Windows::Foundation::IAsyncAction PrepareForWindowCloseAsync();
+        void RestoreOverlayFocusAfterActivation() noexcept;
         void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -52,6 +53,7 @@ namespace winrt::HaloDesktop::implementation
         void CloseOverlayPopup(bool detachChild) noexcept;
         void UpdateOverlayLayout();
         void RefreshOverlayAfterPresentationChange();
+        void FocusOverlayIfOpen() noexcept;
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };

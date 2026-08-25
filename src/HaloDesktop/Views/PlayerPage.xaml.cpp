@@ -220,4 +220,53 @@ namespace winrt::HaloDesktop::implementation
     {
         if(!m_loaded||m_closing)return;CloseOverlayPopup(false);auto const enqueued=DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,[weak=get_weak()](){if(auto self=weak.get();self&&self->m_loaded&&!self->m_closing)self->UpdateOverlayLayout();});if(!enqueued)UpdateOverlayLayout();
     }
+
+    void PlayerPage::RestoreOverlayFocusAfterActivation() noexcept
+    {
+        if (!m_loaded || m_closing)
+        {
+            return;
+        }
+
+        try
+        {
+            if (DispatcherQueue().TryEnqueue(
+                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+                [weak = get_weak()]()
+                {
+                    if (auto const self = weak.get())
+                    {
+                        self->FocusOverlayIfOpen();
+                    }
+                }))
+            {
+                return;
+            }
+        }
+        catch (...)
+        {
+        }
+
+        FocusOverlayIfOpen();
+    }
+
+    void PlayerPage::FocusOverlayIfOpen() noexcept
+    {
+        if (!m_loaded || m_closing)
+        {
+            return;
+        }
+
+        try
+        {
+            if (!OverlayPopup().IsOpen())
+            {
+                return;
+            }
+            static_cast<void>(OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic));
+        }
+        catch (...)
+        {
+        }
+    }
 }

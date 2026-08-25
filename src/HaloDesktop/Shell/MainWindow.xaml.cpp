@@ -36,14 +36,30 @@ namespace winrt::HaloDesktop::implementation
             m_windowSizing->WindowHandle(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
         m_activatedToken = Activated(
-            [](
+            [weak = get_weak()](
                 [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                 Microsoft::UI::Xaml::WindowActivatedEventArgs const& args)
             {
-                if (args.WindowActivationState() != Microsoft::UI::Xaml::WindowActivationState::Deactivated)
+                if (args.WindowActivationState() == Microsoft::UI::Xaml::WindowActivationState::Deactivated)
                 {
-                    App::Services().WindowPresentation->RefreshFullscreenShellState();
+                    return;
                 }
+
+                App::Services().WindowPresentation->RefreshFullscreenShellState();
+                auto const self = weak.get();
+                if (!self)
+                {
+                    return;
+                }
+
+                auto const page = self->OverlayFrameControl()
+                    .Content()
+                    .try_as<winrt::HaloDesktop::PlayerPage>();
+                if (!page)
+                {
+                    return;
+                }
+                winrt::get_self<PlayerPage>(page)->RestoreOverlayFocusAfterActivation();
             });
 
         m_appWindowClosingToken = m_windowSizing->AppWindow().Closing(
