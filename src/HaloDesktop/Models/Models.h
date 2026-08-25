@@ -15,6 +15,8 @@
 #include "PlaybackRequest.g.h"
 
 #include <cstdint>
+#include <utility>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Windows.Foundation.Collections.h>
 
@@ -373,10 +375,11 @@ namespace winrt::HaloDesktop::implementation
     struct PlaybackRequest : PlaybackRequestT<PlaybackRequest>
     {
         PlaybackRequest()=default;
-        PlaybackRequest(hstring url,bool isLocalFile,hstring downloadId,hstring subtitleLang,hstring mediaType,hstring videoId,hstring itemId,hstring metaId,hstring title,hstring showName,hstring episodeLabel,hstring poster,hstring addonId,hstring bingeGroup,hstring filename,std::uint64_t videoSize,hstring videoHash,hstring sourceTagLine);
+        PlaybackRequest(hstring url,bool isLocalFile,hstring downloadId,hstring subtitleLang,hstring mediaType,hstring videoId,hstring itemId,hstring metaId,hstring title,hstring showName,hstring episodeLabel,hstring poster,hstring addonId,hstring bingeGroup,hstring filename,std::uint64_t videoSize,hstring videoHash,hstring sourceTagLine,std::vector<std::pair<hstring,hstring>> requestHeaders={});
         [[nodiscard]] hstring Url()const; [[nodiscard]] bool IsLocalFile()const noexcept; [[nodiscard]] hstring DownloadId()const; [[nodiscard]] hstring SubtitleLang()const; [[nodiscard]] hstring MediaType()const; [[nodiscard]] hstring VideoId()const; [[nodiscard]] hstring ItemId()const; [[nodiscard]] hstring MetaId()const; [[nodiscard]] hstring Title()const; [[nodiscard]] hstring ShowName()const; [[nodiscard]] hstring EpisodeLabel()const; [[nodiscard]] hstring Poster()const; [[nodiscard]] hstring AddonId()const; [[nodiscard]] hstring BingeGroup()const; [[nodiscard]] hstring Filename()const; [[nodiscard]] std::uint64_t VideoSize()const noexcept; [[nodiscard]] hstring VideoHash()const; [[nodiscard]] hstring SourceTagLine()const;
+        [[nodiscard]] std::vector<std::pair<hstring,hstring>> const& RequestHeaders()const noexcept;
     private:
-        hstring m_url,m_downloadId,m_subtitleLang,m_mediaType,m_videoId,m_itemId,m_metaId,m_title,m_showName,m_episodeLabel,m_poster,m_addonId,m_bingeGroup,m_filename,m_videoHash,m_sourceTagLine; bool m_isLocalFile{}; std::uint64_t m_videoSize{};
+        hstring m_url,m_downloadId,m_subtitleLang,m_mediaType,m_videoId,m_itemId,m_metaId,m_title,m_showName,m_episodeLabel,m_poster,m_addonId,m_bingeGroup,m_filename,m_videoHash,m_sourceTagLine; std::vector<std::pair<hstring,hstring>> m_requestHeaders; bool m_isLocalFile{}; std::uint64_t m_videoSize{};
     };
 }
 

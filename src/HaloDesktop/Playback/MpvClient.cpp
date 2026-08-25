@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "Playback/MpvClient.h"
+#include "Playback/MpvCommand.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Services/PlaybackPreferences.h"
 
 #include <mpv/client.h>
@@ -109,9 +111,17 @@ namespace
                 type == L"audio" ? HaloDesktop::Playback::TrackType::Audio : HaloDesktop::Playback::TrackType::Subtitle;
             auto title = ReadString(entry, "title");
             auto const language = ReadString(entry, "lang");
+            auto const external=ReadFlag(entry,"external");std::wstring identity;
+            if(external)
+            {
+                if(auto const decoded=HaloDesktop::Playback::DecodeExternalSubtitleTrackTitle(title))
+                {
+                    identity=decoded->first;title=decoded->second;
+                }
+            }
             if (title.empty())
             {
-                title = language;
+                title = HaloDesktop::Playback::LanguageDisplayName(language);
             }
             if (title.empty())
             {
@@ -131,7 +141,9 @@ namespace
                 std::move(note),
                 Uppercase(ReadString(entry, "codec")),
                 ReadFlag(entry, "selected"),
-                ReadFlag(entry, "external"),
+                external,
+                language,
+                std::move(identity),
             });
         }
         return tracks;
@@ -302,10 +314,12 @@ namespace HaloDesktop::Playback
         }
     }
 
-    void MpvClient::Open(std::wstring const& source)
+    void MpvClient::Open(PlaybackSource const& source)
     {
-        Command({ "loadfile", winrt::to_string(winrt::hstring(source)), "replace" });
+        LoadMpvSource(m_handle,source);
     }
+
+    void MpvClient::Replay(){ReplayMpvSource(m_handle);}
 
     void MpvClient::SetPaused(bool paused)
     {
@@ -363,7 +377,7 @@ namespace HaloDesktop::Playback
         double value{};
         return m_handle&&mpv_get_property(m_handle,"duration",MPV_FORMAT_DOUBLE,&value)>=0?value:0.0;
     }
-    void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identityTitle){Command({"sub-add",winrt::to_string(winrt::hstring(path)),"select",winrt::to_string(winrt::hstring(identityTitle))});}
+    void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){Command({"sub-add",winrt::to_string(winrt::hstring(path)),"select",winrt::to_string(winrt::hstring(EncodeExternalSubtitleTrackTitle(identity,displayTitle))),winrt::to_string(winrt::hstring(language))});}
     void MpvClient::RemoveTrack(std::int64_t id){Command({"sub-remove",std::to_string(id)});}
     void MpvClient::ApplySubtitleStyle(SubtitleStyle const&style){SetDoubleProperty("sub-scale",style.Scale);SetStringProperty("sub-font",style.Font);SetDoubleProperty("sub-border-size",style.BorderSize);SetDoubleProperty("sub-shadow-offset",style.ShadowOffset);}
 

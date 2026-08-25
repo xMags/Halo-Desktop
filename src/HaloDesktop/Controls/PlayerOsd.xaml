@@ -117,8 +117,8 @@
         <Grid>
           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
           <StackPanel Orientation="Horizontal" Spacing="10">
-            <ToggleButton IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SUBTITLES" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="English · ASS" /></StackPanel></ToggleButton>
-            <ToggleButton IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="AUDIO" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="English 5.1 · EAC3" /></StackPanel></ToggleButton>
+            <ToggleButton IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SUBTITLES" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
+            <ToggleButton IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="AUDIO" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.AudioSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
             <ToggleButton IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SPEED" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.SpeedText, Mode=OneWay}" /></StackPanel></ToggleButton>
             <ToggleButton IsChecked="{x:Bind ViewModel.UpNextOpen, Mode=OneWay}" Click="OnUpNextClick" Style="{StaticResource PlayerChipButtonStyle}" Visibility="{x:Bind ViewModel.UpNextAvailableVisibility, Mode=OneWay}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="UP NEXT" /><TextBlock MaxWidth="210" Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel></ToggleButton>
           </StackPanel>
@@ -126,7 +126,6 @@
         </Grid>
         <Grid Height="32" Margin="0,4,0,0">
           <Border Height="6" Margin="8,0" VerticalAlignment="Center" Background="#29FFFFFF" CornerRadius="3" IsHitTestVisible="False" />
-          <ProgressBar Height="6" Margin="8,0" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="3" Foreground="#4DFFFFFF" IsHitTestVisible="False" Maximum="{x:Bind ViewModel.Duration, Mode=OneWay}" Value="{x:Bind ViewModel.BufferedPosition, Mode=OneWay}" />
           <ProgressBar Height="6" Margin="8,0" VerticalAlignment="Center" Background="Transparent" BorderThickness="0" CornerRadius="3" Foreground="#FF60CDFF" IsHitTestVisible="False" Maximum="{Binding ElementName=SeekSlider, Path=Maximum}" Value="{Binding ElementName=SeekSlider, Path=Value}" />
           <Slider
             x:Name="SeekSlider"
@@ -248,7 +247,7 @@
             <Grid>
               <StackPanel Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
                 <TextBlock Margin="0,0,0,6" Foreground="#99FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
-                <RadioButton GroupName="SubtitleTrack" Click="OnSubtitlesOffClick" Style="{StaticResource PlayerTrackRadioStyle}">
+                <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind ViewModel.SubtitlesOffSelected, Mode=OneWay}" Click="OnSubtitlesOffClick" Style="{StaticResource PlayerTrackRadioStyle}">
                   <StackPanel><TextBlock FontSize="13.5" Foreground="White" Text="Off" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#8FFFFFFF" Text="No subtitles" /></StackPanel>
                 </RadioButton>
                 <ItemsControl x:Name="SubtitleTrackList">

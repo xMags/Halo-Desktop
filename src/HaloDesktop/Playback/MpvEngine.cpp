@@ -2,6 +2,7 @@
 #include "Playback/MpvEngine.h"
 
 #include "Playback/MpvClient.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Playback/WindowsAudioSession.h"
 
 #include <algorithm>
@@ -63,7 +64,7 @@ namespace HaloDesktop::Playback
             {
                 m_client->SetPaused(true);
             }
-            if (!m_source.empty())
+            if (!m_source.Location.empty())
             {
                 m_client->Open(m_source);
             }
@@ -83,7 +84,7 @@ namespace HaloDesktop::Playback
             m_client->Shutdown();
             m_client.reset();
         }
-        m_source.clear();
+        m_source = {};
         m_seekTarget.reset();
         m_seekRestarted = false;
         m_state.PositionSeconds = 0.0;
@@ -94,17 +95,23 @@ namespace HaloDesktop::Playback
         m_audioSessionSerial = 0;
     }
 
-    void MpvEngine::Open(std::wstring const& source)
+    void MpvEngine::Open(PlaybackSource source)
     {
-        auto lower=source;std::transform(lower.begin(),lower.end(),lower.begin(),[](wchar_t value){return static_cast<wchar_t>(std::towlower(value));});
+        auto lower=source.Location;std::transform(lower.begin(),lower.end(),lower.begin(),[](wchar_t value){return static_cast<wchar_t>(std::towlower(value));});
         auto const remote=lower.starts_with(L"http://")||lower.starts_with(L"https://");
-        std::error_code error;auto const path=std::filesystem::path(source);
-        if (source.empty() || (!remote && (!std::filesystem::is_regular_file(path,error)||error)))
+        std::error_code error;auto const path=std::filesystem::path(source.Location);
+        if (source.Location.empty() || (!remote && (!std::filesystem::is_regular_file(path,error)||error)))
         {
             throw std::invalid_argument("Playback source must be an HTTP URL or an existing local file");
         }
+        if (!remote && !source.Headers.empty())
+        {
+            throw std::invalid_argument("Local playback sources cannot include HTTP request headers");
+        }
+        ValidatePlaybackHeaders(source.Headers);
 
-        m_source = remote?source:path.wstring();
+        source.Location = remote ? std::move(source.Location) : path.wstring();
+        m_source = std::move(source);
         m_seekTarget.reset();
         m_seekRestarted = false;
         m_state.PositionSeconds = 0.0;
@@ -163,6 +170,7 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekAbsolute(double seconds)
     {
+        ++m_state.SeekSerial;
         auto const next = std::clamp(seconds, 0.0, (std::max)(DurationNow(), m_state.DurationSeconds));
         if (m_client)
         {
@@ -180,6 +188,7 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekRelative(double seconds)
     {
+        ++m_state.SeekSerial;
         auto const next = std::clamp(m_state.PositionSeconds + seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
         if (m_client)
         {
@@ -226,6 +235,7 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SetAudioTrack(std::int64_t id)
     {
+        ++m_state.AudioSelectionSerial;
         if (m_client)
         {
             m_client->SetAudioTrack(id);
@@ -242,6 +252,7 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SetSubtitleTrack(std::optional<std::int64_t> id)
     {
+        ++m_state.SubtitleSelectionSerial;
         if (m_client)
         {
             m_client->SetSubtitleTrack(id);
@@ -276,7 +287,7 @@ namespace HaloDesktop::Playback
     {
         return m_state;
     }
-    void MpvEngine::AddExternalSubtitle(std::wstring const&path,std::wstring const&identityTitle){if(m_client)m_client->AddExternalSubtitle(path,identityTitle);}
+    void MpvEngine::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){++m_state.SubtitleSelectionSerial;if(m_client)m_client->AddExternalSubtitle(path,identity,displayTitle,language);}
     void MpvEngine::RemoveTrack(std::int64_t id){if(m_client)m_client->RemoveTrack(id);}
     void MpvEngine::ApplySubtitleStyle(SubtitleStyle const&style){m_subtitleStyle=style;if(m_client)m_client->ApplySubtitleStyle(style);}
     double MpvEngine::DurationNow()const noexcept{return m_client?m_client->DurationSeconds():m_state.DurationSeconds;}
@@ -348,6 +359,26 @@ namespace HaloDesktop::Playback
         if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
         if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
         SynchronizeAudioSession();
+        NotifyChanged();
+    }
+
+    void MpvEngine::Replay()
+    {
+        if (m_source.Location.empty())
+        {
+            return;
+        }
+        m_seekTarget.reset();
+        m_seekRestarted = false;
+        m_state.PositionSeconds = 0.0;
+        m_state.DurationSeconds = 0.0;
+        m_state.Buffering = true;
+        m_state.EndReason = PlaybackEndReason::None;
+        m_state.Tracks.clear();
+        if (m_client)
+        {
+            m_client->Replay();
+        }
         NotifyChanged();
     }
 

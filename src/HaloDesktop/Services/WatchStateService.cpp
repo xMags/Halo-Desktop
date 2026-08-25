@@ -13,9 +13,11 @@ namespace HaloDesktop::Services
     concurrency::task<void> WatchStateService::LoadAsync()
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const writeVersion = m_writeVersion;
+        auto const loadVersion = ++m_loadVersion;
         auto rows = co_await m_apiClient->GetWatchStateAsync();
         co_await uiContext;
-        m_rows = std::move(rows);
+        if(writeVersion==m_writeVersion&&loadVersion==m_loadVersion)m_rows = std::move(rows);
     }
     concurrency::task<void> WatchStateService::PutAsync(::HaloDesktop::Api::Dto::WatchEntry row)
     {

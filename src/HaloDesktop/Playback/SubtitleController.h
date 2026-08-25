@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/TemporaryFileCollection.h"
 
 #include <functional>
 #include <filesystem>
@@ -34,22 +35,30 @@ namespace HaloDesktop::Playback
         [[nodiscard]] concurrency::task<void> SelectAsync(winrt::hstring key,bool deliberate=true);
         [[nodiscard]] std::vector<AddonSubtitleDisplay> Choices()const;
         void SetChoicesChangedHandler(std::function<void()> handler);
+        void SetErrorHandler(std::function<void()> handler);
+        void RefreshPreferences();
         void Stop()noexcept;
+        void CleanupTemporaryFiles()noexcept;
 
     private:
         struct NativeChoice final{AddonSubtitleDisplay Display;winrt::hstring AddonId,SubtitleId,Url,Lang;};
+        struct SelectionMemory final{std::optional<winrt::hstring>Identity;std::optional<winrt::hstring>Language;bool Present{};};
         void ApplyStyle();
         void SweepExternalTracks();
         void OnEngineChanged();
-        void ApplyRememberedOrDefault();
+        void TryApplySelection();
         void Remember(NativeChoice const& choice);
-        [[nodiscard]] std::optional<winrt::hstring> PreferredKey()const;
+        [[nodiscard]] SelectionMemory ReadSelectionMemory()const;
+        [[nodiscard]] std::optional<winrt::hstring> ChoiceByIdentity(winrt::hstring const&identity)const;
+        [[nodiscard]] std::optional<winrt::hstring> ChoiceByLanguage(winrt::hstring const&language)const;
         [[nodiscard]] concurrency::task<std::wstring> DownloadAsync(NativeChoice const& choice);
+        void NotifyError()noexcept;
 
         std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};std::unordered_map<std::wstring,NativeChoice>m_choices;std::vector<AddonSubtitleDisplay>m_display;
         std::optional<std::filesystem::path> m_localSubtitlePath;
-        std::function<void()>m_changed;PlaybackChangedToken m_engineToken{};std::uint64_t m_appliedSerial{},m_generation{};bool m_selecting{};
+        TemporaryFileCollection m_temporaryFiles;
+        std::function<void()>m_changed,m_error;PlaybackChangedToken m_engineToken{};std::uint64_t m_fileSerial{},m_appliedSerial{},m_generation{},m_selectionAttempt{},m_pendingSelectionAttempt{},m_preferenceRevision{},m_appliedPreferenceRevision{},m_initialSubtitleSelectionSerial{},m_autoSubtitleSelectionSerial{};bool m_discoveryComplete{},m_pendingSelectionDeliberate{};
     };
 
     [[nodiscard]] winrt::hstring SubtitleLanguageLabel(winrt::hstring code);

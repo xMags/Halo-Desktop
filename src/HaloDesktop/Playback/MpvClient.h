@@ -48,7 +48,8 @@ namespace HaloDesktop::Playback
         MpvClient(MpvClient&&) = delete;
         MpvClient& operator=(MpvClient&&) = delete;
 
-        void Open(std::wstring const& source);
+        void Open(PlaybackSource const& source);
+        void Replay();
         void SetPaused(bool paused);
         void SeekAbsolute(double seconds);
         void SeekRelative(double seconds);
@@ -58,7 +59,11 @@ namespace HaloDesktop::Playback
         void SetSubtitleTrack(std::optional<std::int64_t> id);
         void SetSubtitleDelay(double seconds);
         void SetAudioDelay(double seconds);
-        void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle);
+        void AddExternalSubtitle(
+            std::wstring const& path,
+            std::wstring const& identity,
+            std::wstring const& displayTitle,
+            std::wstring const& language);
         void RemoveTrack(std::int64_t id);
         void ApplySubtitleStyle(SubtitleStyle const& style);
         [[nodiscard]] double DurationSeconds() const noexcept;

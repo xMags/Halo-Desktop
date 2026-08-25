@@ -8,6 +8,20 @@
 
 namespace HaloDesktop::Playback
 {
+    struct PlaybackHeader final
+    {
+        std::wstring Name;
+        std::wstring Value;
+
+        bool operator==(PlaybackHeader const&) const = default;
+    };
+
+    struct PlaybackSource final
+    {
+        std::wstring Location;
+        std::vector<PlaybackHeader> Headers;
+    };
+
     enum class TrackType
     {
         Audio,
@@ -31,6 +45,8 @@ namespace HaloDesktop::Playback
         std::wstring Codec;
         bool Selected{};
         bool External{};
+        std::wstring Language;
+        std::wstring Identity;
 
         bool operator==(TrackInfo const&) const = default;
     };
@@ -45,6 +61,9 @@ namespace HaloDesktop::Playback
         bool Buffering{};
         std::uint64_t FileSerial{};
         std::uint64_t EndSerial{};
+        std::uint64_t SeekSerial{};
+        std::uint64_t AudioSelectionSerial{};
+        std::uint64_t SubtitleSelectionSerial{};
         PlaybackEndReason EndReason{ PlaybackEndReason::None };
         std::vector<TrackInfo> Tracks;
     };
@@ -60,7 +79,8 @@ namespace HaloDesktop::Playback
         virtual ~IPlaybackEngine() = default;
         virtual void Start() = 0;
         virtual void Stop() noexcept = 0;
-        virtual void Open(std::wstring const& source) = 0;
+        virtual void Open(PlaybackSource source) = 0;
+        virtual void Replay() = 0;
         virtual void AttachVideoWindow(std::uintptr_t windowHandle) = 0;
         virtual void DetachVideoWindow() noexcept = 0;
         virtual void SetPaused(bool paused) = 0;
@@ -72,7 +92,11 @@ namespace HaloDesktop::Playback
         virtual void SetSubtitleTrack(std::optional<std::int64_t> id) = 0;
         virtual void SetSubtitleDelay(double seconds) = 0;
         virtual void SetAudioDelay(double seconds) = 0;
-        virtual void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle) = 0;
+        virtual void AddExternalSubtitle(
+            std::wstring const& path,
+            std::wstring const& identity,
+            std::wstring const& displayTitle,
+            std::wstring const& language) = 0;
         virtual void RemoveTrack(std::int64_t id) = 0;
         virtual void ApplySubtitleStyle(SubtitleStyle const& style) = 0;
         [[nodiscard]] virtual PlaybackState State() const = 0;

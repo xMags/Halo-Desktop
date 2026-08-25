@@ -11,6 +11,7 @@
 #endif
 
 #include "Shell/WindowPresentationService.h"
+#include "Playback/PlaybackPolicy.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <algorithm>
@@ -218,6 +219,8 @@ namespace winrt::HaloDesktop::implementation
         value << std::setprecision(3) << m_state.Speed << L"×";
         return winrt::hstring(value.str());
     }
+    winrt::hstring PlayerViewModel::AudioSummary()const{return winrt::hstring(::HaloDesktop::Playback::TrackSummary(m_state.Tracks,::HaloDesktop::Playback::TrackType::Audio));}
+    winrt::hstring PlayerViewModel::SubtitleSummary()const{return winrt::hstring(::HaloDesktop::Playback::TrackSummary(m_state.Tracks,::HaloDesktop::Playback::TrackType::Subtitle));}
     double PlayerViewModel::PlayButtonSize() const noexcept
     {
         return m_windowPresentation->IsFullscreen() ? 54.0 : 44.0;
@@ -260,10 +263,7 @@ namespace winrt::HaloDesktop::implementation
         return m_subtitleTracks;
     }
     auto PlayerViewModel::AddonSubtitlesView()const->winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>{return m_addonSubtitles;}
-    double PlayerViewModel::BufferedPosition() const noexcept
-    {
-        return (std::min)(m_state.DurationSeconds, m_state.PositionSeconds + m_state.DurationSeconds * 0.09);
-    }
+    bool PlayerViewModel::SubtitlesOffSelected()const noexcept{return std::none_of(m_state.Tracks.begin(),m_state.Tracks.end(),[](auto const&track){return track.Type==::HaloDesktop::Playback::TrackType::Subtitle&&track.Selected;});}
     double PlayerViewModel::OsdOpacity() const noexcept
     {
         return m_osdOpacity;
@@ -399,6 +399,10 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::TogglePause()
     {
+        if(m_state.EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)
+        {
+            StopUpNextTimer();m_upNextOpen=false;m_upNextCountdown=false;m_upNextRemaining=8;m_engine->Replay();m_engine->SetPaused(false);RaisePanelState();NotifyUserActivity();return;
+        }
         m_engine->SetPaused(!m_state.Paused);
         NotifyUserActivity();
     }
@@ -646,8 +650,8 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::RaisePlaybackState()
     {
         for (auto const property : { L"Duration", L"Volume", L"VolumeText", L"PositionText", L"DurationText",
-                                     L"SpeedText", L"BufferedPosition", L"IsPaused", L"PausedVisibility",
-                                     L"PlayingVisibility" })
+                                     L"SpeedText", L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
+                                     L"IsPaused", L"PausedVisibility", L"PlayingVisibility" })
         {
             Raise(property);
         }

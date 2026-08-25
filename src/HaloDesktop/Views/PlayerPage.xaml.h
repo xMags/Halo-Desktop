@@ -43,10 +43,12 @@ namespace winrt::HaloDesktop::implementation
     private:
         winrt::fire_and_forget InitializePlaybackAsync();
         winrt::Windows::Foundation::IAsyncAction StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request);
+        winrt::fire_and_forget RefreshPlaybackSettingsAsync(std::uint64_t generation);
         winrt::fire_and_forget PrefetchUpNextAsync(winrt::HaloDesktop::PlaybackRequest request, std::uint64_t generation);
         winrt::fire_and_forget AdvanceUpNextAsync();
         winrt::fire_and_forget BeginClose();
         void ShowMediaPrompt(winrt::hstring const& message);
+        void ShowSubtitleError();
         void CloseOverlayPopup(bool detachChild) noexcept;
         void UpdateOverlayLayout();
         void RefreshOverlayAfterPresentationChange();

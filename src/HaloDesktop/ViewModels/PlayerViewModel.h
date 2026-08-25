@@ -55,6 +55,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PositionText() const;
         [[nodiscard]] winrt::hstring DurationText() const;
         [[nodiscard]] winrt::hstring SpeedText() const;
+        [[nodiscard]] winrt::hstring AudioSummary() const;
+        [[nodiscard]] winrt::hstring SubtitleSummary() const;
         [[nodiscard]] double PlayButtonSize() const noexcept;
         [[nodiscard]] double TransportButtonSize() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
@@ -70,7 +72,7 @@ namespace winrt::HaloDesktop::implementation
             winrt::Windows::Foundation::IInspectable>
         SubtitleTracksView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AddonSubtitlesView()const;
-        [[nodiscard]] double BufferedPosition() const noexcept;
+        [[nodiscard]] bool SubtitlesOffSelected() const noexcept;
         [[nodiscard]] double OsdOpacity() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OsdWakeVisibility() const noexcept;
         [[nodiscard]] double UpNextProgress() const noexcept;

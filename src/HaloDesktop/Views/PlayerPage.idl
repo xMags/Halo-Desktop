@@ -28,6 +28,8 @@ namespace HaloDesktop
         String PositionText { get; };
         String DurationText { get; };
         String SpeedText { get; };
+        String AudioSummary { get; };
+        String SubtitleSummary { get; };
         Double PlayButtonSize { get; };
         Double TransportButtonSize { get; };
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
@@ -36,7 +38,7 @@ namespace HaloDesktop
         Object AudioTracks { get; };
         Object SubtitleTracks { get; };
         Object AddonSubtitles { get; };
-        Double BufferedPosition { get; };
+        Boolean SubtitlesOffSelected { get; };
         Double OsdOpacity { get; };
         Microsoft.UI.Xaml.Visibility OsdWakeVisibility { get; };
         Double UpNextProgress { get; };

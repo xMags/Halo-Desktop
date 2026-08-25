@@ -228,7 +228,8 @@ namespace HaloDesktop::Services
             resolved.Info.Filename,
             resolved.Info.SizeBytes.value_or(0),
             stream.VideoHash.value_or(L""),
-            BuildSourceTagLine(resolved.Info));
+            BuildSourceTagLine(resolved.Info),
+            stream.RequestHeaders);
     }
 
     concurrency::task<DownloadStartOutcome> SourceService::StartDownloadAsync(

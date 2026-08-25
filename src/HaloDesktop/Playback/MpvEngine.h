@@ -28,7 +28,8 @@ namespace HaloDesktop::Playback
 
         void Start() override;
         void Stop() noexcept override;
-        void Open(std::wstring const& source) override;
+        void Open(PlaybackSource source) override;
+        void Replay() override;
         void AttachVideoWindow(std::uintptr_t windowHandle) override;
         void DetachVideoWindow() noexcept override;
         void SetPaused(bool paused) override;
@@ -40,7 +41,11 @@ namespace HaloDesktop::Playback
         void SetSubtitleTrack(std::optional<std::int64_t> id) override;
         void SetSubtitleDelay(double seconds) override;
         void SetAudioDelay(double seconds) override;
-        void AddExternalSubtitle(std::wstring const& path,std::wstring const& identityTitle) override;
+        void AddExternalSubtitle(
+            std::wstring const& path,
+            std::wstring const& identity,
+            std::wstring const& displayTitle,
+            std::wstring const& language) override;
         void RemoveTrack(std::int64_t id) override;
         void ApplySubtitleStyle(SubtitleStyle const& style) override;
         [[nodiscard]] PlaybackState State() const override;
@@ -61,7 +66,7 @@ namespace HaloDesktop::Playback
         PlaybackState m_state;
         std::unordered_map<PlaybackChangedToken, PlaybackChangedHandler> m_handlers;
         PlaybackChangedToken m_nextToken{};
-        std::wstring m_source;
+        PlaybackSource m_source;
         std::uintptr_t m_windowHandle{};
         std::chrono::steady_clock::time_point m_seekIssuedAt{};
         std::optional<double> m_seekTarget;

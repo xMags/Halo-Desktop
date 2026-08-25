@@ -23,5 +23,6 @@ namespace HaloDesktop::Services
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::vector<::HaloDesktop::Api::Dto::WatchEntry> m_rows;
         std::uint64_t m_writeVersion{};
+        std::uint64_t m_loadVersion{};
     };
 }
