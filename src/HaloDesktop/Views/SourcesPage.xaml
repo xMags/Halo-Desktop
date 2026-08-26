@@ -143,13 +143,61 @@
 
         <StackPanel Grid.Column="1" Spacing="12">
           <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="RESOLUTION" /><ItemsControl ItemsSource="{x:Bind ViewModel.ResolutionItems, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,3" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+            <StackPanel>
+              <TextBlock Margin="0,0,0,12" Style="{StaticResource HaloMonoKicker}" Text="RESOLUTION" />
+              <ItemsControl ItemsSource="{x:Bind ViewModel.ResolutionItems, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:SourceResolutionItemViewModel">
+                    <Grid Margin="0,0,0,9" ColumnSpacing="9">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="7" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{ThemeResource HaloSuccessBrush}" Visibility="{x:Bind ResolvedVisibility}" />
+                      <Ellipse Width="7" Height="7" VerticalAlignment="Center" Fill="{ThemeResource HaloCriticalBrush}" Visibility="{x:Bind FailedVisibility}" />
+                      <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Value}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </Border>
           <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-            <StackPanel Spacing="9"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="BY QUALITY" /><ItemsControl ItemsSource="{x:Bind ViewModel.QualityItems, Mode=OneWay}"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,3" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl></StackPanel>
+            <StackPanel>
+              <TextBlock Margin="0,0,0,12" Style="{StaticResource HaloMonoKicker}" Text="BY QUALITY" />
+              <ItemsControl ItemsSource="{x:Bind ViewModel.QualityItems, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:SourceQualityItemViewModel">
+                    <!-- One bar per bucket, tinted the same way the quality reads in the rows. -->
+                    <StackPanel Margin="0,0,0,10">
+                      <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                        <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="11" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Label}" />
+                        <TextBlock Grid.Column="1" FontFamily="{StaticResource HaloMonoFont}" FontSize="11" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Count}" />
+                      </Grid>
+                      <ProgressBar Height="4" Margin="0,6,0,0" Maximum="1" Value="{x:Bind Share}" Foreground="{ThemeResource HaloCautionBrush}" Visibility="{x:Bind Quality2160Visibility}" />
+                      <ProgressBar Height="4" Margin="0,6,0,0" Maximum="1" Value="{x:Bind Share}" Foreground="{ThemeResource HaloAccentBrush}" Visibility="{x:Bind Quality1080Visibility}" />
+                      <ProgressBar Height="4" Margin="0,6,0,0" Maximum="1" Value="{x:Bind Share}" Foreground="{ThemeResource HaloText4Brush}" Visibility="{x:Bind QualityOtherVisibility}" />
+                    </StackPanel>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </StackPanel>
           </Border>
           <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoKicker}" Text="PICKER RULES" /><TextBlock Text="Cached first   ON" /><TextBlock Text="{x:Bind ViewModel.PickerAudio, Mode=OneWay}" /><TextBlock Text="{x:Bind ViewModel.PickerSubtitles, Mode=OneWay}" /><TextBlock Text="{x:Bind ViewModel.PickerAutoplay, Mode=OneWay}" /><Button Margin="0,8,0,0" Click="OnEditPlaybackClick" Content="Edit in Playback" /></StackPanel>
+            <StackPanel>
+              <TextBlock Margin="0,0,0,12" Style="{StaticResource HaloMonoKicker}" Text="PICKER RULES" />
+              <ItemsControl ItemsSource="{x:Bind ViewModel.PickerRules, Mode=OneWay}">
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="local:SourcePickerRuleViewModel">
+                    <Grid Margin="0,0,0,8" ColumnSpacing="12">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                      <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{ThemeResource HaloText1Brush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Value}" />
+                    </Grid>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <Button Margin="0,6,0,0" HorizontalAlignment="Stretch" Click="OnEditPlaybackClick" Content="Edit in Playback" />
+            </StackPanel>
           </Border>
         </StackPanel>
       </Grid>

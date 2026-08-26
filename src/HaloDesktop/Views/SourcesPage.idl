@@ -1,6 +1,33 @@
 namespace HaloDesktop
 {
     [default_interface]
+    runtimeclass SourceResolutionItemViewModel
+    {
+        String Name { get; };
+        String Value { get; };
+        Microsoft.UI.Xaml.Visibility ResolvedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FailedVisibility { get; };
+    }
+
+    [default_interface]
+    runtimeclass SourceQualityItemViewModel
+    {
+        String Label { get; };
+        String Count { get; };
+        Double Share { get; };
+        Microsoft.UI.Xaml.Visibility Quality2160Visibility { get; };
+        Microsoft.UI.Xaml.Visibility Quality1080Visibility { get; };
+        Microsoft.UI.Xaml.Visibility QualityOtherVisibility { get; };
+    }
+
+    [default_interface]
+    runtimeclass SourcePickerRuleViewModel
+    {
+        String Name { get; };
+        String Value { get; };
+    }
+
+    [default_interface]
     runtimeclass SourceDisplayItemViewModel
     {
         Microsoft.UI.Xaml.Visibility HeaderVisibility { get; };
@@ -52,9 +79,7 @@ namespace HaloDesktop
         String BestSize { get; };
         String BestStatusLine { get; };
         String BestStatusBadge { get; };
-        String PickerAudio { get; };
-        String PickerSubtitles { get; };
-        String PickerAutoplay { get; };
+        Object PickerRules { get; };
         String TeachingTipTitle { get; };
         String TeachingTipBody { get; };
         Boolean TeachingTipOpen { get; };

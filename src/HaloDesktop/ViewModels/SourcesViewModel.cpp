@@ -3,11 +3,22 @@
 #if __has_include("SourceDisplayItemViewModel.g.cpp")
 #include "SourceDisplayItemViewModel.g.cpp"
 #endif
+#if __has_include("SourceResolutionItemViewModel.g.cpp")
+#include "SourceResolutionItemViewModel.g.cpp"
+#endif
+#if __has_include("SourceQualityItemViewModel.g.cpp")
+#include "SourceQualityItemViewModel.g.cpp"
+#endif
+#if __has_include("SourcePickerRuleViewModel.g.cpp")
+#include "SourcePickerRuleViewModel.g.cpp"
+#endif
 #if __has_include("SourcesViewModel.g.cpp")
 #include "SourcesViewModel.g.cpp"
 #endif
 
 #include "Models/Models.h"
+
+#include <algorithm>
 #include "Services/NavigationService.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -40,6 +51,29 @@ namespace
 
 namespace winrt::HaloDesktop::implementation
 {
+    SourceResolutionItemViewModel::SourceResolutionItemViewModel(winrt::hstring name, winrt::hstring value, bool resolved)
+        : m_name(std::move(name)), m_value(std::move(value)), m_resolved(resolved) {}
+    winrt::hstring SourceResolutionItemViewModel::Name() const { return m_name; }
+    winrt::hstring SourceResolutionItemViewModel::Value() const { return m_value; }
+    Microsoft::UI::Xaml::Visibility SourceResolutionItemViewModel::ResolvedVisibility() const noexcept { return m_resolved ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceResolutionItemViewModel::FailedVisibility() const noexcept { return m_resolved ? Collapsed : Visible; }
+
+    SourceQualityItemViewModel::SourceQualityItemViewModel(winrt::hstring label, std::int32_t count, std::int32_t largest)
+        : m_label(std::move(label)), m_count(count), m_largest(largest) {}
+    winrt::hstring SourceQualityItemViewModel::Label() const { return m_label; }
+    winrt::hstring SourceQualityItemViewModel::Count() const { return winrt::to_hstring(m_count); }
+    // Scaled against the largest bucket rather than the total: with one dominant
+    // quality every other bar would otherwise collapse to an unreadable sliver.
+    double SourceQualityItemViewModel::Share() const noexcept { return m_largest > 0 ? static_cast<double>(m_count) / static_cast<double>(m_largest) : 0.0; }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::Quality2160Visibility() const noexcept { return m_label == L"2160p" ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::Quality1080Visibility() const noexcept { return m_label == L"1080p" ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::QualityOtherVisibility() const noexcept { return m_label != L"2160p" && m_label != L"1080p" ? Visible : Collapsed; }
+
+    SourcePickerRuleViewModel::SourcePickerRuleViewModel(winrt::hstring name, winrt::hstring value)
+        : m_name(std::move(name)), m_value(std::move(value)) {}
+    winrt::hstring SourcePickerRuleViewModel::Name() const { return m_name; }
+    winrt::hstring SourcePickerRuleViewModel::Value() const { return m_value; }
+
     SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::hstring groupName, winrt::hstring groupNote, winrt::hstring groupCount)
         : m_groupName(std::move(groupName)), m_groupNote(std::move(groupNote)), m_groupCount(std::move(groupCount)), m_isHeader(true) {}
     SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source, bool detailColumns) : m_source(std::move(source)), m_detailColumns(detailColumns) {}
@@ -76,7 +110,8 @@ namespace winrt::HaloDesktop::implementation
           m_sourceGroups(services.Sources->Groups()),
           m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_resolutionItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
+          m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_pickerRules(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
 
     SourcesViewModel::~SourcesViewModel() { Deactivate(); }
     void SourcesViewModel::Activate()
@@ -122,9 +157,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourcesViewModel::BestSize() const { return m_bestSource ? m_bestSource.Size() : L""; }
     winrt::hstring SourcesViewModel::BestStatusLine() const { if(!m_bestSource)return L"";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::OnDisk)return L"Stored on this device";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::Instant)return L"Instant · reported cached";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::Uncached)return L"Addon reports a fetch is required";return L"Cache status was not provided"; }
     winrt::hstring SourcesViewModel::BestStatusBadge() const { return m_bestSource ? ::StatusLabel(m_bestSource.Status()) : L""; }
-    winrt::hstring SourcesViewModel::PickerAudio() const { auto value=m_settings->PreferredAudioLanguage();return L"Audio preference   "+value.value_or(L"Automatic"); }
-    winrt::hstring SourcesViewModel::PickerSubtitles() const { auto value=m_settings->PreferredSubtitleLanguage();return L"Subtitle preference   "+value.value_or(L"Off"); }
-    winrt::hstring SourcesViewModel::PickerAutoplay() const { return winrt::hstring{L"Autoplay next   "}+(m_settings->AutoplayNextEpisode()?L"ON":L"OFF"); }
+    winrt::Windows::Foundation::IInspectable SourcesViewModel::PickerRules() const { return m_pickerRules; }
     winrt::hstring SourcesViewModel::TeachingTipTitle() const { return L"How the best source is chosen"; }
     winrt::hstring SourcesViewModel::TeachingTipBody() const { return L"Ready-to-play sources rank first, followed by quality and file size."; }
     bool SourcesViewModel::TeachingTipOpen() const noexcept { return m_teachingTipOpen; }
@@ -248,22 +281,38 @@ namespace winrt::HaloDesktop::implementation
         m_resolutionItems.Clear();
         for (auto const& group : m_sourceGroups)
         {
-            auto const suffix = group.Sources().Size() == 0 ? group.Note() : winrt::to_hstring(group.Count()) + L" sources";
-            m_resolutionItems.Append(winrt::box_value(group.Name() + L"   " + suffix));
+            // An addon that returned nothing puts its reason in the note; the dot
+            // beside the row is the only thing that separates the two cases.
+            auto const resolved = group.Sources().Size() > 0;
+            auto const value = resolved ? winrt::to_hstring(group.Count()) + L" sources" : group.Note();
+            m_resolutionItems.Append(winrt::make<SourceResolutionItemViewModel>(group.Name(), value, resolved));
         }
+
+        constexpr wchar_t const* Qualities[]{ L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" };
+        std::int32_t largest{};
+        // Parenthesised so the windows.h max macro cannot swallow the call.
+        for (auto const* quality : Qualities) largest = (std::max)(largest, m_sources->Count(quality));
         m_qualityItems.Clear();
-        for (auto const* quality : { L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" })
+        for (auto const* quality : Qualities)
         {
             auto const count = m_sources->Count(quality);
-            if (count > 0) m_qualityItems.Append(winrt::box_value(FilterLabel(quality, count)));
+            if (count > 0) m_qualityItems.Append(winrt::make<SourceQualityItemViewModel>(quality, count, largest));
         }
+
+        m_pickerRules.Clear();
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Cached first", L"ON"));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Audio preference", m_settings->PreferredAudioLanguage().value_or(L"Automatic")));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Subtitle preference", m_settings->PreferredSubtitleLanguage().value_or(L"Off")));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Autoplay next", m_settings->AutoplayNextEpisode() ? L"ON" : L"OFF"));
+
         Raise(L"ResolutionItems");
         Raise(L"QualityItems");
+        Raise(L"PickerRules");
     }
 
     void SourcesViewModel::RaiseState()
     {
-        for (auto const* property : { L"Title",L"Poster",L"EpisodeLabel",L"ResolveSummary",L"AllFilterLabel",L"InstantFilterLabel",L"Quality2160FilterLabel",L"Quality1080FilterLabel",L"BestQuality",L"BestRange",L"BestFile",L"BestCodec",L"BestAudio",L"BestLanguages",L"BestSize",L"BestStatusLine",L"BestStatusBadge",L"PickerAudio",L"PickerSubtitles",L"PickerAutoplay",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility" }) Raise(property);
+        for (auto const* property : { L"Title",L"Poster",L"EpisodeLabel",L"ResolveSummary",L"AllFilterLabel",L"InstantFilterLabel",L"Quality2160FilterLabel",L"Quality1080FilterLabel",L"BestQuality",L"BestRange",L"BestFile",L"BestCodec",L"BestAudio",L"BestLanguages",L"BestSize",L"BestStatusLine",L"BestStatusBadge",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility" }) Raise(property);
     }
     void SourcesViewModel::Raise(wchar_t const* property) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property); }
     bool SourcesViewModel::MatchesFilter(winrt::HaloDesktop::StreamSource const& source) const

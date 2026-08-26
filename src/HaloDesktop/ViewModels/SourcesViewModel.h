@@ -1,6 +1,9 @@
 #pragma once
 
 #include "SourceDisplayItemViewModel.g.h"
+#include "SourceResolutionItemViewModel.g.h"
+#include "SourceQualityItemViewModel.g.h"
+#include "SourcePickerRuleViewModel.g.h"
 #include "SourcesViewModel.g.h"
 #include "Services/AppServices.h"
 #include "Services/ServiceInterfaces.h"
@@ -11,6 +14,50 @@
 
 namespace winrt::HaloDesktop::implementation
 {
+    // One row of the aside cards. Each carries only what its card renders, so the
+    // page never has to take a formatted string apart to lay it out.
+    struct SourceResolutionItemViewModel : SourceResolutionItemViewModelT<SourceResolutionItemViewModel>
+    {
+        SourceResolutionItemViewModel(winrt::hstring name, winrt::hstring value, bool resolved);
+        [[nodiscard]] winrt::hstring Name() const;
+        [[nodiscard]] winrt::hstring Value() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ResolvedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FailedVisibility() const noexcept;
+
+    private:
+        winrt::hstring m_name;
+        winrt::hstring m_value;
+        bool m_resolved{};
+    };
+
+    struct SourceQualityItemViewModel : SourceQualityItemViewModelT<SourceQualityItemViewModel>
+    {
+        SourceQualityItemViewModel(winrt::hstring label, std::int32_t count, std::int32_t largest);
+        [[nodiscard]] winrt::hstring Label() const;
+        [[nodiscard]] winrt::hstring Count() const;
+        // 0..1 of the largest bucket, so the widest bar always fills its track.
+        [[nodiscard]] double Share() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility Quality2160Visibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility Quality1080Visibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityOtherVisibility() const noexcept;
+
+    private:
+        winrt::hstring m_label;
+        std::int32_t m_count{};
+        std::int32_t m_largest{};
+    };
+
+    struct SourcePickerRuleViewModel : SourcePickerRuleViewModelT<SourcePickerRuleViewModel>
+    {
+        SourcePickerRuleViewModel(winrt::hstring name, winrt::hstring value);
+        [[nodiscard]] winrt::hstring Name() const;
+        [[nodiscard]] winrt::hstring Value() const;
+
+    private:
+        winrt::hstring m_name;
+        winrt::hstring m_value;
+    };
+
     struct SourceDisplayItemViewModel : SourceDisplayItemViewModelT<SourceDisplayItemViewModel>
     {
         SourceDisplayItemViewModel(winrt::hstring groupName, winrt::hstring groupNote, winrt::hstring groupCount);
@@ -77,9 +124,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring BestSize() const;
         [[nodiscard]] winrt::hstring BestStatusLine() const;
         [[nodiscard]] winrt::hstring BestStatusBadge() const;
-        [[nodiscard]] winrt::hstring PickerAudio() const;
-        [[nodiscard]] winrt::hstring PickerSubtitles() const;
-        [[nodiscard]] winrt::hstring PickerAutoplay() const;
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable PickerRules() const;
         [[nodiscard]] winrt::hstring TeachingTipTitle() const;
         [[nodiscard]] winrt::hstring TeachingTipBody() const;
         [[nodiscard]] bool TeachingTipOpen() const noexcept;
@@ -123,6 +168,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_resolutionItems{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_qualityItems{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_pickerRules{ nullptr };
         winrt::HaloDesktop::StreamSource m_bestSource{ nullptr };
         std::int32_t m_filterIndex{};
         bool m_detailColumns{};
