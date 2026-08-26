@@ -99,7 +99,7 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
-        ContentHost().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
+        FocusSink().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
     }
 
     void ShellPage::OnItemInvoked(

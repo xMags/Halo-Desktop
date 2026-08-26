@@ -148,18 +148,36 @@
       </Button>
     </NavigationView.PaneFooter>
 
-    <!-- Doubles as the focus sink: a press on empty content takes focus off a text box. -->
+    <!-- Listens for presses on empty content so a caret can be dismissed. The element
+         that actually receives the focus is FocusSink, inside. -->
     <Border
       x:Name="ContentHost"
       Background="{ThemeResource HaloLayerBrush}"
       BorderBrush="{ThemeResource HaloCardStrokeBrush}"
       BorderThickness="1,1,0,0"
       CornerRadius="8,0,0,0"
-      IsTabStop="True"
       PointerPressed="OnContentPointerPressed"
-      SizeChanged="OnContentHostSizeChanged"
-      UseSystemFocusVisuals="False">
-      <Frame x:Name="ContentFrame" />
+      SizeChanged="OnContentHostSizeChanged">
+      <Grid>
+        <Frame x:Name="ContentFrame" />
+        <!-- Focus parks here when a press dismisses a caret. It must be a sibling of
+             the frame, never an ancestor: focusing an ancestor makes XAML resolve the
+             request down into the page and land on its first tab stop, which on Home
+             is the search box the press was meant to leave, and that re-focus drags
+             the scroll back to the top. Given a real size and IsTabStop because a
+             Control refuses programmatic focus without them. -->
+        <ContentControl
+          x:Name="FocusSink"
+          Width="1"
+          Height="1"
+          MinWidth="0"
+          MinHeight="0"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          IsTabStop="True"
+          Opacity="0"
+          UseSystemFocusVisuals="False" />
+      </Grid>
     </Border>
   </NavigationView>
 </Page>
