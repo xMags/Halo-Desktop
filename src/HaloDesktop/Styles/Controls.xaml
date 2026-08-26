@@ -123,6 +123,8 @@
     <Setter Property="Padding" Value="16,5" />
     <Setter Property="FontSize" Value="13" />
     <Setter Property="Background" Value="Transparent" />
+    <!-- Centred by default, but honoured rather than hard-coded: a caller asking for Stretch used to be silently ignored. -->
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
     <Setter Property="Template">
       <Setter.Value>
@@ -133,7 +135,8 @@
             <ContentPresenter
               x:Name="Label"
               Padding="{TemplateBinding Padding}"
-              HorizontalAlignment="Center"
+              HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
               VerticalAlignment="Center"
               AutomationProperties.AccessibilityView="Raw"
               Content="{TemplateBinding Content}"
