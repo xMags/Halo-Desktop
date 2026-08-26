@@ -23,6 +23,12 @@ namespace winrt::HaloDesktop::implementation
     void CatalogPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
     {
         m_viewModel.Load(args.Parameter());
+    }
+
+    void CatalogPage::OnLoaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
         auto const viewModel = winrt::get_self<CatalogViewModel>(m_viewModel);
         FindName(L"CatalogGrid")
             .as<Microsoft::UI::Xaml::Controls::GridView>()

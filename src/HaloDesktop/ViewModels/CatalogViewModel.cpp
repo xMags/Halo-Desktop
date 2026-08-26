@@ -19,7 +19,9 @@ namespace
 namespace winrt::HaloDesktop::implementation
 {
     CatalogViewModel::CatalogViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_navigation(services.Navigation), m_items(EmptyItems())
+        : m_navigation(services.Navigation),
+          m_snapshotItems(EmptyItems()),
+          m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
     }
 
@@ -69,7 +71,8 @@ namespace winrt::HaloDesktop::implementation
     {
         m_title = L"Catalog";
         m_sourceLabel = {};
-        m_items = EmptyItems();
+        m_snapshotItems = EmptyItems();
+        m_items.Clear();
 
         if (auto const shelf = parameter.try_as<winrt::HaloDesktop::Shelf>())
         {
@@ -80,7 +83,14 @@ namespace winrt::HaloDesktop::implementation
             m_sourceLabel = shelf.SourceLabel();
             if (auto const items = shelf.Items())
             {
-                m_items = items;
+                m_snapshotItems = items;
+                for (auto const& item : m_snapshotItems)
+                {
+                    if (item)
+                    {
+                        m_items.Append(item);
+                    }
+                }
             }
         }
 

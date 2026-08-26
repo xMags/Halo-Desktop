@@ -10,6 +10,9 @@ namespace winrt::HaloDesktop::implementation
 
         [[nodiscard]] winrt::HaloDesktop::CatalogViewModel ViewModel() const;
         void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
+        void OnLoaded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnPosterClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);

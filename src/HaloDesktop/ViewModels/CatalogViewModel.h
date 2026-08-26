@@ -35,7 +35,8 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::hstring m_title{ L"Catalog" };
         winrt::hstring m_sourceLabel;
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_items{ nullptr };
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_snapshotItems{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }
