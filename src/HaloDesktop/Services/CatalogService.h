@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Services/CatalogRefreshPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <memory>
@@ -27,9 +28,15 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
         [[nodiscard]] std::uint64_t SnapshotVersion() const noexcept override;
+        void InvalidateCatalogs() noexcept override;
+        [[nodiscard]] bool CatalogsDirty() const noexcept override;
+        [[nodiscard]] concurrency::task<void> RefreshCatalogsIfDirtyAsync() override;
         void RefreshContinue() override;
+        void RebuildLibrary() override;
         [[nodiscard]] concurrency::task<void> SearchAsync(winrt::hstring query) override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
+        [[nodiscard]] winrt::HaloDesktop::MediaSummary FeaturedForFilter(
+            std::int32_t filterIndex) const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;
@@ -39,11 +46,13 @@ namespace HaloDesktop::Services
         void RecordRecent(winrt::hstring term) override;
 
     private:
-        [[nodiscard]] concurrency::task<void> LoadCoreAsync();
-        // Split so the continue row can be rebuilt on its own. BuildLibraryShelf
-        // derives m_shelves from m_catalogShelves every time rather than appending
-        // to whatever m_shelves already held, so neither half can double up.
-        void BuildLibraryShelf();
+        [[nodiscard]] concurrency::task<void> RunSharedRefreshAsync(bool loadDependencies);
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync(bool loadDependencies);
+        [[nodiscard]] std::vector<winrt::HaloDesktop::MediaSummary> BuildLibraryItems() const;
+        [[nodiscard]] std::vector<winrt::HaloDesktop::Shelf> BuildShelves(
+            winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> const& catalogShelves,
+            winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> const& libraryItems) const;
+        [[nodiscard]] std::vector<winrt::HaloDesktop::ContinueItem> BuildContinueItems() const;
         void BuildContinue();
         void LoadRecentTerms();
         void SaveRecentTerms();
@@ -52,7 +61,6 @@ namespace HaloDesktop::Services
         std::shared_ptr<AddonService> m_addons;
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<WatchStateService> m_watchState;
-        winrt::HaloDesktop::MediaSummary m_hero{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };
@@ -60,8 +68,8 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> m_searchResults{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> m_recentTerms{ nullptr };
         std::optional<concurrency::task<void>> m_loadTask;
+        CatalogRefreshState m_refreshState;
         std::uint64_t m_searchVersion{};
-        bool m_loaded{};
         std::uint64_t m_snapshotVersion{};
     };
 }

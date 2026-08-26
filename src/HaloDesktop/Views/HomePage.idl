@@ -8,6 +8,13 @@ namespace HaloDesktop
         String HeroMeta { get; };
         String HeroBackground { get; };
         String HeroActionLabel { get; };
+        String HeroLibraryLabel { get; };
+        Boolean HeroLibraryBusy { get; };
+        Boolean HeroLibraryEnabled { get; };
+        Microsoft.UI.Xaml.Visibility HeroVisibility { get; };
+        String HeroLibraryErrorText { get; };
+        Microsoft.UI.Xaml.Visibility HeroLibraryErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
         String ContinueCountLabel { get; };
         Object ContinueItems { get; };
         Object Shelves { get; };
@@ -22,6 +29,7 @@ namespace HaloDesktop
         void OpenDetail(Object item);
         void OpenHeroDetail();
         void OpenHeroSources();
+        void ToggleHeroLibrary();
         void OpenContinue(Object item);
         void OpenSearch(String query);
         void OpenCatalog(Object shelf);

@@ -5,8 +5,11 @@
 #endif
 #include "Models/Models.h"
 #include "Shell/LayoutMetricsService.h"
+#include "Services/LibraryService.h"
 #include "Services/NavigationService.h"
+#include "ViewModels/HomeStatePolicy.h"
 #include "ViewModels/ObservableHelper.h"
+#include <optional>
 #include <utility>
 #include <vector>
 namespace
@@ -17,7 +20,8 @@ namespace
 namespace winrt::HaloDesktop::implementation
 {
     HomeViewModel::HomeViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_layout(services.LayoutMetrics), m_catalog(services.Catalog), m_navigation(services.Navigation),
+        : m_layout(services.LayoutMetrics), m_catalog(services.Catalog), m_library(services.Library),
+          m_navigation(services.Navigation),
           m_continueItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_shelves(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
@@ -48,23 +52,47 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring HomeViewModel::HeroMeta() const { return m_hero ? m_hero.ReleaseInfo() : L""; }
     winrt::hstring HomeViewModel::HeroBackground() const { return m_hero ? (!m_hero.Background().empty() ? m_hero.Background() : m_hero.Poster()) : L""; }
     winrt::hstring HomeViewModel::HeroActionLabel() const { return m_hero && m_hero.Kind() == winrt::HaloDesktop::MediaKind::Series ? L"Choose episode" : L"Play"; }
+    winrt::hstring HomeViewModel::HeroLibraryLabel() const { return m_heroLibraryBusy ? L"Saving…" : (m_heroInLibrary ? L"In library" : L"Add to library"); }
+    bool HomeViewModel::HeroLibraryBusy() const noexcept { return m_heroLibraryBusy; }
+    bool HomeViewModel::HeroLibraryEnabled() const noexcept { return m_hero && !m_heroLibraryBusy; }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::HeroVisibility() const noexcept { return m_hero ? Visible : Collapsed; }
+    winrt::hstring HomeViewModel::HeroLibraryErrorText() const { return m_heroLibraryError; }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::HeroLibraryErrorVisibility() const noexcept { return m_heroLibraryError.empty() ? Collapsed : Visible; }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return m_refreshError && HasUsableContent() ? Visible : Collapsed; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::Shelves() const { return m_shelves; }
     std::int32_t HomeViewModel::FilterIndex() const noexcept { return m_filterIndex; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::ContentVisibility() const noexcept { return !m_loading && !m_error && (m_hero || m_shelves.Size() || m_continueItems.Size()) ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::LoadingVisibility() const noexcept { return m_loading ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::ErrorVisibility() const noexcept { return m_error ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::EmptyVisibility() const noexcept { return !m_loading && !m_error && !m_hero && m_shelves.Size() == 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::ContentVisibility() const noexcept
+    {
+        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
+            m_loading, m_error, HasUsableContent()).ShowContent ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::LoadingVisibility() const noexcept
+    {
+        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
+            m_loading, m_error, HasUsableContent()).ShowLoading ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::ErrorVisibility() const noexcept
+    {
+        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
+            m_loading, m_error, HasUsableContent()).ShowError ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::EmptyVisibility() const noexcept
+    {
+        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
+            m_loading, m_error, HasUsableContent()).ShowEmpty ? Visible : Collapsed;
+    }
     void HomeViewModel::SetFilter(std::int32_t index) { if (index >= 0 && index <= 2 && index != m_filterIndex) { m_filterIndex = index; Rebuild(); Raise(L"FilterIndex"); } }
     void HomeViewModel::Retry() { static_cast<void>(LoadAsync()); }
 
+    bool HomeViewModel::HasUsableContent() const noexcept
+    {
+        return m_hero || m_shelves.Size() > 0 || m_continueItems.Size() > 0;
+    }
+
     void HomeViewModel::EnsureLoaded()
     {
-        // The catalogs are fetched once per session. Every later arrival on Home
-        // rebuilds only the continue row, and that costs nothing but a sort: the
-        // watch state service already holds what the server returned while the
-        // player was reporting progress, so there is no request to make.
         if (!m_catalog->HasLoaded())
         {
             static_cast<void>(LoadAsync());
@@ -78,6 +106,10 @@ namespace winrt::HaloDesktop::implementation
         }
         m_catalog->RefreshContinue();
         ApplyContinue();
+        if (m_catalog->CatalogsDirty())
+        {
+            static_cast<void>(LoadAsync());
+        }
     }
 
     void HomeViewModel::AdoptSnapshot()
@@ -85,7 +117,6 @@ namespace winrt::HaloDesktop::implementation
         // The catalogs finished loading for somebody else, so take what they hold
         // rather than fetching them again. Reached when this view model is built
         // after the shell has already warmed the catalog.
-        m_hero = m_catalog->Hero();
         m_sourceShelves = m_catalog->Shelves();
         m_loading = false;
         m_error = false;
@@ -128,6 +159,13 @@ namespace winrt::HaloDesktop::implementation
                 m_hero.Title(),
                 L"",
                 m_hero.Poster()));
+    }
+    void HomeViewModel::ToggleHeroLibrary()
+    {
+        if (m_hero && !m_heroLibraryBusy)
+        {
+            static_cast<void>(ToggleHeroLibraryAsync());
+        }
     }
     void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, item); }
     void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
@@ -173,38 +211,179 @@ namespace winrt::HaloDesktop::implementation
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     winrt::Windows::Foundation::IAsyncAction HomeViewModel::LoadAsync()
     {
-        auto lifetime = get_strong(); auto const uiContext = winrt::apartment_context{}; auto const version = ++m_loadVersion;
-        m_loading = true; m_error = false; RaiseState(); bool failed{};
-        try { co_await m_catalog->LoadAsync(); } catch (...) { failed = true; }
-        co_await uiContext; if (version != m_loadVersion) co_return;
-        m_loading = false; m_error = failed;
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const version = ++m_loadVersion;
+        m_loading = !HasUsableContent();
+        m_error = false;
+        m_refreshError = false;
+        RaiseState();
+
+        bool failed{};
+        try
+        {
+            if (m_catalog->HasLoaded())
+            {
+                co_await m_catalog->RefreshCatalogsIfDirtyAsync();
+            }
+            else
+            {
+                co_await m_catalog->LoadAsync();
+            }
+        }
+        catch (...)
+        {
+            failed = true;
+        }
+        co_await uiContext;
+        if (version != m_loadVersion)
+        {
+            co_return;
+        }
+
+        m_loading = false;
         if (!failed)
         {
-            m_hero = m_catalog->Hero(); m_sourceShelves = m_catalog->Shelves();
+            m_sourceShelves = m_catalog->Shelves();
             m_appliedVersion = m_catalog->SnapshotVersion();
             ApplyContinue();
             Rebuild();
         }
+        else if (HasUsableContent())
+        {
+            m_refreshError = true;
+        }
+        else
+        {
+            m_error = true;
+        }
         RaiseState();
     }
+
+    winrt::Windows::Foundation::IAsyncAction HomeViewModel::ToggleHeroLibraryAsync()
+    {
+        auto lifetime = get_strong();
+        if (!m_hero || m_heroLibraryBusy)
+        {
+            co_return;
+        }
+
+        auto const uiContext = winrt::apartment_context{};
+        auto const hero = m_hero;
+        auto const nextMembership = !m_heroInLibrary;
+        m_heroLibraryBusy = true;
+        m_heroLibraryError.clear();
+        for (auto const property : {
+                 L"HeroLibraryLabel",
+                 L"HeroLibraryEnabled",
+                 L"HeroLibraryBusy",
+                 L"HeroLibraryErrorText",
+                 L"HeroLibraryErrorVisibility" })
+        {
+            Raise(property);
+        }
+
+        bool failed{};
+        try
+        {
+            co_await m_library->SetMembershipAsync(
+                hero.Type(),
+                hero.Id(),
+                hero.Title(),
+                hero.Poster().empty()
+                    ? std::nullopt
+                    : std::optional<winrt::hstring>{ hero.Poster() },
+                nextMembership);
+        }
+        catch (...)
+        {
+            failed = true;
+        }
+        co_await uiContext;
+
+        m_heroLibraryBusy = false;
+        if (!failed)
+        {
+            m_catalog->RebuildLibrary();
+            m_sourceShelves = m_catalog->Shelves();
+            m_appliedVersion = m_catalog->SnapshotVersion();
+            ApplyContinue();
+            Rebuild();
+        }
+        else if (m_hero && m_hero.Type() == hero.Type() && m_hero.Id() == hero.Id())
+        {
+            m_heroLibraryError = L"Library could not be updated. Try again.";
+        }
+        SynchronizeHeroLibraryState();
+        RaiseState();
+    }
+
     void HomeViewModel::Rebuild()
     {
-        if (!m_sourceShelves) { m_shelves.Clear(); return; }
+        m_heroLibraryError.clear();
+        m_hero = m_catalog->FeaturedForFilter(m_filterIndex);
+        SynchronizeHeroLibraryState();
+        if (!m_sourceShelves)
+        {
+            m_shelves.Clear();
+            RaiseState();
+            return;
+        }
+
+        auto const filter = ::HaloDesktop::ViewModels::HomeFilterFromIndex(m_filterIndex);
         std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
         for (auto const& shelf : m_sourceShelves)
         {
             std::vector<winrt::HaloDesktop::MediaSummary> filtered;
-            for (auto const& item : shelf.Items()) if (m_filterIndex == 0 || (m_filterIndex == 1 && item.Kind() == winrt::HaloDesktop::MediaKind::Movie) || (m_filterIndex == 2 && item.Kind() == winrt::HaloDesktop::MediaKind::Series)) filtered.push_back(item);
+            for (auto const& item : shelf.Items())
+            {
+                auto const kind = item.Kind() == winrt::HaloDesktop::MediaKind::Series
+                    ? ::HaloDesktop::ViewModels::HomeMediaKind::Series
+                    : ::HaloDesktop::ViewModels::HomeMediaKind::Movie;
+                if (::HaloDesktop::ViewModels::MatchesHomeFilter(filter, kind))
+                {
+                    filtered.push_back(item);
+                }
+            }
             if (!filtered.empty()) rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(shelf.Title(), shelf.SourceLabel(), winrt::single_threaded_vector(std::move(filtered)).GetView()));
         }
         // One replacement rather than a clear and a run of appends: switching the
         // filter used to make the repeater rebuild a shelf at a time.
         m_shelves.ReplaceAll(rebuilt);
-        Raise(L"Shelves"); Raise(L"ContentVisibility"); Raise(L"EmptyVisibility");
+        RaiseState();
     }
+
+    void HomeViewModel::SynchronizeHeroLibraryState()
+    {
+        m_heroInLibrary = m_hero && m_library->Contains(m_hero.Type(), m_hero.Id());
+    }
+
     void HomeViewModel::RaiseState()
     {
-        for (auto const name : { L"HeroTitle", L"HeroSynopsis", L"HeroRating", L"HeroMeta", L"HeroBackground", L"HeroActionLabel", L"ContinueItems", L"ContinueCountLabel", L"Shelves", L"ContentVisibility", L"LoadingVisibility", L"ErrorVisibility", L"EmptyVisibility" }) Raise(name);
+        for (auto const name : {
+                 L"HeroTitle",
+                 L"HeroSynopsis",
+                 L"HeroRating",
+                 L"HeroMeta",
+                 L"HeroBackground",
+                 L"HeroActionLabel",
+                 L"HeroLibraryLabel",
+                 L"HeroLibraryBusy",
+                 L"HeroLibraryEnabled",
+                 L"HeroVisibility",
+                 L"HeroLibraryErrorText",
+                 L"HeroLibraryErrorVisibility",
+                 L"RefreshErrorVisibility",
+                 L"ContinueItems",
+                 L"ContinueCountLabel",
+                 L"Shelves",
+                 L"ContentVisibility",
+                 L"LoadingVisibility",
+                 L"ErrorVisibility",
+                 L"EmptyVisibility" })
+        {
+            Raise(name);
+        }
     }
     void HomeViewModel::Raise(wchar_t const* name) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, name); }
 }

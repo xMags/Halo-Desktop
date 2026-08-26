@@ -22,6 +22,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring HeroMeta() const;
         [[nodiscard]] winrt::hstring HeroBackground() const;
         [[nodiscard]] winrt::hstring HeroActionLabel() const;
+        [[nodiscard]] winrt::hstring HeroLibraryLabel() const;
+        [[nodiscard]] bool HeroLibraryBusy() const noexcept;
+        [[nodiscard]] bool HeroLibraryEnabled() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility HeroVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring HeroLibraryErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility HeroLibraryErrorVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RefreshErrorVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ContinueCountLabel() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ContinueItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Shelves() const;
@@ -38,6 +45,7 @@ namespace winrt::HaloDesktop::implementation
         void OpenDetail(winrt::Windows::Foundation::IInspectable const& item);
         void OpenHeroDetail();
         void OpenHeroSources();
+        void ToggleHeroLibrary();
         void OpenContinue(winrt::Windows::Foundation::IInspectable const& item);
         void OpenSearch(winrt::hstring const& query);
         void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
@@ -49,14 +57,18 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
+        winrt::Windows::Foundation::IAsyncAction ToggleHeroLibraryAsync();
         void AdoptSnapshot();
         void ApplyContinue();
         void Rebuild();
+        void SynchronizeHeroLibraryState();
+        [[nodiscard]] bool HasUsableContent() const noexcept;
         void RaiseState();
         void RaiseLayoutMetrics();
         void Raise(wchar_t const* name);
         std::shared_ptr<::HaloDesktop::Shell::LayoutMetricsService> m_layout;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
+        std::shared_ptr<::HaloDesktop::Services::LibraryService> m_library;
         std::uint64_t m_metricsToken{};
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::HaloDesktop::MediaSummary m_hero{ nullptr };
@@ -68,6 +80,10 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t m_appliedVersion{};
         bool m_loading{ true };
         bool m_error{};
+        bool m_refreshError{};
+        bool m_heroInLibrary{};
+        bool m_heroLibraryBusy{};
+        winrt::hstring m_heroLibraryError;
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }

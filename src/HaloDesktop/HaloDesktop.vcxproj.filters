@@ -106,6 +106,7 @@
     <ClCompile Include="Services\DownloadService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\CatalogRefreshPolicy.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\LibraryService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\PlaybackPreferences.cpp"><Filter>Services</Filter></ClCompile>
@@ -140,6 +141,7 @@
     <ClCompile Include="ViewModels\DetailViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\HomeViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\HomeStatePolicy.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LibraryViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LoginViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\PlayerViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -194,6 +196,7 @@
     <ClInclude Include="Services\AppServices.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\AddonService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\CatalogService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\CatalogRefreshPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\LibraryService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\PlaybackPreferences.h"><Filter>Services</Filter></ClInclude>
@@ -231,6 +234,7 @@
     <ClInclude Include="ViewModels\DetailViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DownloadsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\HomeViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\HomeStatePolicy.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LibraryViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LoginViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\PlayerViewModel.h"><Filter>ViewModels</Filter></ClInclude>

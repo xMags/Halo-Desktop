@@ -6,6 +6,7 @@
 #include "Services/AddonService.h"
 #include "Services/LibraryService.h"
 #include "Services/WatchStateService.h"
+#include "ViewModels/HomeStatePolicy.h"
 
 #include <algorithm>
 #include <cmath>
@@ -143,8 +144,32 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> CatalogService::LoadAsync()
     {
-        // Shell and Home both load at startup. Sharing the in-flight task keeps
-        // either caller from observing a superseded but apparently successful load.
+        if (m_refreshState.HasLoaded())
+        {
+            co_return;
+        }
+        co_await RunSharedRefreshAsync(true);
+    }
+
+    concurrency::task<void> CatalogService::RefreshCatalogsIfDirtyAsync()
+    {
+        if (!m_refreshState.HasLoaded())
+        {
+            co_await RunSharedRefreshAsync(true);
+            co_return;
+        }
+        if (!m_refreshState.IsDirty())
+        {
+            co_return;
+        }
+        co_await RunSharedRefreshAsync(false);
+    }
+
+    concurrency::task<void> CatalogService::RunSharedRefreshAsync(bool loadDependencies)
+    {
+        // Shell and Home can arrive together, and a dirty Home can be entered more
+        // than once while its request is outstanding. Every caller awaits the one
+        // candidate that can commit.
         if (m_loadTask)
         {
             auto task = *m_loadTask;
@@ -152,7 +177,7 @@ namespace HaloDesktop::Services
             co_return;
         }
 
-        auto task = LoadCoreAsync();
+        auto task = LoadCoreAsync(loadDependencies);
         m_loadTask = task;
         try
         {
@@ -166,59 +191,124 @@ namespace HaloDesktop::Services
         m_loadTask.reset();
     }
 
-    concurrency::task<void> CatalogService::LoadCoreAsync()
+    concurrency::task<void> CatalogService::LoadCoreAsync(bool loadDependencies)
     {
+        auto const ticket = m_refreshState.TryBeginRefresh();
+        if (!ticket)
+        {
+            throw std::logic_error{ "A catalog refresh is already running." };
+        }
+
         auto const uiContext = winrt::apartment_context{};
-        co_await m_addons->LoadAsync();
-        co_await m_library->LoadAsync();
-        co_await m_watchState->LoadAsync();
-        co_await uiContext;
-
-        std::vector<CatalogQuery> queries;
-        for (auto const& addon : m_addons->Records())
+        try
         {
-            for (auto const& catalog : addon.Catalogs)
+            if (loadDependencies)
             {
-                if (!catalog.HasRequiredExtra && queries.size() < 8) queries.push_back({ addon.Id, addon.Name, catalog });
+                co_await m_addons->LoadAsync();
+                co_await m_library->LoadAsync();
+                co_await m_watchState->LoadAsync();
+                co_await uiContext;
             }
-        }
-        std::vector<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> tasks;
-        for (auto const& query : queries)
-        {
-            tasks.push_back(m_apiClient->GetCatalogAsync(query.AddonId, query.Catalog.Type, query.Catalog.Id));
-        }
-        std::vector<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> results;
-        for (auto& task : tasks)
-        {
-            try { results.push_back(co_await task); }
-            catch (...) { results.emplace_back(); }
-        }
-        co_await uiContext;
 
-        std::vector<winrt::HaloDesktop::Shelf> shelves;
-        for (std::size_t index = 0; index < queries.size(); ++index)
-        {
-            if (results[index].empty()) continue;
-            std::vector<winrt::HaloDesktop::MediaSummary> items;
-            for (auto const& item : results[index]) items.push_back(MakeMedia(item));
-            auto const title = queries[index].Catalog.Name.value_or(queries[index].AddonName);
-            auto const label = TypeLabel(queries[index].Catalog.Type);
-            shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(title, label, winrt::single_threaded_vector(std::move(items)).GetView()));
-        }
-        m_catalogShelves = winrt::single_threaded_vector(std::move(shelves)).GetView();
-        m_hero = nullptr;
-        if (m_catalogShelves.Size() > 0 && m_catalogShelves.GetAt(0).Items().Size() > 0) m_hero = m_catalogShelves.GetAt(0).Items().GetAt(0);
-        BuildLibraryShelf();
-        BuildContinue();
-        // A snapshot with nothing in it is not worth keeping. Every catalog request
-        // failing looks exactly like an account with no addons, and caching that
-        // would leave Home empty for the rest of the session with no way back. A
-        // later reload that comes back empty therefore leaves both of these alone,
-        // and whoever is already showing the last good snapshot keeps it.
-        if (m_shelves.Size() > 0 || m_libraryItems.Size() > 0)
-        {
-            m_loaded = true;
+            std::vector<CatalogQuery> queries;
+            for (auto const& addon : m_addons->Records())
+            {
+                if (addon.HideCatalogs)
+                {
+                    continue;
+                }
+                for (auto const& catalog : addon.Catalogs)
+                {
+                    if (!catalog.HasRequiredExtra && queries.size() < 8)
+                    {
+                        queries.push_back({ addon.Id, addon.Name, catalog });
+                    }
+                }
+            }
+
+            struct CatalogResult final
+            {
+                bool Succeeded{};
+                std::vector<::HaloDesktop::Api::Dto::MetaPreview> Items;
+            };
+
+            std::vector<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> tasks;
+            tasks.reserve(queries.size());
+            for (auto const& query : queries)
+            {
+                tasks.push_back(m_apiClient->GetCatalogAsync(
+                    query.AddonId,
+                    query.Catalog.Type,
+                    query.Catalog.Id));
+            }
+
+            std::vector<CatalogResult> results;
+            results.reserve(tasks.size());
+            std::size_t successfulCatalogCount{};
+            for (auto& task : tasks)
+            {
+                try
+                {
+                    results.push_back({ true, co_await task });
+                    ++successfulCatalogCount;
+                }
+                catch (...)
+                {
+                    results.emplace_back();
+                }
+            }
+            co_await uiContext;
+
+            if (DecideCatalogCommit(queries.size(), successfulCatalogCount) ==
+                CatalogCommitDecision::PreserveAndFail)
+            {
+                throw std::runtime_error{ "Every requested catalog failed." };
+            }
+
+            std::vector<winrt::HaloDesktop::Shelf> catalogShelfItems;
+            for (std::size_t index = 0; index < queries.size(); ++index)
+            {
+                if (!results[index].Succeeded || results[index].Items.empty())
+                {
+                    continue;
+                }
+
+                std::vector<winrt::HaloDesktop::MediaSummary> items;
+                items.reserve(results[index].Items.size());
+                for (auto const& item : results[index].Items)
+                {
+                    items.push_back(MakeMedia(item));
+                }
+                auto const title = queries[index].Catalog.Name.value_or(queries[index].AddonName);
+                auto const label = TypeLabel(queries[index].Catalog.Type);
+                catalogShelfItems.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+                    title,
+                    label,
+                    winrt::single_threaded_vector(std::move(items)).GetView()));
+            }
+
+            auto const catalogShelves = winrt::single_threaded_vector(
+                std::move(catalogShelfItems)).GetView();
+            auto const libraryItems = winrt::single_threaded_vector(
+                BuildLibraryItems()).GetView();
+            auto const shelves = winrt::single_threaded_vector(
+                BuildShelves(catalogShelves, libraryItems)).GetView();
+            auto const continued = winrt::single_threaded_vector(
+                BuildContinueItems()).GetView();
+
+            // There are no awaits after this point. Views observing the service
+            // cannot see a mixture of the old and candidate snapshots.
+            m_catalogShelves = catalogShelves;
+            m_libraryItems = libraryItems;
+            m_shelves = shelves;
+            m_continue = continued;
             ++m_snapshotVersion;
+            m_refreshState.CompleteRefresh(*ticket, true);
+        }
+        catch (...)
+        {
+            m_refreshState.CompleteRefresh(*ticket, false);
+            throw;
         }
     }
 
@@ -263,20 +353,59 @@ namespace HaloDesktop::Services
         m_searchResults = winrt::single_threaded_vector(std::move(groups)).GetView();
     }
 
-    winrt::HaloDesktop::MediaSummary CatalogService::Hero() const { return m_hero; }
+    winrt::HaloDesktop::MediaSummary CatalogService::Hero() const
+    {
+        return FeaturedForFilter(0);
+    }
+
+    winrt::HaloDesktop::MediaSummary CatalogService::FeaturedForFilter(
+        std::int32_t filterIndex) const
+    {
+        auto const filter = ::HaloDesktop::ViewModels::HomeFilterFromIndex(filterIndex);
+        for (auto const& shelf : m_catalogShelves)
+        {
+            for (auto const& item : shelf.Items())
+            {
+                auto const kind = item.Kind() == winrt::HaloDesktop::MediaKind::Series
+                    ? ::HaloDesktop::ViewModels::HomeMediaKind::Series
+                    : ::HaloDesktop::ViewModels::HomeMediaKind::Movie;
+                if (::HaloDesktop::ViewModels::MatchesHomeFilter(filter, kind))
+                {
+                    return item;
+                }
+            }
+        }
+        return nullptr;
+    }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> CatalogService::ContinueWatching() const { return m_continue; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> CatalogService::Shelves() const { return m_shelves; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> CatalogService::LibraryItems() const { return m_libraryItems; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> CatalogService::SearchResults() const { return m_searchResults; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> CatalogService::RecentTerms() const { return m_recentTerms; }
 
-    bool CatalogService::HasLoaded() const { return m_loaded; }
+    bool CatalogService::HasLoaded() const { return m_refreshState.HasLoaded(); }
 
     std::uint64_t CatalogService::SnapshotVersion() const noexcept { return m_snapshotVersion; }
 
+    void CatalogService::InvalidateCatalogs() noexcept { m_refreshState.Invalidate(); }
+
+    bool CatalogService::CatalogsDirty() const noexcept { return m_refreshState.IsDirty(); }
+
     void CatalogService::RefreshContinue() { BuildContinue(); }
 
-    void CatalogService::BuildLibraryShelf()
+    void CatalogService::RebuildLibrary()
+    {
+        auto const libraryItems = winrt::single_threaded_vector(BuildLibraryItems()).GetView();
+        auto const shelves = winrt::single_threaded_vector(
+            BuildShelves(m_catalogShelves, libraryItems)).GetView();
+        auto const continued = winrt::single_threaded_vector(BuildContinueItems()).GetView();
+        m_libraryItems = libraryItems;
+        m_shelves = shelves;
+        m_continue = continued;
+        ++m_snapshotVersion;
+    }
+
+    std::vector<winrt::HaloDesktop::MediaSummary> CatalogService::BuildLibraryItems() const
     {
         auto libraryRows = m_library->Rows();
         auto const watch = m_watchState->Rows();
@@ -288,6 +417,7 @@ namespace HaloDesktop::Services
         }
         std::sort(libraryRows.begin(), libraryRows.end(), [](auto const& a, auto const& b) { return a.AddedAt > b.AddedAt; });
         std::vector<winrt::HaloDesktop::MediaSummary> libraryItems;
+        libraryItems.reserve(libraryRows.size());
         for (auto const& row : libraryRows)
         {
             if (row.RemovedAt) continue;
@@ -296,26 +426,36 @@ namespace HaloDesktop::Services
                 metaId, row.Name, L"", Kind(row.Type), row.Type, row.Poster.value_or(L""), L"", L"", L"", L"", row.AddedAt,
                 lastWatched[std::wstring{ row.Id }]));
         }
-        m_libraryItems = winrt::single_threaded_vector(std::move(libraryItems)).GetView();
+        return libraryItems;
+    }
 
-        // Always rebuilt from the catalog shelves rather than appended to whatever
-        // m_shelves already held, so calling this twice cannot leave two copies of
-        // the library shelf on Home.
+    std::vector<winrt::HaloDesktop::Shelf> CatalogService::BuildShelves(
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> const& catalogShelves,
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> const& libraryItems) const
+    {
         std::vector<winrt::HaloDesktop::Shelf> shelves;
-        for (auto const& shelf : m_catalogShelves) shelves.push_back(shelf);
-        if (m_libraryItems.Size() > 0)
+        shelves.reserve(catalogShelves.Size() + (libraryItems.Size() > 0 ? 1u : 0u));
+        for (auto const& shelf : catalogShelves)
+        {
+            shelves.push_back(shelf);
+        }
+        if (libraryItems.Size() > 0)
         {
             shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
-                L"My library", L"SYNCED · " + winrt::to_hstring(m_libraryItems.Size()), m_libraryItems));
+                L"My library",
+                L"SYNCED · " + winrt::to_hstring(libraryItems.Size()),
+                libraryItems));
         }
-        m_shelves = winrt::single_threaded_vector(std::move(shelves)).GetView();
+        return shelves;
     }
 
     void CatalogService::BuildContinue()
     {
-        // Derives its own view of the library rather than sharing one with the shelf
-        // build, which is what lets it run on its own when the user comes back to
-        // Home without anything else being reloaded.
+        m_continue = winrt::single_threaded_vector(BuildContinueItems()).GetView();
+    }
+
+    std::vector<winrt::HaloDesktop::ContinueItem> CatalogService::BuildContinueItems() const
+    {
         std::unordered_map<std::wstring, ::HaloDesktop::Api::Dto::LibraryRow> liveLibrary;
         for (auto const& row : m_library->Rows())
         {
@@ -342,7 +482,7 @@ namespace HaloDesktop::Services
                 name, EpisodeTag(row.VideoId, metaId), EpisodeTag(row.VideoId, metaId), TimeLeft(row.DurationSec, row.PositionSec), fraction,
                 type, metaId, row.VideoId, row.ItemId, poster));
         }
-        m_continue = winrt::single_threaded_vector(std::move(continued)).GetView();
+        return continued;
     }
 
     void CatalogService::LoadRecentTerms()

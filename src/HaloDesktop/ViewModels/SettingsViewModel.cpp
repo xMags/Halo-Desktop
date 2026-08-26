@@ -44,6 +44,7 @@ namespace winrt::HaloDesktop::implementation
         : m_session(services.Session),
           m_theme(services.Theme),
           m_addonService(services.Addons),
+          m_catalog(services.Catalog),
           m_settings(services.SettingsSync),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
@@ -407,6 +408,10 @@ namespace winrt::HaloDesktop::implementation
             failed = true;
         }
         co_await uiContext;
+        if (!failed)
+        {
+            m_catalog->InvalidateCatalogs();
+        }
         SynchronizeAddons();
         RaiseAddonState();
         m_addonNoticeVisible = true;
@@ -431,6 +436,10 @@ namespace winrt::HaloDesktop::implementation
             failed = true;
         }
         co_await uiContext;
+        if (!failed)
+        {
+            m_catalog->InvalidateCatalogs();
+        }
         SynchronizeAddons();
         RaiseAddonState();
         if (failed)
@@ -456,6 +465,10 @@ namespace winrt::HaloDesktop::implementation
             failed = true;
         }
         co_await uiContext;
+        if (!failed)
+        {
+            m_catalog->InvalidateCatalogs();
+        }
         SynchronizeAddons();
         RaiseAddonState();
         if (failed)

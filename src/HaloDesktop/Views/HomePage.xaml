@@ -9,7 +9,7 @@
   <Grid>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Home could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
-  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="Install an addon to build your Home shelves." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="No titles are available from your visible addon catalogs." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
   <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader Title="Home">
@@ -34,7 +34,18 @@
           </StackPanel>
         </local:SectionHeader.RightContent>
       </local:SectionHeader>
-      <Grid Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" CornerRadius="8">
+      <InfoBar
+        Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}"
+        IsClosable="False"
+        IsOpen="True"
+        Message="Home could not refresh its addon catalogs. Your previous titles are still available."
+        Severity="Warning"
+        Visibility="{x:Bind ViewModel.RefreshErrorVisibility, Mode=OneWay}">
+        <InfoBar.ActionButton>
+          <Button Content="Retry" Click="OnRetryClick" />
+        </InfoBar.ActionButton>
+      </InfoBar>
+      <Grid Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" CornerRadius="8" Visibility="{x:Bind ViewModel.HeroVisibility, Mode=OneWay}">
         <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
         <local:ArtworkImage SourceUrl="{x:Bind ViewModel.HeroBackground, Mode=OneWay}" />
         <Rectangle>
@@ -63,10 +74,22 @@
               </StackPanel>
             </Button>
             <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />
-            <Button AutomationProperties.Name="Add to bookmarks" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Bookmarking is not available">
-              <FontIcon FontSize="14" Glyph="&#xE734;" />
+            <Button
+              Height="36"
+              Padding="14,0"
+              AutomationProperties.Name="{x:Bind ViewModel.HeroLibraryLabel, Mode=OneWay}"
+              Click="OnHeroLibraryClick"
+              IsEnabled="{x:Bind ViewModel.HeroLibraryEnabled, Mode=OneWay}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon FontSize="14" Glyph="&#xE734;" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.HeroLibraryLabel, Mode=OneWay}" />
+              </StackPanel>
             </Button>
           </StackPanel>
+          <TextBlock
+            Foreground="{ThemeResource HaloCriticalBrush}"
+            Text="{x:Bind ViewModel.HeroLibraryErrorText, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.HeroLibraryErrorVisibility, Mode=OneWay}" />
         </StackPanel>
       </Grid>
       <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">

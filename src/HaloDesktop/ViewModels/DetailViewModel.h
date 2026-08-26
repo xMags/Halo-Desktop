@@ -22,7 +22,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&);void PropertyChanged(winrt::event_token const&)noexcept;
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();winrt::Windows::Foundation::IAsyncAction ToggleLibraryAsync();void RebuildEpisodes();void UpdatePrimaryAction();void OpenEpisodeSources(winrt::HaloDesktop::Episode const& episode);void RaiseState();void Raise(wchar_t const*);
-        std::shared_ptr<::HaloDesktop::Services::IMetadataService>m_metadata;std::shared_ptr<::HaloDesktop::Services::LibraryService>m_library;std::shared_ptr<::HaloDesktop::Services::NavigationService>m_navigation;std::shared_ptr<::HaloDesktop::Services::IDownloadService>m_downloads;std::shared_ptr<::HaloDesktop::Services::WatchStateService>m_watch;
+        std::shared_ptr<::HaloDesktop::Services::IMetadataService>m_metadata;std::shared_ptr<::HaloDesktop::Services::LibraryService>m_library;std::shared_ptr<::HaloDesktop::Services::ICatalogService>m_catalog;std::shared_ptr<::HaloDesktop::Services::NavigationService>m_navigation;std::shared_ptr<::HaloDesktop::Services::IDownloadService>m_downloads;std::shared_ptr<::HaloDesktop::Services::WatchStateService>m_watch;
         winrt::HaloDesktop::DetailNavParams m_params{nullptr};winrt::HaloDesktop::MediaDetail m_detail{nullptr};
         winrt::HaloDesktop::Episode m_primaryEpisode{nullptr};winrt::hstring m_primaryActionLabel;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>m_episodes{nullptr},m_facts{nullptr},m_availability{nullptr},m_seasons{nullptr};

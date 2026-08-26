@@ -45,12 +45,22 @@ namespace HaloDesktop::Services
         // Advances every time a snapshot worth showing replaces the last one, so a
         // view holding an older one can tell without comparing its contents.
         [[nodiscard]] virtual std::uint64_t SnapshotVersion() const = 0;
+        // Addon mutations invalidate only the catalog portion of Home. A later
+        // Home entry owns the refresh, which keeps ordinary navigation network free.
+        virtual void InvalidateCatalogs() noexcept = 0;
+        [[nodiscard]] virtual bool CatalogsDirty() const noexcept = 0;
+        [[nodiscard]] virtual concurrency::task<void> RefreshCatalogsIfDirtyAsync() = 0;
         // Recomputes the continue row on its own. Synchronous and network free: the
         // watch state service holds what the server returned while the player was
         // reporting progress, so the rows behind this are already current.
         virtual void RefreshContinue() = 0;
+        // Rebuilds the local library projections after a successful membership
+        // mutation without refetching catalogs or any other server state.
+        virtual void RebuildLibrary() = 0;
         [[nodiscard]] virtual concurrency::task<void> SearchAsync(winrt::hstring query) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
+        [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary FeaturedForFilter(
+            std::int32_t filterIndex) const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;

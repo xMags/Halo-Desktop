@@ -4,4 +4,5 @@
   </Configurations>
   <Project Path="PlaybackPolicyTests/PlaybackPolicyTests.vcxproj" />
   <Project Path="MpvPlaybackIntegrationTests/MpvPlaybackIntegrationTests.vcxproj" />
+  <Project Path="StabilityTests/StabilityTests.vcxproj" />
 </Solution>

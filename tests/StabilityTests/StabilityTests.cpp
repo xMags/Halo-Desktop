@@ -1,0 +1,121 @@
+#include "Services/CatalogRefreshPolicy.h"
+#include "ViewModels/HomeStatePolicy.h"
+
+#include <iostream>
+#include <stdexcept>
+#include <vector>
+
+namespace
+{
+    void Require(bool condition, char const* message)
+    {
+        if (!condition)
+        {
+            throw std::runtime_error{ message };
+        }
+    }
+
+    void TestCatalogCommitDecisions()
+    {
+        Require(
+            HaloDesktop::Services::DecideCatalogCommit(0, 0) ==
+                HaloDesktop::Services::CatalogCommitDecision::Commit,
+            "zero eligible catalogs were not accepted as a valid empty snapshot");
+        Require(
+            HaloDesktop::Services::DecideCatalogCommit(3, 0) ==
+                HaloDesktop::Services::CatalogCommitDecision::PreserveAndFail,
+            "an all-failed catalog load replaced the previous snapshot");
+        Require(
+            HaloDesktop::Services::DecideCatalogCommit(3, 1) ==
+                HaloDesktop::Services::CatalogCommitDecision::Commit,
+            "a partial catalog success was rejected");
+    }
+
+    void TestCatalogDirtySingleFlight()
+    {
+        HaloDesktop::Services::CatalogRefreshState state;
+        Require(!state.HasLoaded() && state.IsDirty(), "initial catalog state was not refreshable");
+
+        auto const first = state.TryBeginRefresh();
+        Require(first.has_value(), "initial catalog refresh could not begin");
+        Require(!state.TryBeginRefresh().has_value(), "a competing catalog refresh was admitted");
+
+        state.Invalidate();
+        state.CompleteRefresh(*first, true);
+        Require(state.HasLoaded(), "a committed catalog snapshot was not marked loaded");
+        Require(state.IsDirty(), "an in-flight refresh cleared a newer invalidation");
+
+        auto const second = state.TryBeginRefresh();
+        Require(second.has_value(), "the newer catalog invalidation was not retryable");
+        state.CompleteRefresh(*second, true);
+        Require(!state.IsDirty(), "the current catalog refresh did not clear dirty state");
+
+        state.Invalidate();
+        auto const failed = state.TryBeginRefresh();
+        Require(failed.has_value(), "a dirty catalog refresh could not begin");
+        state.CompleteRefresh(*failed, false);
+        Require(state.IsDirty() && !state.RefreshInFlight(), "a failed refresh did not remain retryable");
+    }
+
+    void TestHomeVisibility()
+    {
+        auto const retained = HaloDesktop::ViewModels::ResolveHomeVisibility(true, false, true);
+        Require(retained.ShowContent && !retained.ShowLoading,
+                "existing Home content was hidden by a refresh");
+
+        auto const continueOnly = HaloDesktop::ViewModels::ResolveHomeVisibility(false, false, true);
+        Require(continueOnly.ShowContent && !continueOnly.ShowEmpty,
+                "Continue Watching overlapped the empty state");
+
+        auto const empty = HaloDesktop::ViewModels::ResolveHomeVisibility(false, false, false);
+        Require(empty.ShowEmpty && !empty.ShowContent, "a valid empty Home snapshot was not shown as empty");
+
+        auto const failed = HaloDesktop::ViewModels::ResolveHomeVisibility(false, true, false);
+        Require(failed.ShowError && !failed.ShowEmpty, "an initial Home failure was presented as empty");
+    }
+
+    void TestFilteredFeaturedSelection()
+    {
+        std::vector<HaloDesktop::ViewModels::HomeMediaKind> const kinds{
+            HaloDesktop::ViewModels::HomeMediaKind::Series,
+            HaloDesktop::ViewModels::HomeMediaKind::Movie,
+            HaloDesktop::ViewModels::HomeMediaKind::Series,
+        };
+
+        auto const all = HaloDesktop::ViewModels::FirstMatchingHomeItem(
+            HaloDesktop::ViewModels::HomeFilter::All, kinds);
+        auto const movie = HaloDesktop::ViewModels::FirstMatchingHomeItem(
+            HaloDesktop::ViewModels::HomeFilter::Movies, kinds);
+        auto const series = HaloDesktop::ViewModels::FirstMatchingHomeItem(
+            HaloDesktop::ViewModels::HomeFilter::Series, kinds);
+        Require(all && *all == 0, "the All filter did not select the first catalog title");
+        Require(movie && *movie == 1, "the Movies filter did not select the first movie");
+        Require(series && *series == 0, "the Series filter did not select the first series");
+
+        std::vector<HaloDesktop::ViewModels::HomeMediaKind> const moviesOnly{
+            HaloDesktop::ViewModels::HomeMediaKind::Movie,
+        };
+        Require(
+            !HaloDesktop::ViewModels::FirstMatchingHomeItem(
+                HaloDesktop::ViewModels::HomeFilter::Series, moviesOnly),
+            "a filtered hero was fabricated when no catalog title matched");
+    }
+} // namespace
+
+int main()
+{
+    try
+    {
+        TestCatalogCommitDecisions();
+        TestCatalogDirtySingleFlight();
+        TestHomeVisibility();
+        TestFilteredFeaturedSelection();
+        std::cout << "StabilityTests passed\n";
+        return 0;
+    }
+    catch (std::exception const& error)
+    {
+        std::cerr << "StabilityTests failed: " << error.what() << '\n';
+        return 1;
+    }
+}

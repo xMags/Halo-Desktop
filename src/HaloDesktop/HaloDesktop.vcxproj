@@ -183,6 +183,7 @@
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\AddonService.h" />
     <ClInclude Include="Services\CatalogService.h" />
+    <ClInclude Include="Services\CatalogRefreshPolicy.h" />
     <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\MetadataService.h" />
     <ClInclude Include="Services\PlaybackPreferences.h" />
@@ -225,6 +226,7 @@
     <ClInclude Include="ViewModels\DetailViewModel.h" />
     <ClInclude Include="ViewModels\DownloadsViewModel.h" />
     <ClInclude Include="ViewModels\HomeViewModel.h" />
+    <ClInclude Include="ViewModels\HomeStatePolicy.h" />
     <ClInclude Include="ViewModels\LibraryViewModel.h" />
     <ClInclude Include="ViewModels\LoginViewModel.h" />
     <ClInclude Include="ViewModels\PlayerViewModel.h" />
@@ -355,6 +357,9 @@
     <ClCompile Include="Services\DownloadService.cpp" />
     <ClCompile Include="Services\AddonService.cpp" />
     <ClCompile Include="Services\CatalogService.cpp" />
+    <ClCompile Include="Services\CatalogRefreshPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />
     <ClCompile Include="Services\PlaybackPreferences.cpp" />
@@ -396,6 +401,9 @@
     <ClCompile Include="ViewModels\DetailViewModel.cpp" />
     <ClCompile Include="ViewModels\DownloadsViewModel.cpp" />
     <ClCompile Include="ViewModels\HomeViewModel.cpp" />
+    <ClCompile Include="ViewModels\HomeStatePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="ViewModels\LibraryViewModel.cpp" />
     <ClCompile Include="ViewModels\LoginViewModel.cpp" />
     <ClCompile Include="ViewModels\PlayerViewModel.cpp" />

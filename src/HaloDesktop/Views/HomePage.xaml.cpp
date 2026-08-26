@@ -114,6 +114,13 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.OpenHeroDetail();
     }
 
+    void HomePage::OnHeroLibraryClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        m_viewModel.ToggleHeroLibrary();
+    }
+
     void HomePage::OnContinueItemClick(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
