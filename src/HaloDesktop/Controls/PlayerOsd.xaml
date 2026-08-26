@@ -147,8 +147,9 @@
     </Style>
     <!--
       Addon rows are commands, not a selection group, so they get the track row's
-      metrics with the dot column left empty and no checked state. The empty column
-      is what keeps their text on the same baseline column as the tracks above.
+      metrics without a checked state. Their selection dot lives in the item
+      template rather than here, because only the item knows whether its own
+      subtitle is the one currently loaded into the engine.
     -->
     <Style x:Key="PlayerAddonRowButtonStyle" TargetType="Button">
       <Setter Property="MinWidth" Value="0" />
@@ -164,10 +165,8 @@
           <ControlTemplate TargetType="Button">
             <Grid x:Name="Root" Background="Transparent" CornerRadius="6">
               <Border x:Name="HoverLayer" Background="#0FFFFFFF" CornerRadius="6" Opacity="0" />
-              <Grid Padding="{TemplateBinding Padding}" ColumnSpacing="11">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+              <Grid Padding="{TemplateBinding Padding}">
                 <ContentPresenter
-                  Grid.Column="1"
                   HorizontalAlignment="Stretch"
                   VerticalAlignment="Center"
                   AutomationProperties.AccessibilityView="Raw"
@@ -433,7 +432,21 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
                 <TextBlock Margin="0,15,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="FROM ADDONS" />
-                <ItemsControl x:Name="AddonSubtitleList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:AddonSubtitleViewModel"><Button Click="OnAddonSubtitleClick" Style="{StaticResource PlayerAddonRowButtonStyle}" Tag="{x:Bind Key}"><StackPanel><TextBlock FontSize="13.5" Foreground="#E6FFFFFF" Text="{x:Bind Language}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
+                <ItemsControl x:Name="AddonSubtitleList">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate x:DataType="local:AddonSubtitleViewModel">
+                      <Button Click="OnAddonSubtitleClick" Style="{StaticResource PlayerAddonRowButtonStyle}" Tag="{x:Bind Key}">
+                        <Grid ColumnSpacing="11">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                          <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="#FF60CDFF" Visibility="{x:Bind SelectedVisibility}" />
+                          <StackPanel Grid.Column="1"><TextBlock FontSize="13.5" Foreground="#E6FFFFFF" Text="{x:Bind Language}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel>
+                          <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="#FF6CCB5F" Text="HASH MATCH" Visibility="{x:Bind HashMatchVisibility}" />
+                          <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="#8CFFFFFF" Text="NAME MATCH" Visibility="{x:Bind NameMatchVisibility}" />
+                        </Grid>
+                      </Button>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
               </StackPanel>
               <StackPanel Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
                 <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="TRACKS" />

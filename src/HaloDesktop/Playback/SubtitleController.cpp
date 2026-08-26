@@ -191,7 +191,8 @@ namespace HaloDesktop::Playback
                         key,
                         language,
                         addon,
-                        L"Variant "+winrt::to_hstring(++variant)+(payload->HashMatched?L" · hash match":L" · name match")};
+                        L"Variant "+winrt::to_hstring(++variant),
+                        payload->HashMatched};
                     m_choices.emplace(std::wstring(key.c_str()),NativeChoice{display,group.AddonId,subtitle.Id,subtitle.Url,subtitle.Lang});
                     m_display.push_back(std::move(display));
                 }
@@ -324,6 +325,26 @@ namespace HaloDesktop::Playback
     }
 
     std::vector<AddonSubtitleDisplay> SubtitleController::Choices()const{return m_display;}
+
+    // A chosen addon subtitle reaches mpv as an external track carrying the
+    // provider identity, so the engine's own selection is the source of truth.
+    // Callers get the opaque key back, never the identity.
+    winrt::hstring SubtitleController::SelectedChoiceKey()const
+    {
+        if(!m_request)return {};
+        auto const state=m_engine->State();
+        auto const selected=std::find_if(state.Tracks.begin(),state.Tracks.end(),[](TrackInfo const&track)
+        {
+            return track.Type==TrackType::Subtitle&&track.Selected;
+        });
+        if(selected==state.Tracks.end()||selected->Identity.empty())return {};
+        for(auto const&entry:m_choices)
+        {
+            auto const identity=std::wstring(entry.second.AddonId.c_str())+L":"+std::wstring(entry.second.SubtitleId.c_str());
+            if(identity==selected->Identity)return winrt::hstring{entry.first};
+        }
+        return {};
+    }
     void SubtitleController::SetChoicesChangedHandler(std::function<void()>handler){m_changed=std::move(handler);if(m_changed)m_changed();}
     void SubtitleController::SetErrorHandler(std::function<void()>handler){m_error=std::move(handler);}
 

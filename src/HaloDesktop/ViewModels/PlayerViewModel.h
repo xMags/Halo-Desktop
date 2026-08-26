@@ -10,6 +10,7 @@
 #include <chrono>
 #include <cstdint>
 #include <functional>
+#include <vector>
 #include <memory>
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
@@ -27,7 +28,7 @@ namespace HaloDesktop::Shell
 
 namespace winrt::HaloDesktop::implementation
 {
-    struct AddonSubtitleViewModel:AddonSubtitleViewModelT<AddonSubtitleViewModel>{explicit AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value);winrt::hstring Key()const;winrt::hstring Language()const;winrt::hstring Addon()const;winrt::hstring Variant()const;private: ::HaloDesktop::Playback::AddonSubtitleDisplay m_value;};
+    struct AddonSubtitleViewModel:AddonSubtitleViewModelT<AddonSubtitleViewModel>{AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value,bool selected);winrt::hstring Key()const;winrt::hstring Language()const;winrt::hstring Addon()const;winrt::hstring Variant()const;Microsoft::UI::Xaml::Visibility HashMatchVisibility()const noexcept;Microsoft::UI::Xaml::Visibility NameMatchVisibility()const noexcept;Microsoft::UI::Xaml::Visibility SelectedVisibility()const noexcept;private: ::HaloDesktop::Playback::AddonSubtitleDisplay m_value;bool m_selected{};};
     struct PlaybackTrackViewModel : PlaybackTrackViewModelT<PlaybackTrackViewModel>
     {
         explicit PlaybackTrackViewModel(::HaloDesktop::Playback::TrackInfo track);
@@ -110,6 +111,9 @@ namespace winrt::HaloDesktop::implementation
         void SetSubtitlesOffHandler(std::function<void()> handler);
         void SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler);
         void SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay> values);
+        // Answers which addon choice, if any, is the live subtitle. Owned by the
+        // subtitle controller so identities never reach the view model.
+        void SetAddonSelectionProvider(std::function<winrt::hstring()> provider);
         void SetUpNext(
             winrt::hstring const& title,
             winrt::hstring const& episodeLabel,
@@ -147,6 +151,7 @@ namespace winrt::HaloDesktop::implementation
         void RaisePanelState();
         void RaisePresentationMetrics();
         void RebuildTracks();
+        void RebuildAddonSubtitles();
         void Raise(wchar_t const* propertyName);
         void RestartHideTimer();
         void StopUpNextTimer() noexcept;
@@ -180,6 +185,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_subtitleTracks{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>m_addonSubtitles{nullptr};
+        std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay> m_addonChoices;
+        std::function<winrt::hstring()> m_addonSelectionProvider;
         double m_osdOpacity{ 1.0 };
         double m_scrubPosition{};
         std::chrono::steady_clock::time_point m_lastScrubSeek{};

@@ -19,7 +19,9 @@ namespace HaloDesktop::Services { class IDownloadService; class SettingsSyncServ
 
 namespace HaloDesktop::Playback
 {
-    struct AddonSubtitleDisplay final{winrt::hstring Key,Language,Addon,Variant;};
+    // HashMatched separates "synced to this exact file" from "matched by name",
+    // which is the only quality signal an addon subtitle carries before download.
+    struct AddonSubtitleDisplay final{winrt::hstring Key,Language,Addon,Variant;bool HashMatched{};};
 
     // UI-thread-only subtitle pipeline. Provider URLs remain in the native map;
     // observable consumers receive opaque keys and display labels only.
@@ -37,6 +39,8 @@ namespace HaloDesktop::Playback
         void SelectTrack(std::int64_t id);
         void Disable();
         [[nodiscard]] std::vector<AddonSubtitleDisplay> Choices()const;
+        // Empty unless the live subtitle track came from one of the choices above.
+        [[nodiscard]] winrt::hstring SelectedChoiceKey()const;
         void SetChoicesChangedHandler(std::function<void()> handler);
         void SetErrorHandler(std::function<void()> handler);
         void RefreshPreferences();

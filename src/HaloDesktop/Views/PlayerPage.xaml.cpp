@@ -72,6 +72,7 @@ namespace winrt::HaloDesktop::implementation
         session->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration)self->ShowMediaPrompt(L"Playback failed for this source. Return to Sources and choose another one.");});
         session->SetEndOfFileHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_upNext&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->BeginUpNextCountdown();});
         services.Subtitles->SetChoicesChangedHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->SetAddonSubtitles(App::Services().Subtitles->Choices());});
+        winrt::get_self<PlayerViewModel>(m_viewModel)->SetAddonSelectionProvider([](){return App::Services().Subtitles->SelectedChoiceKey();});
         services.Subtitles->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&self->m_loaded&&!self->m_closing&&generation==self->m_playbackGeneration){auto const queued=self->DispatcherQueue().TryEnqueue([weak,generation](){if(auto current=weak.get();current&&current->m_loaded&&!current->m_closing&&generation==current->m_playbackGeneration)current->ShowSubtitleError();});static_cast<void>(queued);}});
         PrefetchUpNextAsync(request,generation);
         try{co_await session->StartAsync(request);}

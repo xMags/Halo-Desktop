@@ -17,6 +17,9 @@ namespace HaloDesktop
         String Language { get; };
         String Addon { get; };
         String Variant { get; };
+        Microsoft.UI.Xaml.Visibility HashMatchVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NameMatchVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectedVisibility { get; };
     }
 
     runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged

@@ -34,7 +34,10 @@ namespace
 
 namespace winrt::HaloDesktop::implementation
 {
-    AddonSubtitleViewModel::AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value):m_value(std::move(value)){}winrt::hstring AddonSubtitleViewModel::Key()const{return m_value.Key;}winrt::hstring AddonSubtitleViewModel::Language()const{return m_value.Language;}winrt::hstring AddonSubtitleViewModel::Addon()const{return m_value.Addon;}winrt::hstring AddonSubtitleViewModel::Variant()const{return m_value.Variant;}
+    AddonSubtitleViewModel::AddonSubtitleViewModel(::HaloDesktop::Playback::AddonSubtitleDisplay value,bool selected):m_value(std::move(value)),m_selected(selected){}winrt::hstring AddonSubtitleViewModel::Key()const{return m_value.Key;}winrt::hstring AddonSubtitleViewModel::Language()const{return m_value.Language;}winrt::hstring AddonSubtitleViewModel::Addon()const{return m_value.Addon;}winrt::hstring AddonSubtitleViewModel::Variant()const{return m_value.Variant;}
+    Microsoft::UI::Xaml::Visibility AddonSubtitleViewModel::HashMatchVisibility()const noexcept{return m_value.HashMatched?Visible:Collapsed;}
+    Microsoft::UI::Xaml::Visibility AddonSubtitleViewModel::NameMatchVisibility()const noexcept{return m_value.HashMatched?Collapsed:Visible;}
+    Microsoft::UI::Xaml::Visibility AddonSubtitleViewModel::SelectedVisibility()const noexcept{return m_selected?Visible:Collapsed;}
     PlaybackTrackViewModel::PlaybackTrackViewModel(::HaloDesktop::Playback::TrackInfo track) : m_track(std::move(track))
     {
     }
@@ -373,7 +376,8 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::SetSubtitleTrackHandler(std::function<void(std::int64_t)>handler){m_subtitleTrackHandler=std::move(handler);}
     void PlayerViewModel::SetSubtitlesOffHandler(std::function<void()>handler){m_subtitlesOffHandler=std::move(handler);}
     void PlayerViewModel::SetAddonSubtitleHandler(std::function<void(winrt::hstring)>handler){m_addonSubtitleHandler=std::move(handler);}
-    void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonSubtitles.Clear();for(auto&value:values)m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(std::move(value)));Raise(L"AddonSubtitles");}
+    void PlayerViewModel::SetAddonSubtitles(std::vector<::HaloDesktop::Playback::AddonSubtitleDisplay>values){m_addonChoices=std::move(values);RebuildAddonSubtitles();}
+    void PlayerViewModel::SetAddonSelectionProvider(std::function<winrt::hstring()>provider){m_addonSelectionProvider=std::move(provider);RebuildAddonSubtitles();}
     void PlayerViewModel::SetUpNext(
         winrt::hstring const& title,
         winrt::hstring const& episodeLabel,
@@ -697,6 +701,19 @@ namespace winrt::HaloDesktop::implementation
                 m_subtitleTracks.Append(row);
             }
         }
+        RebuildAddonSubtitles();
+    }
+    // Rebuilt rather than notified per item: the list is short, and the addon
+    // rows have to re-read the live selection whenever the engine's tracks move.
+    void PlayerViewModel::RebuildAddonSubtitles()
+    {
+        auto const selected = m_addonSelectionProvider ? m_addonSelectionProvider() : winrt::hstring{};
+        m_addonSubtitles.Clear();
+        for (auto const& value : m_addonChoices)
+        {
+            m_addonSubtitles.Append(winrt::make<AddonSubtitleViewModel>(value, !selected.empty() && value.Key == selected));
+        }
+        Raise(L"AddonSubtitles");
     }
     void PlayerViewModel::RestartHideTimer()
     {
