@@ -135,20 +135,29 @@ namespace winrt::HaloDesktop::implementation
         if (!failed)
         {
             m_hero = m_catalog->Hero(); m_sourceShelves = m_catalog->Shelves();
-            m_continueItems.Clear(); for (auto const& item : m_catalog->ContinueWatching()) m_continueItems.Append(item);
+            // Replaced in one go. Clear followed by a run of appends raises a
+            // notification per item, and the list on the other end tears down and
+            // rebuilds its realised containers for every one of them.
+            std::vector<winrt::Windows::Foundation::IInspectable> continued;
+            for (auto const& item : m_catalog->ContinueWatching()) continued.push_back(item);
+            m_continueItems.ReplaceAll(continued);
             Rebuild();
         }
         RaiseState();
     }
     void HomeViewModel::Rebuild()
     {
-        m_shelves.Clear(); if (!m_sourceShelves) return;
+        if (!m_sourceShelves) { m_shelves.Clear(); return; }
+        std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
         for (auto const& shelf : m_sourceShelves)
         {
             std::vector<winrt::HaloDesktop::MediaSummary> filtered;
             for (auto const& item : shelf.Items()) if (m_filterIndex == 0 || (m_filterIndex == 1 && item.Kind() == winrt::HaloDesktop::MediaKind::Movie) || (m_filterIndex == 2 && item.Kind() == winrt::HaloDesktop::MediaKind::Series)) filtered.push_back(item);
-            if (!filtered.empty()) m_shelves.Append(winrt::make<winrt::HaloDesktop::implementation::Shelf>(shelf.Title(), shelf.SourceLabel(), winrt::single_threaded_vector(std::move(filtered)).GetView()));
+            if (!filtered.empty()) rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(shelf.Title(), shelf.SourceLabel(), winrt::single_threaded_vector(std::move(filtered)).GetView()));
         }
+        // One replacement rather than a clear and a run of appends: switching the
+        // filter used to make the repeater rebuild a shelf at a time.
+        m_shelves.ReplaceAll(rebuilt);
         Raise(L"Shelves"); Raise(L"ContentVisibility"); Raise(L"EmptyVisibility");
     }
     void HomeViewModel::RaiseState()

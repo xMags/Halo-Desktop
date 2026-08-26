@@ -57,7 +57,7 @@ namespace winrt::HaloDesktop::implementation
         auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
         m_viewModel.Retry();
         FindName(L"ContinueList")
-            .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
+            .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
             .ItemsSource(viewModel->ContinueItemsView());
         FindName(L"ShelfList")
             .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()

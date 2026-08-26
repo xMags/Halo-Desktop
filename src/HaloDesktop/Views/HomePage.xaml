@@ -90,9 +90,10 @@
           </Button>
         </Grid>
         <ScrollViewer x:Name="ContinueScroller" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled">
-          <ItemsControl x:Name="ContinueList">
-            <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
+          <!-- The last list on this page that realised everything it was given. -->
+          <ItemsRepeater x:Name="ContinueList">
+            <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
+            <ItemsRepeater.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">
                 <local:ContinueCard
                   Title="{x:Bind Name}"
@@ -104,8 +105,8 @@
                   Tag="{x:Bind}"
                   Click="OnContinueItemClick" />
               </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+            </ItemsRepeater.ItemTemplate>
+          </ItemsRepeater>
         </ScrollViewer>
       </StackPanel>
       <!--
