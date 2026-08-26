@@ -34,6 +34,7 @@ namespace winrt::HaloDesktop::implementation
         void OpenContinue(winrt::Windows::Foundation::IInspectable const& item);
         void OpenSearch(winrt::hstring const& query);
         void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
+        void OpenContinueCatalog();
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:

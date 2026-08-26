@@ -77,13 +77,15 @@
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
           </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />
           <TextBlock Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
-          <Button Grid.Column="3" Width="28" Height="28" MinWidth="0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
+          <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="13" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all in progress titles" Click="OnContinueSeeAllClick" />
+          <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
             <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
           </Button>
-          <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
+          <Button Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
             <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>

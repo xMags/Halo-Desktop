@@ -24,6 +24,7 @@ namespace HaloDesktop
         void OpenContinue(Object item);
         void OpenSearch(String query);
         void OpenCatalog(Object shelf);
+        void OpenContinueCatalog();
     }
 
     [default_interface]

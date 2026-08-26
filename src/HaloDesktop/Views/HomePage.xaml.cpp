@@ -147,6 +147,13 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.OpenDetail(shelf.SelectedItem().as<winrt::HaloDesktop::MediaSummary>());
     }
 
+    void HomePage::OnContinueSeeAllClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        m_viewModel.OpenContinueCatalog();
+    }
+
     void HomePage::OnShelfSeeAllClick(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)

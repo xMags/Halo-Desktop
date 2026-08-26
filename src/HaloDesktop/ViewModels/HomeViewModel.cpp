@@ -71,6 +71,33 @@ namespace winrt::HaloDesktop::implementation
             m_navigation->GoTo(::HaloDesktop::Services::Page::Catalog, snapshot);
         }
     }
+    // The shelf grid speaks MediaSummary, so the in-progress rows are projected
+    // onto it. Time left and progress are dropped: the grid has nowhere to put
+    // them, and the poster plus episode tag is what identifies a title there.
+    void HomeViewModel::OpenContinueCatalog()
+    {
+        std::vector<winrt::HaloDesktop::MediaSummary> items;
+        items.reserve(m_continueItems.Size());
+        for (auto const& entry : m_continueItems)
+        {
+            auto const item = entry.try_as<winrt::HaloDesktop::ContinueItem>();
+            if (!item || item.MetaId().empty()) continue;
+            items.push_back(winrt::make<winrt::HaloDesktop::implementation::MediaSummary>(
+                item.MetaId(),
+                item.Name(),
+                item.Sub(),
+                item.Type() == L"series" ? winrt::HaloDesktop::MediaKind::Series : winrt::HaloDesktop::MediaKind::Movie,
+                item.Type(),
+                item.Poster()));
+        }
+
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Catalog,
+            winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+                L"Continue watching",
+                ContinueCountLabel(),
+                winrt::single_threaded_vector(std::move(items)).GetView()));
+    }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     winrt::Windows::Foundation::IAsyncAction HomeViewModel::LoadAsync()
