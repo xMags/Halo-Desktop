@@ -34,6 +34,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
         void SetFilter(std::int32_t index);
         void Retry();
+        void EnsureLoaded();
         void OpenDetail(winrt::Windows::Foundation::IInspectable const& item);
         void OpenHeroDetail();
         void OpenHeroSources();
@@ -48,6 +49,8 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
+        void AdoptSnapshot();
+        void ApplyContinue();
         void Rebuild();
         void RaiseState();
         void RaiseLayoutMetrics();
@@ -62,6 +65,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_shelves{ nullptr };
         std::int32_t m_filterIndex{};
         std::uint32_t m_loadVersion{};
+        std::uint64_t m_appliedVersion{};
         bool m_loading{ true };
         bool m_error{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;

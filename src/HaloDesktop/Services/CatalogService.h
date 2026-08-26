@@ -25,6 +25,9 @@ namespace HaloDesktop::Services
             std::shared_ptr<WatchStateService> watchState);
 
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
+        [[nodiscard]] bool HasLoaded() const override;
+        [[nodiscard]] std::uint64_t SnapshotVersion() const noexcept override;
+        void RefreshContinue() override;
         [[nodiscard]] concurrency::task<void> SearchAsync(winrt::hstring query) override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
@@ -37,7 +40,11 @@ namespace HaloDesktop::Services
 
     private:
         [[nodiscard]] concurrency::task<void> LoadCoreAsync();
-        void BuildLibraryAndContinue();
+        // Split so the continue row can be rebuilt on its own. BuildLibraryShelf
+        // derives m_shelves from m_catalogShelves every time rather than appending
+        // to whatever m_shelves already held, so neither half can double up.
+        void BuildLibraryShelf();
+        void BuildContinue();
         void LoadRecentTerms();
         void SaveRecentTerms();
 
@@ -47,11 +54,14 @@ namespace HaloDesktop::Services
         std::shared_ptr<WatchStateService> m_watchState;
         winrt::HaloDesktop::MediaSummary m_hero{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_libraryItems{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> m_searchResults{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> m_recentTerms{ nullptr };
         std::optional<concurrency::task<void>> m_loadTask;
         std::uint64_t m_searchVersion{};
+        bool m_loaded{};
+        std::uint64_t m_snapshotVersion{};
     };
 }

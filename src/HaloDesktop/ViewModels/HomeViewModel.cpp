@@ -58,6 +58,52 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility HomeViewModel::EmptyVisibility() const noexcept { return !m_loading && !m_error && !m_hero && m_shelves.Size() == 0 ? Visible : Collapsed; }
     void HomeViewModel::SetFilter(std::int32_t index) { if (index >= 0 && index <= 2 && index != m_filterIndex) { m_filterIndex = index; Rebuild(); Raise(L"FilterIndex"); } }
     void HomeViewModel::Retry() { static_cast<void>(LoadAsync()); }
+
+    void HomeViewModel::EnsureLoaded()
+    {
+        // The catalogs are fetched once per session. Every later arrival on Home
+        // rebuilds only the continue row, and that costs nothing but a sort: the
+        // watch state service already holds what the server returned while the
+        // player was reporting progress, so there is no request to make.
+        if (!m_catalog->HasLoaded())
+        {
+            static_cast<void>(LoadAsync());
+            return;
+        }
+        if (m_appliedVersion != m_catalog->SnapshotVersion())
+        {
+            // Either nothing has been shown yet, or something else reloaded the
+            // catalogs while Home was away and this is now the older snapshot.
+            AdoptSnapshot();
+        }
+        m_catalog->RefreshContinue();
+        ApplyContinue();
+    }
+
+    void HomeViewModel::AdoptSnapshot()
+    {
+        // The catalogs finished loading for somebody else, so take what they hold
+        // rather than fetching them again. Reached when this view model is built
+        // after the shell has already warmed the catalog.
+        m_hero = m_catalog->Hero();
+        m_sourceShelves = m_catalog->Shelves();
+        m_loading = false;
+        m_error = false;
+        m_appliedVersion = m_catalog->SnapshotVersion();
+        Rebuild();
+        RaiseState();
+    }
+
+    void HomeViewModel::ApplyContinue()
+    {
+        // Replaced in one go. Clear followed by a run of appends raises a
+        // notification per item, and the list on the other end tears down and
+        // rebuilds its realised containers for every one of them.
+        std::vector<winrt::Windows::Foundation::IInspectable> continued;
+        for (auto const& item : m_catalog->ContinueWatching()) continued.push_back(item);
+        m_continueItems.ReplaceAll(continued);
+        for (auto const name : { L"ContinueItems", L"ContinueCountLabel", L"ContentVisibility", L"EmptyVisibility" }) Raise(name);
+    }
     void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));} }
     void HomeViewModel::OpenHeroDetail() { OpenDetail(m_hero); }
     void HomeViewModel::OpenHeroSources()
@@ -135,12 +181,8 @@ namespace winrt::HaloDesktop::implementation
         if (!failed)
         {
             m_hero = m_catalog->Hero(); m_sourceShelves = m_catalog->Shelves();
-            // Replaced in one go. Clear followed by a run of appends raises a
-            // notification per item, and the list on the other end tears down and
-            // rebuilds its realised containers for every one of them.
-            std::vector<winrt::Windows::Foundation::IInspectable> continued;
-            for (auto const& item : m_catalog->ContinueWatching()) continued.push_back(item);
-            m_continueItems.ReplaceAll(continued);
+            m_appliedVersion = m_catalog->SnapshotVersion();
+            ApplyContinue();
             Rebuild();
         }
         RaiseState();

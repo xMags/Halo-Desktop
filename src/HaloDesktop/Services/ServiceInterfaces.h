@@ -39,6 +39,16 @@ namespace HaloDesktop::Services
     public:
         virtual ~ICatalogService() = default;
         [[nodiscard]] virtual concurrency::task<void> LoadAsync() = 0;
+        // True once a usable snapshot exists, so a caller can adopt what is already
+        // in memory instead of fetching the catalogs a second time.
+        [[nodiscard]] virtual bool HasLoaded() const = 0;
+        // Advances every time a snapshot worth showing replaces the last one, so a
+        // view holding an older one can tell without comparing its contents.
+        [[nodiscard]] virtual std::uint64_t SnapshotVersion() const = 0;
+        // Recomputes the continue row on its own. Synchronous and network free: the
+        // watch state service holds what the server returned while the player was
+        // reporting progress, so the rows behind this are already current.
+        virtual void RefreshContinue() = 0;
         [[nodiscard]] virtual concurrency::task<void> SearchAsync(winrt::hstring query) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;

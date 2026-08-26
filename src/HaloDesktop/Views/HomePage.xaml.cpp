@@ -54,14 +54,20 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
-        m_viewModel.Retry();
-        FindName(L"ContinueList")
-            .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
-            .ItemsSource(viewModel->ContinueItemsView());
-        FindName(L"ShelfList")
-            .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
-            .ItemsSource(viewModel->ShelvesView());
+        // Bound once for the life of the page. Handing a repeater the same
+        // collection again resets it, and this runs on every return to Home.
+        if (!m_listsBound)
+        {
+            m_listsBound = true;
+            auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
+            FindName(L"ContinueList")
+                .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
+                .ItemsSource(viewModel->ContinueItemsView());
+            FindName(L"ShelfList")
+                .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
+                .ItemsSource(viewModel->ShelvesView());
+        }
+        m_viewModel.EnsureLoaded();
     }
 
     void HomePage::OnSearchSubmitted(

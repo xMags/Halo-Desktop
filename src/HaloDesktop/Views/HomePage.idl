@@ -18,6 +18,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
         void SetFilter(Int32 index);
         void Retry();
+        void EnsureLoaded();
         void OpenDetail(Object item);
         void OpenHeroDetail();
         void OpenHeroSources();

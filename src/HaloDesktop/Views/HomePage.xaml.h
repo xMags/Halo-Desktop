@@ -32,6 +32,7 @@ namespace winrt::HaloDesktop::implementation
         void ScrollContinueBy(double direction);
 
         winrt::HaloDesktop::HomeViewModel m_viewModel{ nullptr };
+        bool m_listsBound{};
     };
 }
 
