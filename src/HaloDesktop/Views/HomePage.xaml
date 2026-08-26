@@ -34,7 +34,7 @@
           </StackPanel>
         </local:SectionHeader.RightContent>
       </local:SectionHeader>
-      <Grid Height="304" Margin="24,0" CornerRadius="8">
+      <Grid Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" CornerRadius="8">
         <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
         <local:ArtworkImage SourceUrl="{x:Bind ViewModel.HeroBackground, Mode=OneWay}" />
         <Rectangle>
@@ -48,7 +48,7 @@
         </Rectangle>
         <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
-          <TextBlock Style="{StaticResource HaloHeroTitle}" Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
+          <TextBlock FontSize="{x:Bind ViewModel.HeroTitleSize, Mode=OneWay}" Style="{StaticResource HaloHeroTitle}" Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
           <StackPanel Orientation="Horizontal" Spacing="10">
             <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.HeroRating, Mode=OneWay}" />
             <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
@@ -69,7 +69,7 @@
           </StackPanel>
         </StackPanel>
       </Grid>
-      <StackPanel Margin="24,0">
+      <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
@@ -94,25 +94,21 @@
             <ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" Spacing="14" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">
-                <Button Width="268" Padding="0" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" Click="OnContinueItemClick" Tag="{x:Bind}">
-                  <StackPanel>
-                    <Grid Height="151">
-                      <local:PlaceholderArt />
-                      <Image Source="{x:Bind Poster}" Stretch="UniformToFill" />
-                      <local:TagChip Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" Text="{x:Bind Tag}" />
-                      <local:TagChip Margin="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" Text="{x:Bind TimeLeft}" />
-                      <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress}" />
-                    </Grid>
-                    <TextBlock Margin="1,8,1,0" FontSize="13" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
-                    <TextBlock Margin="1,3,1,0" Style="{StaticResource HaloMonoData}" Text="{x:Bind Sub}" TextTrimming="CharacterEllipsis" />
-                  </StackPanel>
-                </Button>
+                <local:ContinueCard
+                  Title="{x:Bind Name}"
+                  Meta="{x:Bind Sub}"
+                  Poster="{x:Bind Poster}"
+                  EpisodeTag="{x:Bind Tag}"
+                  TimeLeft="{x:Bind TimeLeft}"
+                  Progress="{x:Bind Progress}"
+                  Tag="{x:Bind}"
+                  Click="OnContinueItemClick" />
               </DataTemplate>
             </ItemsControl.ItemTemplate>
           </ItemsControl>
         </ScrollViewer>
       </StackPanel>
-      <ItemsControl x:Name="ShelfList" Margin="24,0">
+      <ItemsControl x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
         <ItemsControl.ItemTemplate>
           <DataTemplate x:DataType="local:Shelf">
             <local:MediaShelf Margin="0,0,0,28" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />

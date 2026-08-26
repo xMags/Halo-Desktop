@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/ContinueCard.xaml.h"
 #include "Controls/MediaShelf.xaml.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
@@ -111,8 +112,9 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        auto const item = winrt::unbox_value<winrt::HaloDesktop::ContinueItem>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag());
-        m_viewModel.OpenContinue(item);
+        auto const card = sender.try_as<winrt::HaloDesktop::ContinueCard>();
+        if (!card) return;
+        m_viewModel.OpenContinue(card.Tag());
     }
 
     void HomePage::OnContinueScrollLeft(

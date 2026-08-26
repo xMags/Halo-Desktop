@@ -4,6 +4,7 @@
 #include "HomeViewModel.g.cpp"
 #endif
 #include "Models/Models.h"
+#include "Shell/LayoutMetricsService.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
 #include <utility>
@@ -16,10 +17,30 @@ namespace
 namespace winrt::HaloDesktop::implementation
 {
     HomeViewModel::HomeViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_catalog(services.Catalog), m_navigation(services.Navigation),
+        : m_layout(services.LayoutMetrics), m_catalog(services.Catalog), m_navigation(services.Navigation),
           m_continueItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_shelves(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
+        if (!m_layout) return;
+        // Raw capture rather than a weak reference: get_weak has no controlling
+        // reference to hand out this early in construction. It is sound because
+        // the destructor below always removes the handler, and the service only
+        // ever calls back synchronously on the same thread that owns this.
+        m_metricsToken = m_layout->AddChangedHandler([this]() { RaiseLayoutMetrics(); });
+    }
+    HomeViewModel::~HomeViewModel()
+    {
+        if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
+    }
+    // Hero art scales with the page because it is a backdrop, and its title with
+    // it because that is a display element sized to the art. Body and label text
+    // stays put: that is the user's DPI and text-size settings to decide.
+    double HomeViewModel::HeroHeight() const noexcept { return m_layout ? m_layout->Current().HeroHeight : 304.0; }
+    double HomeViewModel::HeroTitleSize() const noexcept { return m_layout ? m_layout->Current().HeroTitleSize : 36.0; }
+    Microsoft::UI::Xaml::Thickness HomeViewModel::ContentPadding() const noexcept
+    {
+        auto const gutter = m_layout ? m_layout->Current().Gutter : 24.0;
+        return Microsoft::UI::Xaml::Thickness{ gutter, 0.0, gutter, 0.0 };
     }
     winrt::hstring HomeViewModel::HeroTitle() const { return m_hero ? m_hero.Title() : L""; }
     winrt::hstring HomeViewModel::HeroSynopsis() const { return m_hero ? m_hero.Description() : L""; }
@@ -97,6 +118,10 @@ namespace winrt::HaloDesktop::implementation
                 L"Continue watching",
                 ContinueCountLabel(),
                 winrt::single_threaded_vector(std::move(items)).GetView()));
+    }
+    void HomeViewModel::RaiseLayoutMetrics()
+    {
+        for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"ContentPadding" }) Raise(property);
     }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }

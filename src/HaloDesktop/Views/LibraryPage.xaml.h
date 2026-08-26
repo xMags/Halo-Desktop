@@ -2,6 +2,8 @@
 
 #include "LibraryPage.g.h"
 
+#include <cstdint>
+
 namespace winrt::HaloDesktop::implementation
 {
     struct LibraryPage : LibraryPageT<LibraryPage>
@@ -15,9 +17,13 @@ namespace winrt::HaloDesktop::implementation
         void OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnGridLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
+        void ApplyLayoutMetrics();
         winrt::HaloDesktop::LibraryViewModel m_viewModel{ nullptr };
+        std::uint64_t m_metricsToken{};
     };
 }
 

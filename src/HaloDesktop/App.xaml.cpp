@@ -27,6 +27,7 @@
 #include "Services/WatchStateService.h"
 #include "Services/ThemeService.h"
 #include "Shell/MainWindow.xaml.h"
+#include "Shell/LayoutMetricsService.h"
 #include "Shell/WindowPresentationService.h"
 
 #include <filesystem>
@@ -124,6 +125,7 @@ namespace winrt::HaloDesktop::implementation
         m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync,m_services.Downloads);
         m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_apiClient,m_services.SettingsSync,m_services.Downloads);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
+        m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();
 
 #if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
         UnhandledException([](winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::UnhandledExceptionEventArgs const& e)

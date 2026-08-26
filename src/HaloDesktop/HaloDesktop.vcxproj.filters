@@ -25,6 +25,7 @@
     <Page Include="Controls\PlaceholderArt.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PlayerOsd.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\VideoHostControl.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\ContinueCard.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PosterCard.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SectionHeader.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SettingRow.xaml"><Filter>Controls</Filter></Page>
@@ -52,6 +53,7 @@
     <Midl Include="Controls\PlaceholderArt.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\VideoHostControl.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\MediaShelf.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\ContinueCard.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\PosterCard.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SettingRow.idl"><Filter>Controls</Filter></Midl>
@@ -87,6 +89,7 @@
     <ClCompile Include="Controls\MediaShelf.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\VideoHostControl.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\ContinueCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><Filter>Controls</Filter></ClCompile>
@@ -131,6 +134,7 @@
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowSizing.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowPresentationPolicy.cpp"><Filter>Shell</Filter></ClCompile>
+    <ClCompile Include="Shell\LayoutMetricsService.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\WindowPresentationService.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="ViewModels\CatalogViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\DetailViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -170,6 +174,7 @@
     <ClInclude Include="Controls\MediaShelf.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\VideoHostControl.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\ContinueCard.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SettingRow.xaml.h"><Filter>Controls</Filter></ClInclude>
@@ -220,6 +225,7 @@
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowSizing.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowPresentationPolicy.h"><Filter>Shell</Filter></ClInclude>
+    <ClInclude Include="Shell\LayoutMetricsService.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\WindowPresentationService.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="ViewModels\CatalogViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\DetailViewModel.h"><Filter>ViewModels</Filter></ClInclude>

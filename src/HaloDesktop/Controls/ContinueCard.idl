@@ -1,14 +1,15 @@
 namespace HaloDesktop
 {
     [default_interface]
-    runtimeclass PosterCard : Microsoft.UI.Xaml.Controls.UserControl
+    runtimeclass ContinueCard : Microsoft.UI.Xaml.Controls.UserControl
     {
-        PosterCard();
+        ContinueCard();
         String Title;
         String Meta;
         String Poster;
-        String KindLabel;
-        Boolean ShowKindBadge;
+        String EpisodeTag;
+        String TimeLeft;
+        Double Progress;
         Double CardWidth { get; };
         event Microsoft.UI.Xaml.RoutedEventHandler Click;
     }

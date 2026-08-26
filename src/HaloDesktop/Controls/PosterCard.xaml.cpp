@@ -4,6 +4,9 @@
 #include "PosterCard.g.cpp"
 #endif
 
+#include "App.xaml.h"
+#include "Shell/LayoutMetricsService.h"
+
 #include <winrt/Windows.Foundation.Numerics.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
@@ -34,6 +37,51 @@ namespace winrt::HaloDesktop::implementation
         if (auto badge = FindName(L"KindBadge").try_as<Microsoft::UI::Xaml::Controls::Border>())
         {
             badge.Visibility(value ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
+    }
+
+    double PosterCard::CardWidth() const noexcept { return m_cardWidth; }
+
+    // The card reads the layout step itself rather than being fed by its hosts.
+    // It sits inside a DataTemplate in three different list controls, two of them
+    // nested a second template deep, and XAML gives a template no way to see past
+    // its own item. Pushing the size down would mean a bespoke walk of realised
+    // containers per host; subscribing here is one place instead of three.
+    void PosterCard::OnLoaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_metricsToken != 0) return;
+        auto const metrics = App::Services().LayoutMetrics;
+        if (!metrics) return;
+        m_metricsToken = metrics->AddChangedHandler([weak = get_weak()]()
+        {
+            if (auto self = weak.get()) self->ApplyLayoutMetrics();
+        });
+        ApplyLayoutMetrics();
+    }
+
+    // Recycled cards are unloaded, so the handler has to go with them or the
+    // service accumulates one entry per card the user ever scrolled past.
+    void PosterCard::OnUnloaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_metricsToken == 0) return;
+        if (auto const metrics = App::Services().LayoutMetrics) metrics->RemoveChangedHandler(m_metricsToken);
+        m_metricsToken = 0;
+    }
+
+    void PosterCard::ApplyLayoutMetrics()
+    {
+        auto const metrics = App::Services().LayoutMetrics;
+        if (!metrics) return;
+        auto const current = metrics->Current();
+        m_cardWidth = current.PosterWidth;
+        Width(current.PosterWidth);
+        if (auto const row = FindName(L"ArtRow").try_as<Microsoft::UI::Xaml::Controls::RowDefinition>())
+        {
+            row.Height(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(current.PosterArtHeight()));
         }
     }
 

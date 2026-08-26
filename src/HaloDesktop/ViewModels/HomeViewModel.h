@@ -5,11 +5,17 @@
 #include <cstdint>
 #include <memory>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
+namespace HaloDesktop::Shell
+{
+    class LayoutMetricsService;
+}
+
 namespace winrt::HaloDesktop::implementation
 {
     struct HomeViewModel : HomeViewModelT<HomeViewModel>
     {
         explicit HomeViewModel(::HaloDesktop::Services::AppServices const& services);
+        ~HomeViewModel();
         [[nodiscard]] winrt::hstring HeroTitle() const;
         [[nodiscard]] winrt::hstring HeroSynopsis() const;
         [[nodiscard]] winrt::hstring HeroRating() const;
@@ -35,14 +41,20 @@ namespace winrt::HaloDesktop::implementation
         void OpenSearch(winrt::hstring const& query);
         void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
         void OpenContinueCatalog();
+        [[nodiscard]] double HeroHeight() const noexcept;
+        [[nodiscard]] double HeroTitleSize() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Thickness ContentPadding() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
         void Rebuild();
         void RaiseState();
+        void RaiseLayoutMetrics();
         void Raise(wchar_t const* name);
+        std::shared_ptr<::HaloDesktop::Shell::LayoutMetricsService> m_layout;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
+        std::uint64_t m_metricsToken{};
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::HaloDesktop::MediaSummary m_hero{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_sourceShelves{ nullptr };

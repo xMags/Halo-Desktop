@@ -2,6 +2,7 @@
 
 #include "PosterCard.g.h"
 
+#include <cstdint>
 #include <winrt/Microsoft.UI.Input.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
@@ -22,6 +23,10 @@ namespace winrt::HaloDesktop::implementation
         void KindLabel(winrt::hstring const& value);
         [[nodiscard]] bool ShowKindBadge() const noexcept;
         void ShowKindBadge(bool value);
+        [[nodiscard]] double CardWidth() const noexcept;
+
+        void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
         winrt::event_token Click(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
         void Click(winrt::event_token const& token) noexcept;
@@ -34,12 +39,15 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Border ArtBorderControl() const;
+        void ApplyLayoutMetrics();
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
         winrt::hstring m_poster;
         winrt::hstring m_kindLabel;
         bool m_showKindBadge{};
+        double m_cardWidth{ 132.0 };
+        std::uint64_t m_metricsToken{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
     };
 }

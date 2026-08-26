@@ -157,6 +157,7 @@
       CornerRadius="8,0,0,0"
       IsTabStop="True"
       PointerPressed="OnContentPointerPressed"
+      SizeChanged="OnContentHostSizeChanged"
       UseSystemFocusVisuals="False">
       <Frame x:Name="ContentFrame" />
     </Border>

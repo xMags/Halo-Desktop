@@ -5,7 +5,8 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
   NavigationCacheMode="Disabled"
-  Loaded="OnLoaded">
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
@@ -28,6 +29,7 @@
     </local:SectionHeader>
     <GridView
       x:Name="CatalogGrid"
+      Loaded="OnGridLoaded"
       Grid.Row="1"
       Padding="24,20,24,32"
       IsItemClickEnabled="False"
@@ -36,7 +38,7 @@
       Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
       <GridView.ItemsPanel>
         <ItemsPanelTemplate>
-          <ItemsWrapGrid ItemWidth="154" ItemHeight="250" Orientation="Horizontal" />
+          <ItemsWrapGrid Orientation="Horizontal" />
         </ItemsPanelTemplate>
       </GridView.ItemsPanel>
       <GridView.ItemTemplate>

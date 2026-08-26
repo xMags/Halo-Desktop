@@ -2,6 +2,8 @@
 
 #include "CatalogPage.g.h"
 
+#include <cstdint>
+
 namespace winrt::HaloDesktop::implementation
 {
     struct CatalogPage : CatalogPageT<CatalogPage>
@@ -16,12 +18,16 @@ namespace winrt::HaloDesktop::implementation
         void OnPosterClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnGridLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnBackClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
     private:
+        void ApplyLayoutMetrics();
         winrt::HaloDesktop::CatalogViewModel m_viewModel{ nullptr };
+        std::uint64_t m_metricsToken{};
     };
 }
 

@@ -5,6 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
+  Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
@@ -36,6 +37,7 @@
     </Grid>
     <GridView
       x:Name="LibraryGrid"
+      Loaded="OnGridLoaded"
       ScrollViewer.VerticalScrollBarVisibility="Hidden"
       Grid.Row="2"
       Padding="24,20,24,32"
@@ -43,7 +45,7 @@
       IsItemClickEnabled="False"
       SelectionMode="None">
       <GridView.ItemsPanel>
-        <ItemsPanelTemplate><ItemsWrapGrid ItemWidth="154" ItemHeight="250" Orientation="Horizontal" /></ItemsPanelTemplate>
+        <ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" /></ItemsPanelTemplate>
       </GridView.ItemsPanel>
       <GridView.ItemTemplate>
         <DataTemplate x:DataType="local:MediaSummary">

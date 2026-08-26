@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Shell/LayoutMetricsService.h"
 
 #include <array>
 
@@ -136,6 +137,15 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Settings);
+    }
+
+    // The frame host is the area pages actually lay out in, so it already has the
+    // nav rail subtracted, whether the rail is collapsed, compact or expanded.
+    void ShellPage::OnContentHostSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        App::Services().LayoutMetrics->SetContentWidth(args.NewSize().Width);
     }
 
     void ShellPage::OnPaneOpening(
