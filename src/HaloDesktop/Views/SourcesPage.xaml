@@ -70,16 +70,22 @@
             </Grid>
           </Border>
 
-          <Grid>
-            <Grid.ColumnDefinitions><ColumnDefinition Width="96" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoHeaderColumn" Width="0" /><ColumnDefinition x:Name="AudioHeaderColumn" Width="0" /><ColumnDefinition x:Name="LanguagesHeaderColumn" Width="0" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="36" /></Grid.ColumnDefinitions>
+          <!--
+            The column widths, spacing and horizontal padding here must stay in
+            lockstep with the row template further down, otherwise the headers
+            label the wrong columns. The 58px right padding is the row's own
+            reserve for the download button that floats over its trailing edge.
+          -->
+          <Grid Padding="14,0,58,8" ColumnSpacing="14">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoHeaderColumn" Width="0" /><ColumnDefinition x:Name="AudioHeaderColumn" Width="0" /><ColumnDefinition x:Name="LanguagesHeaderColumn" Width="0" /><ColumnDefinition Width="92" /><ColumnDefinition Width="74" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
             <VisualStateManager.VisualStateGroups>
               <VisualStateGroup>
                 <VisualState x:Name="WideSourceHeaders">
                   <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
                   <VisualState.Setters>
-                    <Setter Target="VideoHeaderColumn.Width" Value="84" />
-                    <Setter Target="AudioHeaderColumn.Width" Value="100" />
-                    <Setter Target="LanguagesHeaderColumn.Width" Value="110" />
+                    <Setter Target="VideoHeaderColumn.Width" Value="96" />
+                    <Setter Target="AudioHeaderColumn.Width" Value="84" />
+                    <Setter Target="LanguagesHeaderColumn.Width" Value="108" />
                     <Setter Target="VideoHeader.Visibility" Value="Visible" />
                     <Setter Target="AudioHeader.Visibility" Value="Visible" />
                     <Setter Target="LanguagesHeader.Visibility" Value="Visible" />
@@ -93,31 +99,31 @@
             <TextBlock x:Name="AudioHeader" Grid.Column="3" Style="{StaticResource HaloMonoKicker}" Text="AUDIO" Visibility="Collapsed" />
             <TextBlock x:Name="LanguagesHeader" Grid.Column="4" Style="{StaticResource HaloMonoKicker}" Text="LANGUAGES" Visibility="Collapsed" />
             <TextBlock Grid.Column="5" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
-            <TextBlock Grid.Column="6" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
+            <TextBlock Grid.Column="6" TextAlignment="Right" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
           </Grid>
           <ItemsControl x:Name="SourceList">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:SourceDisplayItemViewModel">
                 <Grid>
-                  <Grid Visibility="{x:Bind HeaderVisibility}" Margin="0,16,0,8">
+                  <Grid Visibility="{x:Bind HeaderVisibility}" Margin="0,22,0,10">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <TextBlock FontWeight="SemiBold" Text="{x:Bind GroupName}" />
-                    <TextBlock Grid.Column="1" Margin="10,0,0,0" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupNote}" />
-                    <Rectangle Grid.Column="2" Height="1" Margin="12,0" Fill="{ThemeResource HaloDividerBrush}" />
-                    <TextBlock Grid.Column="3" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupCount}" />
+                    <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource HaloText2Brush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind GroupName}" />
+                    <TextBlock Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center" Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupNote}" />
+                    <Rectangle Grid.Column="2" Height="1" Margin="12,0" VerticalAlignment="Center" Fill="{ThemeResource HaloDividerBrush}" />
+                    <TextBlock Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind GroupCount}" />
                   </Grid>
-                  <Grid Margin="0,0,0,6" Visibility="{x:Bind RowVisibility}">
-                  <Button Padding="10,10,50,10" HorizontalContentAlignment="Stretch" Click="OnSourceRowClick" PointerEntered="OnSourceRowPointerEntered" PointerExited="OnSourceRowPointerExited" Style="{StaticResource HaloCardButtonStyle}" Tag="{x:Bind Key}">
-                    <Grid ColumnSpacing="10">
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="86" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoColumn" Width="0" /><ColumnDefinition x:Name="AudioColumn" Width="0" /><ColumnDefinition x:Name="LanguagesColumn" Width="0" /><ColumnDefinition Width="112" /><ColumnDefinition Width="76" /><ColumnDefinition Width="26" /></Grid.ColumnDefinitions>
+                  <Grid Margin="0,0,0,4" Visibility="{x:Bind RowVisibility}">
+                  <Button Padding="14,11,58,11" Click="OnSourceRowClick" PointerEntered="OnSourceRowPointerEntered" PointerExited="OnSourceRowPointerExited" Style="{StaticResource HaloCardButtonStyle}" Tag="{x:Bind Key}">
+                    <Grid ColumnSpacing="14">
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoColumn" Width="0" /><ColumnDefinition x:Name="AudioColumn" Width="0" /><ColumnDefinition x:Name="LanguagesColumn" Width="0" /><ColumnDefinition Width="92" /><ColumnDefinition Width="74" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
                       <VisualStateManager.VisualStateGroups>
                         <VisualStateGroup>
                           <VisualState x:Name="WideSourceRow">
                             <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
                             <VisualState.Setters>
-                              <Setter Target="VideoColumn.Width" Value="84" />
-                              <Setter Target="AudioColumn.Width" Value="100" />
-                              <Setter Target="LanguagesColumn.Width" Value="110" />
+                              <Setter Target="VideoColumn.Width" Value="96" />
+                              <Setter Target="AudioColumn.Width" Value="84" />
+                              <Setter Target="LanguagesColumn.Width" Value="108" />
                               <Setter Target="VideoValue.Visibility" Value="Visible" />
                               <Setter Target="AudioValue.Visibility" Value="Visible" />
                               <Setter Target="LanguagesValue.Visibility" Value="Visible" />
@@ -126,13 +132,13 @@
                           </VisualState>
                         </VisualStateGroup>
                       </VisualStateManager.VisualStateGroups>
-                      <StackPanel>
-                        <TextBlock FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Quality}" Visibility="{x:Bind Quality2160Visibility}" />
-                        <TextBlock FontWeight="Bold" Text="{x:Bind Quality}" Visibility="{x:Bind Quality1080Visibility}" />
-                        <TextBlock FontWeight="Bold" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Quality}" Visibility="{x:Bind QualityOtherVisibility}" />
-                        <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Range}" />
+                      <StackPanel VerticalAlignment="Center">
+                        <TextBlock FontSize="13" FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Quality}" Visibility="{x:Bind Quality2160Visibility}" />
+                        <TextBlock FontSize="13" FontWeight="Bold" Text="{x:Bind Quality}" Visibility="{x:Bind Quality1080Visibility}" />
+                        <TextBlock FontSize="13" FontWeight="Bold" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Quality}" Visibility="{x:Bind QualityOtherVisibility}" />
+                        <TextBlock Margin="0,2,0,0" Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Range}" />
                       </StackPanel>
-                      <StackPanel Grid.Column="1" Spacing="3">
+                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
                         <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Text="{x:Bind File}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="10.5" Text="{x:Bind Detail}" TextTrimming="CharacterEllipsis" />
                         <TextBlock x:Name="CompactTechnicalSummary" Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
@@ -147,11 +153,11 @@
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind OnDiskVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="ON DISK" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind UnknownVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Text="UNKNOWN" /></Border>
                       </Grid>
-                      <TextBlock Grid.Column="6" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
-                      <TextBlock Grid.Column="7" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" Text="&#xE768;" />
+                      <TextBlock Grid.Column="6" VerticalAlignment="Center" TextAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
+                      <TextBlock Grid.Column="7" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="11" Foreground="{ThemeResource HaloText3Brush}" Text="&#xE768;" />
                     </Grid>
                   </Button>
-                  <Button Width="34" Height="34" MinWidth="0" Margin="0,0,8,0" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Center" AutomationProperties.Name="Download source" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" ToolTipService.ToolTip="Download"><FontIcon FontSize="12" Glyph="&#xE896;" /></Button>
+                  <Button Width="34" Height="34" MinWidth="0" Margin="0,0,12,0" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Center" AutomationProperties.Name="Download source" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" ToolTipService.ToolTip="Download"><FontIcon FontSize="12" Glyph="&#xE896;" /></Button>
                   </Grid>
                 </Grid>
               </DataTemplate>
