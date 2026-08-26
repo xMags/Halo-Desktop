@@ -40,6 +40,7 @@ namespace winrt::HaloDesktop::implementation
     private:
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Border ArtBorderControl() const;
         void ApplyLayoutMetrics();
+        void ShowPlaceholder(bool visible);
 
         winrt::hstring m_title;
         winrt::hstring m_meta;

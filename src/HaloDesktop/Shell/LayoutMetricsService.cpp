@@ -40,8 +40,20 @@ namespace HaloDesktop::Shell
         return LayoutMetrics{ LayoutStep::Compact, 132.0, 268.0, 24.0, 304.0, 36.0 };
     }
 
-    double LargestPosterWidth() noexcept { return MetricsForContentWidth(WideFrom).PosterWidth; }
-    double LargestContinueWidth() noexcept { return MetricsForContentWidth(WideFrom).ContinueWidth; }
+    namespace
+    {
+        // Covers displays up to 200%. Guessing high costs a little memory; guessing
+        // low is visible as soft artwork, which is the worse failure.
+        constexpr double DensestScale = 2.0;
+
+        std::int32_t DecodeWidthFor(double logicalWidth) noexcept
+        {
+            return static_cast<std::int32_t>(logicalWidth * DensestScale);
+        }
+    }
+
+    std::int32_t PosterDecodeWidth() noexcept { return DecodeWidthFor(MetricsForContentWidth(WideFrom).PosterWidth); }
+    std::int32_t ContinueDecodeWidth() noexcept { return DecodeWidthFor(MetricsForContentWidth(WideFrom).ContinueWidth); }
 
     void LayoutMetricsService::SetContentWidth(double width)
     {

@@ -28,7 +28,7 @@
         BorderThickness="1"
         CornerRadius="8">
         <Grid>
-          <local:PlaceholderArt />
+          <local:PlaceholderArt x:Name="Placeholder" />
           <Image x:Name="PosterImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnPosterOpened" ImageFailed="OnPosterFailed" />
         </Grid>
       </Border>

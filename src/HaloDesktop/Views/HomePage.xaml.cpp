@@ -60,7 +60,7 @@ namespace winrt::HaloDesktop::implementation
             .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
             .ItemsSource(viewModel->ContinueItemsView());
         FindName(L"ShelfList")
-            .as<Microsoft::UI::Xaml::Controls::ItemsControl>()
+            .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
             .ItemsSource(viewModel->ShelvesView());
     }
 

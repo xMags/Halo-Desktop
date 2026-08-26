@@ -70,9 +70,14 @@ namespace HaloDesktop::Shell
 
     [[nodiscard]] LayoutMetrics MetricsForContentWidth(double width) noexcept;
 
-    // Artwork is decoded once at the largest step it can ever be drawn at, so a
+    // Artwork decodes once at the largest step it can ever be drawn at, so a
     // window resize never re-decodes a wall of images. Over-decoding by a quarter
     // at the compact step costs far less than the churn would.
-    [[nodiscard]] double LargestPosterWidth() noexcept;
-    [[nodiscard]] double LargestContinueWidth() noexcept;
+    //
+    // These are physical pixels, already multiplied out for the densest display
+    // the card is likely to land on. Decoding in logical pixels and letting the
+    // framework scale looked soft, because the scale is not always known at the
+    // moment the decode is scheduled.
+    [[nodiscard]] std::int32_t PosterDecodeWidth() noexcept;
+    [[nodiscard]] std::int32_t ContinueDecodeWidth() noexcept;
 }

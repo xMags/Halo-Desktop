@@ -27,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         m_poster = value;
         if (!image) return;
         image.Opacity(0);
+        ShowPlaceholder(true);
         if (value.empty()) { image.Source(nullptr); return; }
         try
         {
@@ -34,8 +35,7 @@ namespace winrt::HaloDesktop::implementation
             // Set before the uri, or the decode has already been scheduled at full
             // size. Poster sources run to a thousand pixels wide for a slot a sixth
             // of that, and every realised card was holding the whole thing.
-            bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
-            bitmap.DecodePixelWidth(static_cast<std::int32_t>(::HaloDesktop::Shell::LargestPosterWidth()));
+            bitmap.DecodePixelWidth(::HaloDesktop::Shell::PosterDecodeWidth());
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
         }
@@ -112,9 +112,19 @@ namespace winrt::HaloDesktop::implementation
         ArtBorderControl().BorderBrush(Microsoft::UI::Xaml::Application::Current().Resources().Lookup(winrt::box_value(L"HaloCardStrokeBrush")).as<Microsoft::UI::Xaml::Media::Brush>());
     }
     Microsoft::UI::Xaml::Controls::Border PosterCard::ArtBorderControl() const { return FindName(L"ArtBorder").as<Microsoft::UI::Xaml::Controls::Border>(); }
+    // The placeholder is opaque and sits directly behind the artwork, so leaving
+    // it in place made every card in the list draw its art twice.
+    void PosterCard::ShowPlaceholder(bool visible)
+    {
+        if (auto const placeholder = FindName(L"Placeholder").try_as<Microsoft::UI::Xaml::UIElement>())
+        {
+            placeholder.Visibility(visible ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
+    }
     void PosterCard::OnPosterOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (auto image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>()) image.Opacity(1);
+        ShowPlaceholder(false);
     }
     void PosterCard::OnPosterFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
     {

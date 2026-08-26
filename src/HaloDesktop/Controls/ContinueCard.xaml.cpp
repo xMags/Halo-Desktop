@@ -33,7 +33,7 @@ namespace winrt::HaloDesktop::implementation
         m_poster = value;
         auto still = FindName(L"Still").try_as<winrt::HaloDesktop::ArtworkImage>();
         if (!still) return;
-        still.DecodeWidth(::HaloDesktop::Shell::LargestContinueWidth());
+        still.DecodeWidth(::HaloDesktop::Shell::ContinueDecodeWidth());
         still.SourceUrl(value);
     }
 

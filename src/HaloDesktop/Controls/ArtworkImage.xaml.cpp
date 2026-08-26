@@ -98,12 +98,8 @@ namespace winrt::HaloDesktop::implementation
         try
         {
             Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
-            if (m_decodeWidth > 0.0)
-            {
-                // Both set before the uri: assigning the source starts the decode.
-                bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
-                bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
-            }
+            // Set before the uri: assigning the source starts the decode.
+            if (m_decodeWidth > 0.0) bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
         }

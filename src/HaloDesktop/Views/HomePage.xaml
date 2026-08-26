@@ -108,13 +108,23 @@
           </ItemsControl>
         </ScrollViewer>
       </StackPanel>
-      <ItemsControl x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
-        <ItemsControl.ItemTemplate>
+      <!--
+        A repeater, not an items control: the catalog cap allows eight shelves plus
+        the library, and an items control realises every one of them at page load.
+        Each shelf carries its own scroll viewer and repeater, and every one of
+        those recomputes its realisation window on each scroll frame, on screen or
+        not. Virtualising here keeps that work to the shelves actually in view.
+      -->
+      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
+        <ItemsRepeater.Layout>
+          <StackLayout Orientation="Vertical" Spacing="28" />
+        </ItemsRepeater.Layout>
+        <ItemsRepeater.ItemTemplate>
           <DataTemplate x:DataType="local:Shelf">
-            <local:MediaShelf Margin="0,0,0,28" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
+            <local:MediaShelf Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
           </DataTemplate>
-        </ItemsControl.ItemTemplate>
-      </ItemsControl>
+        </ItemsRepeater.ItemTemplate>
+      </ItemsRepeater>
     </StackPanel>
   </ScrollViewer>
   </Grid>
