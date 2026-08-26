@@ -31,7 +31,10 @@ namespace winrt::HaloDesktop::implementation
     void ContinueCard::Poster(winrt::hstring const& value)
     {
         m_poster = value;
-        if (auto still = FindName(L"Still").try_as<winrt::HaloDesktop::ArtworkImage>()) still.SourceUrl(value);
+        auto still = FindName(L"Still").try_as<winrt::HaloDesktop::ArtworkImage>();
+        if (!still) return;
+        still.DecodeWidth(::HaloDesktop::Shell::LargestContinueWidth());
+        still.SourceUrl(value);
     }
 
     winrt::hstring ContinueCard::EpisodeTag() const { return m_episodeTag; }

@@ -20,12 +20,25 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring PosterCard::Poster() const { return m_poster; }
     void PosterCard::Poster(winrt::hstring const& value)
     {
-        m_poster = value;
         auto const image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        // Recycled cards are handed the same url they already hold often enough
+        // that rebuilding the bitmap here is a decode per scroll, not per item.
+        if (m_poster == value && image && image.Source() != nullptr) return;
+        m_poster = value;
         if (!image) return;
         image.Opacity(0);
         if (value.empty()) { image.Source(nullptr); return; }
-        try { image.Source(Microsoft::UI::Xaml::Media::Imaging::BitmapImage{ winrt::Windows::Foundation::Uri{ value } }); }
+        try
+        {
+            Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+            // Set before the uri, or the decode has already been scheduled at full
+            // size. Poster sources run to a thousand pixels wide for a slot a sixth
+            // of that, and every realised card was holding the whole thing.
+            bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
+            bitmap.DecodePixelWidth(static_cast<std::int32_t>(::HaloDesktop::Shell::LargestPosterWidth()));
+            bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
+            image.Source(bitmap);
+        }
         catch (...) { image.Source(nullptr); }
     }
     winrt::hstring PosterCard::KindLabel() const { return m_kindLabel; }

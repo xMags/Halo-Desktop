@@ -69,4 +69,10 @@ namespace HaloDesktop::Shell
     };
 
     [[nodiscard]] LayoutMetrics MetricsForContentWidth(double width) noexcept;
+
+    // Artwork is decoded once at the largest step it can ever be drawn at, so a
+    // window resize never re-decodes a wall of images. Over-decoding by a quarter
+    // at the compact step costs far less than the churn would.
+    [[nodiscard]] double LargestPosterWidth() noexcept;
+    [[nodiscard]] double LargestContinueWidth() noexcept;
 }

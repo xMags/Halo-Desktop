@@ -35,10 +35,18 @@ namespace winrt::HaloDesktop::implementation
         m_fallbackUrl = value;
     }
 
+    double ArtworkImage::DecodeWidth() const noexcept { return m_decodeWidth; }
+    void ArtworkImage::DecodeWidth(double value) { m_decodeWidth = value; }
+
+    // Only builds the bitmap when there is not already one for this url. Loaded
+    // fires again every time a recycled item comes back into view, and refreshing
+    // unconditionally made that a fresh decode each pass.
     void ArtworkImage::OnLoaded(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
+        auto const image = FindName(L"Artwork").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        if (image && image.Source() != nullptr) return;
         Refresh();
     }
 
@@ -89,8 +97,15 @@ namespace winrt::HaloDesktop::implementation
         }
         try
         {
-            image.Source(Microsoft::UI::Xaml::Media::Imaging::BitmapImage{
-                winrt::Windows::Foundation::Uri{ value } });
+            Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+            if (m_decodeWidth > 0.0)
+            {
+                // Both set before the uri: assigning the source starts the decode.
+                bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
+                bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
+            }
+            bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
+            image.Source(bitmap);
         }
         catch (...)
         {

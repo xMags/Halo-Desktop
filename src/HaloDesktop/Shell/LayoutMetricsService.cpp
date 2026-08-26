@@ -40,6 +40,9 @@ namespace HaloDesktop::Shell
         return LayoutMetrics{ LayoutStep::Compact, 132.0, 268.0, 24.0, 304.0, 36.0 };
     }
 
+    double LargestPosterWidth() noexcept { return MetricsForContentWidth(WideFrom).PosterWidth; }
+    double LargestContinueWidth() noexcept { return MetricsForContentWidth(WideFrom).ContinueWidth; }
+
     void LayoutMetricsService::SetContentWidth(double width)
     {
         // A width of zero means the shell has not been measured yet. Treating it

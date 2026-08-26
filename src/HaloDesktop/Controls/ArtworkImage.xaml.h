@@ -17,6 +17,10 @@ namespace winrt::HaloDesktop::implementation
         void SourceUrl(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring FallbackUrl() const;
         void FallbackUrl(winrt::hstring const& value);
+        // Logical pixels. Zero leaves the source at full resolution, which is
+        // right for a full-bleed backdrop and wasteful for anything smaller.
+        [[nodiscard]] double DecodeWidth() const noexcept;
+        void DecodeWidth(double value);
 
         void OnLoaded(
             winrt::Windows::Foundation::IInspectable const& sender,
@@ -34,6 +38,7 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::hstring m_sourceUrl;
         winrt::hstring m_fallbackUrl;
+        double m_decodeWidth{};
         bool m_fallbackAttempted{};
     };
 }
