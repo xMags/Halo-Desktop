@@ -18,7 +18,7 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="292" /></Grid.ColumnDefinitions>
         <StackPanel Spacing="18">
           <Grid ColumnSpacing="12">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <Grid Width="62" Height="92">
               <local:PlaceholderArt />
               <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
@@ -28,13 +28,15 @@
               <TextBlock FontSize="22" FontWeight="SemiBold" Text="{x:Bind ViewModel.Title, Mode=OneWay}" />
               <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.ResolveSummary, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
             </StackPanel>
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Spacing="8">
-              <RadioButton GroupName="SourceFilter" IsChecked="True" Click="OnAllFilterClick" Content="{x:Bind ViewModel.AllFilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
-              <RadioButton GroupName="SourceFilter" Click="OnInstantFilterClick" Content="{x:Bind ViewModel.InstantFilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
-              <RadioButton GroupName="SourceFilter" Click="On2160FilterClick" Content="{x:Bind ViewModel.Quality2160FilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
-              <RadioButton GroupName="SourceFilter" Click="On1080FilterClick" Content="{x:Bind ViewModel.Quality1080FilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
-            </StackPanel>
           </Grid>
+
+          <!-- The filters scope everything below them, so they sit on the content's leading edge rather than opposite the title. -->
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <RadioButton GroupName="SourceFilter" IsChecked="True" Click="OnAllFilterClick" Content="{x:Bind ViewModel.AllFilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
+            <RadioButton GroupName="SourceFilter" Click="OnInstantFilterClick" Content="{x:Bind ViewModel.InstantFilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
+            <RadioButton GroupName="SourceFilter" Click="On2160FilterClick" Content="{x:Bind ViewModel.Quality2160FilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
+            <RadioButton GroupName="SourceFilter" Click="On1080FilterClick" Content="{x:Bind ViewModel.Quality1080FilterLabel, Mode=OneWay}" Style="{StaticResource HaloChipRadioStyle}" />
+          </StackPanel>
 
           <Border
             x:Name="BestSourceCard"
@@ -71,37 +73,27 @@
           </Border>
 
           <!--
-            The column widths, spacing and horizontal padding here must stay in
-            lockstep with the row template further down, otherwise the headers
-            label the wrong columns. The 58px right padding is the row's own
-            reserve for the download button that floats over its trailing edge.
+            The column widths and horizontal padding here must stay in lockstep
+            with the row template further down, otherwise the headers label the
+            wrong columns. The 58px right padding is the row's own reserve for the
+            download button that floats over its trailing edge.
+
+            There is no ColumnSpacing: it would apply between the optional columns
+            even when they are collapsed, leaving dead space in the narrow layout.
+            Each cell carries its own 14px trailing gutter instead, so a collapsed
+            column costs exactly nothing. Fixed widths are content plus gutter.
           -->
-          <Grid Padding="14,0,58,8" ColumnSpacing="14">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoHeaderColumn" Width="0" /><ColumnDefinition x:Name="AudioHeaderColumn" Width="0" /><ColumnDefinition x:Name="LanguagesHeaderColumn" Width="0" /><ColumnDefinition Width="92" /><ColumnDefinition Width="74" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
-            <VisualStateManager.VisualStateGroups>
-              <VisualStateGroup>
-                <VisualState x:Name="WideSourceHeaders">
-                  <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
-                  <VisualState.Setters>
-                    <Setter Target="VideoHeaderColumn.Width" Value="96" />
-                    <Setter Target="AudioHeaderColumn.Width" Value="84" />
-                    <Setter Target="LanguagesHeaderColumn.Width" Value="108" />
-                    <Setter Target="VideoHeader.Visibility" Value="Visible" />
-                    <Setter Target="AudioHeader.Visibility" Value="Visible" />
-                    <Setter Target="LanguagesHeader.Visibility" Value="Visible" />
-                  </VisualState.Setters>
-                </VisualState>
-              </VisualStateGroup>
-            </VisualStateManager.VisualStateGroups>
-            <TextBlock Style="{StaticResource HaloMonoKicker}" Text="QUALITY" />
-            <TextBlock Grid.Column="1" Style="{StaticResource HaloMonoKicker}" Text="FILE" />
-            <TextBlock x:Name="VideoHeader" Grid.Column="2" Style="{StaticResource HaloMonoKicker}" Text="VIDEO" Visibility="Collapsed" />
-            <TextBlock x:Name="AudioHeader" Grid.Column="3" Style="{StaticResource HaloMonoKicker}" Text="AUDIO" Visibility="Collapsed" />
-            <TextBlock x:Name="LanguagesHeader" Grid.Column="4" Style="{StaticResource HaloMonoKicker}" Text="LANGUAGES" Visibility="Collapsed" />
-            <TextBlock Grid.Column="5" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
-            <TextBlock Grid.Column="6" TextAlignment="Right" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
+          <Grid Padding="14,0,58,8">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="106" /><ColumnDefinition Width="88" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
+            <TextBlock Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="QUALITY" />
+            <TextBlock Grid.Column="1" Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="FILE" />
+            <TextBlock Grid.Column="2" Width="96" Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="VIDEO" Visibility="{x:Bind ViewModel.DetailColumnVisibility, Mode=OneWay}" />
+            <TextBlock Grid.Column="3" Width="84" Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="AUDIO" Visibility="{x:Bind ViewModel.DetailColumnVisibility, Mode=OneWay}" />
+            <TextBlock Grid.Column="4" Width="108" Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="LANGUAGES" Visibility="{x:Bind ViewModel.DetailColumnVisibility, Mode=OneWay}" />
+            <TextBlock Grid.Column="5" Margin="0,0,14,0" Style="{StaticResource HaloMonoKicker}" Text="STATUS" />
+            <TextBlock Grid.Column="6" Margin="0,0,14,0" TextAlignment="Right" Style="{StaticResource HaloMonoKicker}" Text="SIZE" />
           </Grid>
-          <ItemsControl x:Name="SourceList">
+          <ItemsControl x:Name="SourceList" SizeChanged="OnSourceListSizeChanged">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:SourceDisplayItemViewModel">
                 <Grid>
@@ -114,46 +106,30 @@
                   </Grid>
                   <Grid Margin="0,0,0,4" Visibility="{x:Bind RowVisibility}">
                   <Button Padding="14,11,58,11" Click="OnSourceRowClick" PointerEntered="OnSourceRowPointerEntered" PointerExited="OnSourceRowPointerExited" Style="{StaticResource HaloCardButtonStyle}" Tag="{x:Bind Key}">
-                    <Grid ColumnSpacing="14">
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="62" /><ColumnDefinition Width="*" /><ColumnDefinition x:Name="VideoColumn" Width="0" /><ColumnDefinition x:Name="AudioColumn" Width="0" /><ColumnDefinition x:Name="LanguagesColumn" Width="0" /><ColumnDefinition Width="92" /><ColumnDefinition Width="74" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
-                      <VisualStateManager.VisualStateGroups>
-                        <VisualStateGroup>
-                          <VisualState x:Name="WideSourceRow">
-                            <VisualState.StateTriggers><AdaptiveTrigger MinWindowWidth="1600" /></VisualState.StateTriggers>
-                            <VisualState.Setters>
-                              <Setter Target="VideoColumn.Width" Value="96" />
-                              <Setter Target="AudioColumn.Width" Value="84" />
-                              <Setter Target="LanguagesColumn.Width" Value="108" />
-                              <Setter Target="VideoValue.Visibility" Value="Visible" />
-                              <Setter Target="AudioValue.Visibility" Value="Visible" />
-                              <Setter Target="LanguagesValue.Visibility" Value="Visible" />
-                              <Setter Target="CompactTechnicalSummary.Visibility" Value="Collapsed" />
-                            </VisualState.Setters>
-                          </VisualState>
-                        </VisualStateGroup>
-                      </VisualStateManager.VisualStateGroups>
-                      <StackPanel VerticalAlignment="Center">
+                    <Grid>
+                      <Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="106" /><ColumnDefinition Width="88" /><ColumnDefinition Width="28" /></Grid.ColumnDefinitions>
+                      <StackPanel Margin="0,0,14,0" VerticalAlignment="Center">
                         <TextBlock FontSize="13" FontWeight="Bold" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Quality}" Visibility="{x:Bind Quality2160Visibility}" />
                         <TextBlock FontSize="13" FontWeight="Bold" Text="{x:Bind Quality}" Visibility="{x:Bind Quality1080Visibility}" />
                         <TextBlock FontSize="13" FontWeight="Bold" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Quality}" Visibility="{x:Bind QualityOtherVisibility}" />
                         <TextBlock Margin="0,2,0,0" Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Range}" />
                       </StackPanel>
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="3">
+                      <StackPanel Grid.Column="1" Margin="0,0,14,0" VerticalAlignment="Center" Spacing="3">
                         <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Text="{x:Bind File}" TextTrimming="CharacterEllipsis" />
                         <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="10.5" Text="{x:Bind Detail}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock x:Name="CompactTechnicalSummary" Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
+                        <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="11.5" Visibility="{x:Bind CompactSummaryVisibility}"><Run Text="{x:Bind Codec}" /><Run Text=" · " /><Run Text="{x:Bind Audio}" /><Run Text=" · " /><Run Text="{x:Bind Languages}" /></TextBlock>
                       </StackPanel>
-                      <TextBlock x:Name="VideoValue" Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Codec}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
-                      <TextBlock x:Name="AudioValue" Grid.Column="3" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Audio}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
-                      <TextBlock x:Name="LanguagesValue" Grid.Column="4" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Languages}" TextTrimming="CharacterEllipsis" Visibility="Collapsed" />
-                      <Grid Grid.Column="5" VerticalAlignment="Center">
+                      <TextBlock Grid.Column="2" Width="96" Margin="0,0,14,0" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Codec}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind DetailColumnVisibility}" />
+                      <TextBlock Grid.Column="3" Width="84" Margin="0,0,14,0" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Audio}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind DetailColumnVisibility}" />
+                      <TextBlock Grid.Column="4" Width="108" Margin="0,0,14,0" VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind Languages}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind DetailColumnVisibility}" />
+                      <Grid Grid.Column="5" Margin="0,0,14,0" VerticalAlignment="Center">
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind InstantVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="INSTANT" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind CachingVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloCautionBrush}" Text="CACHING" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind UncachedVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Text="UNCACHED" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind OnDiskVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloSuccessBrush}" Text="ON DISK" /></Border>
                         <Border Padding="7,3" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind UnknownVisibility}"><TextBlock Style="{StaticResource HaloMonoData}" Text="UNKNOWN" /></Border>
                       </Grid>
-                      <TextBlock Grid.Column="6" VerticalAlignment="Center" TextAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
+                      <TextBlock Grid.Column="6" Margin="0,0,14,0" VerticalAlignment="Center" TextAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Size}" />
                       <TextBlock Grid.Column="7" HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="11" Foreground="{ThemeResource HaloText3Brush}" Text="&#xE768;" />
                     </Grid>
                   </Button>

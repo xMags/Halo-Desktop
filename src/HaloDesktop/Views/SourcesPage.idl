@@ -26,6 +26,8 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility UncachedVisibility { get; };
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
         Microsoft.UI.Xaml.Visibility UnknownVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DetailColumnVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CompactSummaryVisibility { get; };
     }
 
     runtimeclass SourcesViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
@@ -60,7 +62,9 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DetailColumnVisibility { get; };
         void Load(Object parameter);
+        void SetListWidth(Double width);
         void Retry();
         void SetFilter(Int32 index);
         void DismissTeachingTip();

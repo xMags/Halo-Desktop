@@ -14,7 +14,7 @@ namespace winrt::HaloDesktop::implementation
     struct SourceDisplayItemViewModel : SourceDisplayItemViewModelT<SourceDisplayItemViewModel>
     {
         SourceDisplayItemViewModel(winrt::hstring groupName, winrt::hstring groupNote, winrt::hstring groupCount);
-        explicit SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source);
+        SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source, bool detailColumns);
         [[nodiscard]] Microsoft::UI::Xaml::Visibility HeaderVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RowVisibility() const noexcept;
         [[nodiscard]] winrt::hstring Key() const;
@@ -38,6 +38,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UncachedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OnDiskVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UnknownVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailColumnVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CompactSummaryVisibility() const noexcept;
 
     private:
         winrt::hstring m_groupName;
@@ -45,6 +47,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_groupCount;
         winrt::HaloDesktop::StreamSource m_source{ nullptr };
         bool m_isHeader{};
+        bool m_detailColumns{};
     };
 
     struct SourcesViewModel : SourcesViewModelT<SourcesViewModel>
@@ -91,6 +94,11 @@ namespace winrt::HaloDesktop::implementation
         void OpenPlayer(winrt::hstring const& key);
         void OpenBest();
         void OpenSettings();
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailColumnVisibility() const noexcept;
+        // Called by the page with the measured width of the list column. The
+        // optional columns depend on the room the list actually has, which the
+        // window width cannot answer: the nav rail and the aside both take a cut.
+        void SetListWidth(double width);
         [[nodiscard]] concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting);
@@ -117,6 +125,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_qualityItems{ nullptr };
         winrt::HaloDesktop::StreamSource m_bestSource{ nullptr };
         std::int32_t m_filterIndex{};
+        bool m_detailColumns{};
         std::uint32_t m_loadVersion{};
         bool m_loading{};
         bool m_error{};

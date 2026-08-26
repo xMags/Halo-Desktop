@@ -23,6 +23,7 @@ namespace winrt::HaloDesktop::implementation
         void OnSourceRowPointerEntered(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnSourceRowPointerExited(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnEditPlaybackClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSourceListSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         void OnTeachingTipAction(Microsoft::UI::Xaml::Controls::TeachingTip const&, winrt::Windows::Foundation::IInspectable const&);
         void OnTeachingTipClosed(Microsoft::UI::Xaml::Controls::TeachingTip const&, Microsoft::UI::Xaml::Controls::TeachingTipClosedEventArgs const&);
 

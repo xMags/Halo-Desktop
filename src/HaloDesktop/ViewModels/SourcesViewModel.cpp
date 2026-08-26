@@ -42,7 +42,7 @@ namespace winrt::HaloDesktop::implementation
 {
     SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::hstring groupName, winrt::hstring groupNote, winrt::hstring groupCount)
         : m_groupName(std::move(groupName)), m_groupNote(std::move(groupNote)), m_groupCount(std::move(groupCount)), m_isHeader(true) {}
-    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source) : m_source(std::move(source)) {}
+    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source, bool detailColumns) : m_source(std::move(source)), m_detailColumns(detailColumns) {}
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::HeaderVisibility() const noexcept { return m_isHeader ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::RowVisibility() const noexcept { return m_isHeader ? Collapsed : Visible; }
     winrt::hstring SourceDisplayItemViewModel::Key() const { return m_source ? m_source.Key() : L""; }
@@ -66,6 +66,10 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::UncachedVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Uncached ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::OnDiskVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::UnknownVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Unknown ? Visible : Collapsed; }
+    // The technical detail is shown either as three columns or as one summary
+    // line under the file name, never both, so the two are exact opposites.
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::DetailColumnVisibility() const noexcept { return m_detailColumns ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::CompactSummaryVisibility() const noexcept { return m_detailColumns ? Collapsed : Visible; }
 
     SourcesViewModel::SourcesViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_sources(services.Sources), m_navigation(services.Navigation), m_settings(services.SettingsSync), m_downloads(services.Downloads),
@@ -217,10 +221,26 @@ namespace winrt::HaloDesktop::implementation
                     m_items.Append(winrt::make<SourceDisplayItemViewModel>(group.Name(), group.Note(), winrt::to_hstring(group.Count()) + L" SOURCES"));
                     headerAdded = true;
                 }
-                m_items.Append(winrt::make<SourceDisplayItemViewModel>(source));
+                m_items.Append(winrt::make<SourceDisplayItemViewModel>(source, m_detailColumns));
             }
         }
         Raise(L"Items");
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::DetailColumnVisibility() const noexcept { return m_detailColumns ? Visible : Collapsed; }
+
+    void SourcesViewModel::SetListWidth(double width)
+    {
+        // Everything but the file name is fixed width, so the threshold is that
+        // fixed cost plus a file column wide enough to still read a release name.
+        // The flag cannot feed back into the measurement: the list column is
+        // sized by its parent, not by what these rows ask for.
+        constexpr double DetailColumnsRequire = 980.0;
+        auto const detailColumns = width >= DetailColumnsRequire;
+        if (detailColumns == m_detailColumns) return;
+        m_detailColumns = detailColumns;
+        Raise(L"DetailColumnVisibility");
+        Rebuild();
     }
 
     void SourcesViewModel::RebuildAside()

@@ -47,6 +47,14 @@ namespace winrt::HaloDesktop::implementation
     void SourcesPage::On2160FilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
     void SourcesPage::On1080FilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(3); }
     void SourcesPage::OnRetryClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
+    // The list, not the window, is what has to fit the optional columns: the nav
+    // rail and the 292px aside both take their cut before the rows see any width.
+    void SourcesPage::OnSourceListSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        m_viewModel.SetListWidth(args.NewSize().Width);
+    }
     void SourcesPage::OnPlayClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenBest(); }
     void SourcesPage::OnDownloadBestClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
