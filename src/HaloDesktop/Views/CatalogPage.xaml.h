@@ -16,6 +16,9 @@ namespace winrt::HaloDesktop::implementation
         void OnPosterClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnBackClick(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
     private:
         winrt::HaloDesktop::CatalogViewModel m_viewModel{ nullptr };

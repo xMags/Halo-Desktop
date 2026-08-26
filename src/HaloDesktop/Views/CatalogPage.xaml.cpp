@@ -35,6 +35,13 @@ namespace winrt::HaloDesktop::implementation
             .ItemsSource(viewModel->ItemsView());
     }
 
+    void CatalogPage::OnBackClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        m_viewModel.GoBack();
+    }
+
     void CatalogPage::OnPosterClick(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)

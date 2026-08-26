@@ -13,8 +13,26 @@
       <ColumnDefinition Width="Auto" />
     </Grid.ColumnDefinitions>
 
+    <!-- Collapsed unless a page opts in: only pages reached from another page
+         inside the shell frame have somewhere to go back to. -->
+    <Button
+      x:Name="BackButton"
+      Width="34"
+      Height="34"
+      MinWidth="0"
+      Margin="0,0,14,2"
+      Padding="0"
+      VerticalAlignment="Bottom"
+      AutomationProperties.Name="Back"
+      Click="OnBackClick"
+      CornerRadius="4"
+      ToolTipService.ToolTip="Back"
+      Visibility="Collapsed">
+      <FontIcon FontSize="15" Glyph="&#xE72B;" />
+    </Button>
     <TextBlock
       x:Name="TitleText"
+      Grid.Column="1"
       VerticalAlignment="Bottom"
       Style="{StaticResource HaloPageTitle}" />
     <ContentPresenter

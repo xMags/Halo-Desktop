@@ -97,6 +97,14 @@ namespace winrt::HaloDesktop::implementation
         RaiseState();
     }
 
+    // The catalog is only ever reached from another shell page, so there is
+    // always something behind it; the guard is for a cold navigation in testing.
+    void CatalogViewModel::GoBack()
+    {
+        if (m_navigation->CanGoBack()) m_navigation->GoBack();
+        else m_navigation->GoTo(::HaloDesktop::Services::Page::Home);
+    }
+
     void CatalogViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item)
     {
         auto const media = item.try_as<winrt::HaloDesktop::MediaSummary>();

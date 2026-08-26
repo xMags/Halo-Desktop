@@ -11,7 +11,7 @@
       <RowDefinition Height="Auto" />
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
-    <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}">
+    <local:SectionHeader ShowBack="True" BackClick="OnBackClick" Title="{x:Bind ViewModel.Title, Mode=OneWay}">
       <local:SectionHeader.RightContent>
         <StackPanel Orientation="Horizontal" Spacing="12">
           <TextBlock

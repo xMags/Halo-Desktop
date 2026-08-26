@@ -24,6 +24,7 @@ namespace winrt::HaloDesktop::implementation
 
         void Load(winrt::Windows::Foundation::IInspectable const& parameter);
         void OpenDetail(winrt::Windows::Foundation::IInspectable const& item);
+        void GoBack();
 
         winrt::event_token PropertyChanged(
             Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);

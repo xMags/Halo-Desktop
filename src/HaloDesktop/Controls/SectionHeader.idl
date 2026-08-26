@@ -6,5 +6,7 @@ namespace HaloDesktop
         SectionHeader();
         String Title;
         Object RightContent;
+        Boolean ShowBack;
+        event Microsoft.UI.Xaml.RoutedEventHandler BackClick;
     }
 }

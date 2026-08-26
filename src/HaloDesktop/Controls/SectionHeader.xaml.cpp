@@ -45,4 +45,40 @@ namespace winrt::HaloDesktop::implementation
             presenter.Content(value);
         }
     }
+
+    Microsoft::UI::Xaml::Controls::Button SectionHeader::BackButton() const
+    {
+        return FindName(L"BackButton").try_as<Microsoft::UI::Xaml::Controls::Button>();
+    }
+
+    bool SectionHeader::ShowBack() const noexcept
+    {
+        return m_showBack;
+    }
+
+    void SectionHeader::ShowBack(bool value)
+    {
+        m_showBack = value;
+        if (auto const button = BackButton())
+        {
+            button.Visibility(value ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
+    }
+
+    winrt::event_token SectionHeader::BackClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler)
+    {
+        return m_backClick.add(handler);
+    }
+
+    void SectionHeader::BackClick(winrt::event_token const& token) noexcept
+    {
+        m_backClick.remove(token);
+    }
+
+    void SectionHeader::OnBackClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        m_backClick(*this, args);
+    }
 }
