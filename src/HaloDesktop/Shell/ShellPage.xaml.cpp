@@ -23,6 +23,34 @@ namespace winrt::HaloDesktop::implementation
         }
 
         m_attached = true;
+
+        // XAML settles pointer focus after the press has finished bubbling, and when
+        // the press landed on something that cannot hold focus it settles on the
+        // first tab stop in the page. On Home that is the header search box, so a
+        // click on empty background put a caret there and dragged the scroll up to
+        // show it. Nothing can undo that afterwards, because anything this shell does
+        // during the press is what gets overridden, so the move is refused instead.
+        m_gettingFocusToken = Microsoft::UI::Xaml::Input::FocusManager::GettingFocus(
+            [weak = get_weak()](
+                winrt::Windows::Foundation::IInspectable const&,
+                Microsoft::UI::Xaml::Input::GettingFocusEventArgs const& eventArgs)
+            {
+                auto const self = weak.get();
+                if (!self || !self->m_refuseTextFocus)
+                {
+                    return;
+                }
+                if (eventArgs.FocusState() != Microsoft::UI::Xaml::FocusState::Pointer)
+                {
+                    return;
+                }
+                auto const target = eventArgs.NewFocusedElement();
+                if (target && IsWithinTextInput(target))
+                {
+                    eventArgs.TryCancel();
+                }
+            });
+
         auto const navigation = App::Services().Navigation;
         navigation->AttachShellFrame(ContentFrameControl());
         m_frameNavigatedRevoker = ContentFrameControl().Navigated(
@@ -58,6 +86,11 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Downloads->RemoveChangedHandler(m_downloadChangedToken);
             m_downloadChangedToken = 0;
         }
+        if (m_gettingFocusToken)
+        {
+            Microsoft::UI::Xaml::Input::FocusManager::GettingFocus(m_gettingFocusToken);
+            m_gettingFocusToken = {};
+        }
         m_frameNavigatedRevoker.revoke();
         m_attached = false;
     }
@@ -83,23 +116,35 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        // Only a caret is worth dismissing; other focus is left where the user put it.
+        // A press that landed inside a text box is that box's business, not ours.
+        auto const source = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
+        if (source && IsWithinTextInput(source))
+        {
+            return;
+        }
+
+        // Refuse text focus for the rest of this interaction. Cleared through the
+        // dispatcher rather than here, because the move being refused is raised
+        // while this press is still being processed, after the handler returns.
+        m_refuseTextFocus = true;
+        DispatcherQueue().TryEnqueue([weak = get_weak()]()
+        {
+            if (auto const self = weak.get())
+            {
+                self->m_refuseTextFocus = false;
+            }
+        });
+
+        // Refusing the move keeps a caret from appearing, but an existing one has to
+        // be sent somewhere. FocusSink is a sibling of the frame, so parking focus
+        // there cannot scroll a page.
         auto const focused =
             Microsoft::UI::Xaml::Input::FocusManager::GetFocusedElement(XamlRoot())
                 .try_as<Microsoft::UI::Xaml::DependencyObject>();
-        if (!focused || !IsWithinTextInput(focused))
+        if (focused && IsWithinTextInput(focused))
         {
-            return;
+            FocusSink().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
         }
-
-        // A press that landed inside a text box is that box's business, not ours.
-        if (auto const source = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
-            source && IsWithinTextInput(source))
-        {
-            return;
-        }
-
-        FocusSink().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
     }
 
     void ShellPage::OnItemInvoked(

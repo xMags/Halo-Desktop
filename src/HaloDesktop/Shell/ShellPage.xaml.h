@@ -70,6 +70,10 @@ namespace winrt::HaloDesktop::implementation
 
         bool m_attached{ false };
         bool m_paneOpen{ true };
+        // Set for the duration of one pointer interaction that began outside any
+        // text input. See OnContentPointerPressed.
+        bool m_refuseTextFocus{ false };
+        winrt::event_token m_gettingFocusToken{};
         std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
