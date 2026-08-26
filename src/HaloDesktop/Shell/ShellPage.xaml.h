@@ -6,6 +6,7 @@
 #include "Services/ServiceInterfaces.h"
 
 #include <array>
+#include <optional>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
@@ -49,10 +50,16 @@ namespace winrt::HaloDesktop::implementation
         void OnContentPointerPressed(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        void OnContentPointerEnded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
 
     private:
         void SetJumpBackVisibility(bool visible);
         [[nodiscard]] static bool IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element);
+        [[nodiscard]] static bool IsHomeSearchTarget(Microsoft::UI::Xaml::DependencyObject const& element);
+        void AttachPointerHandlers();
+        void DetachPointerHandlers() noexcept;
 
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;
@@ -70,9 +77,9 @@ namespace winrt::HaloDesktop::implementation
 
         bool m_attached{ false };
         bool m_paneOpen{ true };
-        // Set for the duration of one pointer interaction that began outside any
-        // text input. See OnContentPointerPressed.
-        bool m_refuseTextFocus{ false };
+        std::optional<std::uint32_t> m_nonTextPointerId;
+        winrt::Windows::Foundation::IInspectable m_pointerPressedHandler{ nullptr };
+        winrt::Windows::Foundation::IInspectable m_pointerEndedHandler{ nullptr };
         winrt::event_token m_gettingFocusToken{};
         std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};

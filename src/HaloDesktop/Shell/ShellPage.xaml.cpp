@@ -23,6 +23,7 @@ namespace winrt::HaloDesktop::implementation
         }
 
         m_attached = true;
+        AttachPointerHandlers();
 
         // XAML settles pointer focus after the press has finished bubbling, and when
         // the press landed on something that cannot hold focus it settles on the
@@ -36,7 +37,7 @@ namespace winrt::HaloDesktop::implementation
                 Microsoft::UI::Xaml::Input::GettingFocusEventArgs const& eventArgs)
             {
                 auto const self = weak.get();
-                if (!self || !self->m_refuseTextFocus)
+                if (!self || !self->m_nonTextPointerId)
                 {
                     return;
                 }
@@ -45,9 +46,22 @@ namespace winrt::HaloDesktop::implementation
                     return;
                 }
                 auto const target = eventArgs.NewFocusedElement();
-                if (target && IsWithinTextInput(target))
+                if (!target || !IsHomeSearchTarget(target))
                 {
-                    eventArgs.TryCancel();
+                    return;
+                }
+
+                auto redirected = false;
+                try
+                {
+                    redirected = eventArgs.TrySetNewFocusedElement(self->FocusSink());
+                }
+                catch (...)
+                {
+                }
+                if (!redirected)
+                {
+                    static_cast<void>(eventArgs.TryCancel());
                 }
             });
 
@@ -91,6 +105,7 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::Input::FocusManager::GettingFocus(m_gettingFocusToken);
             m_gettingFocusToken = {};
         }
+        DetachPointerHandlers();
         m_frameNavigatedRevoker.revoke();
         m_attached = false;
     }
@@ -112,6 +127,89 @@ namespace winrt::HaloDesktop::implementation
         return false;
     }
 
+    bool ShellPage::IsHomeSearchTarget(Microsoft::UI::Xaml::DependencyObject const& element)
+    {
+        auto current = element;
+        while (current)
+        {
+            if (auto const search = current.try_as<Microsoft::UI::Xaml::Controls::AutoSuggestBox>();
+                search && search.Name() == L"HomeSearchBox")
+            {
+                return true;
+            }
+            current = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetParent(current);
+        }
+        return false;
+    }
+
+    void ShellPage::AttachPointerHandlers()
+    {
+        auto const weak = get_weak();
+        m_pointerPressedHandler = winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+            [weak](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->OnContentPointerPressed(sender, args);
+                }
+            } });
+        m_pointerEndedHandler = winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+            [weak](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->OnContentPointerEnded(sender, args);
+                }
+            } });
+
+        auto const host = ContentHost();
+        host.AddHandler(
+            Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
+            m_pointerPressedHandler,
+            true);
+        for (auto const& routedEvent : {
+                 Microsoft::UI::Xaml::UIElement::PointerReleasedEvent(),
+                 Microsoft::UI::Xaml::UIElement::PointerCanceledEvent(),
+                 Microsoft::UI::Xaml::UIElement::PointerCaptureLostEvent() })
+        {
+            host.AddHandler(routedEvent, m_pointerEndedHandler, true);
+        }
+    }
+
+    void ShellPage::DetachPointerHandlers() noexcept
+    {
+        m_nonTextPointerId.reset();
+        try
+        {
+            auto const host = ContentHost();
+            if (m_pointerPressedHandler)
+            {
+                host.RemoveHandler(
+                    Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
+                    m_pointerPressedHandler);
+            }
+            if (m_pointerEndedHandler)
+            {
+                for (auto const& routedEvent : {
+                         Microsoft::UI::Xaml::UIElement::PointerReleasedEvent(),
+                         Microsoft::UI::Xaml::UIElement::PointerCanceledEvent(),
+                         Microsoft::UI::Xaml::UIElement::PointerCaptureLostEvent() })
+                {
+                    host.RemoveHandler(routedEvent, m_pointerEndedHandler);
+                }
+            }
+        }
+        catch (...)
+        {
+        }
+        m_pointerPressedHandler = nullptr;
+        m_pointerEndedHandler = nullptr;
+    }
+
     void ShellPage::OnContentPointerPressed(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
@@ -120,20 +218,13 @@ namespace winrt::HaloDesktop::implementation
         auto const source = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
         if (source && IsWithinTextInput(source))
         {
+            m_nonTextPointerId.reset();
             return;
         }
 
-        // Refuse text focus for the rest of this interaction. Cleared through the
-        // dispatcher rather than here, because the move being refused is raised
-        // while this press is still being processed, after the handler returns.
-        m_refuseTextFocus = true;
-        DispatcherQueue().TryEnqueue([weak = get_weak()]()
-        {
-            if (auto const self = weak.get())
-            {
-                self->m_refuseTextFocus = false;
-            }
-        });
+        // The guard belongs to this complete pointer interaction, not to a guessed
+        // dispatcher turn. A handled release, cancellation, or capture loss clears it.
+        m_nonTextPointerId = args.Pointer().PointerId();
 
         // Refusing the move keeps a caret from appearing, but an existing one has to
         // be sent somewhere. FocusSink is a sibling of the frame, so parking focus
@@ -144,6 +235,16 @@ namespace winrt::HaloDesktop::implementation
         if (focused && IsWithinTextInput(focused))
         {
             FocusSink().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
+        }
+    }
+
+    void ShellPage::OnContentPointerEnded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (m_nonTextPointerId && *m_nonTextPointerId == args.Pointer().PointerId())
+        {
+            m_nonTextPointerId.reset();
         }
     }
 

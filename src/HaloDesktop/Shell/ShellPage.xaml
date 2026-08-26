@@ -156,7 +156,6 @@
       BorderBrush="{ThemeResource HaloCardStrokeBrush}"
       BorderThickness="1,1,0,0"
       CornerRadius="8,0,0,0"
-      PointerPressed="OnContentPointerPressed"
       SizeChanged="OnContentHostSizeChanged">
       <Grid>
         <Frame x:Name="ContentFrame" />
