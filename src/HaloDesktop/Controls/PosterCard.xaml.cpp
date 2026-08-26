@@ -12,7 +12,18 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    PosterCard::PosterCard() = default;
+    // Sized in the constructor rather than in Loaded. Loaded fires after the card
+    // has already been measured at the width baked into the markup, so sizing there
+    // cost a second measure of the card, its shelf and everything under it on every
+    // realisation, and handed the shelf list a height that then changed. StackLayout
+    // estimates the shelves it has not realised from the ones it has, so a height
+    // that moves makes the scroll extent move with it, mid-gesture.
+    PosterCard::PosterCard()
+    {
+        InitializeComponent();
+        ApplyLayoutMetrics();
+    }
+
     winrt::hstring PosterCard::Title() const { return m_title; }
     void PosterCard::Title(winrt::hstring const& value) { m_title = value; if (auto text = FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
     winrt::hstring PosterCard::Meta() const { return m_meta; }

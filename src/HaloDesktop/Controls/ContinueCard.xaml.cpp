@@ -11,7 +11,12 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    ContinueCard::ContinueCard() = default;
+    // Sized before the first measure, for the reason spelled out in PosterCard.
+    ContinueCard::ContinueCard()
+    {
+        InitializeComponent();
+        ApplyLayoutMetrics();
+    }
 
     winrt::hstring ContinueCard::Title() const { return m_title; }
     void ContinueCard::Title(winrt::hstring const& value)
