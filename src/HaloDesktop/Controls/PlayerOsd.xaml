@@ -73,26 +73,193 @@
         </Setter.Value>
       </Setter>
     </Style>
-    <Style x:Key="PlayerTrackRadioStyle" TargetType="RadioButton" BasedOn="{StaticResource HaloSegmentedRadioStyle}">
-      <Setter Property="Margin" Value="0,2" />
-      <Setter Property="Padding" Value="10,8" />
+    <!--
+      Track rows own their template rather than deriving from the shared segmented
+      selector: that style centres and content-sizes its label, which is right for a
+      three-up tab strip and wrong for a list row that has to span the panel so the
+      codec badge lands on the right edge. Keeping the selection dot inside the
+      template also ties it to the radio group instead of the item's one-time
+      IsSelected binding, which goes stale as soon as the user picks another track.
+      Colours are literal because the player is pinned to the dark theme.
+    -->
+    <Style x:Key="PlayerTrackRadioStyle" TargetType="RadioButton">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,3" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="UseSystemFocusVisuals" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Grid x:Name="Root" Background="Transparent" CornerRadius="6">
+              <Border x:Name="HoverLayer" Background="#0FFFFFFF" CornerRadius="6" Opacity="0" />
+              <Border x:Name="SelectionLayer" Background="#14FFFFFF" CornerRadius="6" Opacity="0" />
+              <Grid Padding="{TemplateBinding Padding}" ColumnSpacing="11">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <Ellipse x:Name="SelectionDot" Width="8" Height="8" VerticalAlignment="Center" Fill="#FF60CDFF" Opacity="0" />
+                <ContentPresenter
+                  x:Name="Label"
+                  Grid.Column="1"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Center"
+                  AutomationProperties.AccessibilityView="Raw"
+                  Content="{TemplateBinding Content}"
+                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                  FontSize="{TemplateBinding FontSize}"
+                  FontWeight="Normal"
+                  Foreground="#DBFFFFFF"
+                  HorizontalContentAlignment="Stretch" />
+              </Grid>
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /><Setter Target="Root.Opacity" Value="0.7" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled">
+                    <VisualState.Setters><Setter Target="Root.Opacity" Value="0.4" /></VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="CheckStates">
+                  <VisualState x:Name="Checked">
+                    <VisualState.Setters>
+                      <Setter Target="SelectionLayer.Opacity" Value="1" />
+                      <Setter Target="SelectionDot.Opacity" Value="1" />
+                      <Setter Target="Label.Foreground" Value="#FFFFFFFF" />
+                      <Setter Target="Label.FontWeight" Value="SemiBold" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Unchecked" />
+                  <VisualState x:Name="Indeterminate" />
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
-    <Style x:Key="PlayerSpeedRadioStyle" TargetType="RadioButton" BasedOn="{StaticResource HaloSegmentedRadioStyle}">
-      <Setter Property="Height" Value="58" />
-      <Setter Property="Padding" Value="10,8" />
-      <Setter Property="HorizontalContentAlignment" Value="Left" />
+    <!--
+      Addon rows are commands, not a selection group, so they get the track row's
+      metrics with the dot column left empty and no checked state. The empty column
+      is what keeps their text on the same baseline column as the tracks above.
+    -->
+    <Style x:Key="PlayerAddonRowButtonStyle" TargetType="Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Margin" Value="0,0,0,3" />
+      <Setter Property="Padding" Value="12,10" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="UseSystemFocusVisuals" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid x:Name="Root" Background="Transparent" CornerRadius="6">
+              <Border x:Name="HoverLayer" Background="#0FFFFFFF" CornerRadius="6" Opacity="0" />
+              <Grid Padding="{TemplateBinding Padding}" ColumnSpacing="11">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                <ContentPresenter
+                  Grid.Column="1"
+                  HorizontalAlignment="Stretch"
+                  VerticalAlignment="Center"
+                  AutomationProperties.AccessibilityView="Raw"
+                  Content="{TemplateBinding Content}"
+                  ContentTemplate="{TemplateBinding ContentTemplate}"
+                  HorizontalContentAlignment="Stretch" />
+              </Grid>
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /><Setter Target="Root.Opacity" Value="0.7" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled">
+                    <VisualState.Setters><Setter Target="Root.Opacity" Value="0.4" /></VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
     </Style>
+    <!-- No fixed height: 10,12 padding around the two lines is what sets the cell height, and the Auto grid rows keep the six cells uniform. -->
+    <Style x:Key="PlayerSpeedRadioStyle" TargetType="RadioButton">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="10,12" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="UseSystemFocusVisuals" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="RadioButton">
+            <Grid x:Name="Root">
+              <Border x:Name="Surface" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="6" />
+              <Border x:Name="HoverLayer" Background="#0FFFFFFF" CornerRadius="6" Opacity="0" />
+              <ContentPresenter
+                x:Name="Label"
+                Padding="{TemplateBinding Padding}"
+                HorizontalAlignment="Center"
+                VerticalAlignment="Center"
+                AutomationProperties.AccessibilityView="Raw"
+                Content="{TemplateBinding Content}"
+                ContentTemplate="{TemplateBinding ContentTemplate}"
+                Foreground="#CCFFFFFF" />
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters><Setter Target="HoverLayer.Opacity" Value="1" /><Setter Target="Root.Opacity" Value="0.7" /></VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled">
+                    <VisualState.Setters><Setter Target="Root.Opacity" Value="0.4" /></VisualState.Setters>
+                  </VisualState>
+                </VisualStateGroup>
+                <VisualStateGroup x:Name="CheckStates">
+                  <VisualState x:Name="Checked">
+                    <VisualState.Setters>
+                      <Setter Target="Surface.Background" Value="#2E60CDFF" />
+                      <Setter Target="Surface.BorderBrush" Value="#9960CDFF" />
+                      <Setter Target="Label.Foreground" Value="#FFFFFFFF" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Unchecked" />
+                  <VisualState x:Name="Indeterminate" />
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <!-- The two steppers sit inside one hairline frame, so they round only on their outer corners. -->
     <Style x:Key="PlayerStepperButtonStyle" TargetType="Button">
-      <Setter Property="Width" Value="30" />
-      <Setter Property="Height" Value="28" />
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="30" />
       <Setter Property="MinWidth" Value="0" />
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="Padding" Value="0" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="Foreground" Value="White" />
       <Setter Property="Background" Value="#0FFFFFFF" />
-      <Setter Property="BorderBrush" Value="#1FFFFFFF" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="CornerRadius" Value="4" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
     </Style>
   </UserControl.Resources>
   <Grid
@@ -221,16 +388,22 @@
     <Grid Visibility="{x:Bind ViewModel.PanelVisibility, Mode=OneWay}">
       <Border Background="#80040508" />
       <Border Width="400" HorizontalAlignment="Right" Background="#DB1C1C20" BorderBrush="#1AFFFFFF" BorderThickness="1,0,0,0" CornerRadius="22,0,0,22">
+        <!--
+          Header, tabs and the delay footer are fixed rows; only the track list
+          scrolls. The delay control is a per-tab setting rather than a list entry,
+          so it stays pinned to the bottom edge instead of being pushed off-screen
+          by a file that happens to carry a dozen tracks.
+        -->
         <Grid Padding="22">
-          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+          <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
           <Grid>
             <StackPanel>
-              <TextBlock FontSize="20" FontWeight="SemiBold" Foreground="White" Text="Playback" />
-              <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" />
+              <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="White" Text="Playback" />
+              <TextBlock Margin="0,3,0,0" FontSize="12.5" Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" />
             </StackPanel>
             <Button Width="30" Height="30" MinWidth="0" MinHeight="0" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Close panel" Click="OnClosePanelClick"><FontIcon FontSize="11" Foreground="White" Glyph="&#xE711;" /></Button>
           </Grid>
-          <Border Grid.Row="1" Margin="0,20,0,16" Style="{StaticResource HaloSegmentedTrayStyle}">
+          <Border Grid.Row="1" Margin="0,16,0,18" Style="{StaticResource HaloSegmentedTrayStyle}">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
               <RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" Style="{StaticResource HaloSegmentedRadioStyle}" />
@@ -241,59 +414,87 @@
           <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
             <Grid>
               <StackPanel Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
-                <TextBlock Margin="0,0,0,6" Foreground="#99FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
+                <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
                 <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind ViewModel.SubtitlesOffSelected, Mode=OneWay}" Click="OnSubtitlesOffClick" Style="{StaticResource PlayerTrackRadioStyle}">
-                  <StackPanel><TextBlock FontSize="13.5" Foreground="White" Text="Off" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#8FFFFFFF" Text="No subtitles" /></StackPanel>
+                  <StackPanel><TextBlock Text="Off" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="No subtitles" /></StackPanel>
                 </RadioButton>
                 <ItemsControl x:Name="SubtitleTrackList">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="local:PlaybackTrackViewModel">
                       <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind IsSelected, Mode=OneTime}" Click="OnSubtitleTrackClick" Style="{StaticResource PlayerTrackRadioStyle}">
-                        <Grid>
+                        <Grid ColumnSpacing="11">
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                          <StackPanel><TextBlock FontSize="13.5" Foreground="White" Text="{x:Bind Title}" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#8FFFFFFF" Text="{x:Bind Note}" /></StackPanel>
-                          <Border Grid.Column="1" Padding="6,3" VerticalAlignment="Center" Background="#3318CDFF" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" Text="{x:Bind Codec}" /></Border>
+                          <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                          <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
                         </Grid>
                       </RadioButton>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <TextBlock Margin="0,18,0,6" Foreground="#99FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="FROM ADDONS" />
-                <ItemsControl x:Name="AddonSubtitleList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:AddonSubtitleViewModel"><Button Margin="0,0,0,4" Padding="10,8" HorizontalContentAlignment="Stretch" Background="#0AFFFFFF" BorderThickness="0" CornerRadius="4" Click="OnAddonSubtitleClick" Tag="{x:Bind Key}"><StackPanel><TextBlock FontSize="13" Foreground="White" Text="{x:Bind Language}" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#8FFFFFFF"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
-                <Grid Margin="0,18,0,0"><TextBlock VerticalAlignment="Center" Foreground="White" Text="Subtitle delay" /><StackPanel HorizontalAlignment="Right" Orientation="Horizontal"><Button Click="OnSubtitleDelayDownClick" Content="−" Style="{StaticResource PlayerStepperButtonStyle}" /><TextBlock Width="68" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" /><Button Click="OnSubtitleDelayUpClick" Content="+" Style="{StaticResource PlayerStepperButtonStyle}" /></StackPanel></Grid>
+                <TextBlock Margin="0,15,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="FROM ADDONS" />
+                <ItemsControl x:Name="AddonSubtitleList"><ItemsControl.ItemTemplate><DataTemplate x:DataType="local:AddonSubtitleViewModel"><Button Click="OnAddonSubtitleClick" Style="{StaticResource PlayerAddonRowButtonStyle}" Tag="{x:Bind Key}"><StackPanel><TextBlock FontSize="13.5" Foreground="#E6FFFFFF" Text="{x:Bind Language}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel></Button></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
               </StackPanel>
               <StackPanel Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
-                <TextBlock Margin="0,0,0,6" Foreground="#99FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="TRACKS" />
+                <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="TRACKS" />
                 <ItemsControl x:Name="AudioTrackList">
                   <ItemsControl.ItemTemplate>
                     <DataTemplate x:DataType="local:PlaybackTrackViewModel">
                       <RadioButton GroupName="AudioTrack" IsChecked="{x:Bind IsSelected, Mode=OneTime}" Click="OnAudioTrackClick" Style="{StaticResource PlayerTrackRadioStyle}">
-                        <Grid>
+                        <Grid ColumnSpacing="11">
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                          <StackPanel><TextBlock FontSize="13.5" Foreground="White" Text="{x:Bind Title}" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#8FFFFFFF" Text="{x:Bind Note}" /></StackPanel>
-                          <Border Grid.Column="1" Padding="6,3" VerticalAlignment="Center" Background="#3318CDFF" CornerRadius="3"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" Text="{x:Bind Codec}" /></Border>
+                          <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                          <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
                         </Grid>
                       </RadioButton>
                     </DataTemplate>
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <Grid Margin="0,18,0,0"><TextBlock VerticalAlignment="Center" Foreground="White" Text="Audio delay" /><StackPanel HorizontalAlignment="Right" Orientation="Horizontal"><Button Click="OnAudioDelayDownClick" Content="−" Style="{StaticResource PlayerStepperButtonStyle}" /><TextBlock Width="68" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.AudioDelayText, Mode=OneWay}" /><Button Click="OnAudioDelayUpClick" Content="+" Style="{StaticResource PlayerStepperButtonStyle}" /></StackPanel></Grid>
               </StackPanel>
               <StackPanel Spacing="14" Visibility="{x:Bind ViewModel.SpeedPanelVisibility, Mode=OneWay}">
                 <Grid ColumnSpacing="8" RowSpacing="8">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                   <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                  <RadioButton GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedThreeQuarter, Mode=OneWay}" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="0.75×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% slower" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedNormal, Mode=OneWay}" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Normal" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneQuarter, Mode=OneWay}" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.25×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="25% faster" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneHalf, Mode=OneWay}" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.5×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="50% faster" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneThreeQuarter, Mode=OneWay}" Click="OnSpeedOneThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="1.75×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="75% faster" /></StackPanel></RadioButton>
-                  <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedDouble, Mode=OneWay}" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock FontSize="15" Foreground="White" Text="2×" /><TextBlock FontSize="11" Foreground="#8FFFFFFF" Text="Double" /></StackPanel></RadioButton>
+                  <RadioButton GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedThreeQuarter, Mode=OneWay}" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="0.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% slower" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedNormal, Mode=OneWay}" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="Normal" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneQuarter, Mode=OneWay}" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.25×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneHalf, Mode=OneWay}" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.5×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="50% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneThreeQuarter, Mode=OneWay}" Click="OnSpeedOneThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="75% faster" /></StackPanel></RadioButton>
+                  <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedDouble, Mode=OneWay}" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="2×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="Double" /></StackPanel></RadioButton>
                 </Grid>
-                <TextBlock FontSize="12" Foreground="#99FFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
+                <TextBlock FontSize="12" Foreground="#80FFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
               </StackPanel>
             </Grid>
           </ScrollViewer>
+          <Grid Grid.Row="3">
+            <StackPanel Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
+              <Border Height="1" Margin="0,16,0,0" Background="#17FFFFFF" />
+              <Grid Margin="0,16,0,0" ColumnSpacing="14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="White" Text="Subtitle delay" />
+                <Border Grid.Column="1" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
+                  <StackPanel Orientation="Horizontal">
+                    <Button AutomationProperties.Name="Decrease subtitle delay" Click="OnSubtitleDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
+                    <TextBlock Width="72" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" />
+                    <Button AutomationProperties.Name="Increase subtitle delay" Click="OnSubtitleDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+            <StackPanel Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
+              <Border Height="1" Margin="0,16,0,0" Background="#17FFFFFF" />
+              <Grid Margin="0,16,0,0" ColumnSpacing="14">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="White" Text="Audio delay" />
+                <Border Grid.Column="1" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
+                  <StackPanel Orientation="Horizontal">
+                    <Button AutomationProperties.Name="Decrease audio delay" Click="OnAudioDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
+                    <TextBlock Width="72" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.AudioDelayText, Mode=OneWay}" />
+                    <Button AutomationProperties.Name="Increase audio delay" Click="OnAudioDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
+                  </StackPanel>
+                </Border>
+              </Grid>
+            </StackPanel>
+          </Grid>
         </Grid>
       </Border>
     </Grid>
