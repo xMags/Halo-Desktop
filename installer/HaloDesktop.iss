@@ -111,7 +111,8 @@ begin
     begin
       if MsgBox('Also remove your Halo data?' + #13#10 + #13#10 +
                 DataDirectory + #13#10 + #13#10 +
-                'This holds your sign-in, settings, watch history, and downloaded files.' + #13#10 +
+                'This removes your sign-in, settings, watch history, and downloads in Halo''s default folder.' + #13#10 +
+                'Downloads in a folder you chose are kept.' + #13#10 +
                 'Choose No to keep it for a future reinstall.',
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then
       begin
