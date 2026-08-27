@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Api/Dto.h"
 #include "Services/QueryCache.h"
+#include "Services/Downloads/DownloadTypes.h"
 #include "Storage/AppStoragePaths.h"
 #include "Storage/FileStorage.h"
 
@@ -54,7 +55,7 @@ namespace HaloDesktop::Services
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
         : m_apiClient(std::move(apiClient)),
           m_queryCache(std::move(queryCache)),
-          m_mirrorPath(paths ? paths->LocalState() / L"settings-mirror.json" : std::filesystem::path{}),
+          m_mirrorRoot(paths ? paths->LocalState() / L"settings" : std::filesystem::path{}),
           m_debounceTimer(dispatcher.CreateTimer())
     {
         if (!m_apiClient || !m_queryCache || !paths || !dispatcher)
@@ -72,6 +73,7 @@ namespace HaloDesktop::Services
     concurrency::task<void> SettingsSyncService::LoadAsync()
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
         auto const requestId = m_queryCache->Issue(SettingsCacheKey);
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> payload;
         try
@@ -93,7 +95,8 @@ namespace HaloDesktop::Services
             };
         }
         co_await uiContext;
-        if (m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
+        if (accountVersion == m_accountVersion
+            && m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
         {
             Apply(*payload);
             static_cast<void>(WriteMirrorAsync(*payload));
@@ -185,15 +188,16 @@ namespace HaloDesktop::Services
 
     concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> SettingsSyncService::ReadMirrorAsync()
     {
+        auto const mirrorPath = m_mirrorPath;
         co_await winrt::resume_background();
-        if (!std::filesystem::exists(m_mirrorPath))
+        if (mirrorPath.empty() || !std::filesystem::exists(mirrorPath))
         {
             co_return std::nullopt;
         }
         try
         {
-            ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_mirrorPath };
-            auto const raw = ::HaloDesktop::Storage::ReadUtf8File(m_mirrorPath, 1024u * 1024u);
+            ::HaloDesktop::Storage::FileMutationLock const fileLock{ mirrorPath };
+            auto const raw = ::HaloDesktop::Storage::ReadUtf8File(mirrorPath, 1024u * 1024u);
             if (raw.empty())
             {
                 co_return std::nullopt;
@@ -209,7 +213,12 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> SettingsSyncService::WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload)
     {
+        auto const mirrorPath = m_mirrorPath;
         co_await winrt::resume_background();
+        if (mirrorPath.empty())
+        {
+            co_return;
+        }
         try
         {
             winrt::Windows::Data::Json::JsonObject root;
@@ -219,12 +228,8 @@ namespace HaloDesktop::Services
             auto const encoded = winrt::to_string(root.Stringify());
 
             std::scoped_lock const lock{ m_mirrorMutex };
-            ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_mirrorPath };
-            if (payload.UpdatedAt < m_mirrorWrittenAt)
-            {
-                co_return;
-            }
-            auto const current = ::HaloDesktop::Storage::ReadUtf8File(m_mirrorPath, 1024u * 1024u);
+            ::HaloDesktop::Storage::FileMutationLock const fileLock{ mirrorPath };
+            auto const current = ::HaloDesktop::Storage::ReadUtf8File(mirrorPath, 1024u * 1024u);
             if (!current.empty())
             {
                 try
@@ -235,7 +240,6 @@ namespace HaloDesktop::Services
                     if (std::isfinite(diskTimestamp)
                         && diskTimestamp > static_cast<double>(payload.UpdatedAt))
                     {
-                        m_mirrorWrittenAt = static_cast<std::int64_t>(diskTimestamp);
                         co_return;
                     }
                 }
@@ -243,8 +247,7 @@ namespace HaloDesktop::Services
                 {
                 }
             }
-            ::HaloDesktop::Storage::WriteUtf8FileAtomic(m_mirrorPath, encoded);
-            m_mirrorWrittenAt = payload.UpdatedAt;
+            ::HaloDesktop::Storage::WriteUtf8FileAtomic(mirrorPath, encoded);
         }
         catch (...)
         {
@@ -257,6 +260,7 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         auto const version = ++m_writeVersion;
+        auto const accountVersion = m_accountVersion;
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> echo;
         try
         {
@@ -266,6 +270,10 @@ namespace HaloDesktop::Services
         {
         }
         co_await uiContext;
+        if (accountVersion != m_accountVersion)
+        {
+            co_return;
+        }
         if (!echo)
         {
             m_queryCache->Invalidate(SettingsCacheKey);
@@ -340,5 +348,22 @@ namespace HaloDesktop::Services
     winrt::Windows::Data::Json::JsonObject SettingsSyncService::Snapshot() const
     {
         return winrt::Windows::Data::Json::JsonObject::Parse(m_value.Stringify());
+    }
+
+    void SettingsSyncService::OnAccountChanged(
+        winrt::hstring const& serverUrl,
+        winrt::hstring const& userId)
+    {
+        m_debounceTimer.Stop();
+        ++m_accountVersion;
+        ++m_writeVersion;
+        m_value = winrt::Windows::Data::Json::JsonObject{};
+        m_updatedAt = 0;
+        m_queryCache->Invalidate(SettingsCacheKey);
+        m_mirrorPath = userId.empty()
+            ? std::filesystem::path{}
+            : m_mirrorRoot / (::HaloDesktop::Services::Downloads::MakeAccountKey(
+                std::wstring{ serverUrl.c_str() },
+                std::wstring{ userId.c_str() }) + L".json");
     }
 }

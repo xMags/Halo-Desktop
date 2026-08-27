@@ -515,6 +515,11 @@ void RunDownloadTransferStabilityTest()
     Require(server.AuthorizedSubtitleRequests() == 1, "the protected subtitle header was not sent exactly once");
     Require(server.RejectedRequests() == 0, "the loopback server rejected a protected request");
 
+    engine.Pause(firstDone.JobId);
+    engine.Resume(firstDone.JobId);
+    Require(engine.FilesForPlayback(firstDone.JobId).VideoPath == firstFiles.VideoPath,
+        "a terminal download was lost after a stale pause or resume action");
+
     {
         std::scoped_lock const lock{ statusMutex };
         Require(
@@ -532,6 +537,17 @@ void RunDownloadTransferStabilityTest()
 
     engine.SetAccount(L"https://account.invalid", L"user-b");
     Require(engine.List().empty(), "one account could see another account's downloads");
+    bool crossAccountRemovalRejected{};
+    try
+    {
+        engine.Remove(firstDone.JobId);
+    }
+    catch (std::runtime_error const&)
+    {
+        crossAccountRemovalRejected = true;
+    }
+    Require(crossAccountRemovalRejected && std::filesystem::is_regular_file(firstFiles.VideoPath),
+        "another account could delete a local download by job identifier");
     engine.SetAccount(L"https://account.invalid", L"user-a");
     Require(engine.List().size() == 1, "the original account could not recover its download list");
 

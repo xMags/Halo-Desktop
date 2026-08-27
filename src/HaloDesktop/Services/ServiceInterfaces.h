@@ -130,7 +130,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual std::uint64_t InFlightBytes() const noexcept = 0;
         [[nodiscard]] virtual std::optional<std::uint64_t> FreeBytes() const noexcept = 0;
         [[nodiscard]] virtual std::filesystem::path DownloadDirectory() const = 0;
-        virtual void SetDownloadDirectory(std::filesystem::path directory) = 0;
+        [[nodiscard]] virtual concurrency::task<void> SetDownloadDirectoryAsync(
+            std::filesystem::path directory) = 0;
+        [[nodiscard]] virtual winrt::hstring ActionError() const = 0;
         virtual DownloadChangedToken AddChangedHandler(DownloadChangedHandler handler) = 0;
         virtual void RemoveChangedHandler(DownloadChangedToken token) noexcept = 0;
     };

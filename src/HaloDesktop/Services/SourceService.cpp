@@ -250,6 +250,7 @@ namespace HaloDesktop::Services
         winrt::hstring key,
         bool replaceExisting)
     {
+        auto const version = m_requestVersion;
         auto const found = m_records.find(std::wstring{ key.c_str() });
         if (found == m_records.end())
         {
@@ -306,6 +307,10 @@ namespace HaloDesktop::Services
             auto const uiContext = winrt::apartment_context{};
             try { co_await m_settings->LoadAsync(); } catch (...) {}
             co_await uiContext;
+            if (version != m_requestVersion)
+            {
+                co_return DownloadStartOutcome::Failed;
+            }
             auto const preferred = m_settings->PreferredSubtitleLanguage();
             if (preferred)
             {
@@ -325,6 +330,10 @@ namespace HaloDesktop::Services
                     });
             }
             co_await uiContext;
+            if (version != m_requestVersion)
+            {
+                co_return DownloadStartOutcome::Failed;
+            }
             co_return co_await m_downloads->StartDownloadAsync(std::move(request));
         }
         catch (...)
@@ -459,6 +468,16 @@ namespace HaloDesktop::Services
         auto const found = m_records.find(std::wstring(key.c_str()));
         if (found == m_records.end()) return std::nullopt;
         return found->second;
+    }
+
+    void SourceService::OnAccountChanged()
+    {
+        ++m_requestVersion;
+        m_records.clear();
+        m_orderedKeys.clear();
+        m_groups = winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView();
+        m_best = nullptr;
+        m_summary.clear();
     }
 
     bool SourceService::Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept

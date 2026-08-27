@@ -44,6 +44,7 @@ namespace winrt::HaloDesktop::implementation
         void ScrollTo(wchar_t const* elementName);
         void UpdateRailSelection();
         winrt::fire_and_forget ShowDeleteAddonDialog(winrt::hstring name);
+        winrt::fire_and_forget OpenReleasesPageAsync();
         winrt::HaloDesktop::SettingsViewModel m_viewModel{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_healthTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_healthTickRevoker{};

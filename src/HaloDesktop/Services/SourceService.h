@@ -50,6 +50,7 @@ namespace HaloDesktop::Services
         void RefreshDownloadStates() override;
 
         [[nodiscard]] std::optional<ResolvedSourceRecord> NativeRecord(winrt::hstring const& key) const;
+        void OnAccountChanged();
 
     private:
         [[nodiscard]] bool Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept;

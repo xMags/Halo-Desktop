@@ -118,10 +118,42 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnHeavyOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(3); }
     void SettingsPage::OnCheckForUpdatesClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        // The shell owns the launch and reports its own failure to the user, so the
-        // operation is deliberately dropped rather than awaited on the UI thread.
-        static_cast<void>(winrt::Windows::System::Launcher::LaunchUriAsync(
-            winrt::Windows::Foundation::Uri{ kReleasesUrl }));
+        OpenReleasesPageAsync();
+    }
+
+    winrt::fire_and_forget SettingsPage::OpenReleasesPageAsync()
+    {
+        auto lifetime = get_strong();
+        bool launched{};
+        try
+        {
+            launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
+                winrt::Windows::Foundation::Uri{ kReleasesUrl });
+        }
+        catch (...)
+        {
+        }
+        if (launched)
+        {
+            co_return;
+        }
+        auto const xamlRoot = XamlRoot();
+        if (!xamlRoot)
+        {
+            co_return;
+        }
+        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+        dialog.XamlRoot(xamlRoot);
+        dialog.Title(winrt::box_value(L"Could not open the releases page"));
+        dialog.Content(winrt::box_value(L"Check your default browser settings and try again."));
+        dialog.CloseButtonText(L"Close");
+        try
+        {
+            co_await dialog.ShowAsync();
+        }
+        catch (...)
+        {
+        }
     }
     void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignOut(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)

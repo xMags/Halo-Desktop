@@ -97,6 +97,7 @@ namespace HaloDesktop::Services::Downloads
         std::uint64_t UpdatedAt{};
         std::uint64_t BytesPerSecond{};
         std::optional<ReplacementBackup> Replacement;
+        bool PendingDeletion{};
 
         [[nodiscard]] std::filesystem::path TargetPath() const;
         [[nodiscard]] std::filesystem::path PartialPath() const;

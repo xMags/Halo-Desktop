@@ -223,6 +223,14 @@ namespace HaloDesktop::Services
         auto const accountVersion = ++m_accountVersion;
         auto const version = ++m_snapshotVersion;
         m_snapshotFloor.store(version);
+        m_records.clear();
+        m_pauseAllIds.clear();
+        m_pausedAll = false;
+        m_freeBytes.reset();
+        m_directory.clear();
+        m_actionError.clear();
+        m_throughput.Clear();
+        RebuildObservables();
         auto engine = m_engine;
         auto weak = weak_from_this();
         concurrency::create_task([engine, server, userId, weak, version, accountVersion]()
@@ -247,6 +255,11 @@ namespace HaloDesktop::Services
                 else
                 {
                     engine->SetAccount(server, userId);
+                }
+                if (accountVersion != self->m_accountVersion.load())
+                {
+                    engine->ClearAccount();
+                    return;
                 }
                 self->m_boundAccountVersion.store(accountVersion);
                 snapshot.Records = engine->List();
@@ -288,10 +301,13 @@ namespace HaloDesktop::Services
         auto ids = m_pauseAllIds;
         RunEngineAction([engine = m_engine, ids = std::move(ids)]()
         {
+            std::exception_ptr failure;
             for (auto const& id : ids)
             {
-                engine->Pause(id);
+                try { engine->Pause(id); }
+                catch (...) { if (!failure) failure = std::current_exception(); }
             }
+            if (failure) std::rethrow_exception(failure);
         });
     }
 
@@ -306,10 +322,13 @@ namespace HaloDesktop::Services
         m_pausedAll = false;
         RunEngineAction([engine = m_engine, ids = std::move(ids)]()
         {
+            std::exception_ptr failure;
             for (auto const& id : ids)
             {
-                try { engine->Resume(id); } catch (...) {}
+                try { engine->Resume(id); }
+                catch (...) { if (!failure) failure = std::current_exception(); }
             }
+            if (failure) std::rethrow_exception(failure);
         });
     }
 
@@ -380,6 +399,11 @@ namespace HaloDesktop::Services
                 co_return DownloadStartOutcome::Failed;
             }
             m_engine->SetAccount(server, userId);
+            if (accountVersion != m_accountVersion.load())
+            {
+                m_engine->ClearAccount();
+                co_return DownloadStartOutcome::Failed;
+            }
             m_boundAccountVersion.store(accountVersion);
             auto const before = m_engine->List();
             auto const existing = std::find_if(before.begin(), before.end(), [&videoId](auto const& record)
@@ -401,6 +425,11 @@ namespace HaloDesktop::Services
                 co_return DownloadStartOutcome::ReplacementRequired;
             }
             static_cast<void>(m_engine->Start(std::move(request)));
+            if (accountVersion != m_accountVersion.load())
+            {
+                m_engine->ClearAccount();
+                co_return DownloadStartOutcome::Failed;
+            }
             RequestSynchronize();
             co_return DownloadStartOutcome::Started;
         }
@@ -521,13 +550,16 @@ namespace HaloDesktop::Services
     std::optional<std::uint64_t> DownloadService::FreeBytes() const noexcept { return m_freeBytes; }
     std::filesystem::path DownloadService::DownloadDirectory() const { return m_directory; }
 
-    void DownloadService::SetDownloadDirectory(std::filesystem::path directory)
+    concurrency::task<void> DownloadService::SetDownloadDirectoryAsync(std::filesystem::path directory)
     {
-        RunEngineAction([engine = m_engine, directory = std::move(directory)]() mutable
-        {
-            engine->SetDownloadDirectory(std::move(directory));
-        });
+        co_await winrt::resume_background();
+        m_engine->SetDownloadDirectory(std::move(directory));
+        co_await wil::resume_foreground(m_dispatcher);
+        m_actionError.clear();
+        RequestSynchronize();
     }
+
+    winrt::hstring DownloadService::ActionError() const { return m_actionError; }
 
     DownloadChangedToken DownloadService::AddChangedHandler(DownloadChangedHandler handler)
     {
@@ -675,10 +707,40 @@ namespace HaloDesktop::Services
     void DownloadService::RunEngineAction(std::function<void()> action)
     {
         auto const weak = weak_from_this();
-        concurrency::create_task([weak, action = std::move(action)]()
+        auto const accountVersion = m_accountVersion.load();
+        concurrency::create_task([weak, action = std::move(action), accountVersion]()
         {
-            try { action(); } catch (...) {}
-            if (auto const self = weak.lock()) self->RequestSynchronize();
+            auto const self = weak.lock();
+            if (!self || accountVersion != self->m_accountVersion.load())
+            {
+                return;
+            }
+            winrt::hstring errorMessage;
+            try
+            {
+                action();
+            }
+            catch (std::exception const& error)
+            {
+                errorMessage = winrt::to_hstring(error.what());
+            }
+            catch (...)
+            {
+                errorMessage = L"The download action failed. Try again.";
+            }
+            if (auto const owner = weak.lock())
+            {
+                owner->m_dispatcher.TryEnqueue([weak, errorMessage, accountVersion]()
+                {
+                    if (auto const current = weak.lock();
+                        current && accountVersion == current->m_accountVersion.load())
+                    {
+                        current->m_actionError = errorMessage;
+                        current->RequestSynchronize();
+                        current->NotifyChanged();
+                    }
+                });
+            }
         });
     }
 

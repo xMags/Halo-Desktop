@@ -80,14 +80,31 @@ namespace HaloDesktop::Services::Auth
     concurrency::task<void> SessionController::SignOutAsync()
     {
         co_await winrt::resume_background();
+        SessionKind kind{};
+        std::uint64_t generation{};
         {
             std::scoped_lock const lock{ m_mutex };
+            kind = m_kind;
+            generation = m_generation;
+        }
+        if (kind == SessionKind::Local)
+        {
+            co_await m_localSession->ClearAsync();
+        }
+        else if (kind == SessionKind::Oidc)
+        {
+            co_await m_oidcSession->SignOutAsync(true);
+        }
+        co_await wil::resume_foreground(m_dispatcher);
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_kind != kind || m_generation != generation)
+            {
+                co_return;
+            }
             m_kind = SessionKind::None;
             ++m_generation;
         }
-        co_await m_localSession->ClearAsync();
-        co_await m_oidcSession->SignOutAsync(true);
-        co_await wil::resume_foreground(m_dispatcher);
         m_queryCache->Clear();
     }
 

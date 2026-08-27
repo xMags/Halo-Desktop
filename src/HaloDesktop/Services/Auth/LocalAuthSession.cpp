@@ -181,18 +181,34 @@ namespace HaloDesktop::Services::Auth
     concurrency::task<void> LocalAuthSession::ClearAsync()
     {
         co_await winrt::resume_background();
+        std::optional<StoredLocalSession> previous;
         std::uint64_t revision{};
         {
             std::scoped_lock const lock{ m_mutex };
+            previous = m_session;
             m_session.reset();
             revision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        try
+        {
+            co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        }
+        catch (...)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_revision == revision)
+            {
+                m_session = std::move(previous);
+                ++m_revision;
+            }
+            throw;
+        }
     }
 
     concurrency::task<bool> LocalAuthSession::ClearIfRevisionAsync(std::uint64_t expectedRevision)
     {
         co_await winrt::resume_background();
+        std::optional<StoredLocalSession> previous;
         std::uint64_t clearedRevision{};
         {
             std::scoped_lock const lock{ m_mutex };
@@ -200,10 +216,24 @@ namespace HaloDesktop::Services::Auth
             {
                 co_return false;
             }
+            previous = m_session;
             m_session.reset();
             clearedRevision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(clearedRevision, std::nullopt);
+        try
+        {
+            co_await PersistUntilCurrentAsync(clearedRevision, std::nullopt);
+        }
+        catch (...)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_revision == clearedRevision)
+            {
+                m_session = std::move(previous);
+                ++m_revision;
+            }
+            throw;
+        }
         co_return true;
     }
 

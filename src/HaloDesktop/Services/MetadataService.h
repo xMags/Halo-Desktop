@@ -29,6 +29,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::HaloDesktop::MediaDetail Detail() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode>
             Episodes(std::int32_t season) const override;
+        void OnAccountChanged();
 
     private:
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_api;

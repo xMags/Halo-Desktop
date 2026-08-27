@@ -25,4 +25,10 @@ namespace HaloDesktop::Services
     }
     std::vector<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Rows() const { return m_rows; }
     std::optional<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Find(winrt::hstring const& videoId)const{auto found=std::find_if(m_rows.begin(),m_rows.end(),[&](auto const&row){return row.VideoId==videoId;});return found==m_rows.end()?std::nullopt:std::optional<::HaloDesktop::Api::Dto::WatchEntry>{*found};}
+    void WatchStateService::OnAccountChanged() noexcept
+    {
+        ++m_writeVersion;
+        ++m_loadVersion;
+        m_rows.clear();
+    }
 }

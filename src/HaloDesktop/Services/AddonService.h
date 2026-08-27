@@ -2,6 +2,7 @@
 
 #include "Services/ServiceInterfaces.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 
@@ -33,9 +34,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> SetCatalogsVisibleAsync(
             winrt::hstring addonId,
             bool visible) override;
+        void OnAccountChanged();
 
     private:
-        [[nodiscard]] concurrency::task<void> LoadCoreAsync();
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync(std::uint64_t accountVersion);
         void Apply(::HaloDesktop::Api::Dto::AddonsPayload payload);
         [[nodiscard]] std::vector<winrt::hstring> TransportUrls(bool global) const;
 
@@ -47,5 +49,7 @@ namespace HaloDesktop::Services
         std::optional<concurrency::task<void>> m_loadTask;
         bool m_canEditLists{};
         bool m_seedAttempted{};
+        std::uint64_t m_accountVersion{};
+        std::uint64_t m_loadTaskAccountVersion{};
     };
 }

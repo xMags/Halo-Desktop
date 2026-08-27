@@ -240,17 +240,19 @@ namespace HaloDesktop::Api
 
     concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> ApiClient::OpenAddonProxyAsync(winrt::hstring targetUrl)
     {
-        co_await winrt::resume_background();auto const generation=m_tokenProvider->SessionGeneration();auto token=co_await m_tokenProvider->AccessTokenAsync();if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}
+        auto const generation=m_tokenProvider->SessionGeneration();co_await winrt::resume_background();if(generation!=m_tokenProvider->SessionGeneration())throw winrt::hresult_canceled{};auto token=co_await m_tokenProvider->AccessTokenAsync();if(generation!=m_tokenProvider->SessionGeneration())throw winrt::hresult_canceled{};if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}
         auto const uri=Endpoint((winrt::hstring{L"/addon-proxy?url="}+EncodeUriComponent(targetUrl)).c_str());
-        for(int attempt=0;attempt<2;++attempt){winrt::Windows::Web::Http::HttpRequestMessage request{winrt::Windows::Web::Http::HttpMethod::Get(),uri};request.Headers().TryAppendWithoutValidation(L"Authorization",winrt::hstring{L"Bearer "}+*token);auto response=co_await m_executor->SendForStreamAsync(request);auto const status=static_cast<std::uint16_t>(response.StatusCode());if(status>=200&&status<300)co_return response;if(status!=401||attempt==1)throw winrt::hresult_error{ApiError::MakeHttpStatus(status),L"The subtitle proxy request failed."};token=co_await m_tokenProvider->RefreshAccessTokenAsync();if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}}
+        for(int attempt=0;attempt<2;++attempt){winrt::Windows::Web::Http::HttpRequestMessage request{winrt::Windows::Web::Http::HttpMethod::Get(),uri};request.Headers().TryAppendWithoutValidation(L"Authorization",winrt::hstring{L"Bearer "}+*token);auto response=co_await m_executor->SendForStreamAsync(request);if(generation!=m_tokenProvider->SessionGeneration())throw winrt::hresult_canceled{};auto const status=static_cast<std::uint16_t>(response.StatusCode());if(status>=200&&status<300)co_return response;if(status!=401||attempt==1)throw winrt::hresult_error{ApiError::MakeHttpStatus(status),L"The subtitle proxy request failed."};token=co_await m_tokenProvider->RefreshAccessTokenAsync();if(generation!=m_tokenProvider->SessionGeneration())throw winrt::hresult_canceled{};if(!token){co_await m_tokenProvider->RejectSessionAsync(generation);ThrowSessionRejected();}}
         throw winrt::hresult_error{ApiError::SessionRejected};
     }
     concurrency::task<AuthenticatedDownloadRequest> ApiClient::BuildAddonProxyDownloadRequestAsync(
         winrt::hstring targetUrl)
     {
-        co_await winrt::resume_background();
         auto const generation = m_tokenProvider->SessionGeneration();
+        co_await winrt::resume_background();
+        if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
         auto token = co_await m_tokenProvider->AccessTokenAsync();
+        if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
         if (!token)
         {
             co_await m_tokenProvider->RejectSessionAsync(generation);
@@ -277,10 +279,17 @@ namespace HaloDesktop::Api
         wchar_t const* path,
         std::optional<winrt::hstring> body)
     {
-        co_await winrt::resume_background();
-
         auto const generation = m_tokenProvider->SessionGeneration();
+        co_await winrt::resume_background();
+        if (generation != m_tokenProvider->SessionGeneration())
+        {
+            throw winrt::hresult_canceled{};
+        }
         auto token = co_await m_tokenProvider->AccessTokenAsync();
+        if (generation != m_tokenProvider->SessionGeneration())
+        {
+            throw winrt::hresult_canceled{};
+        }
         if (!token)
         {
             co_await m_tokenProvider->RejectSessionAsync(generation);
@@ -298,10 +307,19 @@ namespace HaloDesktop::Api
 
         try
         {
-            co_return co_await send(*token);
+            auto response = co_await send(*token);
+            if (generation != m_tokenProvider->SessionGeneration())
+            {
+                throw winrt::hresult_canceled{};
+            }
+            co_return response;
         }
         catch (winrt::hresult_error const& error)
         {
+            if (generation != m_tokenProvider->SessionGeneration())
+            {
+                throw winrt::hresult_canceled{};
+            }
             auto const status = ApiError::HttpStatus(error.code());
             if (!status || *status != 401)
             {
@@ -310,6 +328,10 @@ namespace HaloDesktop::Api
         }
 
         token = co_await m_tokenProvider->RefreshAccessTokenAsync();
+        if (generation != m_tokenProvider->SessionGeneration())
+        {
+            throw winrt::hresult_canceled{};
+        }
         if (!token)
         {
             co_await m_tokenProvider->RejectSessionAsync(generation);
@@ -318,10 +340,19 @@ namespace HaloDesktop::Api
 
         try
         {
-            co_return co_await send(*token);
+            auto response = co_await send(*token);
+            if (generation != m_tokenProvider->SessionGeneration())
+            {
+                throw winrt::hresult_canceled{};
+            }
+            co_return response;
         }
         catch (winrt::hresult_error const& error)
         {
+            if (generation != m_tokenProvider->SessionGeneration())
+            {
+                throw winrt::hresult_canceled{};
+            }
             auto const status = ApiError::HttpStatus(error.code());
             if (!status || *status != 401)
             {

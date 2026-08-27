@@ -28,6 +28,14 @@ namespace HaloDesktop::Services
         return m_refreshInFlight;
     }
 
+    void CatalogRefreshState::Reset() noexcept
+    {
+        ++m_invalidationVersion;
+        m_loaded = false;
+        m_dirty = true;
+        m_refreshInFlight = false;
+    }
+
     void CatalogRefreshState::Invalidate() noexcept
     {
         ++m_invalidationVersion;

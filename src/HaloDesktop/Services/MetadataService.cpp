@@ -186,4 +186,11 @@ namespace HaloDesktop::Services
         }
         return winrt::single_threaded_vector(std::move(result)).GetView();
     }
+
+    void MetadataService::OnAccountChanged()
+    {
+        ++m_requestVersion;
+        m_detail = nullptr;
+        m_episodes.clear();
+    }
 }

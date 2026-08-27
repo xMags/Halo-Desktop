@@ -175,28 +175,38 @@ namespace HaloDesktop::Services
         // Shell and Home can arrive together, and a dirty Home can be entered more
         // than once while its request is outstanding. Every caller awaits the one
         // candidate that can commit.
-        if (m_loadTask)
+        auto const accountVersion = m_accountVersion;
+        if (m_loadTask && m_loadTaskAccountVersion == accountVersion)
         {
             auto task = *m_loadTask;
             co_await task;
             co_return;
         }
 
-        auto task = LoadCoreAsync(loadDependencies);
+        auto task = LoadCoreAsync(loadDependencies, accountVersion);
         m_loadTask = task;
+        m_loadTaskAccountVersion = accountVersion;
         try
         {
             co_await task;
         }
         catch (...)
         {
-            m_loadTask.reset();
+            if (accountVersion == m_accountVersion)
+            {
+                m_loadTask.reset();
+            }
             throw;
         }
-        m_loadTask.reset();
+        if (accountVersion == m_accountVersion)
+        {
+            m_loadTask.reset();
+        }
     }
 
-    concurrency::task<void> CatalogService::LoadCoreAsync(bool loadDependencies)
+    concurrency::task<void> CatalogService::LoadCoreAsync(
+        bool loadDependencies,
+        std::uint64_t accountVersion)
     {
         auto const ticket = m_refreshState.TryBeginRefresh();
         if (!ticket)
@@ -213,6 +223,10 @@ namespace HaloDesktop::Services
                 co_await m_library->LoadAsync();
                 co_await m_watchState->LoadAsync();
                 co_await uiContext;
+                if (accountVersion != m_accountVersion)
+                {
+                    co_return;
+                }
             }
 
             std::vector<CatalogQuery> queries;
@@ -263,6 +277,10 @@ namespace HaloDesktop::Services
                 }
             }
             co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                co_return;
+            }
 
             if (DecideCatalogCommit(queries.size(), successfulCatalogCount) ==
                 CatalogCommitDecision::PreserveAndFail)
@@ -312,7 +330,10 @@ namespace HaloDesktop::Services
         }
         catch (...)
         {
-            m_refreshState.CompleteRefresh(*ticket, false);
+            if (accountVersion == m_accountVersion)
+            {
+                m_refreshState.CompleteRefresh(*ticket, false);
+            }
             throw;
         }
     }
@@ -552,5 +573,19 @@ namespace HaloDesktop::Services
             terms.push_back(term);
         }
         m_preferences->SearchHistory(std::move(terms));
+    }
+
+    void CatalogService::OnAccountChanged()
+    {
+        ++m_accountVersion;
+        ++m_searchVersion;
+        m_loadTask.reset();
+        m_refreshState.Reset();
+        m_continue = winrt::single_threaded_vector<winrt::HaloDesktop::ContinueItem>().GetView();
+        m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
+        m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
+        m_libraryItems = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>().GetView();
+        m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
+        ++m_snapshotVersion;
     }
 }

@@ -2,6 +2,7 @@
 
 #include "Api/Dto.h"
 
+#include <cstdint>
 #include <memory>
 #include <pplawait.h>
 #include <ppltasks.h>
@@ -19,8 +20,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::LibraryRow> Rows() const;
         [[nodiscard]] bool Contains(winrt::hstring type,winrt::hstring metaId) const;
         [[nodiscard]] concurrency::task<void> SetMembershipAsync(winrt::hstring type,winrt::hstring metaId,winrt::hstring name,std::optional<winrt::hstring> poster,bool present);
+        void OnAccountChanged() noexcept;
     private:
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::vector<::HaloDesktop::Api::Dto::LibraryRow> m_rows;
+        std::uint64_t m_requestVersion{};
     };
 }

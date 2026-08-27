@@ -136,6 +136,11 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable DownloadsViewModel::ChartBars() const { return m_chartBars; }
     winrt::hstring DownloadsViewModel::InfoTitle() const { return L"Downloads are stored on this device"; }
     winrt::hstring DownloadsViewModel::InfoMessage() const { return L"Keep Halo open while a transfer is running. Partial transfers resume after Halo is reopened."; }
+    winrt::hstring DownloadsViewModel::ActionErrorText() const { return m_downloads->ActionError(); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ActionErrorVisibility() const noexcept
+    {
+        return m_downloads->ActionError().empty() ? Collapsed : Visible;
+    }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::TransfersView() const { return m_transfers; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ReadyView() const { return m_ready; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ChartBarsView() const { return m_chartBars; }
@@ -252,7 +257,12 @@ namespace winrt::HaloDesktop::implementation
             m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, parameters);
         }
     }
-    void DownloadsViewModel::SetDownloadDirectory(std::filesystem::path directory) { m_downloads->SetDownloadDirectory(std::move(directory)); }
+    winrt::Windows::Foundation::IAsyncAction DownloadsViewModel::SetDownloadDirectoryAsync(
+        std::filesystem::path directory)
+    {
+        auto lifetime = get_strong();
+        co_await m_downloads->SetDownloadDirectoryAsync(std::move(directory));
+    }
     winrt::event_token DownloadsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
 
@@ -345,7 +355,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"SelectedPoster", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
+        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"SelectedPoster", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const

@@ -30,6 +30,9 @@ namespace HaloDesktop::Services::Downloads
 
         [[nodiscard]] std::vector<DownloadRecord> Load(bool recoverInterrupted = true);
         void Save(std::vector<DownloadRecord> const& records, std::uint64_t generation);
+        void Apply(
+            std::vector<DownloadRecord> const& upserts,
+            std::vector<std::wstring> const& removals = {});
 
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
         void SetDownloadDirectory(std::filesystem::path directory);

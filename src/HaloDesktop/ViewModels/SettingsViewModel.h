@@ -48,6 +48,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring AddonNoticeText() const;
         [[nodiscard]] bool CanEditAddons() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonNoticeVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring AccountNoticeText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AccountNoticeVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonLoadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonErrorVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonEmptyVisibility() const noexcept;
@@ -132,6 +134,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_serverUrl;
         winrt::hstring m_userName;
         winrt::hstring m_addonNoticeText;
+        winrt::hstring m_accountNoticeText;
         winrt::hstring m_serverStatusLine{ L"CHECKING…" };
         double m_subtitleSize{ 100.0 };
         std::int32_t m_fontIndex{};
@@ -139,6 +142,7 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_audioLanguageIndex{ 2 };
         std::int32_t m_subtitleLanguageIndex{};
         bool m_addonNoticeVisible{};
+        bool m_accountNoticeVisible{};
         bool m_addonsLoading{};
         bool m_addonsError{};
         bool m_autoplayNext{ true };

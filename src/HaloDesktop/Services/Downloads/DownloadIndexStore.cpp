@@ -251,6 +251,8 @@ namespace
             InsertOptionalString(replacement, L"subtitleFileName", record.Replacement->SubtitleFileName);
             object.Insert(L"replacement", replacement);
         }
+        object.Insert(L"pendingDeletion", winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(
+            record.PendingDeletion));
         return object;
     }
 
@@ -292,6 +294,7 @@ namespace
             .UpdatedAt = RequiredUnsigned(object, L"updatedAt"),
             .BytesPerSecond = RequiredUnsigned(object, L"bytesPerSecond"),
             .Replacement = std::move(replacement),
+            .PendingDeletion = object.GetNamedBoolean(L"pendingDeletion", false),
         };
         if (record.JobId.size() > 128
             || record.AccountKey.size() != 64
@@ -495,13 +498,29 @@ namespace HaloDesktop::Services::Downloads
             return;
         }
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto merged = records;
+        auto const persistedRecords = ParseRecords(ReadFile(m_paths.IndexFile), false);
+        std::set<std::wstring, std::less<>> persistedIds;
+        for (auto const& persisted : persistedRecords)
+        {
+            persistedIds.insert(persisted.JobId);
+        }
+        std::vector<DownloadRecord> merged;
+        merged.reserve(records.size() + persistedRecords.size());
         std::set<std::wstring, std::less<>> incomingIds;
         for (auto const& record : records)
         {
+            // If this process had observed the job but it has since disappeared
+            // from disk, another process deleted it. Its stale in-memory copy is
+            // not allowed to recreate the job.
+            if (m_observedJobIds.contains(record.JobId)
+                && !persistedIds.contains(record.JobId))
+            {
+                continue;
+            }
             incomingIds.insert(record.JobId);
+            merged.push_back(record);
         }
-        for (auto& persisted : ParseRecords(ReadFile(m_paths.IndexFile), false))
+        for (auto persisted : persistedRecords)
         {
             if (!m_observedJobIds.contains(persisted.JobId)
                 && !incomingIds.contains(persisted.JobId))
@@ -521,6 +540,51 @@ namespace HaloDesktop::Services::Downloads
         WriteAtomic(m_paths.IndexFile, winrt::to_string(root.Stringify()));
         m_observedJobIds = std::move(incomingIds);
         m_savedGeneration = generation;
+    }
+
+    void DownloadIndexStore::Apply(
+        std::vector<DownloadRecord> const& upserts,
+        std::vector<std::wstring> const& removals)
+    {
+        std::scoped_lock const lock{ m_mutex };
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
+        auto records = ParseRecords(ReadFile(m_paths.IndexFile), false);
+        for (auto const& jobId : removals)
+        {
+            std::erase_if(records, [&jobId](DownloadRecord const& record)
+            {
+                return record.JobId == jobId;
+            });
+        }
+        for (auto const& replacement : upserts)
+        {
+            auto const found = std::find_if(records.begin(), records.end(), [&replacement](DownloadRecord const& record)
+            {
+                return record.JobId == replacement.JobId;
+            });
+            if (found == records.end())
+            {
+                records.push_back(replacement);
+            }
+            else
+            {
+                *found = replacement;
+            }
+        }
+        winrt::Windows::Data::Json::JsonArray entries;
+        for (auto const& record : records)
+        {
+            entries.Append(SerializeRecord(record));
+        }
+        winrt::Windows::Data::Json::JsonObject root;
+        InsertUnsigned(root, L"version", IndexVersion);
+        root.Insert(L"entries", entries);
+        WriteAtomic(m_paths.IndexFile, winrt::to_string(root.Stringify()));
+        m_observedJobIds.clear();
+        for (auto const& record : records)
+        {
+            m_observedJobIds.insert(record.JobId);
+        }
     }
 
     std::filesystem::path DownloadIndexStore::DownloadDirectory() const

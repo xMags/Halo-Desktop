@@ -64,7 +64,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::uint64_t InFlightBytes() const noexcept override;
         [[nodiscard]] std::optional<std::uint64_t> FreeBytes() const noexcept override;
         [[nodiscard]] std::filesystem::path DownloadDirectory() const override;
-        void SetDownloadDirectory(std::filesystem::path directory) override;
+        [[nodiscard]] concurrency::task<void> SetDownloadDirectoryAsync(
+            std::filesystem::path directory) override;
+        [[nodiscard]] winrt::hstring ActionError() const override;
         DownloadChangedToken AddChangedHandler(DownloadChangedHandler handler) override;
         void RemoveChangedHandler(DownloadChangedToken token) noexcept override;
 
@@ -111,5 +113,6 @@ namespace HaloDesktop::Services
         double m_aggregateRate{};
         bool m_running{};
         bool m_pausedAll{};
+        winrt::hstring m_actionError;
     };
 }

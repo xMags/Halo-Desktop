@@ -227,7 +227,7 @@ namespace HaloDesktop::Services
     concurrency::task<void> SessionService::SignOutAsync()
     {
         auto const uiContext = winrt::apartment_context{};
-        try { co_await m_controller->SignOutAsync(); } catch (...) {}
+        co_await m_controller->SignOutAsync();
         try { co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration()); } catch (...) {}
         co_await uiContext;
         ClearIdentity();
@@ -252,10 +252,14 @@ namespace HaloDesktop::Services
         {
             co_return;
         }
+        auto const accountChanged = m_userId != me.Id;
         m_userName = me.Username;
         m_userId = me.Id;
         m_isAdmin = me.IsAdmin;
-        NotifyIdentityChanged();
+        if (accountChanged)
+        {
+            NotifyIdentityChanged();
+        }
         try
         {
             co_await m_store->SaveIdentityAsync(Auth::StoredIdentity{
@@ -287,10 +291,14 @@ namespace HaloDesktop::Services
 
     void SessionService::ClearIdentity()
     {
+        auto const accountChanged = !m_userId.empty();
         m_userName.clear();
         m_userId.clear();
         m_isAdmin = false;
-        NotifyIdentityChanged();
+        if (accountChanged)
+        {
+            NotifyIdentityChanged();
+        }
     }
 
     void SessionService::NotifyIdentityChanged()

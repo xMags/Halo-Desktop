@@ -224,7 +224,20 @@ namespace HaloDesktop::Services::Auth
             m_session.reset();
             revision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        try
+        {
+            co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        }
+        catch (...)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_revision == revision)
+            {
+                m_session = current;
+                ++m_revision;
+            }
+            throw;
+        }
         if (!current)
         {
             co_return;
@@ -269,6 +282,7 @@ namespace HaloDesktop::Services::Auth
     concurrency::task<bool> OidcAuthSession::ClearIfRevisionAsync(std::uint64_t expectedRevision)
     {
         co_await winrt::resume_background();
+        std::optional<StoredOidcSession> previous;
         std::uint64_t revision{};
         {
             std::scoped_lock const lock{ m_mutex };
@@ -276,10 +290,24 @@ namespace HaloDesktop::Services::Auth
             {
                 co_return false;
             }
+            previous = m_session;
             m_session.reset();
             revision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        try
+        {
+            co_await PersistUntilCurrentAsync(revision, std::nullopt);
+        }
+        catch (...)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_revision == revision)
+            {
+                m_session = std::move(previous);
+                ++m_revision;
+            }
+            throw;
+        }
         co_return true;
     }
 

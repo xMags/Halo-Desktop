@@ -31,6 +31,8 @@ namespace HaloDesktop
         String AddonNoticeText { get; };
         Boolean CanEditAddons { get; };
         Microsoft.UI.Xaml.Visibility AddonNoticeVisibility { get; };
+        String AccountNoticeText { get; };
+        Microsoft.UI.Xaml.Visibility AccountNoticeVisibility { get; };
         Microsoft.UI.Xaml.Visibility AddonLoadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility AddonErrorVisibility { get; };
         Microsoft.UI.Xaml.Visibility AddonEmptyVisibility { get; };

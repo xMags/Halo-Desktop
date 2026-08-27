@@ -34,6 +34,8 @@ namespace HaloDesktop
         Object ChartBars { get; };
         String InfoTitle { get; };
         String InfoMessage { get; };
+        String ActionErrorText { get; };
+        Microsoft.UI.Xaml.Visibility ActionErrorVisibility { get; };
         String RateText { get; };
         String QueueLine { get; };
         String TransferCountLabel { get; };

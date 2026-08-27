@@ -311,10 +311,22 @@ namespace
         return available.QuadPart;
     }
 
-    void RemoveFileIfSafe(std::filesystem::path const& path) noexcept
+    void RemoveFileIfPresent(std::filesystem::path const& path)
     {
-        std::error_code ignored;
-        std::filesystem::remove(path, ignored);
+        std::error_code error;
+        auto const removed = std::filesystem::remove(path, error);
+        if (error)
+        {
+            throw std::system_error{ error, "Could not remove a download file" };
+        }
+        if (!removed && std::filesystem::exists(path, error))
+        {
+            throw std::runtime_error{ "A download file could not be removed." };
+        }
+        if (error)
+        {
+            throw std::system_error{ error, "Could not verify download file removal" };
+        }
     }
 
     std::optional<bool> PathsMatch(
@@ -350,38 +362,44 @@ namespace
 
     bool RecordMayOwnPath(
         HaloDesktop::Services::Downloads::DownloadRecord const& record,
-        std::filesystem::path const& path) noexcept
+        std::filesystem::path const& path)
     {
-        auto mayMatch = [&path](std::filesystem::path const& candidate) noexcept
+        auto matchesPath = [&path](std::filesystem::path const& candidate)
         {
             auto const matches = PathsMatch(candidate, path);
-            return !matches || *matches;
+            if (!matches)
+            {
+                throw std::runtime_error{ "A download path could not be compared safely." };
+            }
+            return *matches;
         };
-        if (mayMatch(record.TargetPath()) || mayMatch(record.PartialPath()))
+        if (matchesPath(record.TargetPath()) || matchesPath(record.PartialPath()))
         {
             return true;
         }
         return record.SubtitleFileName
-            && mayMatch(record.RootPath / *record.SubtitleFileName);
+            && matchesPath(record.RootPath / *record.SubtitleFileName);
     }
 
     void RemoveRecordFiles(
         HaloDesktop::Services::Downloads::DownloadRecord const& record,
-        HaloDesktop::Services::Downloads::DownloadRecord const* preservedOwner = nullptr) noexcept
+        HaloDesktop::Services::Downloads::DownloadRecord const* preservedOwner = nullptr)
     {
-        auto removeUnlessPreserved = [preservedOwner](std::filesystem::path const& path) noexcept
+        auto removeUnlessPreserved = [preservedOwner](std::filesystem::path const& path)
         {
             if (!preservedOwner || !RecordMayOwnPath(*preservedOwner, path))
             {
-                RemoveFileIfSafe(path);
+                RemoveFileIfPresent(path);
             }
         };
-        removeUnlessPreserved(record.TargetPath());
         removeUnlessPreserved(record.PartialPath());
         if (record.SubtitleFileName)
         {
             removeUnlessPreserved(record.RootPath / *record.SubtitleFileName);
         }
+        // Delete the playable file last. If an auxiliary cleanup fails, the
+        // indexed download still has its primary content and can be retried.
+        removeUnlessPreserved(record.TargetPath());
     }
 
     std::wstring SubtitleExtension(std::wstring const& url)
@@ -453,7 +471,36 @@ namespace HaloDesktop::Services::Downloads
         {
             m_records.emplace(record.JobId, std::move(record));
         }
-        m_store.Save(SnapshotLocked(), m_generation);
+        std::vector<std::wstring> pendingDeletionIds;
+        for (auto const& [jobId, record] : m_records)
+        {
+            if (record.PendingDeletion) pendingDeletionIds.push_back(jobId);
+        }
+        for (auto const& jobId : pendingDeletionIds)
+        {
+            try
+            {
+                auto const pending = m_records.at(jobId);
+                auto owner = std::find_if(m_records.begin(), m_records.end(), [&jobId](auto const& pair)
+                {
+                    return pair.second.Replacement && pair.second.Replacement->JobId == jobId;
+                });
+                auto updatedOwner = owner == m_records.end()
+                    ? std::optional<DownloadRecord>{}
+                    : std::optional<DownloadRecord>{ owner->second };
+                if (updatedOwner) updatedOwner->Replacement.reset();
+                RemoveRecordFiles(pending, updatedOwner ? &*updatedOwner : nullptr);
+                m_vault.Remove(jobId);
+                m_store.Apply(updatedOwner ? std::vector<DownloadRecord>{ *updatedOwner }
+                                           : std::vector<DownloadRecord>{},
+                    { jobId });
+                if (updatedOwner) owner->second = std::move(*updatedOwner);
+                m_records.erase(jobId);
+            }
+            catch (...)
+            {
+            }
+        }
         m_worker = std::jthread{ [this](std::stop_token stopToken)
         {
             Worker(stopToken);
@@ -481,40 +528,73 @@ namespace HaloDesktop::Services::Downloads
     void TransferEngine::SetAccount(std::wstring serverUrl, std::wstring userId)
     {
         auto const key = MakeAccountKey(std::move(serverUrl), userId);
-        std::vector<DownloadRecord> snapshot;
-        std::vector<DownloadRecord> changed;
-        std::uint64_t generation{};
+        std::vector<std::wstring> pauseIds;
         {
             std::scoped_lock const lock{ m_mutex };
             if (m_activeAccount && *m_activeAccount != key)
             {
-                for (auto const& [jobId, flag] : m_cancel)
+                for (auto const& [jobId, record] : m_records)
                 {
-                    static_cast<void>(jobId);
-                    flag->store(true, std::memory_order_release);
-                }
-                for (auto& [jobId, record] : m_records)
-                {
-                    static_cast<void>(jobId);
                     if (record.AccountKey == *m_activeAccount && IsActive(record.Status))
                     {
-                        record.Status = DownloadStatus::Paused;
-                        record.ExplicitPause = true;
-                        record.BytesPerSecond = 0;
-                        record.UpdatedAt = NowMilliseconds();
-                        changed.push_back(record);
+                        pauseIds.push_back(jobId);
                     }
                 }
+            }
+        }
+        std::exception_ptr pauseFailure;
+        for (auto const& jobId : pauseIds)
+        {
+            try
+            {
+                Pause(jobId);
+            }
+            catch (...)
+            {
+                if (!pauseFailure) pauseFailure = std::current_exception();
+            }
+        }
+
+        auto latest = m_store.Load(false);
+        {
+            std::scoped_lock const lock{ m_mutex };
+            std::optional<DownloadRecord> activeRecord;
+            if (m_activeJob)
+            {
+                if (auto const active = m_records.find(*m_activeJob); active != m_records.end())
+                {
+                    activeRecord = active->second;
+                }
+            }
+            m_records.clear();
+            for (auto& record : latest)
+            {
+                m_records.emplace(record.JobId, std::move(record));
+            }
+            if (activeRecord)
+            {
+                // The job lease prevents another process from changing this row
+                // while our worker owns it. Keep the live progress state instead
+                // of downgrading the durable "downloading" marker to queued.
+                m_records.insert_or_assign(activeRecord->JobId, std::move(*activeRecord));
             }
             m_activeAccount = key;
             m_queue.clear();
             std::vector<std::reference_wrapper<DownloadRecord const>> queued;
-            for (auto const& [jobId, record] : m_records)
+            for (auto& [jobId, record] : m_records)
             {
                 static_cast<void>(jobId);
                 if (record.AccountKey == key
+                    && (!m_activeJob || record.JobId != *m_activeJob)
+                    && record.Status == DownloadStatus::Downloading)
+                {
+                    record.Status = DownloadStatus::Queued;
+                    record.BytesPerSecond = 0;
+                }
+                if (record.AccountKey == key
                     && record.Status == DownloadStatus::Queued
                     && !record.ExplicitPause
+                    && !record.PendingDeletion
                     && !IsHiddenBackupLocked(record.JobId))
                 {
                     queued.emplace_back(record);
@@ -530,64 +610,51 @@ namespace HaloDesktop::Services::Downloads
             {
                 m_queue.push_back(record.get().JobId);
             }
-            generation = ++m_generation;
-            snapshot = SnapshotLocked();
-        }
-        Persist(std::move(snapshot), generation);
-        for (auto const& record : changed)
-        {
-            std::vector<DownloadChangedHandler> handlers;
-            {
-                std::scoped_lock const lock{ m_mutex };
-                handlers = HandlersLocked();
-            }
-            Notify(handlers, record);
         }
         m_condition.notify_all();
+        if (pauseFailure)
+        {
+            OutputDebugStringW(L"Halo could not pause every old-account download.\n");
+        }
     }
 
     void TransferEngine::ClearAccount()
     {
-        std::vector<DownloadRecord> changed;
-        std::vector<DownloadRecord> snapshot;
-        std::uint64_t generation{};
+        std::vector<std::wstring> pauseIds;
         {
             std::scoped_lock const lock{ m_mutex };
             if (!m_activeAccount)
             {
                 return;
             }
-            for (auto const& [jobId, flag] : m_cancel)
+            for (auto const& [jobId, record] : m_records)
             {
-                static_cast<void>(jobId);
-                flag->store(true, std::memory_order_release);
-            }
-            for (auto& [jobId, record] : m_records)
-            {
-                static_cast<void>(jobId);
                 if (record.AccountKey == *m_activeAccount && IsActive(record.Status))
                 {
-                    record.Status = DownloadStatus::Paused;
-                    record.ExplicitPause = true;
-                    record.BytesPerSecond = 0;
-                    record.UpdatedAt = NowMilliseconds();
-                    changed.push_back(record);
+                    pauseIds.push_back(jobId);
                 }
             }
-            m_activeAccount.reset();
-            m_queue.clear();
-            generation = ++m_generation;
-            snapshot = SnapshotLocked();
         }
-        Persist(std::move(snapshot), generation);
-        std::vector<DownloadChangedHandler> handlers;
+        std::exception_ptr pauseFailure;
+        for (auto const& jobId : pauseIds)
+        {
+            try
+            {
+                Pause(jobId);
+            }
+            catch (...)
+            {
+                if (!pauseFailure) pauseFailure = std::current_exception();
+            }
+        }
         {
             std::scoped_lock const lock{ m_mutex };
-            handlers = HandlersLocked();
+            m_activeAccount.reset();
+            m_queue.clear();
         }
-        for (auto const& record : changed)
+        if (pauseFailure)
         {
-            Notify(handlers, record);
+            OutputDebugStringW(L"Halo could not pause every signed-out download.\n");
         }
     }
 
@@ -601,7 +668,9 @@ namespace HaloDesktop::Services::Downloads
         std::vector<DownloadRecord> result;
         for (auto const& [jobId, record] : m_records)
         {
-            if (record.AccountKey == *m_activeAccount && !IsHiddenBackupLocked(jobId))
+            if (record.AccountKey == *m_activeAccount
+                && !record.PendingDeletion
+                && !IsHiddenBackupLocked(jobId))
             {
                 result.push_back(record);
             }
@@ -639,6 +708,8 @@ namespace HaloDesktop::Services::Downloads
         ::HaloDesktop::Storage::FileMutationLock const preparationLease{
             m_store.Paths().DataRoot / (L"download-start-" + Sha256Hex(account + L"\n" + request.Media.VideoId)) };
         auto latest = m_store.Load(false);
+        std::set<std::wstring, std::less<>> latestIds;
+        for (auto const& record : latest) latestIds.insert(record.JobId);
         {
             std::scoped_lock const lock{ m_mutex };
             if (!m_activeAccount || *m_activeAccount != account)
@@ -647,11 +718,16 @@ namespace HaloDesktop::Services::Downloads
             }
             for (auto& record : latest)
             {
-                if (!m_records.contains(record.JobId))
+                if (!m_activeJob || *m_activeJob != record.JobId)
                 {
-                    m_records.emplace(record.JobId, std::move(record));
+                    m_records.insert_or_assign(record.JobId, std::move(record));
                 }
             }
+            std::erase_if(m_records, [this, &latestIds](auto const& pair)
+            {
+                return !latestIds.contains(pair.first)
+                    && (!m_activeJob || *m_activeJob != pair.first);
+            });
             if (!m_pendingVideoIds.insert(request.Media.VideoId).second)
             {
                 throw std::runtime_error{ "This video is already being prepared for download." };
@@ -695,6 +771,35 @@ namespace HaloDesktop::Services::Downloads
                 throw std::runtime_error{ "Download state changed. Try again." };
             }
             return *resumed;
+        }
+        std::unique_ptr<::HaloDesktop::Storage::FileMutationLock> replacementLease;
+        std::optional<DownloadRecord> replacementRollback;
+        bool replacementWasActive{};
+        if (existing && request.ReplaceExisting)
+        {
+            replacementWasActive = IsActive(existing->Status);
+            {
+                std::scoped_lock const lock{ m_mutex };
+                if (auto const flag = m_cancel.find(existing->JobId); flag != m_cancel.end())
+                {
+                    flag->second->store(true, std::memory_order_release);
+                }
+            }
+            replacementLease = std::make_unique<::HaloDesktop::Storage::FileMutationLock>(
+                m_store.Paths().DataRoot / (L"download-job-" + existing->JobId));
+            latest = m_store.Load(false);
+            auto const current = std::find_if(latest.begin(), latest.end(), [&existing](DownloadRecord const& record)
+            {
+                return record.JobId == existing->JobId;
+            });
+            if (current == latest.end())
+            {
+                throw std::runtime_error{ "The existing download changed while preparing its replacement." };
+            }
+            existing = *current;
+            replacementRollback = existing;
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(existing->JobId, *existing);
         }
         if (!std::filesystem::is_directory(directory))
         {
@@ -749,6 +854,7 @@ namespace HaloDesktop::Services::Downloads
         }
 
         std::vector<DownloadRecord> snapshot;
+        std::optional<DownloadRecord> previousExisting;
         std::uint64_t generation{};
         {
             std::scoped_lock const lock{ m_mutex };
@@ -766,6 +872,7 @@ namespace HaloDesktop::Services::Downloads
                 }
                 if (request.ReplaceExisting && IsActive(found->second.Status))
                 {
+                    previousExisting = found->second;
                     found->second.Status = DownloadStatus::Paused;
                     found->second.ExplicitPause = true;
                     found->second.BytesPerSecond = 0;
@@ -779,7 +886,11 @@ namespace HaloDesktop::Services::Downloads
             m_records.emplace(record.JobId, record);
             m_queue.push_back(record.JobId);
             generation = ++m_generation;
-            snapshot = SnapshotLocked();
+            snapshot = { record };
+            if (previousExisting)
+            {
+                snapshot.push_back(m_records.at(previousExisting->JobId));
+            }
         }
         try
         {
@@ -787,9 +898,41 @@ namespace HaloDesktop::Services::Downloads
         }
         catch (...)
         {
-            std::scoped_lock const lock{ m_mutex };
-            m_records.erase(record.JobId);
-            std::erase(m_queue, record.JobId);
+            std::optional<DownloadRecord> restoredForPersistence;
+            {
+                std::scoped_lock const lock{ m_mutex };
+                m_records.erase(record.JobId);
+                std::erase(m_queue, record.JobId);
+                auto rollback = replacementRollback
+                    ? replacementRollback
+                    : previousExisting;
+                if (rollback)
+                {
+                    if (replacementWasActive
+                        && (IsActive(rollback->Status)
+                            || (rollback->Status == DownloadStatus::Paused
+                                && !rollback->ExplicitPause)))
+                    {
+                        rollback->Status = DownloadStatus::Queued;
+                        rollback->ExplicitPause = false;
+                        rollback->BytesPerSecond = 0;
+                        rollback->UpdatedAt = NowMilliseconds();
+                        restoredForPersistence = rollback;
+                    }
+                    m_records.insert_or_assign(rollback->JobId, *rollback);
+                    if (rollback->Status == DownloadStatus::Queued
+                        && !rollback->ExplicitPause
+                        && std::find(m_queue.begin(), m_queue.end(), rollback->JobId) == m_queue.end())
+                    {
+                        m_queue.push_front(rollback->JobId);
+                    }
+                }
+            }
+            if (restoredForPersistence)
+            {
+                try { m_store.Apply({ *restoredForPersistence }); } catch (...) {}
+                m_condition.notify_all();
+            }
             throw;
         }
         removeVault.release();
@@ -805,108 +948,172 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::Pause(std::wstring const& jobId)
     {
-        DownloadRecord changed;
-        std::vector<DownloadRecord> snapshot;
-        std::vector<DownloadChangedHandler> handlers;
-        std::uint64_t generation{};
         {
             std::scoped_lock const lock{ m_mutex };
-            auto const found = m_records.find(jobId);
-            if (found == m_records.end() || found->second.Status == DownloadStatus::Done)
-            {
-                return;
-            }
-            found->second.Status = DownloadStatus::Paused;
-            found->second.ExplicitPause = true;
-            found->second.BytesPerSecond = 0;
-            found->second.UpdatedAt = NowMilliseconds();
             if (auto const flag = m_cancel.find(jobId); flag != m_cancel.end())
             {
                 flag->second->store(true, std::memory_order_release);
             }
+        }
+        ::HaloDesktop::Storage::FileMutationLock const jobLease{
+            m_store.Paths().DataRoot / (L"download-job-" + jobId) };
+        auto latest = m_store.Load(false);
+        auto const persisted = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (persisted == latest.end())
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
             std::erase(m_queue, jobId);
-            changed = found->second;
-            generation = ++m_generation;
-            snapshot = SnapshotLocked();
+            return;
+        }
+        auto changed = *persisted;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || changed.AccountKey != *m_activeAccount)
+            {
+                throw std::runtime_error{ "This download belongs to another account." };
+            }
+        }
+        if (changed.Status == DownloadStatus::Done || changed.PendingDeletion)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(jobId, changed);
+            std::erase(m_queue, jobId);
+            return;
+        }
+        changed.Status = DownloadStatus::Paused;
+        changed.ExplicitPause = true;
+        changed.BytesPerSecond = 0;
+        changed.UpdatedAt = NowMilliseconds();
+        m_store.Apply({ changed });
+        std::vector<DownloadChangedHandler> handlers;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(jobId, changed);
+            std::erase(m_queue, jobId);
             handlers = HandlersLocked();
         }
-        Persist(std::move(snapshot), generation);
         Notify(handlers, changed);
     }
 
     void TransferEngine::Resume(std::wstring const& jobId)
     {
-        DownloadRecord changed;
-        std::vector<DownloadRecord> snapshot;
-        std::vector<DownloadChangedHandler> handlers;
-        std::uint64_t generation{};
+        ::HaloDesktop::Storage::FileMutationLock const jobLease{
+            m_store.Paths().DataRoot / (L"download-job-" + jobId) };
+        auto latest = m_store.Load(false);
+        auto const persisted = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (persisted == latest.end())
         {
             std::scoped_lock const lock{ m_mutex };
-            auto const found = m_records.find(jobId);
-            if (found == m_records.end() || found->second.Status == DownloadStatus::Done)
-            {
-                return;
-            }
-            if (found->second.Failure && RequiresNewSource(*found->second.Failure))
-            {
-                throw std::runtime_error{ "Choose the source again before retrying this download." };
-            }
-            if (!m_activeAccount || found->second.AccountKey != *m_activeAccount)
+            m_records.erase(jobId);
+            std::erase(m_queue, jobId);
+            return;
+        }
+        auto changed = *persisted;
+        if (changed.Failure && RequiresNewSource(*changed.Failure))
+        {
+            throw std::runtime_error{ "Choose the source again before retrying this download." };
+        }
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || changed.AccountKey != *m_activeAccount)
             {
                 throw std::runtime_error{ "This download belongs to another account." };
             }
-            found->second.Status = DownloadStatus::Queued;
-            found->second.ExplicitPause = false;
-            found->second.Failure.reset();
-            found->second.BytesPerSecond = 0;
-            found->second.UpdatedAt = NowMilliseconds();
+        }
+        if (changed.Status == DownloadStatus::Done || changed.PendingDeletion)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(jobId, changed);
+            std::erase(m_queue, jobId);
+            return;
+        }
+        changed.Status = DownloadStatus::Queued;
+        changed.ExplicitPause = false;
+        changed.Failure.reset();
+        changed.BytesPerSecond = 0;
+        changed.UpdatedAt = NowMilliseconds();
+        m_store.Apply({ changed });
+        std::vector<DownloadChangedHandler> handlers;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(jobId, changed);
             if (std::find(m_queue.begin(), m_queue.end(), jobId) == m_queue.end())
             {
                 m_queue.push_back(jobId);
             }
-            changed = found->second;
-            generation = ++m_generation;
-            snapshot = SnapshotLocked();
             handlers = HandlersLocked();
         }
-        Persist(std::move(snapshot), generation);
         Notify(handlers, changed);
         m_condition.notify_all();
     }
 
     void TransferEngine::Remove(std::wstring const& jobId)
     {
-        DownloadRecord removed;
-        bool foundRecord{};
-        std::vector<DownloadRecord> snapshot;
-        std::uint64_t generation{};
         {
             std::scoped_lock const lock{ m_mutex };
-            if (IsHiddenBackupLocked(jobId))
-            {
-                throw std::runtime_error{ "The previous file is retained until its replacement finishes." };
-            }
-            auto const found = m_records.find(jobId);
-            if (found == m_records.end())
-            {
-                return;
-            }
-            removed = found->second;
-            foundRecord = true;
             if (auto const flag = m_cancel.find(jobId); flag != m_cancel.end())
             {
                 flag->second->store(true, std::memory_order_release);
             }
-            std::erase(m_queue, jobId);
-            m_records.erase(found);
-            generation = ++m_generation;
-            snapshot = SnapshotLocked();
         }
-        Persist(std::move(snapshot), generation);
-        if (foundRecord)
+        ::HaloDesktop::Storage::FileMutationLock const jobLease{
+            m_store.Paths().DataRoot / (L"download-job-" + jobId) };
+        auto latest = m_store.Load(false);
+        if (std::any_of(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+            {
+                return record.Replacement && record.Replacement->JobId == jobId;
+            }))
         {
+            throw std::runtime_error{ "The previous file is retained until its replacement finishes." };
+        }
+        auto const persisted = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (persisted == latest.end())
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
+            std::erase(m_queue, jobId);
+            return;
+        }
+        auto removed = *persisted;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || removed.AccountKey != *m_activeAccount)
+            {
+                throw std::runtime_error{ "This download belongs to another account." };
+            }
+        }
+        removed.PendingDeletion = true;
+        removed.Status = DownloadStatus::Paused;
+        removed.ExplicitPause = true;
+        removed.BytesPerSecond = 0;
+        removed.UpdatedAt = NowMilliseconds();
+        m_store.Apply({ removed });
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.insert_or_assign(jobId, removed);
+            std::erase(m_queue, jobId);
+        }
+        try
+        {
+            m_vault.Remove(jobId);
             RemoveRecordFiles(removed);
-            try { m_vault.Remove(jobId); } catch (...) {}
+            m_store.Apply({}, { jobId });
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
+        }
+        catch (...)
+        {
+            throw;
         }
     }
 
@@ -918,6 +1125,7 @@ namespace HaloDesktop::Services::Downloads
             || !m_activeAccount
             || found->second.AccountKey != *m_activeAccount
             || found->second.Status != DownloadStatus::Done
+            || found->second.PendingDeletion
             || !std::filesystem::is_regular_file(found->second.TargetPath()))
         {
             throw std::runtime_error{ "This download is no longer on the device." };
@@ -1003,6 +1211,7 @@ namespace HaloDesktop::Services::Downloads
                         && m_activeAccount
                         && found->second.AccountKey == *m_activeAccount
                         && found->second.Status == DownloadStatus::Queued
+                        && !found->second.PendingDeletion
                         && !found->second.ExplicitPause)
                     {
                         break;
@@ -1022,17 +1231,51 @@ namespace HaloDesktop::Services::Downloads
             }
             catch (...)
             {
+                {
+                    std::scoped_lock const lock{ m_mutex };
+                    auto const found = m_records.find(jobId);
+                    if (found != m_records.end()
+                        && m_activeAccount
+                        && found->second.AccountKey == *m_activeAccount
+                        && found->second.Status == DownloadStatus::Queued
+                        && !found->second.ExplicitPause)
+                    {
+                        m_queue.push_back(jobId);
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
                 continue;
             }
+            auto latest = m_store.Load(false);
             {
                 std::scoped_lock const lock{ m_mutex };
+                auto const persisted = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+                {
+                    return record.JobId == jobId;
+                });
+                if (persisted == latest.end())
+                {
+                    m_records.erase(jobId);
+                    continue;
+                }
+                auto refreshed = *persisted;
+                if (refreshed.Status == DownloadStatus::Downloading)
+                {
+                    // Acquiring the lease proves no live worker owns this job.
+                    // A persisted downloading state therefore came from an
+                    // interrupted or exited process and is safe to resume.
+                    refreshed.Status = DownloadStatus::Queued;
+                    refreshed.BytesPerSecond = 0;
+                }
+                m_records.insert_or_assign(jobId, std::move(refreshed));
                 auto const found = m_records.find(jobId);
                 if (m_activeJob
                     || found == m_records.end()
                     || !m_activeAccount
                     || found->second.AccountKey != *m_activeAccount
                     || found->second.Status != DownloadStatus::Queued
-                    || found->second.ExplicitPause)
+                    || found->second.ExplicitPause
+                    || found->second.PendingDeletion)
                 {
                     continue;
                 }
@@ -1043,7 +1286,7 @@ namespace HaloDesktop::Services::Downloads
                 record.Status = DownloadStatus::Downloading;
                 record.UpdatedAt = NowMilliseconds();
                 generation = ++m_generation;
-                snapshot = SnapshotLocked();
+                snapshot = { record };
             }
             try
             {
@@ -1092,7 +1335,10 @@ namespace HaloDesktop::Services::Downloads
                     m_cancel.erase(jobId);
                     m_activeJob.reset();
                     recoveryGeneration = ++m_generation;
-                    recoverySnapshot = SnapshotLocked();
+                    if (hasChanged)
+                    {
+                        recoverySnapshot = { changed };
+                    }
                     handlers = HandlersLocked();
                 }
                 try { Persist(std::move(recoverySnapshot), recoveryGeneration); } catch (...) {}
@@ -1465,7 +1711,11 @@ namespace HaloDesktop::Services::Downloads
         auto path = target.parent_path() / name;
         auto temporary = path;
         temporary += L".part";
-        auto cleanup = wil::scope_exit([&temporary]() noexcept { RemoveFileIfSafe(temporary); });
+        auto cleanup = wil::scope_exit([&temporary]() noexcept
+        {
+            std::error_code ignored;
+            std::filesystem::remove(temporary, ignored);
+        });
         try
         {
             auto response = OpenGet(request.Url, request.Headers, std::nullopt, std::nullopt);
@@ -1528,6 +1778,8 @@ namespace HaloDesktop::Services::Downloads
         DownloadRecord changed;
         bool hasChanged{};
         std::optional<DownloadRecord> replaced;
+        std::optional<DownloadRecord> originalCurrent;
+        std::optional<DownloadRecord> originalReplaced;
         std::vector<DownloadRecord> snapshot;
         std::vector<DownloadChangedHandler> handlers;
         std::uint64_t generation{};
@@ -1537,6 +1789,7 @@ namespace HaloDesktop::Services::Downloads
             if (found != m_records.end())
             {
                 auto& record = found->second;
+                originalCurrent = record;
                 if (result)
                 {
                     record.Status = DownloadStatus::Done;
@@ -1555,10 +1808,14 @@ namespace HaloDesktop::Services::Downloads
                     {
                         if (auto const old = m_records.find(record.Replacement->JobId); old != m_records.end())
                         {
+                            originalReplaced = old->second;
+                            old->second.PendingDeletion = true;
+                            old->second.Status = DownloadStatus::Paused;
+                            old->second.ExplicitPause = true;
+                            old->second.BytesPerSecond = 0;
+                            old->second.UpdatedAt = NowMilliseconds();
                             replaced = old->second;
-                            m_records.erase(old);
                         }
-                        record.Replacement.reset();
                     }
                 }
                 else if (error && error->Type == TransferError::Kind::Paused)
@@ -1583,18 +1840,55 @@ namespace HaloDesktop::Services::Downloads
             m_cancel.erase(jobId);
             m_activeJob.reset();
             generation = ++m_generation;
-            snapshot = SnapshotLocked();
+            if (hasChanged)
+            {
+                snapshot = { changed };
+                if (replaced)
+                {
+                    snapshot.push_back(*replaced);
+                }
+            }
             handlers = HandlersLocked();
         }
-        Persist(std::move(snapshot), generation);
+        try
+        {
+            Persist(std::move(snapshot), generation);
+        }
+        catch (...)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (originalCurrent)
+            {
+                m_records.insert_or_assign(originalCurrent->JobId, *originalCurrent);
+            }
+            if (originalReplaced)
+            {
+                m_records.insert_or_assign(originalReplaced->JobId, *originalReplaced);
+            }
+            throw;
+        }
         if (result || (error && RequiresNewSource(error->Failure)))
         {
             try { m_vault.Remove(jobId); } catch (...) {}
         }
         if (replaced)
         {
-            RemoveRecordFiles(*replaced, hasChanged ? &changed : nullptr);
-            try { m_vault.Remove(replaced->JobId); } catch (...) {}
+            try
+            {
+                RemoveRecordFiles(*replaced, hasChanged ? &changed : nullptr);
+                m_vault.Remove(replaced->JobId);
+                auto completed = changed;
+                completed.Replacement.reset();
+                m_store.Apply({ completed }, { replaced->JobId });
+                std::scoped_lock const lock{ m_mutex };
+                m_records.insert_or_assign(completed.JobId, completed);
+                m_records.erase(replaced->JobId);
+                changed = std::move(completed);
+            }
+            catch (...)
+            {
+                OutputDebugStringW(L"Halo retained a replacement cleanup tombstone for retry.\n");
+            }
         }
         if (hasChanged)
         {
@@ -1618,7 +1912,7 @@ namespace HaloDesktop::Services::Downloads
             if (totalBytes > 0) found->second.TotalBytes = totalBytes;
             found->second.UpdatedAt = NowMilliseconds();
             generation = ++m_generation;
-            snapshot = SnapshotLocked();
+            snapshot = { found->second };
         }
         Persist(std::move(snapshot), generation);
     }
@@ -1643,7 +1937,7 @@ namespace HaloDesktop::Services::Downloads
             found->second.UpdatedAt = NowMilliseconds();
             changed = found->second;
             generation = ++m_generation;
-            snapshot = SnapshotLocked();
+            snapshot = { changed };
             handlers = HandlersLocked();
         }
         Persist(std::move(snapshot), generation);
@@ -1682,6 +1976,7 @@ namespace HaloDesktop::Services::Downloads
         {
             if (record.AccountKey == *m_activeAccount
                 && record.Media.VideoId == videoId
+                && !record.PendingDeletion
                 && !IsHiddenBackupLocked(jobId))
             {
                 return record;
@@ -1694,7 +1989,9 @@ namespace HaloDesktop::Services::Downloads
     {
         return std::any_of(m_records.begin(), m_records.end(), [&jobId](auto const& pair)
         {
-            return pair.second.Replacement && pair.second.Replacement->JobId == jobId;
+            return !pair.second.PendingDeletion
+                && pair.second.Replacement
+                && pair.second.Replacement->JobId == jobId;
         });
     }
 
@@ -1702,7 +1999,8 @@ namespace HaloDesktop::Services::Downloads
         std::vector<DownloadRecord> records,
         std::uint64_t generation)
     {
-        m_store.Save(records, generation);
+        static_cast<void>(generation);
+        m_store.Apply(records);
     }
 
     void TransferEngine::Notify(

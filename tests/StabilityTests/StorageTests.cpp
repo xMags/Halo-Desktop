@@ -2,6 +2,7 @@
 
 #include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/DownloadIndexStore.h"
+#include "Services/Downloads/TransferEngine.h"
 #include "Storage/AppStoragePaths.h"
 #include "Storage/FileStorage.h"
 #include "Storage/LegacyPackageDataSource.h"
@@ -30,6 +31,7 @@ namespace
     using HaloDesktop::Services::Downloads::DownloadMedia;
     using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStatus;
+    using HaloDesktop::Services::Downloads::TransferEngine;
     using HaloDesktop::Storage::AppStoragePaths;
     using HaloDesktop::Storage::LegacyPackageData;
     using HaloDesktop::Storage::LegacyPackageDataSource;
@@ -188,6 +190,7 @@ namespace
         Require(migrator.Migrate() == MigrationResult::RetryableFailure, "an interrupted migration was not retryable");
         Require(!std::filesystem::exists(paths->LocalState()), "an interrupted migration published partial data");
         Require(!std::filesystem::exists(paths->MigrationMarker()), "an interrupted migration was marked complete");
+        paths->EnsureDirectories();
         Require(migrator.Migrate() == MigrationResult::Migrated, "a transient migration did not succeed on retry");
         Require(ReadBytes(paths->LocalState() / L"auth-session.bin") == protectedBytes,
             "migration changed DPAPI-protected session bytes");
@@ -277,6 +280,57 @@ namespace
         DownloadIndexStore verify{ dataRoot };
         auto const records = verify.Load();
         Require(records.size() == 2, "a locked index update lost another process's new job");
+
+        static_cast<void>(first.Load());
+        static_cast<void>(second.Load());
+        first.Save({ Record(L"job-b", L"movie:b") }, 2);
+        second.Save({ Record(L"job-a", L"movie:a"), Record(L"job-b", L"movie:b") }, 2);
+        DownloadIndexStore verifyDeletion{ dataRoot };
+        auto const afterDeletion = verifyDeletion.Load();
+        Require(afterDeletion.size() == 1 && afterDeletion.front().JobId == L"job-b",
+            "a stale process resurrected a job deleted by another process");
+
+        auto updated = Record(L"job-b", L"movie:b");
+        updated.UpdatedAt = 2;
+        first.Apply({ updated }, { L"job-a" });
+        auto const afterApply = verifyDeletion.Load();
+        Require(afterApply.size() == 1
+                && afterApply.front().JobId == L"job-b"
+                && afterApply.front().UpdatedAt == 2,
+            "a record-level download index update was not atomic");
+    }
+
+    void TestPendingDownloadDeletionRecovery()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        auto const downloadRoot = temporary.Path() / L"downloads";
+        std::filesystem::create_directories(downloadRoot);
+
+        auto record = Record(std::wstring(64, L'a'), L"movie:pending-delete");
+        record.AccountKey = HaloDesktop::Services::Downloads::MakeAccountKey(
+            L"https://example.test", L"user-a");
+        record.RootPath = downloadRoot;
+        record.FileName = L"pending.mkv";
+        record.SubtitleFileName = L"pending.en.srt";
+        record.PendingDeletion = true;
+        WriteBytes(record.TargetPath(), { 1, 2, 3 });
+        WriteBytes(record.PartialPath(), { 4, 5, 6 });
+        WriteBytes(record.RootPath / *record.SubtitleFileName, { 7, 8, 9 });
+
+        DownloadIndexStore store{ dataRoot };
+        store.Apply({ record });
+        {
+            TransferEngine engine{ dataRoot };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            Require(engine.List().empty(), "a pending deletion became visible after restart");
+        }
+        Require(!std::filesystem::exists(record.TargetPath())
+                && !std::filesystem::exists(record.PartialPath())
+                && !std::filesystem::exists(record.RootPath / *record.SubtitleFileName),
+            "pending download files were not removed after restart");
+        DownloadIndexStore verify{ dataRoot };
+        Require(verify.Load(false).empty(), "a completed deletion tombstone remained in the index");
     }
 }
 
@@ -287,4 +341,5 @@ void RunStandaloneStorageTests()
     TestMigrationSuccessRetryAndIdempotency();
     TestMigrationProtectsExistingTarget();
     TestDownloadLeasesAndAtomicIndexMerge();
+    TestPendingDownloadDeletionRecovery();
 }

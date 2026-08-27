@@ -33,6 +33,28 @@ namespace
         std::filesystem::remove_all(staging, ignored);
     }
 
+    bool IsBootstrapOnlyLocalState(
+        std::filesystem::path const& localState,
+        std::filesystem::path const& downloads)
+    {
+        if (!std::filesystem::is_directory(localState) || IsReparsePoint(localState))
+        {
+            return false;
+        }
+        for (auto const& entry : std::filesystem::directory_iterator{
+            localState, std::filesystem::directory_options::none })
+        {
+            if (entry.path() != downloads
+                || !entry.is_directory()
+                || IsReparsePoint(entry.path())
+                || !std::filesystem::is_empty(entry.path()))
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     void CopyLegacyState(
         std::filesystem::path const& source,
         std::filesystem::path const& destination)
@@ -106,7 +128,10 @@ namespace HaloDesktop::Storage
             {
                 throw std::runtime_error{ "The standalone Halo data root is unavailable or unsafe." };
             }
-            if (std::filesystem::exists(m_paths->LocalState()))
+            auto const localStateExists = std::filesystem::exists(m_paths->LocalState());
+            auto const bootstrapOnly = localStateExists
+                && IsBootstrapOnlyLocalState(m_paths->LocalState(), m_paths->Downloads());
+            if (localStateExists && !bootstrapOnly)
             {
                 MarkComplete(*m_paths);
                 return MigrationResult::ExistingDataPreserved;
@@ -129,6 +154,30 @@ namespace HaloDesktop::Storage
             ::HaloDesktop::Services::DevicePreferencesStore stagedPreferences{
                 stagedState / L"device-preferences.json" };
             static_cast<void>(stagedPreferences.ImportIfMissing(legacy->Preferences));
+
+            if (bootstrapOnly)
+            {
+                std::error_code removeError;
+                if (std::filesystem::exists(m_paths->Downloads()))
+                {
+                    auto const removedDownloads = std::filesystem::remove(
+                        m_paths->Downloads(), removeError);
+                    if (removeError || !removedDownloads)
+                    {
+                        throw std::system_error{
+                            removeError ? removeError : std::make_error_code(std::errc::directory_not_empty),
+                            "Could not remove the empty Halo bootstrap downloads directory" };
+                    }
+                }
+                auto const removedLocalState = std::filesystem::remove(
+                    m_paths->LocalState(), removeError);
+                if (removeError || !removedLocalState)
+                {
+                    throw std::system_error{
+                        removeError ? removeError : std::make_error_code(std::errc::directory_not_empty),
+                        "Could not remove the empty Halo bootstrap data directory" };
+                }
+            }
 
             if (!MoveFileExW(
                 stagedState.c_str(),

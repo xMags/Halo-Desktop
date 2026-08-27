@@ -3,6 +3,7 @@
 #include "Services/CatalogRefreshPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <vector>
@@ -46,10 +47,13 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const override;
 
         void RecordRecent(winrt::hstring term) override;
+        void OnAccountChanged();
 
     private:
         [[nodiscard]] concurrency::task<void> RunSharedRefreshAsync(bool loadDependencies);
-        [[nodiscard]] concurrency::task<void> LoadCoreAsync(bool loadDependencies);
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync(
+            bool loadDependencies,
+            std::uint64_t accountVersion);
         [[nodiscard]] std::vector<winrt::HaloDesktop::MediaSummary> BuildLibraryItems() const;
         [[nodiscard]] std::vector<winrt::HaloDesktop::Shelf> BuildShelves(
             winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> const& catalogShelves,
@@ -74,5 +78,7 @@ namespace HaloDesktop::Services
         CatalogRefreshState m_refreshState;
         std::uint64_t m_searchVersion{};
         std::uint64_t m_snapshotVersion{};
+        std::uint64_t m_accountVersion{};
+        std::uint64_t m_loadTaskAccountVersion{};
     };
 }

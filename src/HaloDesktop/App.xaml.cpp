@@ -107,8 +107,10 @@ namespace winrt::HaloDesktop::implementation
             m_queryCache,
             m_sessionService);
         m_services.Addons = addonService;
-        m_services.Library = std::make_shared<::HaloDesktop::Services::LibraryService>(m_apiClient);
-        m_services.WatchState = std::make_shared<::HaloDesktop::Services::WatchStateService>(m_apiClient);
+        auto libraryService = std::make_shared<::HaloDesktop::Services::LibraryService>(m_apiClient);
+        m_services.Library = libraryService;
+        auto watchStateService = std::make_shared<::HaloDesktop::Services::WatchStateService>(m_apiClient);
+        m_services.WatchState = watchStateService;
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
             m_apiClient,
             addonService,
@@ -123,24 +125,56 @@ namespace winrt::HaloDesktop::implementation
             m_sessionService,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Downloads = m_downloadService;
-        std::weak_ptr<::HaloDesktop::Services::DownloadService> weakDownloads = m_downloadService;
-        m_sessionService->SetIdentityChangedHandler([weakDownloads]()
-        {
-            if (auto const downloads = weakDownloads.lock())
-            {
-                downloads->RebindAccount();
-            }
-        });
-        m_services.Metadata = std::make_shared<::HaloDesktop::Services::MetadataService>(m_apiClient,m_services.WatchState,m_services.Downloads);
-        m_services.SettingsSync = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
+        auto metadataService = std::make_shared<::HaloDesktop::Services::MetadataService>(
+            m_apiClient, m_services.WatchState, m_services.Downloads);
+        m_services.Metadata = metadataService;
+        auto settingsSyncService = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
             m_apiClient,
             m_queryCache,
             m_storagePaths,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
-        m_services.Sources = std::make_shared<::HaloDesktop::Services::SourceService>(
+        m_services.SettingsSync = settingsSyncService;
+        auto sourceService = std::make_shared<::HaloDesktop::Services::SourceService>(
             m_apiClient,
             m_services.Downloads,
             m_services.SettingsSync);
+        m_services.Sources = sourceService;
+        std::weak_ptr<::HaloDesktop::Services::AddonService> weakAddons = addonService;
+        std::weak_ptr<::HaloDesktop::Services::LibraryService> weakLibrary = libraryService;
+        std::weak_ptr<::HaloDesktop::Services::WatchStateService> weakWatchState = watchStateService;
+        std::weak_ptr<::HaloDesktop::Services::CatalogService> weakCatalog = catalogService;
+        std::weak_ptr<::HaloDesktop::Services::MetadataService> weakMetadata = metadataService;
+        std::weak_ptr<::HaloDesktop::Services::SettingsSyncService> weakSettings = settingsSyncService;
+        std::weak_ptr<::HaloDesktop::Services::SourceService> weakSources = sourceService;
+        std::weak_ptr<::HaloDesktop::Services::DownloadService> weakDownloads = m_downloadService;
+        m_sessionService->SetIdentityChangedHandler(
+            [weakSession,
+             queryCache = m_queryCache,
+             weakAddons,
+             weakLibrary,
+             weakWatchState,
+             weakCatalog,
+             weakMetadata,
+             weakSettings,
+             weakSources,
+             weakDownloads]()
+            {
+                queryCache->Clear();
+                if (auto const addons = weakAddons.lock()) addons->OnAccountChanged();
+                if (auto const library = weakLibrary.lock()) library->OnAccountChanged();
+                if (auto const watchState = weakWatchState.lock()) watchState->OnAccountChanged();
+                if (auto const catalog = weakCatalog.lock()) catalog->OnAccountChanged();
+                if (auto const metadata = weakMetadata.lock()) metadata->OnAccountChanged();
+                if (auto const sources = weakSources.lock()) sources->OnAccountChanged();
+                if (auto const settings = weakSettings.lock())
+                {
+                    if (auto const session = weakSession.lock())
+                    {
+                        settings->OnAccountChanged(session->ServerUrl(), session->UserId());
+                    }
+                }
+                if (auto const downloads = weakDownloads.lock()) downloads->RebindAccount();
+            });
         m_services.Session = m_sessionService;
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>(m_devicePreferences);
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)

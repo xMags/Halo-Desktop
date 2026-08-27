@@ -20,6 +20,7 @@
             Severity="Informational"
             Title="{x:Bind ViewModel.InfoTitle, Mode=OneWay}"
             Message="{x:Bind ViewModel.InfoMessage, Mode=OneWay}" />
+          <InfoBar IsOpen="True" Severity="Error" Title="Download action failed" Message="{x:Bind ViewModel.ActionErrorText, Mode=OneWay}" Visibility="{x:Bind ViewModel.ActionErrorVisibility, Mode=OneWay}" />
 
           <Border Padding="18" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel>

@@ -82,8 +82,10 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable SettingsViewModel::Addons() const { return m_addons; }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::AddonsView() const { return m_addons; }
     winrt::hstring SettingsViewModel::AddonNoticeText() const { return m_addonNoticeText; }
+    winrt::hstring SettingsViewModel::AccountNoticeText() const { return m_accountNoticeText; }
     bool SettingsViewModel::CanEditAddons() const noexcept { return !m_addonsLoading && !m_addonsError && m_addonService->CanEditLists(); }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonNoticeVisibility() const noexcept { return m_addonNoticeVisible ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AccountNoticeVisibility() const noexcept { return m_accountNoticeVisible ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonLoadingVisibility() const noexcept { return m_addonsLoading ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonErrorVisibility() const noexcept { return !m_addonsLoading && m_addonsError ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonEmptyVisibility() const noexcept { return !m_addonsLoading && !m_addonsError && m_addons.Size() == 0 ? Visible : Collapsed; }
@@ -167,6 +169,8 @@ namespace winrt::HaloDesktop::implementation
     void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; m_playbackPreferences->HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
     void SettingsViewModel::Refresh()
     {
+        m_accountNoticeVisible = false;
+        m_accountNoticeText.clear();
         m_serverUrl = m_session->ServerUrl();
         m_userName = m_session->UserName();
         Raise(L"ServerUrl");
@@ -174,6 +178,8 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"DisplayName");
         Raise(L"SignedInLine");
         Raise(L"AccountRoleLine");
+        Raise(L"AccountNoticeText");
+        Raise(L"AccountNoticeVisibility");
         static_cast<void>(LoadAsync());
         ProbeHealth();
     }
@@ -275,8 +281,24 @@ namespace winrt::HaloDesktop::implementation
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
-        co_await m_session->SignOutAsync();
+        bool failed{};
+        try
+        {
+            co_await m_session->SignOutAsync();
+        }
+        catch (...)
+        {
+            failed = true;
+        }
         co_await uiContext;
+        if (failed)
+        {
+            m_accountNoticeText = L"Halo could not remove the saved session. You are still signed in. Try again.";
+            m_accountNoticeVisible = true;
+            Raise(L"AccountNoticeText");
+            Raise(L"AccountNoticeVisibility");
+            co_return;
+        }
         m_userName.clear();
         Raise(L"UserName");
         Raise(L"DisplayName");

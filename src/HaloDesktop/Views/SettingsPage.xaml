@@ -307,6 +307,7 @@
 
           <StackPanel x:Name="AccountSection" Spacing="12">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Server &amp; account" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Library, watch progress and addon order sync through this server." /></StackPanel>
+            <InfoBar IsOpen="True" Severity="Error" Title="Sign out failed" Message="{x:Bind ViewModel.AccountNoticeText, Mode=OneWay}" Visibility="{x:Bind ViewModel.AccountNoticeVisibility, Mode=OneWay}" />
             <Border Padding="14" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
               <Grid ColumnSpacing="13">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

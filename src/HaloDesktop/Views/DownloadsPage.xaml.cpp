@@ -117,7 +117,7 @@ namespace winrt::HaloDesktop::implementation
             auto const folder = co_await picker.PickSingleFolderAsync();
             if (folder)
             {
-                winrt::get_self<DownloadsViewModel>(m_viewModel)->SetDownloadDirectory(
+                co_await winrt::get_self<DownloadsViewModel>(m_viewModel)->SetDownloadDirectoryAsync(
                     std::filesystem::path{ folder.Path().c_str() });
             }
         }

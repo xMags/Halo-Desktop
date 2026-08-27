@@ -63,6 +63,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ChartBars() const;
         [[nodiscard]] winrt::hstring InfoTitle() const;
         [[nodiscard]] winrt::hstring InfoMessage() const;
+        [[nodiscard]] winrt::hstring ActionErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionErrorVisibility() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> TransfersView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ReadyView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ChartBarsView() const;
@@ -107,7 +109,8 @@ namespace winrt::HaloDesktop::implementation
         void DeleteSelected();
         void OpenPlayer();
         void ChooseSource();
-        void SetDownloadDirectory(std::filesystem::path directory);
+        [[nodiscard]] winrt::Windows::Foundation::IAsyncAction SetDownloadDirectoryAsync(
+            std::filesystem::path directory);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 

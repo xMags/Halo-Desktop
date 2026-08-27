@@ -30,6 +30,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool HasLoaded() const noexcept;
         [[nodiscard]] bool IsDirty() const noexcept;
         [[nodiscard]] bool RefreshInFlight() const noexcept;
+        void Reset() noexcept;
         void Invalidate() noexcept;
         [[nodiscard]] std::optional<CatalogRefreshTicket> TryBeginRefresh() noexcept;
         void CompleteRefresh(CatalogRefreshTicket ticket, bool committed) noexcept;

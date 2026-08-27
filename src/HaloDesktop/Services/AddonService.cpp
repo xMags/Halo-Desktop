@@ -119,28 +119,36 @@ namespace HaloDesktop::Services
     {
         // Home, Search, and Settings can request addons at the same time. Every
         // caller must await the one snapshot that will actually be applied.
-        if (m_loadTask)
+        auto const accountVersion = m_accountVersion;
+        if (m_loadTask && m_loadTaskAccountVersion == accountVersion)
         {
             auto task = *m_loadTask;
             co_await task;
             co_return;
         }
 
-        auto task = LoadCoreAsync();
+        auto task = LoadCoreAsync(accountVersion);
         m_loadTask = task;
+        m_loadTaskAccountVersion = accountVersion;
         try
         {
             co_await task;
         }
         catch (...)
         {
-            m_loadTask.reset();
+            if (accountVersion == m_accountVersion)
+            {
+                m_loadTask.reset();
+            }
             throw;
         }
-        m_loadTask.reset();
+        if (accountVersion == m_accountVersion)
+        {
+            m_loadTask.reset();
+        }
     }
 
-    concurrency::task<void> AddonService::LoadCoreAsync()
+    concurrency::task<void> AddonService::LoadCoreAsync(std::uint64_t accountVersion)
     {
         auto const uiContext = winrt::apartment_context{};
         if (auto const cached = m_queryCache->TryGet<::HaloDesktop::Api::Dto::AddonsPayload>(AddonsCacheKey))
@@ -151,6 +159,11 @@ namespace HaloDesktop::Services
 
         auto const requestId = m_queryCache->Issue(AddonsCacheKey);
         auto payload = co_await m_apiClient->GetAddonsAsync();
+        co_await uiContext;
+        if (accountVersion != m_accountVersion)
+        {
+            co_return;
+        }
         auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty();
         m_seedAttempted = true;
         if (shouldSeed)
@@ -160,9 +173,14 @@ namespace HaloDesktop::Services
                 L"https://opensubtitles-v3.strem.io/manifest.json",
             }, false);
             payload = co_await m_apiClient->GetAddonsAsync();
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                co_return;
+            }
         }
-        co_await uiContext;
-        if (m_queryCache->Commit(AddonsCacheKey, requestId, payload, QueryTtl::Addons))
+        if (accountVersion == m_accountVersion
+            && m_queryCache->Commit(AddonsCacheKey, requestId, payload, QueryTtl::Addons))
         {
             Apply(std::move(payload));
         }
@@ -171,6 +189,7 @@ namespace HaloDesktop::Services
     concurrency::task<void> AddonService::AddAsync(winrt::hstring transportUrl)
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
         auto const url = Trimmed(transportUrl);
         if (!m_canEditLists)
         {
@@ -194,13 +213,15 @@ namespace HaloDesktop::Services
         urls.push_back(url);
         co_await m_apiClient->PutAddonsAsync(std::move(urls), false);
         co_await uiContext;
+        if (accountVersion != m_accountVersion) co_return;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync();
+        co_await LoadCoreAsync(m_accountVersion);
     }
 
     concurrency::task<void> AddonService::RemoveAsync(winrt::hstring addonId)
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
         auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
         {
             return record.Id == addonId;
@@ -215,8 +236,9 @@ namespace HaloDesktop::Services
         std::erase(urls, *found->TransportUrl);
         co_await m_apiClient->PutAddonsAsync(std::move(urls), found->IsGlobal);
         co_await uiContext;
+        if (accountVersion != m_accountVersion) co_return;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync();
+        co_await LoadCoreAsync(m_accountVersion);
     }
 
     concurrency::task<void> AddonService::SetCatalogsVisibleAsync(
@@ -224,6 +246,7 @@ namespace HaloDesktop::Services
         bool visible)
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
         auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
         {
             return record.Id == addonId;
@@ -234,8 +257,9 @@ namespace HaloDesktop::Services
         }
         co_await m_apiClient->PatchAddonAsync(found->Id, found->IsGlobal, !visible);
         co_await uiContext;
+        if (accountVersion != m_accountVersion) co_return;
         m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync();
+        co_await LoadCoreAsync(m_accountVersion);
     }
 
     void AddonService::Apply(::HaloDesktop::Api::Dto::AddonsPayload payload)
@@ -282,5 +306,15 @@ namespace HaloDesktop::Services
             }
         }
         return result;
+    }
+
+    void AddonService::OnAccountChanged()
+    {
+        ++m_accountVersion;
+        m_loadTask.reset();
+        m_records.clear();
+        m_items.Clear();
+        m_canEditLists = false;
+        m_seedAttempted = false;
     }
 }

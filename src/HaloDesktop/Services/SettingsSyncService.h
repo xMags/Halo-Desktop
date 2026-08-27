@@ -60,6 +60,7 @@ namespace HaloDesktop::Services
         void SubtitleTrackStyling(bool value);
         [[nodiscard]] bool AutoplayNextEpisode() const noexcept;
         void AutoplayNextEpisode(bool value);
+        void OnAccountChanged(winrt::hstring const& serverUrl, winrt::hstring const& userId);
 
     private:
         [[nodiscard]] concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> ReadMirrorAsync();
@@ -76,12 +77,13 @@ namespace HaloDesktop::Services
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<QueryCache> m_queryCache;
+        std::filesystem::path m_mirrorRoot;
         std::filesystem::path m_mirrorPath;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
         winrt::Windows::Data::Json::JsonObject m_value;
         std::int64_t m_updatedAt{};
         std::uint64_t m_writeVersion{};
         std::mutex m_mirrorMutex;
-        std::int64_t m_mirrorWrittenAt{ -1 };
+        std::uint64_t m_accountVersion{};
     };
 }
