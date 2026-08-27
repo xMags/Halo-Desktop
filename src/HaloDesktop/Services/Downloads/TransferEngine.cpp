@@ -317,6 +317,73 @@ namespace
         std::filesystem::remove(path, ignored);
     }
 
+    std::optional<bool> PathsMatch(
+        std::filesystem::path const& left,
+        std::filesystem::path const& right) noexcept
+    {
+        try
+        {
+            auto const normalizedLeft = std::filesystem::absolute(left).lexically_normal().wstring();
+            auto const normalizedRight = std::filesystem::absolute(right).lexically_normal().wstring();
+            if (normalizedLeft.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)())
+                || normalizedRight.size() > static_cast<std::size_t>((std::numeric_limits<int>::max)()))
+            {
+                return std::nullopt;
+            }
+            auto const comparison = CompareStringOrdinal(
+                normalizedLeft.c_str(),
+                static_cast<int>(normalizedLeft.size()),
+                normalizedRight.c_str(),
+                static_cast<int>(normalizedRight.size()),
+                TRUE);
+            if (comparison == 0)
+            {
+                return std::nullopt;
+            }
+            return comparison == CSTR_EQUAL;
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    bool RecordMayOwnPath(
+        HaloDesktop::Services::Downloads::DownloadRecord const& record,
+        std::filesystem::path const& path) noexcept
+    {
+        auto mayMatch = [&path](std::filesystem::path const& candidate) noexcept
+        {
+            auto const matches = PathsMatch(candidate, path);
+            return !matches || *matches;
+        };
+        if (mayMatch(record.TargetPath()) || mayMatch(record.PartialPath()))
+        {
+            return true;
+        }
+        return record.SubtitleFileName
+            && mayMatch(record.RootPath / *record.SubtitleFileName);
+    }
+
+    void RemoveRecordFiles(
+        HaloDesktop::Services::Downloads::DownloadRecord const& record,
+        HaloDesktop::Services::Downloads::DownloadRecord const* preservedOwner = nullptr) noexcept
+    {
+        auto removeUnlessPreserved = [preservedOwner](std::filesystem::path const& path) noexcept
+        {
+            if (!preservedOwner || !RecordMayOwnPath(*preservedOwner, path))
+            {
+                RemoveFileIfSafe(path);
+            }
+        };
+        removeUnlessPreserved(record.TargetPath());
+        removeUnlessPreserved(record.PartialPath());
+        if (record.SubtitleFileName)
+        {
+            removeUnlessPreserved(record.RootPath / *record.SubtitleFileName);
+        }
+    }
+
     std::wstring SubtitleExtension(std::wstring const& url)
     {
         auto end = url.find_first_of(L"?#");
@@ -838,12 +905,7 @@ namespace HaloDesktop::Services::Downloads
         Persist(std::move(snapshot), generation);
         if (foundRecord)
         {
-            RemoveFileIfSafe(removed.TargetPath());
-            RemoveFileIfSafe(removed.PartialPath());
-            if (removed.SubtitleFileName)
-            {
-                RemoveFileIfSafe(removed.RootPath / *removed.SubtitleFileName);
-            }
+            RemoveRecordFiles(removed);
             try { m_vault.Remove(jobId); } catch (...) {}
         }
     }
@@ -1247,7 +1309,7 @@ namespace HaloDesktop::Services::Downloads
         wil::unique_hfile output{ CreateFileW(
             record.PartialPath().c_str(),
             GENERIC_WRITE,
-            FILE_SHARE_READ,
+            FILE_SHARE_READ | FILE_SHARE_DELETE,
             nullptr,
             disposition,
             FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
@@ -1531,12 +1593,7 @@ namespace HaloDesktop::Services::Downloads
         }
         if (replaced)
         {
-            RemoveFileIfSafe(replaced->TargetPath());
-            RemoveFileIfSafe(replaced->PartialPath());
-            if (replaced->SubtitleFileName)
-            {
-                RemoveFileIfSafe(replaced->RootPath / *replaced->SubtitleFileName);
-            }
+            RemoveRecordFiles(*replaced, hasChanged ? &changed : nullptr);
             try { m_vault.Remove(replaced->JobId); } catch (...) {}
         }
         if (hasChanged)

@@ -165,14 +165,15 @@ namespace
         ~DownloadHttpServer()
         {
             m_stopping.store(true);
+            WakeListener();
+            if (m_thread.joinable())
+            {
+                m_thread.join();
+            }
             if (m_socket != INVALID_SOCKET)
             {
                 closesocket(m_socket);
                 m_socket = INVALID_SOCKET;
-            }
-            if (m_thread.joinable())
-            {
-                m_thread.join();
             }
             WSACleanup();
         }
@@ -193,6 +194,16 @@ namespace
         [[nodiscard]] std::wstring SubtitleUrl() const
         {
             return BaseUrl() + L"/subtitle.srt";
+        }
+
+        [[nodiscard]] std::wstring ExpiringUrl() const
+        {
+            return BaseUrl() + L"/video-expiring";
+        }
+
+        [[nodiscard]] std::wstring CancelUrl() const
+        {
+            return BaseUrl() + L"/video-cancel";
         }
 
         [[nodiscard]] std::vector<std::uint8_t> const& FirstBody() const noexcept
@@ -224,6 +235,25 @@ namespace
         [[nodiscard]] std::wstring BaseUrl() const
         {
             return L"http://127.0.0.1:" + std::to_wstring(m_port);
+        }
+
+        void WakeListener() const noexcept
+        {
+            auto const wake = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            if (wake == INVALID_SOCKET)
+            {
+                return;
+            }
+            sockaddr_in address{};
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            address.sin_port = htons(m_port);
+            static_cast<void>(connect(
+                wake,
+                reinterpret_cast<sockaddr*>(&address),
+                sizeof(address)));
+            shutdown(wake, SD_BOTH);
+            closesocket(wake);
         }
 
         void Run() noexcept
@@ -264,15 +294,39 @@ namespace
 
             auto const first = request.starts_with("GET /video-first ");
             auto const replacement = request.starts_with("GET /video-replacement ");
+            auto const expiring = request.starts_with("GET /video-expiring ");
+            auto const cancel = request.starts_with("GET /video-cancel ");
             auto const subtitle = request.starts_with("GET /subtitle.srt ");
             auto const hasVideoHeader =
                 request.find("\r\nX-Halo-Test: video-secret\r\n") != std::string::npos;
+            auto const hasRefreshedHeader =
+                request.find("\r\nX-Halo-Test: refreshed-secret\r\n") != std::string::npos;
             auto const hasSubtitleHeader =
                 request.find("\r\nX-Halo-Test: subtitle-secret\r\n") != std::string::npos;
             if ((first || replacement) && hasVideoHeader)
             {
                 ++m_authorizedVideoRequests;
                 SendBody(client, first ? m_firstBody : m_replacementBody, "application/octet-stream");
+                return;
+            }
+            if (expiring && hasRefreshedHeader)
+            {
+                ++m_authorizedVideoRequests;
+                SendBody(client, m_replacementBody, "application/octet-stream");
+                return;
+            }
+            if (expiring && hasVideoHeader)
+            {
+                ++m_authorizedVideoRequests;
+                static constexpr std::string_view response =
+                    "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                SendAll(client, response.data(), response.size());
+                return;
+            }
+            if (cancel && hasVideoHeader)
+            {
+                ++m_authorizedVideoRequests;
+                SendBody(client, m_cancelBody, "application/octet-stream");
                 return;
             }
             if (subtitle && hasSubtitleHeader)
@@ -323,6 +377,9 @@ namespace
         std::atomic_int m_rejectedRequests{};
         std::vector<std::uint8_t> m_firstBody;
         std::vector<std::uint8_t> m_replacementBody;
+        std::vector<std::uint8_t> m_cancelBody = std::vector<std::uint8_t>(
+            8u * 1024u * 1024u,
+            static_cast<std::uint8_t>(0x43));
         std::jthread m_thread;
     };
 
@@ -331,12 +388,14 @@ namespace
         std::wstring fileName,
         std::uint64_t videoSize,
         bool replaceExisting,
-        std::optional<SubtitleRequest> subtitle = std::nullopt)
+        std::optional<SubtitleRequest> subtitle = std::nullopt,
+        std::wstring videoId = L"movie:transfer-stability",
+        std::wstring headerValue = L"video-secret")
     {
         return {
             .Media = {
-                .VideoId = L"movie:transfer-stability",
-                .ItemId = L"movie:transfer-stability",
+                .VideoId = videoId,
+                .ItemId = videoId,
                 .MediaType = L"movie",
                 .Title = L"Transfer stability",
                 .FileName = std::move(fileName),
@@ -344,11 +403,26 @@ namespace
             },
             .Request = {
                 .Url = std::move(url),
-                .Headers = { { L"X-Halo-Test", L"video-secret" } },
+                .Headers = { { L"X-Halo-Test", std::move(headerValue) } },
                 .Subtitle = std::move(subtitle),
             },
             .ReplaceExisting = replaceExisting,
         };
+    }
+
+    void WaitForFile(std::filesystem::path const& path)
+    {
+        auto const deadline = std::chrono::steady_clock::now() + TransferTimeout;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            std::error_code error;
+            if (std::filesystem::file_size(path, error) > 0 && !error)
+            {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 20 });
+        }
+        throw std::runtime_error{ "The transfer test timed out waiting for a partial file." };
     }
 
     [[nodiscard]] DownloadRecord WaitForStatus(
@@ -481,6 +555,43 @@ void RunDownloadTransferStabilityTest()
     Require(engine.List().size() == 1, "replacement left duplicate visible download records");
     Require(server.AuthorizedVideoRequests() == 2, "the replacement did not preserve protected video headers");
     Require(server.RejectedRequests() == 0, "the loopback server rejected a replacement request");
+
+    auto const expired = engine.Start(MakeRequest(
+        server.ExpiringUrl(),
+        L"expiring.mkv",
+        server.ReplacementBody().size(),
+        false,
+        std::nullopt,
+        L"movie:same-url-replacement"));
+    static_cast<void>(WaitForStatus(engine, expired.JobId, DownloadStatus::Failed));
+    auto const refreshed = engine.Start(MakeRequest(
+        server.ExpiringUrl(),
+        L"expiring.mkv",
+        server.ReplacementBody().size(),
+        true,
+        std::nullopt,
+        L"movie:same-url-replacement",
+        L"refreshed-secret"));
+    auto const refreshedDone = WaitForStatus(engine, refreshed.JobId, DownloadStatus::Done);
+    auto const refreshedFiles = engine.FilesForPlayback(refreshedDone.JobId);
+    Require(
+        ReadBytes(refreshedFiles.VideoPath) == server.ReplacementBody(),
+        "same-URL replacement cleanup deleted the refreshed video");
+
+    auto const cancelled = engine.Start(MakeRequest(
+        server.CancelUrl(),
+        L"cancel.mkv",
+        8u * 1024u * 1024u,
+        false,
+        std::nullopt,
+        L"movie:cancel-active"));
+    static_cast<void>(WaitForStatus(engine, cancelled.JobId, DownloadStatus::Downloading));
+    WaitForFile(cancelled.PartialPath());
+    engine.Remove(cancelled.JobId);
+    Require(
+        !std::filesystem::exists(cancelled.PartialPath())
+            && !std::filesystem::exists(cancelled.TargetPath()),
+        "cancelling an active transfer left downloaded data behind");
 
     engine.RemoveChangedHandler(token);
 }
