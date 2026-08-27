@@ -1,8 +1,13 @@
 #include "Services/CatalogRefreshPolicy.h"
+#include "Services/Downloads/DownloadPageOperationState.h"
+#include "Services/Downloads/DownloadPreparation.h"
 #include "ViewModels/HomeStatePolicy.h"
+#include "DownloadTransferTest.h"
 
 #include <iostream>
+#include <optional>
 #include <stdexcept>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -100,6 +105,91 @@ namespace
                 HaloDesktop::ViewModels::HomeFilter::Series, moviesOnly),
             "a filtered hero was fabricated when no catalog title matched");
     }
+
+    HaloDesktop::Services::Downloads::DownloadStartRequest ProtectedVideoRequest()
+    {
+        return {
+            .Media = {
+                .VideoId = L"movie:test",
+                .ItemId = L"movie:test",
+                .MediaType = L"movie",
+                .Title = L"Test movie",
+            },
+            .Request = {
+                .Url = L"https://video.invalid/protected",
+                .Headers = { { L"Authorization", L"video-secret" } },
+            },
+        };
+    }
+
+    void TestOptionalSubtitleFallback()
+    {
+        constexpr std::string_view failureStages[]{ "hash", "lookup", "proxy" };
+        for (auto const failureStage : failureStages)
+        {
+            auto prepared = HaloDesktop::Services::Downloads::
+                PrepareDownloadWithOptionalSubtitleAsync(
+                    ProtectedVideoRequest(),
+                    [failureStage]()
+                    {
+                        return concurrency::create_task([failureStage]()
+                            -> std::optional<HaloDesktop::Services::Downloads::SubtitleRequest>
+                        {
+                            throw std::runtime_error{ std::string{ failureStage } };
+                        });
+                    }).get();
+            Require(!prepared.Request.Subtitle, "a failed subtitle preparation left a sidecar attached");
+            Require(
+                prepared.Request.Url == L"https://video.invalid/protected",
+                "a subtitle failure changed the protected video URL");
+            Require(
+                prepared.Request.Headers.at(L"Authorization") == L"video-secret",
+                "a subtitle failure changed the protected video headers");
+        }
+
+        auto prepared = HaloDesktop::Services::Downloads::PrepareDownloadWithOptionalSubtitleAsync(
+            ProtectedVideoRequest(),
+            []()
+            {
+                return concurrency::task_from_result(
+                    std::optional<HaloDesktop::Services::Downloads::SubtitleRequest>{ {
+                        .Url = L"https://subtitle.invalid/protected",
+                        .Language = L"eng",
+                        .Id = L"subtitle:test",
+                        .Headers = { { L"Authorization", L"subtitle-secret" } },
+                    } });
+            }).get();
+        Require(prepared.Request.Subtitle.has_value(), "a prepared subtitle sidecar was discarded");
+        Require(
+            prepared.Request.Subtitle->Headers.at(L"Authorization") == L"subtitle-secret",
+            "protected subtitle headers were not preserved");
+    }
+
+    void TestDownloadPageOperationLifetime()
+    {
+        HaloDesktop::Services::Downloads::DownloadPageOperationState state;
+        state.NavigatedTo();
+        Require(!state.TryBegin(), "an unloaded Sources page admitted a download action");
+        state.Loaded();
+
+        auto const first = state.TryBegin();
+        Require(first.has_value(), "a loaded Sources page rejected its first download action");
+        Require(!state.TryBegin(), "competing download preparation was admitted");
+        Require(state.CanApply(*first), "the current download operation was treated as stale");
+
+        state.Unloaded();
+        Require(!state.CanApply(*first), "a navigated-away Sources page could still apply completion");
+        state.Complete(*first);
+        Require(!state.InFlight(), "a stale completed operation left the page permanently busy");
+
+        state.NavigatedTo();
+        state.Loaded();
+        auto const second = state.TryBegin();
+        Require(second.has_value(), "a reloaded Sources page could not start a new operation");
+        Require(!state.CanApply(*first), "an old page operation matched a newer page generation");
+        Require(state.CanApply(*second), "the newer page operation was not current");
+        state.Complete(*second);
+    }
 } // namespace
 
 int main()
@@ -110,6 +200,9 @@ int main()
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();
+        TestOptionalSubtitleFallback();
+        TestDownloadPageOperationLifetime();
+        RunDownloadTransferStabilityTest();
         std::cout << "StabilityTests passed\n";
         return 0;
     }

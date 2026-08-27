@@ -190,6 +190,8 @@
     <ClInclude Include="Services\Auth\ITokenProvider.h" />
     <ClInclude Include="Services\Downloads\DownloadTypes.h" />
     <ClInclude Include="Services\Downloads\DownloadIndexStore.h" />
+    <ClInclude Include="Services\Downloads\DownloadPageOperationState.h" />
+    <ClInclude Include="Services\Downloads\DownloadPreparation.h" />
     <ClInclude Include="Services\Downloads\RequestVault.h" />
     <ClInclude Include="Services\Downloads\TransferEngine.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
@@ -366,6 +368,9 @@
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp" />
     <ClCompile Include="Services\Downloads\DownloadTypes.cpp" />
     <ClCompile Include="Services\Downloads\DownloadIndexStore.cpp" />
+    <ClCompile Include="Services\Downloads\DownloadPageOperationState.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Services\Downloads\RequestVault.cpp" />
     <ClCompile Include="Services\Downloads\TransferEngine.cpp" />
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />

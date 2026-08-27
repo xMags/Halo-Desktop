@@ -113,6 +113,7 @@
     <ClCompile Include="Services\Auth\LocalAuthSession.cpp"><Filter>Services\Auth</Filter></ClCompile>
     <ClCompile Include="Services\Downloads\DownloadTypes.cpp"><Filter>Services\Downloads</Filter></ClCompile>
     <ClCompile Include="Services\Downloads\DownloadIndexStore.cpp"><Filter>Services\Downloads</Filter></ClCompile>
+    <ClCompile Include="Services\Downloads\DownloadPageOperationState.cpp"><Filter>Services\Downloads</Filter></ClCompile>
     <ClCompile Include="Services\Downloads\RequestVault.cpp"><Filter>Services\Downloads</Filter></ClCompile>
     <ClCompile Include="Services\Downloads\TransferEngine.cpp"><Filter>Services\Downloads</Filter></ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp"><Filter>Services\Auth</Filter></ClCompile>
@@ -203,6 +204,8 @@
     <ClInclude Include="Services\Auth\ITokenProvider.h"><Filter>Services\Auth</Filter></ClInclude>
     <ClInclude Include="Services\Downloads\DownloadTypes.h"><Filter>Services\Downloads</Filter></ClInclude>
     <ClInclude Include="Services\Downloads\DownloadIndexStore.h"><Filter>Services\Downloads</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\DownloadPageOperationState.h"><Filter>Services\Downloads</Filter></ClInclude>
+    <ClInclude Include="Services\Downloads\DownloadPreparation.h"><Filter>Services\Downloads</Filter></ClInclude>
     <ClInclude Include="Services\Downloads\RequestVault.h"><Filter>Services\Downloads</Filter></ClInclude>
     <ClInclude Include="Services\Downloads\TransferEngine.h"><Filter>Services\Downloads</Filter></ClInclude>
     <ClInclude Include="Services\Auth\LocalAuthSession.h"><Filter>Services\Auth</Filter></ClInclude>

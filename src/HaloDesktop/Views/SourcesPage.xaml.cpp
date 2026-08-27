@@ -15,9 +15,14 @@ namespace winrt::HaloDesktop::implementation
     {
     }
     winrt::HaloDesktop::SourcesViewModel SourcesPage::ViewModel() const { return m_viewModel; }
-    void SourcesPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args) { m_viewModel.Load(args.Parameter()); }
+    void SourcesPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
+    {
+        m_downloadOperation.NavigatedTo();
+        m_viewModel.Load(args.Parameter());
+    }
     void SourcesPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        m_downloadOperation.Loaded();
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
         viewModel->Activate();
         FindName(L"SourceList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->ItemsView());
@@ -40,6 +45,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        m_downloadOperation.Unloaded();
         winrt::get_self<SourcesViewModel>(m_viewModel)->Deactivate();
     }
     void SourcesPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
@@ -108,15 +114,81 @@ namespace winrt::HaloDesktop::implementation
         {
             co_return;
         }
+
+        auto const ticket = m_downloadOperation.TryBegin();
+        if (!ticket)
+        {
+            co_return;
+        }
+        auto const uiContext = winrt::apartment_context{};
+        try
+        {
+            co_await StartDownloadCore(std::move(key), *ticket);
+        }
+        catch (...)
+        {
+        }
+
+        try
+        {
+            co_await uiContext;
+            m_downloadOperation.Complete(*ticket);
+        }
+        catch (...)
+        {
+        }
+    }
+
+    winrt::Windows::Foundation::IAsyncAction SourcesPage::StartDownloadCore(
+        winrt::hstring key,
+        ::HaloDesktop::Services::Downloads::DownloadPageOperationState::Ticket ticket)
+    {
+        auto const uiContext = winrt::apartment_context{};
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
-        auto outcome = co_await viewModel->StartDownloadAsync(key, false);
+        auto outcome = ::HaloDesktop::Services::DownloadStartOutcome::Failed;
+        try
+        {
+            outcome = co_await viewModel->StartDownloadAsync(key, false);
+        }
+        catch (...)
+        {
+        }
+        co_await uiContext;
+        if (!m_downloadOperation.CanApply(ticket))
+        {
+            co_return;
+        }
+
         if (outcome == ::HaloDesktop::Services::DownloadStartOutcome::ReplacementRequired)
         {
-            if (!co_await ConfirmReplacementAsync())
+            auto replace = false;
+            try
+            {
+                replace = co_await ConfirmReplacementAsync();
+            }
+            catch (...)
             {
                 co_return;
             }
-            outcome = co_await viewModel->StartDownloadAsync(key, true);
+            co_await uiContext;
+            if (!m_downloadOperation.CanApply(ticket) || !replace)
+            {
+                co_return;
+            }
+
+            outcome = ::HaloDesktop::Services::DownloadStartOutcome::Failed;
+            try
+            {
+                outcome = co_await viewModel->StartDownloadAsync(key, true);
+            }
+            catch (...)
+            {
+            }
+            co_await uiContext;
+            if (!m_downloadOperation.CanApply(ticket))
+            {
+                co_return;
+            }
         }
         if (outcome == ::HaloDesktop::Services::DownloadStartOutcome::Started
             || outcome == ::HaloDesktop::Services::DownloadStartOutcome::AlreadyExists)

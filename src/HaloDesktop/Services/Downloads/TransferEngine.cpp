@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cwctype>
 #include <limits>
 #include <memory>
 #include <stdexcept>

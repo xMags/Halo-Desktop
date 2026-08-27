@@ -53,6 +53,11 @@ namespace HaloDesktop::Services
 
     private:
         [[nodiscard]] bool Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept;
+        [[nodiscard]] concurrency::task<std::optional<Downloads::SubtitleRequest>> PrepareSubtitleAsync(
+            Api::Dto::StreamRecord stream,
+            winrt::hstring mediaType,
+            winrt::hstring videoId,
+            winrt::hstring preferredLanguage);
 
         std::shared_ptr<Api::ApiClient> m_api;
         std::shared_ptr<IDownloadService> m_downloads;

@@ -38,25 +38,52 @@
   </PropertyGroup>
   <ItemDefinitionGroup>
     <ClCompile>
-      <AdditionalIncludeDirectories>$(RepositoryRoot)src\HaloDesktop;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(RepositoryRoot)src\HaloDesktop;$(RepositoryRoot)packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <WarningLevel>Level4</WarningLevel>
       <TreatWarningAsError>true</TreatWarningAsError>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <PreprocessorDefinitions>HALO_DOWNLOAD_TEST_MINIMAL_PCH;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalOptions>%(AdditionalOptions) /utf-8 /permissive-</AdditionalOptions>
     </ClCompile>
     <Link>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;ole32.lib;uuid.lib;windowsapp.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="StabilityTests.cpp" />
+    <ClCompile Include="DownloadTransferTest.cpp" />
     <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogRefreshPolicy.cpp">
       <Link>CatalogRefreshPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Security\Dpapi.cpp">
+      <Link>Dpapi.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp">
+      <Link>ProtectedHttpHeaders.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadIndexStore.cpp">
+      <Link>DownloadIndexStore.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadPageOperationState.cpp">
+      <Link>DownloadPageOperationState.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadTypes.cpp">
+      <Link>DownloadTypes.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\RequestVault.cpp">
+      <Link>RequestVault.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\TransferEngine.cpp">
+      <Link>TransferEngine.cpp</Link>
     </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\ViewModels\HomeStatePolicy.cpp">
       <Link>HomeStatePolicy.cpp</Link>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="DownloadTransferTest.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

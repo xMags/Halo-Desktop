@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
 #include "Security/ProtectedHttpHeaders.h"
+#include "Services/Downloads/DownloadPreparation.h"
 #include "Services/SettingsSyncService.h"
 
 #include <algorithm>
@@ -308,75 +309,99 @@ namespace HaloDesktop::Services
             auto const preferred = m_settings->PreferredSubtitleLanguage();
             if (preferred)
             {
-                std::optional<Api::Dto::SubtitleRecord> selected;
-                for (auto const& subtitle : stream.Subtitles)
-                {
-                    if (LanguageMatches(subtitle.Lang, *preferred))
+                request = co_await Downloads::PrepareDownloadWithOptionalSubtitleAsync(
+                    std::move(request),
+                    [this,
+                     stream,
+                     mediaType = navigation.Type(),
+                     videoId = navigation.VideoId(),
+                     preferredLanguage = *preferred]() mutable
                     {
-                        selected = Api::Dto::SubtitleRecord{ subtitle.Id, subtitle.Url, subtitle.Lang };
-                        break;
-                    }
-                }
-                if (!selected)
-                {
-                    std::optional<winrt::hstring> hash;
-                    std::optional<std::uint64_t> size;
-                    if (stream.VideoHash && stream.VideoSize)
-                    {
-                        hash = stream.VideoHash;
-                        size = stream.VideoSize;
-                    }
-                    else
-                    {
-                        try
-                        {
-                            auto const computed = co_await m_api->ComputeVideoHashAsync(
-                                stream.Url,
-                                HashHeaders(stream.RequestHeaders));
-                            hash = computed.Hash;
-                            size = computed.Size;
-                        }
-                        catch (...)
-                        {
-                        }
-                    }
-                    auto const payload = co_await m_api->GetSubtitlesAsync(
-                        navigation.Type(),
-                        navigation.VideoId(),
-                        hash,
-                        size,
-                        stream.Filename);
-                    for (auto const& group : payload.Results)
-                    {
-                        auto const match = std::find_if(group.Subtitles.begin(), group.Subtitles.end(),
-                            [&preferred](auto const& subtitle)
-                            {
-                                return LanguageMatches(subtitle.Lang, *preferred);
-                            });
-                        if (match != group.Subtitles.end())
-                        {
-                            selected = *match;
-                            break;
-                        }
-                    }
-                }
-                if (selected)
-                {
-                    auto const proxy = co_await m_api->BuildAddonProxyDownloadRequestAsync(selected->Url);
-                    request.Request.Subtitle = Downloads::SubtitleRequest{
-                        .Url = std::wstring{ proxy.Url.c_str() },
-                        .Language = std::wstring{ selected->Lang.c_str() },
-                        .Id = std::wstring{ selected->Id.c_str() },
-                        .Headers = DownloadHeaders(proxy.Headers),
-                    };
-                }
+                        return PrepareSubtitleAsync(
+                            std::move(stream),
+                            std::move(mediaType),
+                            std::move(videoId),
+                            std::move(preferredLanguage));
+                    });
             }
+            co_await uiContext;
             co_return co_await m_downloads->StartDownloadAsync(std::move(request));
         }
         catch (...)
         {
             co_return DownloadStartOutcome::Failed;
         }
+    }
+
+    concurrency::task<std::optional<Downloads::SubtitleRequest>> SourceService::PrepareSubtitleAsync(
+        Api::Dto::StreamRecord stream,
+        winrt::hstring mediaType,
+        winrt::hstring videoId,
+        winrt::hstring preferredLanguage)
+    {
+        std::optional<Api::Dto::SubtitleRecord> selected;
+        for (auto const& subtitle : stream.Subtitles)
+        {
+            if (LanguageMatches(subtitle.Lang, preferredLanguage))
+            {
+                selected = Api::Dto::SubtitleRecord{ subtitle.Id, subtitle.Url, subtitle.Lang };
+                break;
+            }
+        }
+
+        if (!selected)
+        {
+            std::optional<winrt::hstring> hash;
+            std::optional<std::uint64_t> size;
+            if (stream.VideoHash && stream.VideoSize)
+            {
+                hash = stream.VideoHash;
+                size = stream.VideoSize;
+            }
+            else
+            {
+                auto const computed = co_await m_api->ComputeVideoHashAsync(
+                    stream.Url,
+                    HashHeaders(stream.RequestHeaders));
+                hash = computed.Hash;
+                size = computed.Size;
+            }
+
+            auto const payload = co_await m_api->GetSubtitlesAsync(
+                std::move(mediaType),
+                std::move(videoId),
+                hash,
+                size,
+                stream.Filename);
+            for (auto const& group : payload.Results)
+            {
+                auto const match = std::find_if(
+                    group.Subtitles.begin(),
+                    group.Subtitles.end(),
+                    [&preferredLanguage](auto const& subtitle)
+                    {
+                        return LanguageMatches(subtitle.Lang, preferredLanguage);
+                    });
+                if (match != group.Subtitles.end())
+                {
+                    selected = *match;
+                    break;
+                }
+            }
+        }
+
+        if (!selected)
+        {
+            co_return std::nullopt;
+        }
+
+        auto const proxy = co_await m_api->BuildAddonProxyDownloadRequestAsync(selected->Url);
+        co_return Downloads::SubtitleRequest{
+            .Url = std::wstring{ proxy.Url.c_str() },
+            .Language = std::wstring{ selected->Lang.c_str() },
+            .Id = std::wstring{ selected->Id.c_str() },
+            .Headers = DownloadHeaders(proxy.Headers),
+        };
     }
 
     winrt::hstring SourceService::ResolveSummary() const { return m_summary; }

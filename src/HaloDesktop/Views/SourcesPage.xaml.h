@@ -1,6 +1,7 @@
 #pragma once
 
 #include "SourcesPage.g.h"
+#include "Services/Downloads/DownloadPageOperationState.h"
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -29,9 +30,13 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         winrt::fire_and_forget StartDownload(winrt::hstring key);
+        [[nodiscard]] winrt::Windows::Foundation::IAsyncAction StartDownloadCore(
+            winrt::hstring key,
+            ::HaloDesktop::Services::Downloads::DownloadPageOperationState::Ticket ticket);
         [[nodiscard]] winrt::Windows::Foundation::IAsyncOperation<bool> ConfirmReplacementAsync();
         [[nodiscard]] winrt::Windows::Foundation::IAsyncAction ShowDownloadFailureAsync();
         winrt::HaloDesktop::SourcesViewModel m_viewModel{ nullptr };
+        ::HaloDesktop::Services::Downloads::DownloadPageOperationState m_downloadOperation;
     };
 }
 
