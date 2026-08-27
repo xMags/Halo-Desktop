@@ -54,6 +54,34 @@ namespace HaloDesktop::Shell
         auto const presenter = m_appWindow.Presenter().as<winrt::Microsoft::UI::Windowing::OverlappedPresenter>();
         presenter.PreferredMinimumWidth(BoxDimension(minimumSize.Width));
         presenter.PreferredMinimumHeight(BoxDimension(minimumSize.Height));
+
+        ApplyWindowIcon();
+    }
+
+    // A WinUI window starts with no icon of its own, and the shell does not
+    // fall back to the executable's icon for it, so the taskbar and Alt+Tab
+    // show a placeholder until one is set explicitly. The icon is loaded from
+    // this executable's own resources rather than a file so there is nothing
+    // extra to install alongside the binary.
+    void WindowSizing::ApplyWindowIcon() noexcept
+    {
+        // LR_SHARED hands back a cached handle owned by the system, which must
+        // not be destroyed. That matches the lifetime wanted here: one icon for
+        // as long as the process runs.
+        auto* const icon = static_cast<HICON>(LoadImageW(
+            GetModuleHandleW(nullptr),
+            MAKEINTRESOURCEW(ApplicationIconResourceId),
+            IMAGE_ICON,
+            0,
+            0,
+            LR_DEFAULTSIZE | LR_SHARED));
+        if (!icon)
+        {
+            // A missing icon is cosmetic. Never fail window creation over it.
+            return;
+        }
+
+        m_appWindow.SetIcon(winrt::Microsoft::UI::GetIconIdFromIcon(icon));
     }
 
     winrt::Microsoft::UI::Windowing::AppWindow const& WindowSizing::AppWindow() const noexcept
