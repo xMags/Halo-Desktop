@@ -8,6 +8,14 @@
 #include "ViewModels/SettingsViewModel.h"
 
 #include <chrono>
+#include <winrt/Windows.System.h>
+
+namespace
+{
+    // The client's own repository. Releases are where a newer build would appear, so
+    // that is the page the card offers rather than the repository root.
+    constexpr wchar_t const* kReleasesUrl = L"https://github.com/xMags/Halo-Desktop/releases";
+}
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -78,6 +86,13 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnThinOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(1); }
     void SettingsPage::OnNormalOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(2); }
     void SettingsPage::OnHeavyOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetOutline(3); }
+    void SettingsPage::OnCheckForUpdatesClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        // The shell owns the launch and reports its own failure to the user, so the
+        // operation is deliberately dropped rather than awaited on the UI thread.
+        static_cast<void>(winrt::Windows::System::Launcher::LaunchUriAsync(
+            winrt::Windows::Foundation::Uri{ kReleasesUrl }));
+    }
     void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignOut(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
