@@ -3,6 +3,7 @@
 #include "VideoHostControl.g.h"
 
 #include <cstdint>
+#include <optional>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -23,9 +24,24 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] std::uintptr_t HostWindowHandle() const noexcept;
 
     private:
-        void UpdateBounds();
+        struct HostBounds final
+        {
+            int X{};
+            int Y{};
+            int Width{};
+            int Height{};
+
+            bool operator==(HostBounds const&) const = default;
+        };
+
+        void UpdateBounds() noexcept;
+        void TryUpdateBounds(bool allowRetry) noexcept;
+        void QueueBoundsRetry() noexcept;
 
         std::uintptr_t m_hostWindow{};
+        std::optional<HostBounds> m_lastBounds;
+        std::uint64_t m_hostWindowGeneration{};
+        bool m_boundsRetryQueued{};
         Microsoft::UI::Xaml::XamlRoot::Changed_revoker m_xamlRootChangedRevoker{};
     };
 } // namespace winrt::HaloDesktop::implementation

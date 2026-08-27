@@ -208,6 +208,35 @@ namespace
                 "failed fullscreen exit changed presentation state");
     }
 
+    void TestPlayerOverlayMoveState()
+    {
+        using HaloDesktop::Shell::PlayerOverlayLifecycle;
+        HaloDesktop::Shell::PlayerOverlayMoveState state;
+        Require(!state.CanOpen(PlayerOverlayLifecycle::Unloaded), "an unloaded player could open its overlay");
+        Require(state.CanOpen(PlayerOverlayLifecycle::Ready), "a loaded player could not open its overlay");
+
+        Require(state.Enter(), "move-size entry was not recorded");
+        Require(!state.Enter(), "duplicate move-size entry requested a second close");
+        Require(state.IsActive(), "move-size state was not active after entry");
+        Require(!state.CanOpen(PlayerOverlayLifecycle::Ready), "the overlay could reopen during move-size");
+
+        Require(!state.Exit(PlayerOverlayLifecycle::Unloaded), "an unloaded player requested overlay restoration");
+        Require(!state.IsActive(), "move-size state remained active after exit");
+
+        Require(state.Enter(), "a later move-size entry was ignored");
+        Require(!state.Exit(PlayerOverlayLifecycle::Closing), "a closing player requested overlay restoration");
+        Require(!state.CanOpen(PlayerOverlayLifecycle::Closing), "teardown permitted a late overlay reopen");
+
+        Require(state.Enter(), "the final move-size entry was ignored");
+        Require(state.Exit(PlayerOverlayLifecycle::Ready), "a loaded player did not request restoration after exit");
+        Require(state.CanOpen(PlayerOverlayLifecycle::Ready), "the overlay stayed blocked after move-size exit");
+
+        Require(state.Enter(), "move-size entry before unload was ignored");
+        state.Reset();
+        Require(!state.IsActive(), "unload did not reset move-size state");
+        Require(!state.CanOpen(PlayerOverlayLifecycle::Unloaded), "unload permitted a late overlay callback to reopen");
+    }
+
     void TestTemporaryFileCleanup()
     {
         auto const suffix=std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -242,6 +271,7 @@ int main()
         TestProtectedHashPolicy();
         TestResponseSizePolicy();
         TestWindowPresentationPolicy();
+        TestPlayerOverlayMoveState();
         TestTemporaryFileCleanup();
         std::cout<<"Playback policy tests passed.\n";
         return 0;

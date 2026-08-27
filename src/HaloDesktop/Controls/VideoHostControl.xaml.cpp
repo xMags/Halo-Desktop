@@ -9,13 +9,26 @@
 #include "Shell/WindowPresentationService.h"
 
 #include <cmath>
+#include <limits>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <wil/resource.h>
 
 namespace
 {
     constexpr wchar_t VideoHostClassName[] = L"HaloDesktop.MpvVideoHost";
+
+    [[nodiscard]] std::optional<int> TryRoundToInt(double value) noexcept
+    {
+        constexpr auto minimum = static_cast<double>((std::numeric_limits<int>::min)());
+        constexpr auto maximum = static_cast<double>((std::numeric_limits<int>::max)());
+        if (!std::isfinite(value) || value < minimum || value > maximum)
+        {
+            return std::nullopt;
+        }
+        return static_cast<int>(std::lround(value));
+    }
 
     LRESULT CALLBACK VideoHostWindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept
     {
@@ -108,6 +121,9 @@ namespace winrt::HaloDesktop::implementation
         // HWND is an opaque pointer. uintptr_t keeps that Windows type out of
         // the platform-neutral playback engine contract.
         m_hostWindow = reinterpret_cast<std::uintptr_t>(window);
+        ++m_hostWindowGeneration;
+        m_lastBounds.reset();
+        m_boundsRetryQueued = false;
         try
         {
             App::Services().Playback->AttachVideoWindow(m_hostWindow);
@@ -116,6 +132,9 @@ namespace winrt::HaloDesktop::implementation
         {
             DestroyWindow(window);
             m_hostWindow = 0;
+            ++m_hostWindowGeneration;
+            m_lastBounds.reset();
+            m_boundsRetryQueued = false;
             throw;
         }
     }
@@ -129,6 +148,9 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
         }
+        ++m_hostWindowGeneration;
+        m_lastBounds.reset();
+        m_boundsRetryQueued = false;
         if (m_hostWindow == 0)
         {
             return;
@@ -144,7 +166,10 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
         }
-        static_cast<void>(DestroyWindow(window));
+        if (IsWindow(window))
+        {
+            static_cast<void>(DestroyWindow(window));
+        }
     }
 
     std::uintptr_t VideoHostControl::HostWindowHandle() const noexcept
@@ -152,25 +177,121 @@ namespace winrt::HaloDesktop::implementation
         return m_hostWindow;
     }
 
-    void VideoHostControl::UpdateBounds()
+    void VideoHostControl::UpdateBounds() noexcept
     {
-        if (m_hostWindow == 0 || ActualWidth() <= 0.0 || ActualHeight() <= 0.0)
+        TryUpdateBounds(true);
+    }
+
+    void VideoHostControl::TryUpdateBounds(bool allowRetry) noexcept
+    {
+        if (m_hostWindow == 0)
         {
             return;
         }
 
-        auto const root = XamlRoot();
-        if (!root)
+        auto const window = reinterpret_cast<HWND>(m_hostWindow);
+        if (!IsWindow(window))
         {
             return;
         }
-        auto const origin = TransformToVisual(nullptr).TransformPoint({ 0.0f, 0.0f });
-        auto const scale = root.RasterizationScale();
-        auto const x = static_cast<int>(std::lround(origin.X * scale));
-        auto const y = static_cast<int>(std::lround(origin.Y * scale));
-        auto const width = (std::max)(1, static_cast<int>(std::lround(ActualWidth() * scale)));
-        auto const height = (std::max)(1, static_cast<int>(std::lround(ActualHeight() * scale)));
-        winrt::check_bool(SetWindowPos(reinterpret_cast<HWND>(m_hostWindow), nullptr, x, y, width, height,
-                                       SWP_NOACTIVATE | SWP_NOZORDER));
+
+        try
+        {
+            auto const actualWidth = ActualWidth();
+            auto const actualHeight = ActualHeight();
+            auto const root = XamlRoot();
+            if (!root || !std::isfinite(actualWidth) || !std::isfinite(actualHeight)
+                || actualWidth <= 0.0 || actualHeight <= 0.0)
+            {
+                if (allowRetry) QueueBoundsRetry();
+                return;
+            }
+
+            auto const scale = root.RasterizationScale();
+            if (!std::isfinite(scale) || scale <= 0.0)
+            {
+                if (allowRetry) QueueBoundsRetry();
+                return;
+            }
+
+            auto const origin = TransformToVisual(nullptr).TransformPoint({ 0.0f, 0.0f });
+            auto const x = TryRoundToInt(static_cast<double>(origin.X) * scale);
+            auto const y = TryRoundToInt(static_cast<double>(origin.Y) * scale);
+            auto const width = TryRoundToInt(actualWidth * scale);
+            auto const height = TryRoundToInt(actualHeight * scale);
+            if (!x || !y || !width || !height)
+            {
+                if (allowRetry) QueueBoundsRetry();
+                return;
+            }
+
+            HostBounds const bounds{
+                .X = *x,
+                .Y = *y,
+                .Width = (std::max)(1, *width),
+                .Height = (std::max)(1, *height),
+            };
+            if (m_lastBounds && *m_lastBounds == bounds)
+            {
+                return;
+            }
+
+            if (!SetWindowPos(
+                    window,
+                    nullptr,
+                    bounds.X,
+                    bounds.Y,
+                    bounds.Width,
+                    bounds.Height,
+                    SWP_NOACTIVATE | SWP_NOZORDER))
+            {
+                if (allowRetry) QueueBoundsRetry();
+                return;
+            }
+            m_lastBounds = bounds;
+        }
+        catch (...)
+        {
+            if (allowRetry) QueueBoundsRetry();
+        }
+    }
+
+    void VideoHostControl::QueueBoundsRetry() noexcept
+    {
+        if (m_boundsRetryQueued || m_hostWindow == 0)
+        {
+            return;
+        }
+
+        auto const generation = m_hostWindowGeneration;
+        try
+        {
+            auto const dispatcher = DispatcherQueue();
+            if (!dispatcher)
+            {
+                return;
+            }
+
+            m_boundsRetryQueued = true;
+            if (dispatcher.TryEnqueue(
+                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+                [weak = get_weak(), generation]()
+                {
+                    auto const self = weak.get();
+                    if (!self || generation != self->m_hostWindowGeneration)
+                    {
+                        return;
+                    }
+                    self->m_boundsRetryQueued = false;
+                    self->TryUpdateBounds(false);
+                }))
+            {
+                return;
+            }
+        }
+        catch (...)
+        {
+        }
+        m_boundsRetryQueued = false;
     }
 } // namespace winrt::HaloDesktop::implementation

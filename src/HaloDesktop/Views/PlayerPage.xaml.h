@@ -2,6 +2,7 @@
 
 #include "PlayerPage.g.h"
 #include "Playback/UpNextResolver.h"
+#include "Shell/WindowPresentationPolicy.h"
 
 #include <cstdint>
 #include <memory>
@@ -51,8 +52,13 @@ namespace winrt::HaloDesktop::implementation
         void ShowMediaPrompt(winrt::hstring const& message);
         void ShowSubtitleError();
         void CloseOverlayPopup(bool detachChild) noexcept;
-        void UpdateOverlayLayout();
-        void RefreshOverlayAfterPresentationChange();
+        void UpdateOverlayLayout() noexcept;
+        void RefreshOverlayAfterPresentationChange() noexcept;
+        void OnWindowMoveSizeChanged(bool active) noexcept;
+        void RemoveWindowMoveSizeHandler() noexcept;
+        void QueueOverlayRestore() noexcept;
+        [[nodiscard]] bool CanOpenOverlay() const noexcept;
+        [[nodiscard]] ::HaloDesktop::Shell::PlayerOverlayLifecycle OverlayLifecycle() const noexcept;
         void FocusOverlayIfOpen() noexcept;
         void CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
 
@@ -60,7 +66,10 @@ namespace winrt::HaloDesktop::implementation
         winrt::HaloDesktop::PlaybackRequest m_request{ nullptr };
         std::shared_ptr<::HaloDesktop::Playback::PlaybackSessionController> m_session;
         std::optional<::HaloDesktop::Playback::UpNextResult> m_upNext;
+        ::HaloDesktop::Shell::PlayerOverlayMoveState m_overlayMoveState;
         winrt::event_token m_presentationChangedToken{};
+        std::uint64_t m_moveSizeChangedToken{};
+        std::uint64_t m_overlayLayoutGeneration{};
         std::uint64_t m_playbackGeneration{};
         bool m_loaded{};
         bool m_closing{};
