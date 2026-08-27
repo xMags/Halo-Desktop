@@ -55,17 +55,54 @@
           </VisualState.Setters>
         </VisualState>
       </VisualStateGroup>
+      <!--
+        Which rail entry is lit follows the scroll position, so the states only carry
+        the lit treatment: leaving a state reverts its setters, which is what keeps
+        exactly one entry marked without the page having to clear the previous one.
+      -->
+      <VisualStateGroup x:Name="RailSelection">
+        <VisualState x:Name="RailAppearance">
+          <VisualState.Setters>
+            <Setter Target="AppearanceRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
+            <Setter Target="AppearanceRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="RailAddons">
+          <VisualState.Setters>
+            <Setter Target="AddonsRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
+            <Setter Target="AddonsRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="RailPlayback">
+          <VisualState.Setters>
+            <Setter Target="PlaybackRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
+            <Setter Target="PlaybackRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="RailSubtitles">
+          <VisualState.Setters>
+            <Setter Target="SubtitlesRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
+            <Setter Target="SubtitlesRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+        <VisualState x:Name="RailAccount">
+          <VisualState.Setters>
+            <Setter Target="AccountRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
+            <Setter Target="AccountRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+          </VisualState.Setters>
+        </VisualState>
+      </VisualStateGroup>
     </VisualStateManager.VisualStateGroups>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <local:SectionHeader Title="Settings" />
     <Grid x:Name="SettingsBody" Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <StackPanel Spacing="2">
-        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAppearanceRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Appearance" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Theme" /></StackPanel></Button>
-        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Addons" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
-        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Playback" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
-        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnSubtitlesRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Subtitles" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Size, font, appearance" /></StackPanel></Button>
-        <Button Style="{StaticResource HaloRailButtonStyle}" Click="OnAccountRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Server &amp; account" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Sync, identity, version" /></StackPanel></Button>
+        <Button x:Name="AppearanceRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAppearanceRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Appearance" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Theme" /></StackPanel></Button>
+        <Button x:Name="AddonsRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Addons" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
+        <Button x:Name="PlaybackRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Playback" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
+        <Button x:Name="SubtitlesRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnSubtitlesRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Subtitles" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Size, font, appearance" /></StackPanel></Button>
+        <Button x:Name="AccountRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAccountRailClick"><StackPanel Spacing="2"><TextBlock FontSize="13.5" Text="Server &amp; account" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="Sync, identity, version" /></StackPanel></Button>
         <Border Margin="0,18,0,0" Padding="14" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="8"><Image Width="20" Height="20" Source="ms-appx:///Assets/halo-mark.png" /><TextBlock VerticalAlignment="Center" FontSize="12.5" FontWeight="SemiBold" Text="Halo Desktop" /></StackPanel>
@@ -88,8 +125,8 @@
         </Border>
       </StackPanel>
 
-      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden">
-        <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36">
+      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden" ViewChanged="OnFormViewChanged">
+        <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36" SizeChanged="OnFormSizeChanged">
           <StackPanel x:Name="AppearanceSection" Spacing="14">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Appearance" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Choose how Halo looks. System follows your Windows setting." /></StackPanel>
             <StackPanel Orientation="Horizontal" Spacing="12">

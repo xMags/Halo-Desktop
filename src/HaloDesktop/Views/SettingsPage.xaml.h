@@ -2,7 +2,9 @@
 
 #include "SettingsPage.g.h"
 
+#include <cstddef>
 #include <winrt/Microsoft.UI.Dispatching.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -34,14 +36,21 @@ namespace winrt::HaloDesktop::implementation
         void OnHeavyOutlineClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSignOutClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCheckForUpdatesClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnFormViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        void OnFormSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
 
     private:
         void ScrollTo(wchar_t const* elementName);
+        void UpdateRailSelection();
         winrt::fire_and_forget ShowDeleteAddonDialog(winrt::hstring name);
         winrt::HaloDesktop::SettingsViewModel m_viewModel{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_healthTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_healthTickRevoker{};
         bool m_loaded{};
+        // Index into the rail order, held so a scroll only restyles the rail when the
+        // section under the anchor actually changes.
+        std::size_t m_activeRail{ 0 };
+        bool m_railApplied{};
     };
 }
 

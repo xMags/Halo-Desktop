@@ -5,9 +5,12 @@
 #endif
 
 #include "App.xaml.h"
+#include "ViewModels/SettingsRailPolicy.h"
 #include "ViewModels/SettingsViewModel.h"
 
+#include <array>
 #include <chrono>
+#include <cstddef>
 #include <winrt/Windows.System.h>
 
 namespace
@@ -15,6 +18,29 @@ namespace
     // The client's own repository. Releases are where a newer build would appear, so
     // that is the page the card offers rather than the repository root.
     constexpr wchar_t const* kReleasesUrl = L"https://github.com/xMags/Halo-Desktop/releases";
+
+    // The rail entries in document order, paired with the section each one points at
+    // and the visual state that lights it. The three arrays are indexed together, so
+    // they must stay in the same order as the rail itself.
+    constexpr std::array<wchar_t const*, 5> kSectionNames{
+        L"AppearanceSection",
+        L"AddonsSection",
+        L"PlaybackSection",
+        L"SubtitlesSection",
+        L"AccountSection",
+    };
+    constexpr std::array<wchar_t const*, 5> kRailStates{
+        L"RailAppearance",
+        L"RailAddons",
+        L"RailPlayback",
+        L"RailSubtitles",
+        L"RailAccount",
+    };
+
+    // How far below the top edge a section has to reach before the rail counts it as
+    // the one being read. A band rather than the edge itself, so a boundary resting on
+    // the top of the viewport does not flip the selection back and forth.
+    constexpr double kAnchorFraction = 0.25;
 }
 
 namespace winrt::HaloDesktop::implementation
@@ -44,6 +70,9 @@ namespace winrt::HaloDesktop::implementation
         }
         m_healthTimer.Start();
         m_loaded = true;
+        // The rail follows the scroll position from here on, but the page opens at the
+        // top, so light the first entry before anything has scrolled.
+        UpdateRailSelection();
     }
     void SettingsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
@@ -97,6 +126,51 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
         FindName(elementName).as<Microsoft::UI::Xaml::FrameworkElement>().StartBringIntoView();
+    }
+    void SettingsPage::OnFormViewChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&)
+    {
+        UpdateRailSelection();
+    }
+    void SettingsPage::OnFormSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const&)
+    {
+        // Sections shift when the addon list finishes loading, which moves the reader
+        // to a different section without any scrolling having happened.
+        UpdateRailSelection();
+    }
+    void SettingsPage::UpdateRailSelection()
+    {
+        if (!m_loaded)
+        {
+            return;
+        }
+        auto const scroller = SettingsScroller();
+        auto const viewport = scroller.ViewportHeight();
+        if (viewport <= 0.0)
+        {
+            return;
+        }
+        std::array<double, kSectionNames.size()> tops{};
+        for (std::size_t index = 0; index < kSectionNames.size(); ++index)
+        {
+            auto const section = FindName(kSectionNames[index]).try_as<Microsoft::UI::Xaml::FrameworkElement>();
+            if (!section)
+            {
+                return;
+            }
+            tops[index] = section.TransformToVisual(scroller).TransformPoint({ 0.0f, 0.0f }).Y;
+        }
+        // Only treat the view as ended when there was somewhere to scroll to, otherwise
+        // a form short enough to fit would sit permanently on its last section.
+        auto const scrollable = scroller.ScrollableHeight();
+        auto const atEnd = scrollable > 0.5 && scroller.VerticalOffset() >= scrollable - 1.0;
+        auto const active = ::HaloDesktop::ViewModels::ActiveSettingsSection(tops, viewport * kAnchorFraction, atEnd);
+        if (m_railApplied && active == m_activeRail)
+        {
+            return;
+        }
+        m_activeRail = active;
+        m_railApplied = true;
+        Microsoft::UI::Xaml::VisualStateManager::GoToState(*this, kRailStates[active], false);
     }
     winrt::fire_and_forget SettingsPage::ShowDeleteAddonDialog(winrt::hstring id)
     {
