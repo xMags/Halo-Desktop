@@ -4,6 +4,7 @@
 #include "Playback/SubtitleController.h"
 #include "PlaybackTrackViewModel.g.h"
 #include "AddonSubtitleViewModel.g.h"
+#include "SubtitleAppearanceViewModel.g.h"
 #include "PlayerViewModel.g.h"
 #include "Services/AppServices.h"
 
@@ -40,6 +41,58 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         ::HaloDesktop::Playback::TrackInfo m_track;
+    };
+
+    // Subtitle appearance for the playback panel. Owns no state of its own beyond the
+    // cached copy it shows: every setter writes the account settings and then asks the
+    // subtitle controller to restyle the running file.
+    struct SubtitleAppearanceViewModel : SubtitleAppearanceViewModelT<SubtitleAppearanceViewModel>
+    {
+        SubtitleAppearanceViewModel(
+            std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> settings,
+            std::shared_ptr<::HaloDesktop::Playback::SubtitleController> subtitles);
+        [[nodiscard]] double Size() const noexcept;
+        void Size(double value);
+        [[nodiscard]] winrt::hstring SizeLabel() const;
+        [[nodiscard]] bool IsDefaultFont() const noexcept;
+        [[nodiscard]] bool IsSystemFont() const noexcept;
+        [[nodiscard]] bool IsSerifFont() const noexcept;
+        [[nodiscard]] bool IsMonoFont() const noexcept;
+        [[nodiscard]] bool IsNoOutline() const noexcept;
+        [[nodiscard]] bool IsThinOutline() const noexcept;
+        [[nodiscard]] bool IsNormalOutline() const noexcept;
+        [[nodiscard]] bool IsThickOutline() const noexcept;
+        [[nodiscard]] bool Shadow() const noexcept;
+        void Shadow(bool value);
+        [[nodiscard]] bool TrackStyling() const noexcept;
+        void TrackStyling(bool value);
+        [[nodiscard]] winrt::hstring PreviewText() const;
+        [[nodiscard]] double PreviewFontSize() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Media::FontFamily PreviewFontFamily() const;
+        [[nodiscard]] double PreviewOutlineOffset() const noexcept;
+        [[nodiscard]] double PreviewOutlineNegativeOffset() const noexcept;
+        [[nodiscard]] double PreviewShadowOffset() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewOutlineVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewShadowVisibility() const noexcept;
+        void SetFont(std::int32_t index);
+        void SetOutline(std::int32_t index);
+        void Refresh();
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+    private:
+        void Raise(wchar_t const* propertyName);
+        void RaisePreviewMetrics();
+        void Apply();
+
+        std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
+        std::shared_ptr<::HaloDesktop::Playback::SubtitleController> m_subtitles;
+        double m_size{ 100.0 };
+        std::int32_t m_fontIndex{ 1 };
+        std::int32_t m_outlineIndex{ 2 };
+        bool m_shadow{ true };
+        bool m_trackStyling{ true };
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
     struct PlayerViewModel : PlayerViewModelT<PlayerViewModel>
@@ -94,6 +147,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool UpNextOpen() const noexcept;
         [[nodiscard]] bool AudioTabSelected() const noexcept;
         [[nodiscard]] bool SubtitleTabSelected() const noexcept;
+        [[nodiscard]] bool SubtitleTracksTabSelected() const noexcept;
+        [[nodiscard]] bool SubtitleAppearanceTabSelected() const noexcept;
         [[nodiscard]] bool SpeedTabSelected() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PlayingVisibility() const noexcept;
@@ -102,6 +157,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AudioPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitlePanelVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitleTracksVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitleAppearanceVisibility() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SubtitleAppearanceViewModel SubtitleAppearance() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SpeedPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
@@ -128,6 +186,7 @@ namespace winrt::HaloDesktop::implementation
         void SetSpeed(double speed);
         void ShowPanel(std::int32_t index);
         void SelectPanel(std::int32_t index);
+        void SelectSubtitleTab(std::int32_t index);
         void ClosePanel();
         void SelectAudio(std::int64_t id);
         void SelectSubtitle(std::int64_t id);
@@ -169,6 +228,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_hideTickRevoker{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_upNextTickRevoker{};
         std::int32_t m_panelIndex{ -1 };
+        std::int32_t m_subtitleTabIndex{ 0 };
         std::int32_t m_upNextRemaining{ 8 };
         std::int32_t m_subtitleDelayMs{};
         std::int32_t m_audioDelayMs{};
@@ -195,6 +255,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_upNextCountdown{};
         bool m_upNextClaimed{};
         bool m_active{};
+        winrt::HaloDesktop::SubtitleAppearanceViewModel m_subtitleAppearance{ nullptr };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 } // namespace winrt::HaloDesktop::implementation

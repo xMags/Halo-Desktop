@@ -9,10 +9,15 @@
 #if __has_include("AddonSubtitleViewModel.g.cpp")
 #include "AddonSubtitleViewModel.g.cpp"
 #endif
+#if __has_include("SubtitleAppearanceViewModel.g.cpp")
+#include "SubtitleAppearanceViewModel.g.cpp"
+#endif
 
 #include "Shell/WindowPresentationService.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/SubtitlePreviewMetrics.h"
 
 #include <algorithm>
 #include <chrono>
@@ -62,11 +67,157 @@ namespace winrt::HaloDesktop::implementation
         return m_track.Selected;
     }
 
+
+    SubtitleAppearanceViewModel::SubtitleAppearanceViewModel(
+        std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> settings,
+        std::shared_ptr<::HaloDesktop::Playback::SubtitleController> subtitles)
+        : m_settings(std::move(settings)), m_subtitles(std::move(subtitles))
+    {
+        Refresh();
+    }
+    void SubtitleAppearanceViewModel::Refresh()
+    {
+        if (!m_settings) return;
+        m_size = m_settings->SubtitleScalePercent();
+        m_fontIndex = static_cast<std::int32_t>(
+            ::HaloDesktop::ViewModels::SubtitleFontIndex(m_settings->SubtitleFontFamily()));
+        m_outlineIndex = static_cast<std::int32_t>(
+            ::HaloDesktop::ViewModels::SubtitleOutlineIndex(m_settings->SubtitleOutline()));
+        m_shadow = m_settings->SubtitleShadow();
+        m_trackStyling = m_settings->SubtitleTrackStyling();
+        for (auto const property : { L"Size", L"SizeLabel", L"IsDefaultFont", L"IsSystemFont", L"IsSerifFont",
+                                     L"IsMonoFont", L"IsNoOutline", L"IsThinOutline", L"IsNormalOutline",
+                                     L"IsThickOutline", L"Shadow", L"TrackStyling", L"PreviewFontFamily",
+                                     L"PreviewOutlineVisibility", L"PreviewShadowVisibility" })
+        {
+            Raise(property);
+        }
+        RaisePreviewMetrics();
+    }
+    // Style only. RefreshPreferences would also re-run track selection, which would drop
+    // and reload the subtitle mid-drag every time the size slider ticks.
+    void SubtitleAppearanceViewModel::Apply() { if (m_subtitles) m_subtitles->RefreshStyle(); }
+    double SubtitleAppearanceViewModel::Size() const noexcept { return m_size; }
+    void SubtitleAppearanceViewModel::Size(double value)
+    {
+        auto const next = std::clamp(value, 50.0, 200.0);
+        if (std::abs(next - m_size) < 0.01) return;
+        m_size = next;
+        m_settings->SubtitleScalePercent(static_cast<std::int32_t>(std::lround(next)));
+        Raise(L"Size");
+        Raise(L"SizeLabel");
+        RaisePreviewMetrics();
+        Apply();
+    }
+    winrt::hstring SubtitleAppearanceViewModel::SizeLabel() const
+    {
+        std::wostringstream label;
+        label << static_cast<std::int32_t>(std::lround(m_size)) << L"%";
+        return winrt::hstring(label.str());
+    }
+    bool SubtitleAppearanceViewModel::IsDefaultFont() const noexcept { return m_fontIndex == 0; }
+    bool SubtitleAppearanceViewModel::IsSystemFont() const noexcept { return m_fontIndex == 1; }
+    bool SubtitleAppearanceViewModel::IsSerifFont() const noexcept { return m_fontIndex == 2; }
+    bool SubtitleAppearanceViewModel::IsMonoFont() const noexcept { return m_fontIndex == 3; }
+    bool SubtitleAppearanceViewModel::IsNoOutline() const noexcept { return m_outlineIndex == 0; }
+    bool SubtitleAppearanceViewModel::IsThinOutline() const noexcept { return m_outlineIndex == 1; }
+    bool SubtitleAppearanceViewModel::IsNormalOutline() const noexcept { return m_outlineIndex == 2; }
+    bool SubtitleAppearanceViewModel::IsThickOutline() const noexcept { return m_outlineIndex == 3; }
+    void SubtitleAppearanceViewModel::SetFont(std::int32_t index)
+    {
+        if (index < 0 || index > 3 || index == m_fontIndex) return;
+        m_fontIndex = index;
+        m_settings->SubtitleFontFamily(winrt::hstring{
+            ::HaloDesktop::ViewModels::kSubtitleFontFamilies[static_cast<std::size_t>(index)] });
+        for (auto const property : { L"IsDefaultFont", L"IsSystemFont", L"IsSerifFont", L"IsMonoFont",
+                                     L"PreviewFontFamily" })
+        {
+            Raise(property);
+        }
+        Apply();
+    }
+    void SubtitleAppearanceViewModel::SetOutline(std::int32_t index)
+    {
+        if (index < 0 || index > 3 || index == m_outlineIndex) return;
+        m_outlineIndex = index;
+        m_settings->SubtitleOutline(winrt::hstring{
+            ::HaloDesktop::ViewModels::kSubtitleOutlines[static_cast<std::size_t>(index)] });
+        for (auto const property : { L"IsNoOutline", L"IsThinOutline", L"IsNormalOutline", L"IsThickOutline",
+                                     L"PreviewOutlineVisibility" })
+        {
+            Raise(property);
+        }
+        RaisePreviewMetrics();
+        Apply();
+    }
+    bool SubtitleAppearanceViewModel::Shadow() const noexcept { return m_shadow; }
+    void SubtitleAppearanceViewModel::Shadow(bool value)
+    {
+        if (m_shadow == value) return;
+        m_shadow = value;
+        m_settings->SubtitleShadow(value);
+        Raise(L"Shadow");
+        Raise(L"PreviewShadowVisibility");
+        Apply();
+    }
+    bool SubtitleAppearanceViewModel::TrackStyling() const noexcept { return m_trackStyling; }
+    void SubtitleAppearanceViewModel::TrackStyling(bool value)
+    {
+        if (m_trackStyling == value) return;
+        m_trackStyling = value;
+        m_settings->SubtitleTrackStyling(value);
+        Raise(L"TrackStyling");
+        Apply();
+    }
+    // Long enough to wrap in the panel, so the preview shows what a real two-line caption
+    // does to the picture rather than flattering the settings with a short string.
+    winrt::hstring SubtitleAppearanceViewModel::PreviewText() const { return L"They kept the antenna pointed at nothing for eleven years."; }
+    double SubtitleAppearanceViewModel::PreviewFontSize() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewFontSize(m_size); }
+    Microsoft::UI::Xaml::Media::FontFamily SubtitleAppearanceViewModel::PreviewFontFamily() const
+    {
+        if (m_fontIndex == 2) return Microsoft::UI::Xaml::Media::FontFamily{ L"Georgia" };
+        if (m_fontIndex == 3) return Microsoft::UI::Xaml::Media::FontFamily{ L"ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono" };
+        // Default hands the face to mpv, which lands on a system sans, so the preview
+        // shows that rather than pretending to know what a styled track will pick.
+        return Microsoft::UI::Xaml::Media::FontFamily{ L"Segoe UI Variable Text" };
+    }
+    double SubtitleAppearanceViewModel::PreviewOutlineOffset() const noexcept
+    {
+        return ::HaloDesktop::ViewModels::SubtitlePreviewOutlineOffset(
+            static_cast<std::size_t>(std::clamp(m_outlineIndex, 0, 3)), m_size);
+    }
+    double SubtitleAppearanceViewModel::PreviewOutlineNegativeOffset() const noexcept { return -PreviewOutlineOffset(); }
+    double SubtitleAppearanceViewModel::PreviewShadowOffset() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewShadowOffset(m_size); }
+    Microsoft::UI::Xaml::Visibility SubtitleAppearanceViewModel::PreviewOutlineVisibility() const noexcept { return m_outlineIndex > 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SubtitleAppearanceViewModel::PreviewShadowVisibility() const noexcept { return m_shadow ? Visible : Collapsed; }
+    void SubtitleAppearanceViewModel::RaisePreviewMetrics()
+    {
+        for (auto const property : { L"PreviewFontSize", L"PreviewOutlineOffset",
+                                     L"PreviewOutlineNegativeOffset", L"PreviewShadowOffset" })
+        {
+            Raise(property);
+        }
+    }
+    winrt::event_token SubtitleAppearanceViewModel::PropertyChanged(
+        Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+    void SubtitleAppearanceViewModel::PropertyChanged(winrt::event_token const& token) noexcept
+    {
+        m_propertyChanged.remove(token);
+    }
+    void SubtitleAppearanceViewModel::Raise(wchar_t const* propertyName)
+    {
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, propertyName);
+    }
+
     PlayerViewModel::PlayerViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_engine(services.Playback),
           m_windowPresentation(services.WindowPresentation), m_state(services.Playback->State()),
           m_audioTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_addonSubtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_addonSubtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_subtitleAppearance(winrt::make<SubtitleAppearanceViewModel>(services.SettingsSync, services.Subtitles))
     {
         RebuildTracks();
     }
@@ -323,6 +474,14 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_panelIndex == 2;
     }
+    bool PlayerViewModel::SubtitleTracksTabSelected() const noexcept
+    {
+        return m_subtitleTabIndex == 0;
+    }
+    bool PlayerViewModel::SubtitleAppearanceTabSelected() const noexcept
+    {
+        return m_subtitleTabIndex == 1;
+    }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::PausedVisibility() const noexcept
     {
         return m_state.Paused ? Visible : Collapsed;
@@ -354,6 +513,18 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility PlayerViewModel::SpeedPanelVisibility() const noexcept
     {
         return m_panelIndex == 2 ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::SubtitleTracksVisibility() const noexcept
+    {
+        return m_subtitleTabIndex == 0 ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::SubtitleAppearanceVisibility() const noexcept
+    {
+        return m_subtitleTabIndex == 1 ? Visible : Collapsed;
+    }
+    winrt::HaloDesktop::SubtitleAppearanceViewModel PlayerViewModel::SubtitleAppearance() const
+    {
+        return m_subtitleAppearance;
     }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::UpNextVisibility() const noexcept
     {
@@ -493,6 +664,27 @@ namespace winrt::HaloDesktop::implementation
         }
         m_panelIndex = index;
         RaisePanelState();
+        NotifyUserActivity();
+    }
+    void PlayerViewModel::SelectSubtitleTab(std::int32_t index)
+    {
+        if (index < 0 || index > 1 || index == m_subtitleTabIndex)
+        {
+            return;
+        }
+        m_subtitleTabIndex = index;
+        // The stored appearance can have moved since the panel was last opened, from the
+        // settings page or from another device's sync, so the tab reads it back rather
+        // than trusting the copy it cached when the player started.
+        if (index == 1 && m_subtitleAppearance)
+        {
+            m_subtitleAppearance.Refresh();
+        }
+        for (auto const property : { L"SubtitleTracksTabSelected", L"SubtitleAppearanceTabSelected",
+                                     L"SubtitleTracksVisibility", L"SubtitleAppearanceVisibility" })
+        {
+            Raise(property);
+        }
         NotifyUserActivity();
     }
     void PlayerViewModel::ClosePanel()

@@ -59,6 +59,26 @@ namespace winrt::HaloDesktop::implementation
         void OnSubtitleTrackClick(winrt::Windows::Foundation::IInspectable const&,
                                   Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAddonSubtitleClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleTracksTabClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleAppearanceTabClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleDefaultFontClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleSystemFontClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleSerifFontClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleMonoFontClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleNoOutlineClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleThinOutlineClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleNormalOutlineClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSubtitleThickOutlineClick(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitleDelayDownClick(winrt::Windows::Foundation::IInspectable const&,
                                       Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitleDelayUpClick(winrt::Windows::Foundation::IInspectable const&,

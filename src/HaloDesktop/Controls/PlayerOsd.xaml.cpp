@@ -224,6 +224,56 @@ namespace winrt::HaloDesktop::implementation
                                        .Id());
     }
     void PlayerOsd::OnAddonSubtitleClick(winrt::Windows::Foundation::IInspectable const&sender,Microsoft::UI::Xaml::RoutedEventArgs const&){m_viewModel.SelectAddonSubtitle(winrt::unbox_value_or<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag(),L""));}
+    void PlayerOsd::OnSubtitleTracksTabClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SelectSubtitleTab(0);
+    }
+    void PlayerOsd::OnSubtitleAppearanceTabClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SelectSubtitleTab(1);
+    }
+    void PlayerOsd::OnSubtitleDefaultFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetFont(0);
+    }
+    void PlayerOsd::OnSubtitleSystemFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetFont(1);
+    }
+    void PlayerOsd::OnSubtitleSerifFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetFont(2);
+    }
+    void PlayerOsd::OnSubtitleMonoFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetFont(3);
+    }
+    void PlayerOsd::OnSubtitleNoOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetOutline(0);
+    }
+    void PlayerOsd::OnSubtitleThinOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetOutline(1);
+    }
+    void PlayerOsd::OnSubtitleNormalOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetOutline(2);
+    }
+    void PlayerOsd::OnSubtitleThickOutlineClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                          [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SubtitleAppearance().SetOutline(3);
+    }
     void PlayerOsd::OnSubtitleDelayDownClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

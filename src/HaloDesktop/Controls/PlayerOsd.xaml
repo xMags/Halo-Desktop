@@ -6,6 +6,16 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded">
   <UserControl.Resources>
+    <!-- Shared by the copies that make up the subtitle preview caption. -->
+    <Style x:Key="SubtitlePreviewLayerStyle" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style x:Key="SubtitlePreviewOutlineStyle" TargetType="TextBlock" BasedOn="{StaticResource SubtitlePreviewLayerStyle}">
+      <Setter Property="Foreground" Value="{StaticResource HaloSubtitleOutlineBrush}" />
+    </Style>
     <SolidColorBrush x:Key="ToggleButtonBackground" Color="#80141416" />
     <SolidColorBrush x:Key="ToggleButtonBackgroundPointerOver" Color="#9928282C" />
     <SolidColorBrush x:Key="ToggleButtonBackgroundPressed" Color="#B02C2C30" />
@@ -414,6 +424,16 @@
           <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
             <Grid>
               <StackPanel Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
+                <!-- Which track to play and how it looks are different questions; the tray
+                     keeps a long track list from burying the appearance controls. -->
+                <Border Margin="0,0,0,16" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <RadioButton GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleTracksTabSelected, Mode=OneWay}" Click="OnSubtitleTracksTabClick" Content="Tracks" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                    <RadioButton Grid.Column="1" GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleAppearanceTabSelected, Mode=OneWay}" Click="OnSubtitleAppearanceTabClick" Content="Appearance" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                  </Grid>
+                </Border>
+              <StackPanel Visibility="{x:Bind ViewModel.SubtitleTracksVisibility, Mode=OneWay}">
                 <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
                 <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind ViewModel.SubtitlesOffSelected, Mode=OneWay}" Click="OnSubtitlesOffClick" Style="{StaticResource PlayerTrackRadioStyle}">
                   <StackPanel><TextBlock Text="Off" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="No subtitles" /></StackPanel>
@@ -448,6 +468,108 @@
                   </ItemsControl.ItemTemplate>
                 </ItemsControl>
               </StackPanel>
+              <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.SubtitleAppearanceVisibility, Mode=OneWay}">
+                <!--
+                  These write the same account settings the settings page writes, and the
+                  subtitle controller restyles the running file, so nothing reloads.
+                -->
+                <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
+                  <StackPanel>
+                    <Grid>
+                      <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Size" />
+                      <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="12" Foreground="White" Text="{x:Bind ViewModel.SubtitleAppearance.SizeLabel, Mode=OneWay}" />
+                    </Grid>
+                    <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="mpv sub-scale, live" />
+                    <Slider Margin="0,8,0,0" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.SubtitleAppearance.Size, Mode=TwoWay}" AutomationProperties.Name="Subtitle size" />
+                    <Grid Margin="0,-4,0,0">
+                      <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="50" />
+                      <TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="100" />
+                      <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="200" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+                <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
+                  <Grid ColumnSpacing="12">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                      <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Delay" />
+                      <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="Shifts the track against the picture" TextWrapping="Wrap" />
+                    </StackPanel>
+                    <Border Grid.Column="1" VerticalAlignment="Center" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
+                      <StackPanel Orientation="Horizontal">
+                        <Button AutomationProperties.Name="Decrease subtitle delay" Click="OnSubtitleDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
+                        <TextBlock Width="66" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" />
+                        <Button AutomationProperties.Name="Increase subtitle delay" Click="OnSubtitleDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
+                      </StackPanel>
+                    </Border>
+                  </Grid>
+                </Border>
+                <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
+                  <StackPanel>
+                    <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Outline" />
+                    <!-- Label above the tray rather than beside it: four chips plus a label
+                         do not fit across the panel at its narrowest. -->
+                    <Border Margin="0,8,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
+                      <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <RadioButton GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNoOutline, Mode=OneWay}" Click="OnSubtitleNoOutlineClick" Content="None" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="1" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThinOutline, Mode=OneWay}" Click="OnSubtitleThinOutlineClick" Content="Thin" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="2" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNormalOutline, Mode=OneWay}" Click="OnSubtitleNormalOutlineClick" Content="Normal" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      </Grid>
+                    </Border>
+                    <Grid Margin="0,14,0,0">
+                      <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Shadow" />
+                      <ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleAppearance.Shadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+                <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
+                  <StackPanel>
+                    <Grid>
+                      <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Track styling" />
+                      <ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleAppearance.TrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
+                    </Grid>
+                    <!-- Static rather than reading the live track: the rule holds for every
+                         track, and stating it beats a label that changes under the reader. -->
+                    <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="On, a styled track keeps its own look. A plain text track always follows the settings here." TextWrapping="Wrap" />
+                    <Border Margin="0,12,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
+                      <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <RadioButton GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsDefaultFont, Mode=OneWay}" Click="OnSubtitleDefaultFontClick" Content="Default" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="1" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSystemFont, Mode=OneWay}" Click="OnSubtitleSystemFontClick" Content="System" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="2" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSerifFont, Mode=OneWay}" Click="OnSubtitleSerifFontClick" Content="Serif" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton Grid.Column="3" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsMonoFont, Mode=OneWay}" Click="OnSubtitleMonoFontClick" Content="Mono" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                </Border>
+                <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
+                  <StackPanel>
+                    <TextBlock Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" />
+                    <Border Margin="0,10,0,0" MinHeight="86" Padding="12" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="8">
+                      <!--
+                        The same layered caption the settings preview draws: a shadow copy,
+                        eight border copies ringing the glyphs, and the caption on top, all
+                        sharing one layout slot so every copy wraps identically.
+                      -->
+                      <Grid VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleShadowBrush}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewShadowVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewShadowOffset, Mode=OneWay}" Y="{x:Bind ViewModel.SubtitleAppearance.PreviewShadowOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.SubtitleAppearance.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                        <TextBlock Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleGlyphBrush}" FontFamily="{x:Bind ViewModel.SubtitleAppearance.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.SubtitleAppearance.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.SubtitleAppearance.PreviewText, Mode=OneWay}" />
+                      </Grid>
+                    </Border>
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+              </StackPanel>
               <StackPanel Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
                 <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="TRACKS" />
                 <ItemsControl x:Name="AudioTrackList">
@@ -480,20 +602,6 @@
             </Grid>
           </ScrollViewer>
           <Grid Grid.Row="3">
-            <StackPanel Visibility="{x:Bind ViewModel.SubtitlePanelVisibility, Mode=OneWay}">
-              <Border Height="1" Margin="0,16,0,0" Background="#17FFFFFF" />
-              <Grid Margin="0,16,0,0" ColumnSpacing="14">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="White" Text="Subtitle delay" />
-                <Border Grid.Column="1" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
-                  <StackPanel Orientation="Horizontal">
-                    <Button AutomationProperties.Name="Decrease subtitle delay" Click="OnSubtitleDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
-                    <TextBlock Width="72" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" />
-                    <Button AutomationProperties.Name="Increase subtitle delay" Click="OnSubtitleDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
-                  </StackPanel>
-                </Border>
-              </Grid>
-            </StackPanel>
             <StackPanel Visibility="{x:Bind ViewModel.AudioPanelVisibility, Mode=OneWay}">
               <Border Height="1" Margin="0,16,0,0" Background="#17FFFFFF" />
               <Grid Margin="0,16,0,0" ColumnSpacing="14">

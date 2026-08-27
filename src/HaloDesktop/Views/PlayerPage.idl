@@ -22,6 +22,36 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SelectedVisibility { get; };
     }
 
+    // Subtitle appearance, edited from the playback panel. Writes the same account
+    // settings the settings page writes, so a change made during a film is the new
+    // default everywhere, and applies to the running file without reloading it.
+    runtimeclass SubtitleAppearanceViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Double Size;
+        String SizeLabel { get; };
+        Boolean IsDefaultFont { get; };
+        Boolean IsSystemFont { get; };
+        Boolean IsSerifFont { get; };
+        Boolean IsMonoFont { get; };
+        Boolean IsNoOutline { get; };
+        Boolean IsThinOutline { get; };
+        Boolean IsNormalOutline { get; };
+        Boolean IsThickOutline { get; };
+        Boolean Shadow;
+        Boolean TrackStyling;
+        String PreviewText { get; };
+        Double PreviewFontSize { get; };
+        Microsoft.UI.Xaml.Media.FontFamily PreviewFontFamily { get; };
+        Double PreviewOutlineOffset { get; };
+        Double PreviewOutlineNegativeOffset { get; };
+        Double PreviewShadowOffset { get; };
+        Microsoft.UI.Xaml.Visibility PreviewOutlineVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PreviewShadowVisibility { get; };
+        void SetFont(Int32 index);
+        void SetOutline(Int32 index);
+        void Refresh();
+    }
+
     runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Double Position { get; };
@@ -62,6 +92,8 @@ namespace HaloDesktop
         Boolean UpNextOpen { get; };
         Boolean AudioTabSelected { get; };
         Boolean SubtitleTabSelected { get; };
+        Boolean SubtitleTracksTabSelected { get; };
+        Boolean SubtitleAppearanceTabSelected { get; };
         Boolean SpeedTabSelected { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PlayingVisibility { get; };
@@ -70,6 +102,9 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility AudioPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility SubtitlePanelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubtitleTracksVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubtitleAppearanceVisibility { get; };
+        SubtitleAppearanceViewModel SubtitleAppearance { get; };
         Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextAvailableVisibility { get; };
@@ -82,6 +117,7 @@ namespace HaloDesktop
         void SetSpeed(Double speed);
         void ShowPanel(Int32 index);
         void SelectPanel(Int32 index);
+        void SelectSubtitleTab(Int32 index);
         void ClosePanel();
         void SelectAudio(Int64 id);
         void SelectSubtitle(Int64 id);
