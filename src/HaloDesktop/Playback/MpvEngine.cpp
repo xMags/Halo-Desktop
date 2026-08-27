@@ -183,15 +183,35 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekAbsolute(double seconds)
     {
-        ++m_state.SeekSerial;
-        auto const next = std::clamp(seconds, 0.0, (std::max)(DurationNow(), m_state.DurationSeconds));
+        if (!std::isfinite(seconds))
+        {
+            return;
+        }
+
+        auto liveDuration = DurationNow();
+        if (!std::isfinite(liveDuration) || liveDuration < 0.0)
+        {
+            liveDuration = 0.0;
+        }
+        auto const next = std::clamp(
+            seconds,
+            0.0,
+            (std::max)(liveDuration, m_state.DurationSeconds));
         if (m_client)
         {
             m_seekTarget.reset();
             m_seekRestarted = false;
-            m_client->SeekAbsolute(next);
+            try
+            {
+                m_client->SeekAbsolute(next);
+            }
+            catch (std::runtime_error const&)
+            {
+                return;
+            }
             BeginSeek(next);
         }
+        ++m_state.SeekSerial;
         if (std::abs(next - m_state.PositionSeconds) >= 0.001)
         {
             m_state.PositionSeconds = next;
@@ -201,15 +221,27 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::SeekRelative(double seconds)
     {
-        ++m_state.SeekSerial;
+        if (!std::isfinite(seconds))
+        {
+            return;
+        }
+
         auto const next = std::clamp(m_state.PositionSeconds + seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
         if (m_client)
         {
             m_seekTarget.reset();
             m_seekRestarted = false;
-            m_client->SeekRelative(seconds);
+            try
+            {
+                m_client->SeekRelative(seconds);
+            }
+            catch (std::runtime_error const&)
+            {
+                return;
+            }
             BeginSeek(next);
         }
+        ++m_state.SeekSerial;
         if (std::abs(next - m_state.PositionSeconds) >= 0.001)
         {
             m_state.PositionSeconds = next;
@@ -337,14 +369,23 @@ namespace HaloDesktop::Playback
                 m_seekRestarted = true;
             }
         }
-        if (update.PositionSeconds && AcceptPosition(*update.PositionSeconds))
+        if (update.PositionSeconds
+            && std::isfinite(*update.PositionSeconds)
+            && AcceptPosition(*update.PositionSeconds))
         {
             m_state.PositionSeconds = *update.PositionSeconds;
         }
-        if (update.DurationSeconds)
+        if (update.DurationSeconds
+            && std::isfinite(*update.DurationSeconds)
+            && *update.DurationSeconds >= 0.0)
         {
             m_state.DurationSeconds = *update.DurationSeconds;
         }
+        auto const timeline = NormalizePlaybackTimeline(
+            m_state.PositionSeconds,
+            m_state.DurationSeconds);
+        m_state.PositionSeconds = timeline.PositionSeconds;
+        m_state.DurationSeconds = timeline.DurationSeconds;
         if (update.Volume && m_audioSessionSerial == 0)
         {
             m_state.Volume = *update.Volume;

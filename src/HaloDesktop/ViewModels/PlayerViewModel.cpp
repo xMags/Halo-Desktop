@@ -621,9 +621,12 @@ namespace winrt::HaloDesktop::implementation
         }
 
         m_scrubPosition = ScrubTarget(seconds);
-        m_scrubbing = false;
+        // Keep engine notifications from changing the Slider while its pointer
+        // release delegate is still completing the final seek.
         m_engine->SeekAbsolute(m_scrubPosition);
-        Raise(L"Position");
+        m_scrubbing = false;
+        // The Slider already owns this value. Its next engine notification can
+        // refresh the binding after WinUI finishes pointer capture cleanup.
         Raise(L"PositionText");
         NotifyUserActivity();
     }
@@ -951,7 +954,9 @@ namespace winrt::HaloDesktop::implementation
     }
     double PlayerViewModel::ScrubTarget(double seconds) const noexcept
     {
-        return std::clamp(seconds, 0.0, (std::max)(m_state.DurationSeconds, 0.0));
+        return ::HaloDesktop::Playback::NormalizePlaybackTimeline(
+            seconds,
+            m_state.DurationSeconds).PositionSeconds;
     }
     winrt::hstring PlayerViewModel::FormatTime(double seconds, bool withHours)
     {

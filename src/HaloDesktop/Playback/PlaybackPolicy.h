@@ -27,6 +27,12 @@ namespace HaloDesktop::Playback
         LanguageFallback,
     };
 
+    struct PlaybackTimeline final
+    {
+        double PositionSeconds{};
+        double DurationSeconds{};
+    };
+
     [[nodiscard]] std::wstring NormalizeLanguage(std::wstring value);
     [[nodiscard]] std::wstring LanguageDisplayName(std::wstring const& code);
     [[nodiscard]] bool LanguageMatches(std::wstring const& left, std::wstring const& right);
@@ -66,6 +72,9 @@ namespace HaloDesktop::Playback
     [[nodiscard]] bool ShouldExitMpvEventLoop(
         bool stopping,
         bool shutdownEvent) noexcept;
+    [[nodiscard]] PlaybackTimeline NormalizePlaybackTimeline(
+        double positionSeconds,
+        double durationSeconds) noexcept;
     [[nodiscard]] bool IsPlaybackSpeedSelected(double actual, double choice) noexcept;
     [[nodiscard]] std::int32_t AdjustPlaybackDelayMilliseconds(
         std::int32_t current,

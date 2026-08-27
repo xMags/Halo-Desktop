@@ -106,6 +106,30 @@ namespace
         Require(ShouldExitMpvEventLoop(false,true),"mpv event loop ignored the shutdown event");
         Require(!ShouldExitMpvEventLoop(false,false),"mpv event loop stopped during normal playback");
 
+        auto const ordinaryTimeline = NormalizePlaybackTimeline(90.0, 120.0);
+        Require(ordinaryTimeline.PositionSeconds == 90.0
+                && ordinaryTimeline.DurationSeconds == 120.0,
+                "a valid playback timeline was changed");
+        auto const pastEndTimeline = NormalizePlaybackTimeline(121.0, 120.0);
+        Require(pastEndTimeline.PositionSeconds == 120.0
+                && pastEndTimeline.DurationSeconds == 120.0,
+                "a playback position beyond the duration was not clamped");
+        auto const negativeTimeline = NormalizePlaybackTimeline(-1.0, 120.0);
+        Require(negativeTimeline.PositionSeconds == 0.0,
+                "a negative playback position was not clamped");
+        auto const invalidPositionTimeline = NormalizePlaybackTimeline(
+            (std::numeric_limits<double>::quiet_NaN)(),
+            120.0);
+        Require(invalidPositionTimeline.PositionSeconds == 0.0
+                && invalidPositionTimeline.DurationSeconds == 120.0,
+                "a non-finite playback position reached the timeline");
+        auto const invalidDurationTimeline = NormalizePlaybackTimeline(
+            90.0,
+            (std::numeric_limits<double>::infinity)());
+        Require(invalidDurationTimeline.PositionSeconds == 0.0
+                && invalidDurationTimeline.DurationSeconds == 0.0,
+                "a non-finite playback duration reached the timeline");
+
         Require(IsPlaybackSpeedSelected(1.75,1.75),"active speed was not selected");
         Require(!IsPlaybackSpeedSelected(1.75,1.5),"inactive speed was selected");
         Require(AdjustPlaybackDelayMilliseconds(0,50)==50,"delay did not advance by 50 ms");

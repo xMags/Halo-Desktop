@@ -208,6 +208,24 @@ namespace HaloDesktop::Playback
         return stopping||shutdownEvent;
     }
 
+    PlaybackTimeline NormalizePlaybackTimeline(
+        double positionSeconds,
+        double durationSeconds) noexcept
+    {
+        if (!std::isfinite(durationSeconds) || durationSeconds <= 0.0)
+        {
+            return {};
+        }
+        if (!std::isfinite(positionSeconds))
+        {
+            positionSeconds = 0.0;
+        }
+        return {
+            std::clamp(positionSeconds, 0.0, durationSeconds),
+            durationSeconds,
+        };
+    }
+
     bool IsPlaybackSpeedSelected(double actual,double choice)noexcept
     {
         return std::abs(actual-choice)<0.001;
