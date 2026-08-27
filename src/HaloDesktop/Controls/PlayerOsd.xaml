@@ -416,9 +416,9 @@
           <Border Grid.Row="1" Margin="0,16,0,18" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
             <Grid>
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-              <RadioButton GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" Style="{StaticResource HaloSegmentedRadioStyle}" />
-              <RadioButton Grid.Column="1" GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesTabClick" Content="Subtitles" Style="{StaticResource HaloSegmentedRadioStyle}" />
-              <RadioButton Grid.Column="2" GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedTabClick" Content="Speed" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton HorizontalAlignment="Stretch" GroupName="PanelTab" IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioTabClick" Content="Audio" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesTabClick" Content="Subtitles" Style="{StaticResource HaloSegmentedRadioStyle}" />
+              <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="PanelTab" IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedTabClick" Content="Speed" Style="{StaticResource HaloSegmentedRadioStyle}" />
             </Grid>
           </Border>
           <ScrollViewer Grid.Row="2" VerticalScrollBarVisibility="Hidden">
@@ -429,8 +429,8 @@
                 <Border Margin="0,0,0,16" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
                   <Grid>
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <RadioButton GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleTracksTabSelected, Mode=OneWay}" Click="OnSubtitleTracksTabClick" Content="Tracks" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                    <RadioButton Grid.Column="1" GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleAppearanceTabSelected, Mode=OneWay}" Click="OnSubtitleAppearanceTabClick" Content="Appearance" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                    <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleTracksTabSelected, Mode=OneWay}" Click="OnSubtitleTracksTabClick" Content="Tracks" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                    <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleSubTab" IsChecked="{x:Bind ViewModel.SubtitleAppearanceTabSelected, Mode=OneWay}" Click="OnSubtitleAppearanceTabClick" Content="Appearance" Style="{StaticResource HaloSegmentedRadioStyle}" />
                   </Grid>
                 </Border>
               <StackPanel Visibility="{x:Bind ViewModel.SubtitleTracksVisibility, Mode=OneWay}">
@@ -512,10 +512,10 @@
                     <Border Margin="0,8,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
                       <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <RadioButton GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNoOutline, Mode=OneWay}" Click="OnSubtitleNoOutlineClick" Content="None" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="1" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThinOutline, Mode=OneWay}" Click="OnSubtitleThinOutlineClick" Content="Thin" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="2" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNormalOutline, Mode=OneWay}" Click="OnSubtitleNormalOutlineClick" Content="Normal" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNoOutline, Mode=OneWay}" Click="OnSubtitleNoOutlineClick" Content="None" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThinOutline, Mode=OneWay}" Click="OnSubtitleThinOutlineClick" Content="Thin" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNormalOutline, Mode=OneWay}" Click="OnSubtitleNormalOutlineClick" Content="Normal" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
                       </Grid>
                     </Border>
                     <Grid Margin="0,14,0,0">
@@ -536,10 +536,10 @@
                     <Border Margin="0,12,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
                       <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                        <RadioButton GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsDefaultFont, Mode=OneWay}" Click="OnSubtitleDefaultFontClick" Content="Default" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="1" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSystemFont, Mode=OneWay}" Click="OnSubtitleSystemFontClick" Content="System" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="2" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSerifFont, Mode=OneWay}" Click="OnSubtitleSerifFontClick" Content="Serif" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton Grid.Column="3" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsMonoFont, Mode=OneWay}" Click="OnSubtitleMonoFontClick" Content="Mono" FontSize="12.5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsDefaultFont, Mode=OneWay}" Click="OnSubtitleDefaultFontClick" Content="Default" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSystemFont, Mode=OneWay}" Click="OnSubtitleSystemFontClick" Content="System" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSerifFont, Mode=OneWay}" Click="OnSubtitleSerifFontClick" Content="Serif" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsMonoFont, Mode=OneWay}" Click="OnSubtitleMonoFontClick" Content="Mono" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
                       </Grid>
                     </Border>
                   </StackPanel>
