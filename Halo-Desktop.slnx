@@ -4,7 +4,5 @@
     <Platform Name="x64" />
     <Platform Name="x86" />
   </Configurations>
-  <Project Path="src/HaloDesktop/HaloDesktop.vcxproj">
-    <Deploy />
-  </Project>
+  <Project Path="src/HaloDesktop/HaloDesktop.vcxproj" />
 </Solution>
