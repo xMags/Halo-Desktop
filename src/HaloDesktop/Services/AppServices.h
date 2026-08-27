@@ -15,6 +15,11 @@ namespace HaloDesktop::Shell
     class WindowPresentationService;
 }
 
+namespace HaloDesktop::Storage
+{
+    class AppStoragePaths;
+}
+
 namespace HaloDesktop::Services
 {
     class IAddonService;
@@ -23,7 +28,9 @@ namespace HaloDesktop::Services
     class IMetadataService;
     class ISessionService;
     class ISourceService;
+    class DevicePreferencesStore;
     class NavigationService;
+    class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
     class LibraryService;
@@ -38,6 +45,9 @@ namespace HaloDesktop::Services
         std::shared_ptr<IAddonService> Addons;
         std::shared_ptr<ISessionService> Session;
         std::shared_ptr<NavigationService> Navigation;
+        std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> StoragePaths;
+        std::shared_ptr<DevicePreferencesStore> DevicePreferences;
+        std::shared_ptr<PlaybackPreferences> PlaybackPreferences;
         std::shared_ptr<ThemeService> Theme;
         std::shared_ptr<SettingsSyncService> SettingsSync;
         std::shared_ptr<LibraryService> Library;

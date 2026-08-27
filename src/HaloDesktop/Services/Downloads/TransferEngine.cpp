@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Services/Downloads/TransferEngine.h"
 
+#include "Storage/FileStorage.h"
+
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -565,13 +567,30 @@ namespace HaloDesktop::Services::Downloads
             {
                 throw std::runtime_error{ "Sign in before downloading." };
             }
+            account = *m_activeAccount;
+        }
+        ::HaloDesktop::Storage::FileMutationLock const preparationLease{
+            m_store.Paths().DataRoot / (L"download-start-" + Sha256Hex(account + L"\n" + request.Media.VideoId)) };
+        auto latest = m_store.Load(false);
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || *m_activeAccount != account)
+            {
+                throw std::runtime_error{ "The active account changed while starting the download." };
+            }
+            for (auto& record : latest)
+            {
+                if (!m_records.contains(record.JobId))
+                {
+                    m_records.emplace(record.JobId, std::move(record));
+                }
+            }
             if (!m_pendingVideoIds.insert(request.Media.VideoId).second)
             {
                 throw std::runtime_error{ "This video is already being prepared for download." };
             }
             existing = VisibleRecordForVideoLocked(request.Media.VideoId);
             directory = m_store.DownloadDirectory();
-            account = *m_activeAccount;
         }
         auto clearPending = wil::scope_exit([this, videoId = request.Media.VideoId]() noexcept
         {
@@ -899,6 +918,7 @@ namespace HaloDesktop::Services::Downloads
         while (!stopToken.stop_requested())
         {
             std::wstring jobId;
+            std::unique_ptr<::HaloDesktop::Storage::FileMutationLock> jobLease;
             std::shared_ptr<std::atomic_bool> cancel;
             std::vector<DownloadRecord> snapshot;
             std::uint64_t generation{};
@@ -928,6 +948,29 @@ namespace HaloDesktop::Services::Downloads
                     jobId.clear();
                 }
                 if (jobId.empty())
+                {
+                    continue;
+                }
+            }
+            try
+            {
+                jobLease = std::make_unique<::HaloDesktop::Storage::FileMutationLock>(
+                    m_store.Paths().DataRoot / (L"download-job-" + jobId),
+                    std::chrono::milliseconds{ 0 });
+            }
+            catch (...)
+            {
+                continue;
+            }
+            {
+                std::scoped_lock const lock{ m_mutex };
+                auto const found = m_records.find(jobId);
+                if (m_activeJob
+                    || found == m_records.end()
+                    || !m_activeAccount
+                    || found->second.AccountKey != *m_activeAccount
+                    || found->second.Status != DownloadStatus::Queued
+                    || found->second.ExplicitPause)
                 {
                     continue;
                 }

@@ -1,12 +1,13 @@
 #include "pch.h"
 #include "Services/ThemeService.h"
 
-#include <winrt/Windows.Storage.h>
+#include "Services/DevicePreferencesStore.h"
+
+#include <stdexcept>
+#include <utility>
 
 namespace
 {
-    constexpr wchar_t ThemePreferenceKey[] = L"HaloDesktop.Appearance.Theme";
-
     [[nodiscard]] HaloDesktop::Services::ThemePreference FromStoredValue(std::int32_t value) noexcept
     {
         using HaloDesktop::Services::ThemePreference;
@@ -25,13 +26,14 @@ namespace
 
 namespace HaloDesktop::Services
 {
-    ThemeService::ThemeService()
+    ThemeService::ThemeService(std::shared_ptr<DevicePreferencesStore> preferences)
+        : m_preferences(std::move(preferences))
     {
-        auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
-        if (auto const stored = values.TryLookup(ThemePreferenceKey))
+        if (!m_preferences)
         {
-            m_preference = FromStoredValue(winrt::unbox_value_or<std::int32_t>(stored, 0));
+            throw std::invalid_argument{ "ThemeService requires a device preference store." };
         }
+        m_preference = FromStoredValue(m_preferences->Theme());
     }
 
     ThemePreference ThemeService::Preference() const noexcept
@@ -47,8 +49,7 @@ namespace HaloDesktop::Services
         }
 
         m_preference = preference;
-        winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(
-            ThemePreferenceKey, winrt::box_value(static_cast<std::int32_t>(preference)));
+        m_preferences->Theme(static_cast<std::int32_t>(preference));
         Apply();
     }
 

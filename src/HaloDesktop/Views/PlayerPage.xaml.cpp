@@ -75,7 +75,7 @@ namespace winrt::HaloDesktop::implementation
         FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
         FindName(L"SubtitleNotice").as<Microsoft::UI::Xaml::Controls::InfoBar>().IsOpen(false);
 
-        auto session=std::make_shared<::HaloDesktop::Playback::PlaybackSessionController>(services.Playback,services.WatchState,services.SettingsSync);m_session=session;
+        auto session=std::make_shared<::HaloDesktop::Playback::PlaybackSessionController>(services.Playback,services.WatchState,services.SettingsSync,services.PlaybackPreferences);m_session=session;
         session->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration)self->ShowMediaPrompt(L"Playback failed for this source. Return to Sources and choose another one.");});
         session->SetEndOfFileHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_upNext&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->BeginUpNextCountdown();});
         services.Subtitles->SetChoicesChangedHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->SetAddonSubtitles(App::Services().Subtitles->Choices());});

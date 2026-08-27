@@ -14,6 +14,7 @@
 namespace HaloDesktop::Services
 {
     class SettingsSyncService;
+    class PlaybackPreferences;
     class WatchStateService;
 }
 
@@ -30,7 +31,8 @@ namespace HaloDesktop::Playback
         PlaybackSessionController(
             std::shared_ptr<IPlaybackEngine> engine,
             std::shared_ptr<Services::WatchStateService> watchState,
-            std::shared_ptr<Services::SettingsSyncService> settings);
+            std::shared_ptr<Services::SettingsSyncService> settings,
+            std::shared_ptr<Services::PlaybackPreferences> preferences);
         ~PlaybackSessionController();
         [[nodiscard]] concurrency::task<void> StartAsync(winrt::HaloDesktop::PlaybackRequest request);
         [[nodiscard]] concurrency::task<void> CloseAsync();
@@ -51,6 +53,7 @@ namespace HaloDesktop::Playback
         std::shared_ptr<IPlaybackEngine>m_engine;
         std::shared_ptr<Services::WatchStateService>m_watchState;
         std::shared_ptr<Services::SettingsSyncService>m_settings;
+        std::shared_ptr<Services::PlaybackPreferences>m_preferences;
         std::shared_ptr<WatchReporter>m_reporter;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};
         std::optional<Api::Dto::WatchEntry>m_prior;

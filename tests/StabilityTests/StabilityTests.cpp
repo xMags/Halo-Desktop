@@ -3,6 +3,7 @@
 #include "Services/Downloads/DownloadPreparation.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
+#include "StorageTests.h"
 
 #include <iostream>
 #include <optional>
@@ -202,6 +203,7 @@ int main()
         TestFilteredFeaturedSelection();
         TestOptionalSubtitleFallback();
         TestDownloadPageOperationLifetime();
+        RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();
         std::cout << "StabilityTests passed\n";
         return 0;

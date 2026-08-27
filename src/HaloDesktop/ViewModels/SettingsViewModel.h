@@ -127,6 +127,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
+        std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_addons{ nullptr };
         winrt::hstring m_serverUrl;
         winrt::hstring m_userName;

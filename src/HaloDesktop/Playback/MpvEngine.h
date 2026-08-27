@@ -9,6 +9,11 @@
 #include <string>
 #include <unordered_map>
 
+namespace HaloDesktop::Services
+{
+    class PlaybackPreferences;
+}
+
 namespace HaloDesktop::Playback
 {
     class MpvClient;
@@ -18,7 +23,7 @@ namespace HaloDesktop::Playback
     class MpvEngine final : public IPlaybackEngine, public std::enable_shared_from_this<MpvEngine>
     {
     public:
-        MpvEngine();
+        explicit MpvEngine(std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> preferences);
         ~MpvEngine() override;
 
         MpvEngine(MpvEngine const&) = delete;
@@ -63,6 +68,7 @@ namespace HaloDesktop::Playback
         [[nodiscard]] bool AcceptPosition(double positionSeconds) noexcept;
 
         std::unique_ptr<MpvClient> m_client;
+        std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_preferences;
         PlaybackState m_state;
         std::unordered_map<PlaybackChangedToken, PlaybackChangedHandler> m_handlers;
         PlaybackChangedToken m_nextToken{};

@@ -51,7 +51,7 @@ namespace HaloDesktop::Services::Auth
     class SessionStore final
     {
     public:
-        SessionStore();
+        explicit SessionStore(std::filesystem::path localState);
 
         [[nodiscard]] concurrency::task<std::optional<StoredSession>> LoadAsync();
         [[nodiscard]] concurrency::task<void> SaveAsync(StoredSession session);

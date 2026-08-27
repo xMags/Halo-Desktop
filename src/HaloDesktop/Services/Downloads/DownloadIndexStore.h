@@ -5,6 +5,8 @@
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <set>
+#include <string>
 #include <vector>
 
 namespace HaloDesktop::Services::Downloads
@@ -26,7 +28,7 @@ namespace HaloDesktop::Services::Downloads
     public:
         explicit DownloadIndexStore(std::filesystem::path dataRoot);
 
-        [[nodiscard]] std::vector<DownloadRecord> Load();
+        [[nodiscard]] std::vector<DownloadRecord> Load(bool recoverInterrupted = true);
         void Save(std::vector<DownloadRecord> const& records, std::uint64_t generation);
 
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
@@ -37,6 +39,7 @@ namespace HaloDesktop::Services::Downloads
         DownloadStoragePaths m_paths;
         mutable std::mutex m_mutex;
         std::filesystem::path m_downloadDirectory;
+        std::set<std::wstring, std::less<>> m_observedJobIds;
         std::uint64_t m_savedGeneration{};
     };
 }

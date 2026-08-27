@@ -9,7 +9,6 @@
 #include <string>
 #include <wil/resource.h>
 #include <winrt/Windows.Data.Json.h>
-#include <winrt/Windows.Storage.h>
 
 namespace
 {
@@ -184,12 +183,17 @@ namespace
 
 namespace HaloDesktop::Services::Auth
 {
-    SessionStore::SessionStore()
-        : m_path(std::filesystem::path{
-            winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str() }
+    SessionStore::SessionStore(std::filesystem::path localState)
+        : m_path(localState.empty()
+            ? std::filesystem::path{}
+            : std::filesystem::absolute(localState).lexically_normal()
             / L"auth-session.bin"),
           m_identityPath(m_path.parent_path() / L"auth-identity.bin")
     {
+        if (localState.empty())
+        {
+            throw std::invalid_argument{ "SessionStore requires a local state path." };
+        }
     }
 
     concurrency::task<std::optional<StoredSession>> SessionStore::LoadAsync()

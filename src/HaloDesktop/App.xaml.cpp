@@ -11,6 +11,7 @@
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
 #include "Services/DownloadService.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/TransferEngine.h"
 #include "Services/Auth/LocalAuthSession.h"
 #include "Services/Auth/OidcAuthSession.h"
@@ -20,6 +21,7 @@
 #include "Services/NavigationService.h"
 #include "Services/LibraryService.h"
 #include "Services/MetadataService.h"
+#include "Services/PlaybackPreferences.h"
 #include "Services/QueryCache.h"
 #include "Services/SessionService.h"
 #include "Services/SettingsSyncService.h"
@@ -29,19 +31,34 @@
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
 #include "Shell/WindowPresentationService.h"
+#include "Storage/AppStoragePaths.h"
+#include "Storage/LegacyPackageDataSource.h"
+#include "Storage/PackagedDataMigrator.h"
 
-#include <filesystem>
 #include <memory>
-#include <winrt/Windows.Storage.h>
 
 namespace winrt::HaloDesktop::implementation
 {
     App::App()
     {
+        m_storagePaths = std::make_shared<::HaloDesktop::Storage::AppStoragePaths>();
+        auto legacySource = std::make_shared<::HaloDesktop::Storage::InstalledLegacyPackageDataSource>();
+        ::HaloDesktop::Storage::PackagedDataMigrator migrator{ m_storagePaths, legacySource };
+        static_cast<void>(migrator.Migrate());
+        m_storagePaths->EnsureDirectories();
+        m_devicePreferences = std::make_shared<::HaloDesktop::Services::DevicePreferencesStore>(
+            m_storagePaths->PreferencesFile());
+        m_playbackPreferences = std::make_shared<::HaloDesktop::Services::PlaybackPreferences>(
+            m_devicePreferences);
+        m_services.StoragePaths = m_storagePaths;
+        m_services.DevicePreferences = m_devicePreferences;
+        m_services.PlaybackPreferences = m_playbackPreferences;
+
         m_httpExecutor = std::make_shared<::HaloDesktop::Api::HttpExecutor>();
         m_queryCache = std::make_shared<::HaloDesktop::Services::QueryCache>();
         m_services.Navigation = std::make_shared<::HaloDesktop::Services::NavigationService>();
-        m_sessionStore = std::make_shared<::HaloDesktop::Services::Auth::SessionStore>();
+        m_sessionStore = std::make_shared<::HaloDesktop::Services::Auth::SessionStore>(
+            m_storagePaths->LocalState());
         m_localAuthSession = std::make_shared<::HaloDesktop::Services::Auth::LocalAuthSession>(
             ::HaloDesktop::Config::ServerBaseUrl,
             m_httpExecutor,
@@ -87,12 +104,11 @@ namespace winrt::HaloDesktop::implementation
             m_apiClient,
             addonService,
             m_services.Library,
-            m_services.WatchState);
+            m_services.WatchState,
+            m_devicePreferences);
         m_services.Catalog = catalogService;
-        auto const localRoot = std::filesystem::path{
-            winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str() };
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
-            localRoot / L"downloads");
+            m_storagePaths->LocalState());
         m_downloadService = std::make_shared<::HaloDesktop::Services::DownloadService>(
             m_downloadEngine,
             m_sessionService,
@@ -110,19 +126,20 @@ namespace winrt::HaloDesktop::implementation
         m_services.SettingsSync = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
             m_apiClient,
             m_queryCache,
+            m_storagePaths,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Sources = std::make_shared<::HaloDesktop::Services::SourceService>(
             m_apiClient,
             m_services.Downloads,
             m_services.SettingsSync);
         m_services.Session = m_sessionService;
-        m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>();
+        m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>(m_devicePreferences);
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
-        m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>();
+        m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>(m_playbackPreferences);
 #else
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
 #endif
-        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync,m_services.Downloads);
+        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
         m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_apiClient,m_services.SettingsSync,m_services.Downloads);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
         m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();

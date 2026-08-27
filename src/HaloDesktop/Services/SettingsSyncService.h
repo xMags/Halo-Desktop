@@ -17,6 +17,11 @@ namespace HaloDesktop::Api
     class ApiClient;
 }
 
+namespace HaloDesktop::Storage
+{
+    class AppStoragePaths;
+}
+
 namespace HaloDesktop::Services
 {
     class QueryCache;
@@ -29,6 +34,7 @@ namespace HaloDesktop::Services
         SettingsSyncService(
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
             std::shared_ptr<QueryCache> queryCache,
+            std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> paths,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         [[nodiscard]] concurrency::task<void> LoadAsync();

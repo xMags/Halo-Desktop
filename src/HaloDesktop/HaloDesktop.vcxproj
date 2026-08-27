@@ -103,7 +103,7 @@
       <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>bcrypt.lib;crypt32.lib;gdi32.lib;ole32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;gdi32.lib;ole32.lib;shell32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
@@ -184,6 +184,7 @@
     <ClInclude Include="Services\AddonService.h" />
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\CatalogRefreshPolicy.h" />
+    <ClInclude Include="Services\DevicePreferencesStore.h" />
     <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\MetadataService.h" />
     <ClInclude Include="Services\PlaybackPreferences.h" />
@@ -211,6 +212,10 @@
     <ClInclude Include="Services\StreamInfo.h" />
     <ClInclude Include="Services\WatchStateService.h" />
     <ClInclude Include="Security\Dpapi.h" />
+    <ClInclude Include="Storage\AppStoragePaths.h" />
+    <ClInclude Include="Storage\FileStorage.h" />
+    <ClInclude Include="Storage\LegacyPackageDataSource.h" />
+    <ClInclude Include="Storage\PackagedDataMigrator.h" />
     <ClInclude Include="Shell\MainWindow.xaml.h">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClInclude>
@@ -362,6 +367,7 @@
     <ClCompile Include="Services\CatalogRefreshPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Services\DevicePreferencesStore.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />
     <ClCompile Include="Services\PlaybackPreferences.cpp" />
@@ -387,6 +393,10 @@
     <ClCompile Include="Services\StreamInfo.cpp" />
     <ClCompile Include="Services\WatchStateService.cpp" />
     <ClCompile Include="Security\Dpapi.cpp" />
+    <ClCompile Include="Storage\AppStoragePaths.cpp" />
+    <ClCompile Include="Storage\FileStorage.cpp" />
+    <ClCompile Include="Storage\LegacyPackageDataSource.cpp" />
+    <ClCompile Include="Storage\PackagedDataMigrator.cpp" />
     <ClCompile Include="Shell\MainWindow.xaml.cpp">
       <DependentUpon>MainWindow.xaml</DependentUpon>
     </ClCompile>

@@ -11,6 +11,7 @@ namespace HaloDesktop::Api { class ApiClient; }
 namespace HaloDesktop::Services
 {
     class AddonService;
+    class DevicePreferencesStore;
     class LibraryService;
     class WatchStateService;
 
@@ -23,7 +24,8 @@ namespace HaloDesktop::Services
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
             std::shared_ptr<AddonService> addons,
             std::shared_ptr<LibraryService> library,
-            std::shared_ptr<WatchStateService> watchState);
+            std::shared_ptr<WatchStateService> watchState,
+            std::shared_ptr<DevicePreferencesStore> preferences);
 
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
@@ -61,6 +63,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<AddonService> m_addons;
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<WatchStateService> m_watchState;
+        std::shared_ptr<DevicePreferencesStore> m_preferences;
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };

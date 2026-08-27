@@ -15,6 +15,8 @@ namespace HaloDesktop::Api
 namespace HaloDesktop::Services
 {
     class DownloadService;
+    class DevicePreferencesStore;
+    class PlaybackPreferences;
     class QueryCache;
     class SessionService;
 }
@@ -33,6 +35,11 @@ namespace HaloDesktop::Services::Downloads
     class TransferEngine;
 }
 
+namespace HaloDesktop::Storage
+{
+    class AppStoragePaths;
+}
+
 namespace winrt::HaloDesktop::implementation
 {
     struct App : AppT<App>
@@ -48,6 +55,9 @@ namespace winrt::HaloDesktop::implementation
 
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> m_httpExecutor;
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths> m_storagePaths;
+        std::shared_ptr<::HaloDesktop::Services::DevicePreferencesStore> m_devicePreferences;
+        std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
         std::shared_ptr<::HaloDesktop::Services::QueryCache> m_queryCache;
         std::shared_ptr<::HaloDesktop::Services::Auth::SessionStore> m_sessionStore;
         std::shared_ptr<::HaloDesktop::Services::Auth::LocalAuthSession> m_localAuthSession;

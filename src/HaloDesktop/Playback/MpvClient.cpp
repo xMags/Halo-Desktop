@@ -2,7 +2,6 @@
 #include "Playback/MpvClient.h"
 #include "Playback/MpvCommand.h"
 #include "Playback/PlaybackPolicy.h"
-#include "Services/PlaybackPreferences.h"
 
 #include <mpv/client.h>
 
@@ -236,7 +235,8 @@ namespace HaloDesktop::Playback
 {
     MpvClient::MpvClient(std::uintptr_t videoWindowHandle,
                          winrt::Microsoft::UI::Dispatching::DispatcherQueue const& dispatcher,
-                         UpdateHandler updateHandler)
+                         UpdateHandler updateHandler,
+                         bool hardwareDecoding)
         : m_dispatcher(dispatcher), m_updateHandler(std::move(updateHandler))
     {
         if (videoWindowHandle == 0 || !m_dispatcher || !m_updateHandler)
@@ -245,10 +245,10 @@ namespace HaloDesktop::Playback
         }
 
         int initializationError{};
-        m_handle = CreateInitializedHandle(videoWindowHandle, "gpu-next", initializationError);
+        m_handle = CreateInitializedHandle(videoWindowHandle, "gpu-next", hardwareDecoding, initializationError);
         if (!m_handle)
         {
-            m_handle = CreateInitializedHandle(videoWindowHandle, "gpu", initializationError);
+            m_handle = CreateInitializedHandle(videoWindowHandle, "gpu", hardwareDecoding, initializationError);
         }
         if (!m_handle)
         {
@@ -263,8 +263,11 @@ namespace HaloDesktop::Playback
         Shutdown();
     }
 
-    mpv_handle* MpvClient::CreateInitializedHandle(std::uintptr_t videoWindowHandle, char const* videoOutput,
-                                                   int& initializationError)
+    mpv_handle* MpvClient::CreateInitializedHandle(
+        std::uintptr_t videoWindowHandle,
+        char const* videoOutput,
+        bool hardwareDecoding,
+        int& initializationError)
     {
         auto* handle = mpv_create();
         if (!handle)
@@ -280,7 +283,7 @@ namespace HaloDesktop::Playback
             CheckMpv("set hwdec", mpv_set_option_string(
                 handle,
                 "hwdec",
-                HaloDesktop::Services::PlaybackPreferences::HardwareDecodingEnabled() ? "auto-safe" : "no"));
+                hardwareDecoding ? "auto-safe" : "no"));
             // keep-open suppresses the EOF end-file event on the retained last
             // frame. Up-next is deliberately driven only by that real event.
             CheckMpv("set idle", mpv_set_option_string(handle, "idle", "yes"));

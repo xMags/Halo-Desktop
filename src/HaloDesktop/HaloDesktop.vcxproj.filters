@@ -13,6 +13,7 @@
     <Filter Include="Services\Downloads"><UniqueIdentifier>{73fa6e79-b842-4140-98dd-34d448728857}</UniqueIdentifier></Filter>
     <Filter Include="Security"><UniqueIdentifier>{3ca27547-236e-4c97-8d35-c2626fc84504}</UniqueIdentifier></Filter>
     <Filter Include="Shell"><UniqueIdentifier>{c5038496-9a9d-41ca-a1d4-2aac12961146}</UniqueIdentifier></Filter>
+    <Filter Include="Storage"><UniqueIdentifier>{5c63be0d-beb7-4458-a19c-dc2f2bd585bb}</UniqueIdentifier></Filter>
     <Filter Include="Styles"><UniqueIdentifier>{027d9ad2-09e5-4615-8539-7b2148e83cd0}</UniqueIdentifier></Filter>
     <Filter Include="ViewModels"><UniqueIdentifier>{65a41b22-bd19-4ea3-b7b9-a567c802d73b}</UniqueIdentifier></Filter>
     <Filter Include="Views"><UniqueIdentifier>{1430ed72-0c26-48c2-9b91-4adb45bf38f3}</UniqueIdentifier></Filter>
@@ -107,6 +108,7 @@
     <ClCompile Include="Services\AddonService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogRefreshPolicy.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\DevicePreferencesStore.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\LibraryService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\PlaybackPreferences.cpp"><Filter>Services</Filter></ClCompile>
@@ -131,6 +133,10 @@
     <ClCompile Include="Services\WatchStateService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Security\ProtectedHttpHeaders.cpp"><Filter>Security</Filter></ClCompile>
+    <ClCompile Include="Storage\AppStoragePaths.cpp"><Filter>Storage</Filter></ClCompile>
+    <ClCompile Include="Storage\FileStorage.cpp"><Filter>Storage</Filter></ClCompile>
+    <ClCompile Include="Storage\LegacyPackageDataSource.cpp"><Filter>Storage</Filter></ClCompile>
+    <ClCompile Include="Storage\PackagedDataMigrator.cpp"><Filter>Storage</Filter></ClCompile>
     <ClCompile Include="Shell\MainWindow.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\ShellPage.xaml.cpp"><Filter>Shell</Filter></ClCompile>
     <ClCompile Include="Shell\TitleBar.xaml.cpp"><Filter>Shell</Filter></ClCompile>
@@ -198,6 +204,7 @@
     <ClInclude Include="Services\AddonService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\CatalogService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\CatalogRefreshPolicy.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\DevicePreferencesStore.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\LibraryService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\PlaybackPreferences.h"><Filter>Services</Filter></ClInclude>
@@ -226,6 +233,10 @@
     <ClInclude Include="Services\WatchStateService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Security\ProtectedHttpHeaders.h"><Filter>Security</Filter></ClInclude>
+    <ClInclude Include="Storage\AppStoragePaths.h"><Filter>Storage</Filter></ClInclude>
+    <ClInclude Include="Storage\FileStorage.h"><Filter>Storage</Filter></ClInclude>
+    <ClInclude Include="Storage\LegacyPackageDataSource.h"><Filter>Storage</Filter></ClInclude>
+    <ClInclude Include="Storage\PackagedDataMigrator.h"><Filter>Storage</Filter></ClInclude>
     <ClInclude Include="Shell\MainWindow.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\ShellPage.xaml.h"><Filter>Shell</Filter></ClInclude>
     <ClInclude Include="Shell\TitleBar.xaml.h"><Filter>Shell</Filter></ClInclude>

@@ -1,48 +1,39 @@
 #include "pch.h"
 #include "Services/PlaybackPreferences.h"
 
-#include <winrt/Windows.Storage.h>
+#include "Services/DevicePreferencesStore.h"
 
-namespace
-{
-    constexpr wchar_t ResumeKey[] = L"halo.resumePlayback.v1";
-    constexpr wchar_t HardwareDecodingKey[] = L"halo.hardwareDecoding.v1";
-
-    bool ReadBoolean(wchar_t const* key, bool defaultValue) noexcept
-    {
-        try
-        {
-            auto const value = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().TryLookup(key);
-            return value ? winrt::unbox_value_or<bool>(value, defaultValue) : defaultValue;
-        }
-        catch (...)
-        {
-            return defaultValue;
-        }
-    }
-}
+#include <stdexcept>
+#include <utility>
 
 namespace HaloDesktop::Services
 {
-    bool PlaybackPreferences::ResumeEnabled() noexcept
+    PlaybackPreferences::PlaybackPreferences(std::shared_ptr<DevicePreferencesStore> store)
+        : m_store(std::move(store))
     {
-        return ReadBoolean(ResumeKey, true);
+        if (!m_store)
+        {
+            throw std::invalid_argument{ "PlaybackPreferences requires a device preference store." };
+        }
+    }
+
+    bool PlaybackPreferences::ResumeEnabled() const noexcept
+    {
+        return m_store->ResumePlayback();
     }
 
     void PlaybackPreferences::ResumeEnabled(bool value)
     {
-        winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(ResumeKey,winrt::box_value(value));
+        m_store->ResumePlayback(value);
     }
 
-    bool PlaybackPreferences::HardwareDecodingEnabled() noexcept
+    bool PlaybackPreferences::HardwareDecodingEnabled() const noexcept
     {
-        return ReadBoolean(HardwareDecodingKey, true);
+        return m_store->HardwareDecoding();
     }
 
     void PlaybackPreferences::HardwareDecodingEnabled(bool value)
     {
-        winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(
-            HardwareDecodingKey,
-            winrt::box_value(value));
+        m_store->HardwareDecoding(value);
     }
 }

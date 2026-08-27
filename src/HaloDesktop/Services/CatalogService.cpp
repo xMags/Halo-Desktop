@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/LibraryService.h"
 #include "Services/WatchStateService.h"
 #include "ViewModels/HomeStatePolicy.h"
@@ -18,13 +19,9 @@
 #include <string>
 #include <unordered_map>
 #include <utility>
-#include <winrt/Windows.Data.Json.h>
-#include <winrt/Windows.Storage.h>
 
 namespace
 {
-    constexpr wchar_t SearchHistoryKey[] = L"halo.searchHistory.v1";
-
     struct CatalogQuery final
     {
         winrt::hstring AddonId;
@@ -130,10 +127,18 @@ namespace HaloDesktop::Services
         std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
         std::shared_ptr<AddonService> addons,
         std::shared_ptr<LibraryService> library,
-        std::shared_ptr<WatchStateService> watchState)
-        : m_apiClient(std::move(apiClient)), m_addons(std::move(addons)), m_library(std::move(library)), m_watchState(std::move(watchState))
+        std::shared_ptr<WatchStateService> watchState,
+        std::shared_ptr<DevicePreferencesStore> preferences)
+        : m_apiClient(std::move(apiClient)),
+          m_addons(std::move(addons)),
+          m_library(std::move(library)),
+          m_watchState(std::move(watchState)),
+          m_preferences(std::move(preferences))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_watchState) throw std::invalid_argument{ "CatalogService requires all dependencies." };
+        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences)
+        {
+            throw std::invalid_argument{ "CatalogService requires all dependencies." };
+        }
         m_continue = winrt::single_threaded_vector<winrt::HaloDesktop::ContinueItem>().GetView();
         m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
@@ -489,42 +494,31 @@ namespace HaloDesktop::Services
     {
         std::vector<winrt::hstring> terms;
         std::set<std::wstring> seen;
-        try
+        for (auto const& item : m_preferences->SearchHistory())
         {
-            auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
-            if (values.HasKey(SearchHistoryKey))
+            if (terms.size() == 20)
             {
-                auto const raw = winrt::unbox_value<winrt::hstring>(values.Lookup(SearchHistoryKey));
-                for (auto const& item : winrt::Windows::Data::Json::JsonArray::Parse(raw))
-                {
-                    if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::String
-                        || terms.size() == 20)
-                    {
-                        continue;
-                    }
-                    auto term = item.GetString();
-                    std::wstring trimmed{ term };
-                    trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](wchar_t value)
-                    {
-                        return std::iswspace(value) == 0;
-                    }));
-                    trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](wchar_t value)
-                    {
-                        return std::iswspace(value) == 0;
-                    }).base(), trimmed.end());
-                    if (trimmed.empty())
-                    {
-                        continue;
-                    }
-                    term = winrt::hstring{ trimmed };
-                    if (seen.insert(Lower(term)).second)
-                    {
-                        terms.push_back(term);
-                    }
-                }
+                break;
+            }
+            std::wstring trimmed{ item };
+            trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](wchar_t value)
+            {
+                return std::iswspace(value) == 0;
+            }));
+            trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](wchar_t value)
+            {
+                return std::iswspace(value) == 0;
+            }).base(), trimmed.end());
+            if (trimmed.empty())
+            {
+                continue;
+            }
+            auto const term = winrt::hstring{ trimmed };
+            if (seen.insert(Lower(term)).second)
+            {
+                terms.push_back(term);
             }
         }
-        catch (...) {}
         m_recentTerms = winrt::single_threaded_vector(std::move(terms)).GetView();
     }
 
@@ -551,8 +545,12 @@ namespace HaloDesktop::Services
 
     void CatalogService::SaveRecentTerms()
     {
-        winrt::Windows::Data::Json::JsonArray array;
-        for (auto const& term : m_recentTerms) array.Append(winrt::Windows::Data::Json::JsonValue::CreateStringValue(term));
-        winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(SearchHistoryKey, winrt::box_value(array.Stringify()));
+        std::vector<winrt::hstring> terms;
+        terms.reserve(m_recentTerms.Size());
+        for (auto const& term : m_recentTerms)
+        {
+            terms.push_back(term);
+        }
+        m_preferences->SearchHistory(std::move(terms));
     }
 }

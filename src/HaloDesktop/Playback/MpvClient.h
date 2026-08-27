@@ -41,7 +41,9 @@ namespace HaloDesktop::Playback
         using UpdateHandler = std::function<void(PlaybackUpdate)>;
 
         MpvClient(std::uintptr_t videoWindowHandle,
-                  winrt::Microsoft::UI::Dispatching::DispatcherQueue const& dispatcher, UpdateHandler updateHandler);
+                  winrt::Microsoft::UI::Dispatching::DispatcherQueue const& dispatcher,
+                  UpdateHandler updateHandler,
+                  bool hardwareDecoding);
         ~MpvClient();
 
         MpvClient(MpvClient const&) = delete;
@@ -70,8 +72,11 @@ namespace HaloDesktop::Playback
         void Shutdown() noexcept;
 
     private:
-        static mpv_handle* CreateInitializedHandle(std::uintptr_t videoWindowHandle, char const* videoOutput,
-                                                   int& initializationError);
+        static mpv_handle* CreateInitializedHandle(
+            std::uintptr_t videoWindowHandle,
+            char const* videoOutput,
+            bool hardwareDecoding,
+            int& initializationError);
         void EventLoop() noexcept;
         void DispatchUpdate(PlaybackUpdate update) noexcept;
         void Command(std::vector<std::string> const& arguments);

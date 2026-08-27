@@ -5,9 +5,11 @@
 #include "Models/Models.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Security/ProtectedHttpHeaders.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/SourceService.h"
+#include "Storage/AppStoragePaths.h"
 
 #include <algorithm>
 #include <chrono>
@@ -17,12 +19,10 @@
 #include <utility>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.Storage.Streams.h>
-#include <winrt/Windows.Storage.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 
 namespace
 {
-    constexpr wchar_t MemoryKey[]=L"halo.subtitleMemory.v1";
     constexpr std::uint32_t Chunk=64*1024;
     constexpr std::size_t Maximum=10*1024*1024;
 
@@ -55,25 +55,6 @@ namespace
         return L".sub";
     }
 
-    winrt::Windows::Data::Json::JsonObject ReadMemory()
-    {
-        try
-        {
-            auto value=winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().TryLookup(MemoryKey);
-            if(value)return winrt::Windows::Data::Json::JsonObject::Parse(winrt::unbox_value<winrt::hstring>(value));
-        }
-        catch(...)
-        {
-        }
-        return {};
-    }
-
-    void WriteMemory(winrt::Windows::Data::Json::JsonObject const&value)
-    {
-        winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values().Insert(
-            MemoryKey,winrt::box_value(value.Stringify()));
-    }
-
     double Border(winrt::hstring const&value)
     {
         if(value==L"none")return 0;
@@ -100,10 +81,12 @@ namespace HaloDesktop::Playback
         std::shared_ptr<Api::ApiClient>api,
         std::shared_ptr<IPlaybackEngine>engine,
         std::shared_ptr<Services::SettingsSyncService>settings,
-        std::shared_ptr<Services::IDownloadService>downloads)
-        :m_api(std::move(api)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads))
+        std::shared_ptr<Services::IDownloadService>downloads,
+        std::shared_ptr<Services::DevicePreferencesStore>preferences,
+        std::shared_ptr<Storage::AppStoragePaths const>paths)
+        :m_api(std::move(api)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads)),m_preferences(std::move(preferences)),m_paths(std::move(paths))
     {
-        if(!m_api||!m_engine||!m_settings||!m_downloads)throw std::invalid_argument("SubtitleController requires dependencies.");
+        if(!m_api||!m_engine||!m_settings||!m_downloads||!m_preferences||!m_paths)throw std::invalid_argument("SubtitleController requires dependencies.");
     }
 
     SubtitleController::~SubtitleController()
@@ -651,7 +634,7 @@ namespace HaloDesktop::Playback
         std::optional<winrt::hstring> language,
         bool includeItem)
     {
-        auto value=ReadMemory();
+        auto value=m_preferences->SubtitleSelectionMemory();
         auto const kind=intent==SubtitleIntentKind::Addon?L"addon"
             :intent==SubtitleIntentKind::Embedded?L"embedded"
             :intent==SubtitleIntentKind::Off?L"off":L"automatic";
@@ -679,7 +662,7 @@ namespace HaloDesktop::Playback
             std::sort(rows.begin(),rows.end(),[](auto const&left,auto const&right){return left.second<right.second;});
             for(std::size_t index=0;index<rows.size()&&value.Size()>300;++index)value.Remove(rows[index].first);
         }
-        WriteMemory(value);
+        m_preferences->SubtitleSelectionMemory(value);
     }
 
     SubtitleController::SelectionMemory SubtitleController::ReadSelectionMemory()const
@@ -687,7 +670,7 @@ namespace HaloDesktop::Playback
         SelectionMemory result;
         try
         {
-            auto const value=ReadMemory();
+            auto const value=m_preferences->SubtitleSelectionMemory();
             auto readEntry=[](winrt::Windows::Data::Json::JsonObject const&entry,bool exactVideo)
             {
                 SelectionMemory memory;
@@ -759,7 +742,7 @@ namespace HaloDesktop::Playback
             bytes.resize(offset+loaded);
             reader.ReadBytes(winrt::array_view<std::uint8_t>{bytes.data()+offset,bytes.data()+offset+loaded});
         }
-        auto const folder=std::filesystem::path(winrt::Windows::Storage::ApplicationData::Current().TemporaryFolder().Path().c_str())/L"halo-subtitles";
+        auto const& folder=m_paths->TemporarySubtitles();
         std::filesystem::create_directories(folder);
         auto const path=folder/(std::wstring(winrt::to_hstring(winrt::Windows::Foundation::GuidHelper::CreateNewGuid()).c_str())+std::wstring(Extension(choice.Url).c_str()));
         std::ofstream output(path,std::ios::binary|std::ios::trunc);

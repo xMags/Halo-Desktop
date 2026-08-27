@@ -15,8 +15,8 @@
 
 namespace HaloDesktop::Playback
 {
-    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings))
-    {if(!m_engine||!m_watchState||!m_settings)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
+    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings,std::shared_ptr<Services::PlaybackPreferences>preferences):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings)),m_preferences(std::move(preferences))
+    {if(!m_engine||!m_watchState||!m_settings||!m_preferences)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
     PlaybackSessionController::~PlaybackSessionController(){Stop();}
 
     concurrency::task<void> PlaybackSessionController::StartAsync(winrt::HaloDesktop::PlaybackRequest request)
@@ -97,7 +97,7 @@ namespace HaloDesktop::Playback
     void PlaybackSessionController::ApplyResume()
     {
         if(!m_fileReady||!m_prior)return;auto const state=m_engine->State();auto const withinWindow=std::chrono::steady_clock::now()<=m_resumeDeadline;
-        if(ShouldApplyResume(Services::PlaybackPreferences::ResumeEnabled(),m_prior->Watched,m_prior->PositionSec,m_engine->DurationNow(),state.PositionSeconds,state.SeekSerial,m_initialSeekSerial,withinWindow))m_engine->SeekAbsolute(static_cast<double>(m_prior->PositionSec));
+        if(ShouldApplyResume(m_preferences->ResumeEnabled(),m_prior->Watched,m_prior->PositionSec,m_engine->DurationNow(),state.PositionSeconds,state.SeekSerial,m_initialSeekSerial,withinWindow))m_engine->SeekAbsolute(static_cast<double>(m_prior->PositionSec));
         if(m_watchLoadFinished||!withinWindow||m_prior->Watched||m_prior->PositionSec<=30)m_prior.reset();
     }
 

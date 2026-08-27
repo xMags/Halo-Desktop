@@ -4,15 +4,15 @@
 #include "Api/ApiClient.h"
 #include "Api/Dto.h"
 #include "Services/QueryCache.h"
+#include "Storage/AppStoragePaths.h"
+#include "Storage/FileStorage.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
-#include <fstream>
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <winrt/Windows.Storage.h>
 
 namespace
 {
@@ -50,15 +50,14 @@ namespace HaloDesktop::Services
     SettingsSyncService::SettingsSyncService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
         std::shared_ptr<QueryCache> queryCache,
+        std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> paths,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
         : m_apiClient(std::move(apiClient)),
           m_queryCache(std::move(queryCache)),
-          m_mirrorPath(std::filesystem::path{
-              winrt::Windows::Storage::ApplicationData::Current().LocalFolder().Path().c_str() }
-              / L"settings-mirror.json"),
+          m_mirrorPath(paths ? paths->LocalState() / L"settings-mirror.json" : std::filesystem::path{}),
           m_debounceTimer(dispatcher.CreateTimer())
     {
-        if (!m_apiClient || !m_queryCache || !dispatcher)
+        if (!m_apiClient || !m_queryCache || !paths || !dispatcher)
         {
             throw std::invalid_argument{ "SettingsSyncService requires all dependencies." };
         }
@@ -193,10 +192,14 @@ namespace HaloDesktop::Services
         }
         try
         {
-            auto const file = co_await winrt::Windows::Storage::StorageFile::GetFileFromPathAsync(m_mirrorPath.c_str());
-            auto const text = co_await winrt::Windows::Storage::FileIO::ReadTextAsync(file);
+            ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_mirrorPath };
+            auto const raw = ::HaloDesktop::Storage::ReadUtf8File(m_mirrorPath, 1024u * 1024u);
+            if (raw.empty())
+            {
+                co_return std::nullopt;
+            }
             co_return ::HaloDesktop::Api::Mappers::ParseSettings(
-                winrt::Windows::Data::Json::JsonValue::Parse(text));
+                winrt::Windows::Data::Json::JsonValue::Parse(winrt::to_hstring(raw)));
         }
         catch (...)
         {
@@ -216,39 +219,31 @@ namespace HaloDesktop::Services
             auto const encoded = winrt::to_string(root.Stringify());
 
             std::scoped_lock const lock{ m_mirrorMutex };
+            ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_mirrorPath };
             if (payload.UpdatedAt < m_mirrorWrittenAt)
             {
                 co_return;
             }
-            auto temporary = m_mirrorPath;
-            temporary += L".tmp";
-            auto written = false;
+            auto const current = ::HaloDesktop::Storage::ReadUtf8File(m_mirrorPath, 1024u * 1024u);
+            if (!current.empty())
             {
-                std::ofstream file{ temporary, std::ios::binary | std::ios::trunc };
-                if (!file)
+                try
                 {
-                    DeleteFileW(temporary.c_str());
+                    auto const currentRoot = winrt::Windows::Data::Json::JsonObject::Parse(
+                        winrt::to_hstring(current));
+                    auto const diskTimestamp = currentRoot.GetNamedNumber(L"updatedAt", -1);
+                    if (std::isfinite(diskTimestamp)
+                        && diskTimestamp > static_cast<double>(payload.UpdatedAt))
+                    {
+                        m_mirrorWrittenAt = static_cast<std::int64_t>(diskTimestamp);
+                        co_return;
+                    }
                 }
-                else
+                catch (...)
                 {
-                    file.write(encoded.data(), static_cast<std::streamsize>(encoded.size()));
-                    file.flush();
-                    written = static_cast<bool>(file);
                 }
             }
-            if (!written)
-            {
-                DeleteFileW(temporary.c_str());
-                co_return;
-            }
-            if (!MoveFileExW(
-                temporary.c_str(),
-                m_mirrorPath.c_str(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-            {
-                DeleteFileW(temporary.c_str());
-                co_return;
-            }
+            ::HaloDesktop::Storage::WriteUtf8FileAtomic(m_mirrorPath, encoded);
             m_mirrorWrittenAt = payload.UpdatedAt;
         }
         catch (...)

@@ -163,6 +163,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
         std::shared_ptr<::HaloDesktop::Services::IDownloadService> m_downloads;
+        std::shared_ptr<::HaloDesktop::Services::DevicePreferencesStore> m_devicePreferences;
         winrt::HaloDesktop::SourcesNavParams m_parameters{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_sourceGroups{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };

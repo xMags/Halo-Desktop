@@ -48,10 +48,15 @@ namespace winrt::HaloDesktop::implementation
           m_addonService(services.Addons),
           m_catalog(services.Catalog),
           m_settings(services.SettingsSync),
+          m_playbackPreferences(services.PlaybackPreferences),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        m_resumePlayback=::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled();
-        m_hardwareDecoding=::HaloDesktop::Services::PlaybackPreferences::HardwareDecodingEnabled();
+        if (!m_playbackPreferences)
+        {
+            throw std::invalid_argument{ "SettingsViewModel requires playback preferences." };
+        }
+        m_resumePlayback=m_playbackPreferences->ResumeEnabled();
+        m_hardwareDecoding=m_playbackPreferences->HardwareDecodingEnabled();
         Refresh();
     }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
@@ -157,9 +162,9 @@ namespace winrt::HaloDesktop::implementation
     bool SettingsViewModel::SubtitleTrackStyling() const noexcept { return m_subtitleTrackStyling; }
     void SettingsViewModel::SubtitleTrackStyling(bool value) { if (m_subtitleTrackStyling != value) { m_subtitleTrackStyling = value; m_settings->SubtitleTrackStyling(value); Raise(L"SubtitleTrackStyling"); } }
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
-    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; ::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled(value); Raise(L"ResumePlayback"); } }
+    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; m_playbackPreferences->ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
-    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; ::HaloDesktop::Services::PlaybackPreferences::HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
+    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; m_playbackPreferences->HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
     void SettingsViewModel::Refresh()
     {
         m_serverUrl = m_session->ServerUrl();

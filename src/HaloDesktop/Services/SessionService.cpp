@@ -13,15 +13,10 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
-#include <winrt/Windows.Storage.h>
 #include <winrt/Windows.System.Threading.h>
 
 namespace
 {
-    constexpr wchar_t LegacyServerUrlKey[] = L"Session.ServerUrl";
-    constexpr wchar_t LegacyUserNameKey[] = L"Session.UserName";
-    constexpr wchar_t LegacySignedInKey[] = L"Session.IsSignedIn";
-
     winrt::hstring Trimmed(winrt::hstring const& input)
     {
         std::wstring value{ input };
@@ -36,17 +31,6 @@ namespace
         return first < last ? winrt::hstring{ std::wstring(first, last) } : winrt::hstring{};
     }
 
-    void RemoveLegacySessionKeys()
-    {
-        auto const values = winrt::Windows::Storage::ApplicationData::Current().LocalSettings().Values();
-        for (auto const key : { LegacyServerUrlKey, LegacyUserNameKey, LegacySignedInKey })
-        {
-            if (values.HasKey(key))
-            {
-                values.Remove(key);
-            }
-        }
-    }
 }
 
 namespace HaloDesktop::Services
@@ -67,7 +51,6 @@ namespace HaloDesktop::Services
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
-        RemoveLegacySessionKeys();
     }
 
     winrt::hstring SessionService::ServerUrl() const

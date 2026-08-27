@@ -5,6 +5,7 @@
 #include "Playback/PlaybackPolicy.h"
 #include "Playback/WindowsAudioSession.h"
 #include "Security/ProtectedHttpHeaders.h"
+#include "Services/PlaybackPreferences.h"
 
 #include <algorithm>
 #include <chrono>
@@ -24,7 +25,14 @@ namespace
 
 namespace HaloDesktop::Playback
 {
-    MpvEngine::MpvEngine() = default;
+    MpvEngine::MpvEngine(std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> preferences)
+        : m_preferences(std::move(preferences))
+    {
+        if (!m_preferences)
+        {
+            throw std::invalid_argument{ "MpvEngine requires playback preferences." };
+        }
+    }
 
     MpvEngine::~MpvEngine()
     {
@@ -54,7 +62,7 @@ namespace HaloDesktop::Playback
             {
                 self->ApplyUpdate(std::move(update));
             }
-        });
+        }, m_preferences->HardwareDecodingEnabled());
         m_running = true;
         try
         {

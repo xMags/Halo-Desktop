@@ -15,7 +15,8 @@
 #include <winrt/HaloDesktop.h>
 
 namespace HaloDesktop::Api { class ApiClient; }
-namespace HaloDesktop::Services { class IDownloadService; class SettingsSyncService; }
+namespace HaloDesktop::Services { class DevicePreferencesStore; class IDownloadService; class SettingsSyncService; }
+namespace HaloDesktop::Storage { class AppStoragePaths; }
 
 namespace HaloDesktop::Playback
 {
@@ -32,7 +33,9 @@ namespace HaloDesktop::Playback
             std::shared_ptr<Api::ApiClient> api,
             std::shared_ptr<IPlaybackEngine> engine,
             std::shared_ptr<Services::SettingsSyncService> settings,
-            std::shared_ptr<Services::IDownloadService> downloads);
+            std::shared_ptr<Services::IDownloadService> downloads,
+            std::shared_ptr<Services::DevicePreferencesStore> preferences,
+            std::shared_ptr<Storage::AppStoragePaths const> paths);
         ~SubtitleController();
         [[nodiscard]] concurrency::task<void> PrepareAsync(winrt::HaloDesktop::PlaybackRequest request);
         [[nodiscard]] concurrency::task<void> SelectAsync(winrt::hstring key,bool deliberate=true);
@@ -79,7 +82,7 @@ namespace HaloDesktop::Playback
         [[nodiscard]] concurrency::task<std::wstring> DownloadAsync(NativeChoice const& choice);
         void NotifyError()noexcept;
 
-        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;
+        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;std::shared_ptr<Services::DevicePreferencesStore>m_preferences;std::shared_ptr<Storage::AppStoragePaths const>m_paths;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};std::unordered_map<std::wstring,NativeChoice>m_choices;std::vector<AddonSubtitleDisplay>m_display;
         std::optional<std::filesystem::path> m_localSubtitlePath;
         TemporaryFileCollection m_temporaryFiles;

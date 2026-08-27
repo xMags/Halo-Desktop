@@ -21,6 +21,7 @@
 #include <algorithm>
 #include "Services/NavigationService.h"
 #include "Services/SettingsSyncService.h"
+#include "Services/DevicePreferencesStore.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <utility>
@@ -107,11 +108,19 @@ namespace winrt::HaloDesktop::implementation
 
     SourcesViewModel::SourcesViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_sources(services.Sources), m_navigation(services.Navigation), m_settings(services.SettingsSync), m_downloads(services.Downloads),
+          m_devicePreferences(services.DevicePreferences),
           m_sourceGroups(services.Sources->Groups()),
           m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_resolutionItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_pickerRules(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
+          m_pickerRules(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+    {
+        if (!m_devicePreferences)
+        {
+            throw std::invalid_argument{ "SourcesViewModel requires device preferences." };
+        }
+        m_teachingTipOpen = !m_devicePreferences->SourceRankingTipDismissed();
+    }
 
     SourcesViewModel::~SourcesViewModel() { Deactivate(); }
     void SourcesViewModel::Activate()
@@ -194,7 +203,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void SourcesViewModel::Retry() { if (m_parameters) static_cast<void>(LoadAsync()); }
     void SourcesViewModel::SetFilter(std::int32_t index) { if (index < 0 || index > 3 || index == m_filterIndex) return; m_filterIndex = index; Rebuild(); }
-    void SourcesViewModel::DismissTeachingTip() { if (!m_teachingTipOpen) return; m_teachingTipOpen = false; Raise(L"TeachingTipOpen"); }
+    void SourcesViewModel::DismissTeachingTip() { if (!m_teachingTipOpen) return; m_teachingTipOpen = false; m_devicePreferences->SourceRankingTipDismissed(true); Raise(L"TeachingTipOpen"); }
     void SourcesViewModel::OpenPlayer(winrt::hstring const& key) { auto request=m_sources->BuildPlaybackRequest(key); if(request)m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player,request); }
     void SourcesViewModel::OpenBest() { if (m_bestSource) OpenPlayer(m_bestSource.Key()); }
     void SourcesViewModel::OpenSettings() { m_navigation->GoTo(::HaloDesktop::Services::Page::Settings); }

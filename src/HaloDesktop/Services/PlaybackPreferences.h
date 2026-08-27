@@ -1,15 +1,24 @@
 #pragma once
 
+#include <memory>
+
 namespace HaloDesktop::Services
 {
+    class DevicePreferencesStore;
+
     // Device-local playback choices that must be available before synced
     // settings finish loading.
     class PlaybackPreferences final
     {
     public:
-        [[nodiscard]] static bool ResumeEnabled() noexcept;
-        static void ResumeEnabled(bool value);
-        [[nodiscard]] static bool HardwareDecodingEnabled() noexcept;
-        static void HardwareDecodingEnabled(bool value);
+        explicit PlaybackPreferences(std::shared_ptr<DevicePreferencesStore> store);
+
+        [[nodiscard]] bool ResumeEnabled() const noexcept;
+        void ResumeEnabled(bool value);
+        [[nodiscard]] bool HardwareDecodingEnabled() const noexcept;
+        void HardwareDecodingEnabled(bool value);
+
+    private:
+        std::shared_ptr<DevicePreferencesStore> m_store;
     };
 }

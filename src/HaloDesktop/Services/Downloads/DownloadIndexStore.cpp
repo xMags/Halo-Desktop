@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Services/Downloads/DownloadIndexStore.h"
 
+#include "Storage/FileStorage.h"
+
 #include <array>
 #include <charconv>
 #include <fstream>
@@ -308,6 +310,42 @@ namespace
         return record;
     }
 
+    std::vector<HaloDesktop::Services::Downloads::DownloadRecord> ParseRecords(
+        std::string const& raw,
+        bool recoverInterrupted)
+    {
+        using HaloDesktop::Services::Downloads::DownloadRecord;
+        using HaloDesktop::Services::Downloads::DownloadStatus;
+        using HaloDesktop::Services::Downloads::RecoverStatus;
+
+        if (raw.empty())
+        {
+            return {};
+        }
+        auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
+        if (RequiredUnsigned(root, L"version") != IndexVersion)
+        {
+            throw std::runtime_error{ "The download index version is unsupported." };
+        }
+        auto const entries = root.GetNamedArray(L"entries");
+        std::vector<DownloadRecord> records;
+        records.reserve(entries.Size());
+        for (auto const& value : entries)
+        {
+            auto record = ParseRecord(value.GetObject());
+            if (recoverInterrupted)
+            {
+                record.Status = RecoverStatus(record.Status, record.ExplicitPause);
+            }
+            if (record.Status != DownloadStatus::Downloading)
+            {
+                record.BytesPerSecond = 0;
+            }
+            records.push_back(std::move(record));
+        }
+        return records;
+    }
+
     std::string ReadFile(std::filesystem::path const& path)
     {
         std::error_code error;
@@ -414,6 +452,7 @@ namespace HaloDesktop::Services::Downloads
         m_paths.VaultDirectory = CanonicalDirectory(m_paths.DataRoot / L"download-requests");
         m_paths.DefaultDownloadDirectory = m_paths.DataRoot / L"downloads";
 
+        ::HaloDesktop::Storage::FileMutationLock const configLock{ m_paths.ConfigFile };
         auto const config = ReadFile(m_paths.ConfigFile);
         if (!config.empty())
         {
@@ -433,31 +472,15 @@ namespace HaloDesktop::Services::Downloads
         }
     }
 
-    std::vector<DownloadRecord> DownloadIndexStore::Load()
+    std::vector<DownloadRecord> DownloadIndexStore::Load(bool recoverInterrupted)
     {
         std::scoped_lock const lock{ m_mutex };
-        auto const raw = ReadFile(m_paths.IndexFile);
-        if (raw.empty())
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
+        auto records = ParseRecords(ReadFile(m_paths.IndexFile), recoverInterrupted);
+        m_observedJobIds.clear();
+        for (auto const& record : records)
         {
-            return {};
-        }
-        auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
-        if (RequiredUnsigned(root, L"version") != IndexVersion)
-        {
-            throw std::runtime_error{ "The download index version is unsupported." };
-        }
-        auto const entries = root.GetNamedArray(L"entries");
-        std::vector<DownloadRecord> records;
-        records.reserve(entries.Size());
-        for (auto const& value : entries)
-        {
-            auto record = ParseRecord(value.GetObject());
-            record.Status = RecoverStatus(record.Status, record.ExplicitPause);
-            if (record.Status != DownloadStatus::Downloading)
-            {
-                record.BytesPerSecond = 0;
-            }
-            records.push_back(std::move(record));
+            m_observedJobIds.insert(record.JobId);
         }
         return records;
     }
@@ -471,8 +494,24 @@ namespace HaloDesktop::Services::Downloads
         {
             return;
         }
-        winrt::Windows::Data::Json::JsonArray entries;
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
+        auto merged = records;
+        std::set<std::wstring, std::less<>> incomingIds;
         for (auto const& record : records)
+        {
+            incomingIds.insert(record.JobId);
+        }
+        for (auto& persisted : ParseRecords(ReadFile(m_paths.IndexFile), false))
+        {
+            if (!m_observedJobIds.contains(persisted.JobId)
+                && !incomingIds.contains(persisted.JobId))
+            {
+                incomingIds.insert(persisted.JobId);
+                merged.push_back(std::move(persisted));
+            }
+        }
+        winrt::Windows::Data::Json::JsonArray entries;
+        for (auto const& record : merged)
         {
             entries.Append(SerializeRecord(record));
         }
@@ -480,6 +519,7 @@ namespace HaloDesktop::Services::Downloads
         InsertUnsigned(root, L"version", IndexVersion);
         root.Insert(L"entries", entries);
         WriteAtomic(m_paths.IndexFile, winrt::to_string(root.Stringify()));
+        m_observedJobIds = std::move(incomingIds);
         m_savedGeneration = generation;
     }
 
@@ -495,6 +535,7 @@ namespace HaloDesktop::Services::Downloads
         winrt::Windows::Data::Json::JsonObject config;
         InsertString(config, L"directory", canonical.wstring());
         std::scoped_lock const lock{ m_mutex };
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.ConfigFile };
         WriteAtomic(m_paths.ConfigFile, winrt::to_string(config.Stringify()));
         m_downloadDirectory = std::move(canonical);
     }

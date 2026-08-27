@@ -1,10 +1,13 @@
 #pragma once
 
 #include <cstdint>
+#include <memory>
 #include <winrt/Microsoft.UI.Xaml.h>
 
 namespace HaloDesktop::Services
 {
+    class DevicePreferencesStore;
+
     enum class ThemePreference : std::int32_t
     {
         Light = 0,
@@ -19,7 +22,7 @@ namespace HaloDesktop::Services
     class ThemeService final
     {
     public:
-        ThemeService();
+        explicit ThemeService(std::shared_ptr<DevicePreferencesStore> preferences);
 
         [[nodiscard]] ThemePreference Preference() const noexcept;
         void SetPreference(ThemePreference preference);
@@ -31,6 +34,7 @@ namespace HaloDesktop::Services
         void Apply() const;
 
         ThemePreference m_preference{ ThemePreference::System };
+        std::shared_ptr<DevicePreferencesStore> m_preferences;
         winrt::Microsoft::UI::Xaml::FrameworkElement m_root{ nullptr };
     };
 }

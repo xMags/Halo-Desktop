@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Security/Dpapi.h"
 
+#include "Storage/FileStorage.h"
+
 #include <array>
 #include <cstdint>
 #include <limits>
@@ -175,6 +177,8 @@ namespace HaloDesktop::Security
             throw std::invalid_argument{ "A protected file path is required." };
         }
 
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
+
         std::vector<std::uint8_t> plaintextBytes(plaintext.begin(), plaintext.end());
         auto wipePlaintext = wil::scope_exit([&plaintext, &plaintextBytes]() noexcept
         {
@@ -242,6 +246,8 @@ namespace HaloDesktop::Security
             throw std::invalid_argument{ "A protected file path is required." };
         }
 
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
+
         wil::unique_hfile file{ CreateFileW(
             path.c_str(),
             GENERIC_READ,
@@ -284,6 +290,7 @@ namespace HaloDesktop::Security
         {
             co_return;
         }
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
         if (DeleteFileW(path.c_str()))
         {
             co_return;

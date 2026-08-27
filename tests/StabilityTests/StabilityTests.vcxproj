@@ -47,18 +47,22 @@
       <AdditionalOptions>%(AdditionalOptions) /utf-8 /permissive-</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>bcrypt.lib;crypt32.lib;ole32.lib;uuid.lib;windowsapp.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;ole32.lib;shell32.lib;uuid.lib;windowsapp.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <SubSystem>Console</SubSystem>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="StabilityTests.cpp" />
     <ClCompile Include="DownloadTransferTest.cpp" />
+    <ClCompile Include="StorageTests.cpp" />
     <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogRefreshPolicy.cpp">
       <Link>CatalogRefreshPolicy.cpp</Link>
     </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\Dpapi.cpp">
       <Link>Dpapi.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\DevicePreferencesStore.cpp">
+      <Link>DevicePreferencesStore.cpp</Link>
     </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp">
       <Link>ProtectedHttpHeaders.cpp</Link>
@@ -78,12 +82,22 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\TransferEngine.cpp">
       <Link>TransferEngine.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Storage\AppStoragePaths.cpp">
+      <Link>AppStoragePaths.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Storage\FileStorage.cpp">
+      <Link>FileStorage.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Storage\PackagedDataMigrator.cpp">
+      <Link>PackagedDataMigrator.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\ViewModels\HomeStatePolicy.cpp">
       <Link>HomeStatePolicy.cpp</Link>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
+    <ClInclude Include="StorageTests.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
