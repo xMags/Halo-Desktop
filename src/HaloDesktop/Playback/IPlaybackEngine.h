@@ -65,7 +65,10 @@ namespace HaloDesktop::Playback
         std::vector<TrackInfo> Tracks;
     };
 
-    struct SubtitleStyle final{double Scale{1.0};std::wstring Font{L"Segoe UI"};double BorderSize{3.0};double ShadowOffset{2.0};};
+    // An empty Font leaves the engine's own default face in place rather than naming
+    // one. KeepTrackStyling asks the engine to respect a styled track's own
+    // presentation; clearing it makes the fields above win over the track.
+    struct SubtitleStyle final{double Scale{1.0};std::wstring Font{L"Segoe UI"};double BorderSize{3.0};double ShadowOffset{2.0};bool KeepTrackStyling{true};};
 
     using PlaybackChangedToken = std::uint64_t;
     using PlaybackChangedHandler = std::function<void()>;

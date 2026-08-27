@@ -47,6 +47,11 @@ namespace HaloDesktop::Services
         void SubtitleOutline(winrt::hstring value);
         [[nodiscard]] bool SubtitleShadow() const noexcept;
         void SubtitleShadow(bool value);
+        // True leaves a styled track (ASS/SSA) rendering the way its author wrote it.
+        // False makes the Halo font, size and border win over the track's own styling.
+        // Plain text tracks carry no styling either way, so Halo's always applies there.
+        [[nodiscard]] bool SubtitleTrackStyling() const noexcept;
+        void SubtitleTrackStyling(bool value);
         [[nodiscard]] bool AutoplayNextEpisode() const noexcept;
         void AutoplayNextEpisode(bool value);
 

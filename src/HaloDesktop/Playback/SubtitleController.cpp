@@ -84,6 +84,9 @@ namespace
 
     std::wstring Font(winrt::hstring const&value)
     {
+        // Empty already meant System before this option existed, so the choice to leave
+        // the face alone needs its own name rather than reusing the empty string.
+        if(value==L"Default")return {};
         if(value==L"Serif")return L"Georgia";
         if(value==L"Mono")return L"JetBrains Mono";
         if(value==L"System"||value.empty())return L"Segoe UI";
@@ -356,6 +359,11 @@ namespace HaloDesktop::Playback
         TryApplySelection();
     }
 
+    void SubtitleController::RefreshStyle()
+    {
+        ApplyStyle();
+    }
+
     void SubtitleController::Stop()noexcept
     {
         ++m_generation;
@@ -384,7 +392,8 @@ namespace HaloDesktop::Playback
             m_settings->SubtitleScalePercent()/100.0,
             Font(m_settings->SubtitleFontFamily()),
             Border(m_settings->SubtitleOutline()),
-            m_settings->SubtitleShadow()?2.0:0.0});
+            m_settings->SubtitleShadow()?2.0:0.0,
+            m_settings->SubtitleTrackStyling()});
     }
 
     void SubtitleController::SweepExternalTracks()

@@ -44,6 +44,9 @@ namespace HaloDesktop::Playback
         void SetChoicesChangedHandler(std::function<void()> handler);
         void SetErrorHandler(std::function<void()> handler);
         void RefreshPreferences();
+        // Appearance only. RefreshPreferences also re-runs track selection, which must
+        // not happen while a live control such as the size slider is being dragged.
+        void RefreshStyle();
         void Stop()noexcept;
         void CleanupTemporaryFiles()noexcept;
 

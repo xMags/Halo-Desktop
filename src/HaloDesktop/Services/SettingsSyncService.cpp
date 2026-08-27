@@ -169,6 +169,14 @@ namespace HaloDesktop::Services
         catch (...) { return true; }
     }
     void SettingsSyncService::SubtitleShadow(bool value) { SetBoolean(L"subtitleShadow", value); }
+    bool SettingsSyncService::SubtitleTrackStyling() const noexcept
+    {
+        // Defaults to keeping the track's styling, which is what mpv did before this
+        // preference existed, so no library changes appearance on upgrade.
+        try { return m_value.GetNamedBoolean(L"subtitleTrackStyling", true); }
+        catch (...) { return true; }
+    }
+    void SettingsSyncService::SubtitleTrackStyling(bool value) { SetBoolean(L"subtitleTrackStyling", value); }
     bool SettingsSyncService::AutoplayNextEpisode() const noexcept
     {
         try { return m_value.GetNamedBoolean(L"autoplayNextEpisode", true); }

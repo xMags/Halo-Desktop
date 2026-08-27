@@ -378,7 +378,18 @@ namespace HaloDesktop::Playback
     }
     void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){Command({"sub-add",winrt::to_string(winrt::hstring(path)),"select",winrt::to_string(winrt::hstring(EncodeExternalSubtitleTrackTitle(identity,displayTitle))),winrt::to_string(winrt::hstring(language))});}
     void MpvClient::RemoveTrack(std::int64_t id){Command({"sub-remove",std::to_string(id)});}
-    void MpvClient::ApplySubtitleStyle(SubtitleStyle const&style){SetDoubleProperty("sub-scale",style.Scale);SetStringProperty("sub-font",style.Font);SetDoubleProperty("sub-border-size",style.BorderSize);SetDoubleProperty("sub-shadow-offset",style.ShadowOffset);}
+    void MpvClient::ApplySubtitleStyle(SubtitleStyle const&style)
+    {
+        SetDoubleProperty("sub-scale",style.Scale);
+        // An empty face means "whatever mpv would have picked", so the property is left
+        // alone rather than being set to an empty name mpv would fail to resolve.
+        if(!style.Font.empty())SetStringProperty("sub-font",style.Font);
+        SetDoubleProperty("sub-border-size",style.BorderSize);
+        SetDoubleProperty("sub-shadow-offset",style.ShadowOffset);
+        // scale is mpv's own default: a styled track keeps its presentation and only
+        // follows sub-scale. force hands the whole presentation to the options above.
+        SetStringProperty("sub-ass-override",style.KeepTrackStyling?L"scale":L"force");
+    }
 
     void MpvClient::Shutdown() noexcept
     {
