@@ -42,6 +42,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Media.FontFamily PreviewFontFamily { get; };
         Int32 FontIndex { get; };
         Int32 OutlineIndex { get; };
+        Boolean IsDefaultFont { get; };
         Boolean IsSystemFont { get; };
         Boolean IsSerifFont { get; };
         Boolean IsMonoFont { get; };
@@ -58,6 +59,7 @@ namespace HaloDesktop
         Double PreviewShadowOffset { get; };
         Boolean AutoplayNext;
         Boolean SubtitleShadow;
+        Boolean SubtitleTrackStyling;
         Boolean ResumePlayback;
         Boolean HardwareDecoding;
         void Refresh();

@@ -10,6 +10,7 @@
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/SubtitlePreviewMetrics.h"
 
 #include <algorithm>
 #include <cmath>
@@ -101,18 +102,21 @@ namespace winrt::HaloDesktop::implementation
         return winrt::hstring(label.str());
     }
     winrt::hstring SettingsViewModel::PreviewText() const { return L"Subtitle preview text"; }
-    double SettingsViewModel::PreviewFontSize() const noexcept { return 15.0 * m_subtitleSize / 100.0; }
+    double SettingsViewModel::PreviewFontSize() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewFontSize(m_subtitleSize); }
     Microsoft::UI::Xaml::Media::FontFamily SettingsViewModel::PreviewFontFamily() const
     {
-        if (m_fontIndex == 1) return Microsoft::UI::Xaml::Media::FontFamily{ L"Georgia" };
-        if (m_fontIndex == 2) return Microsoft::UI::Xaml::Media::FontFamily{ L"ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono" };
+        if (m_fontIndex == 2) return Microsoft::UI::Xaml::Media::FontFamily{ L"Georgia" };
+        if (m_fontIndex == 3) return Microsoft::UI::Xaml::Media::FontFamily{ L"ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono" };
+        // Default hands the face to the engine, which lands on a system sans. The preview
+        // shows that face rather than pretending it knows what a styled track will pick.
         return Microsoft::UI::Xaml::Media::FontFamily{ L"Segoe UI Variable Text" };
     }
     std::int32_t SettingsViewModel::FontIndex() const noexcept { return m_fontIndex; }
     std::int32_t SettingsViewModel::OutlineIndex() const noexcept { return m_outlineIndex; }
-    bool SettingsViewModel::IsSystemFont() const noexcept { return m_fontIndex == 0; }
-    bool SettingsViewModel::IsSerifFont() const noexcept { return m_fontIndex == 1; }
-    bool SettingsViewModel::IsMonoFont() const noexcept { return m_fontIndex == 2; }
+    bool SettingsViewModel::IsDefaultFont() const noexcept { return m_fontIndex == 0; }
+    bool SettingsViewModel::IsSystemFont() const noexcept { return m_fontIndex == 1; }
+    bool SettingsViewModel::IsSerifFont() const noexcept { return m_fontIndex == 2; }
+    bool SettingsViewModel::IsMonoFont() const noexcept { return m_fontIndex == 3; }
     bool SettingsViewModel::IsNoOutline() const noexcept { return m_outlineIndex == 0; }
     bool SettingsViewModel::IsThinOutline() const noexcept { return m_outlineIndex == 1; }
     bool SettingsViewModel::IsNormalOutline() const noexcept { return m_outlineIndex == 2; }
@@ -140,17 +144,18 @@ namespace winrt::HaloDesktop::implementation
     {
         // Border width follows the caption size the way libass scales its outline with
         // the font, so the preview keeps telling the truth as the size slider moves.
-        static constexpr double widths[] = { 0.0, 0.8, 1.4, 2.2 };
-        auto const index = static_cast<std::size_t>(std::clamp(m_outlineIndex, 0, 3));
-        return widths[index] * m_subtitleSize / 100.0;
+        return ::HaloDesktop::ViewModels::SubtitlePreviewOutlineOffset(
+            static_cast<std::size_t>(std::clamp(m_outlineIndex, 0, 3)), m_subtitleSize);
     }
     double SettingsViewModel::PreviewOutlineNegativeOffset() const noexcept { return -PreviewOutlineOffset(); }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewShadowVisibility() const noexcept { return m_subtitleShadow ? Visible : Collapsed; }
-    double SettingsViewModel::PreviewShadowOffset() const noexcept { return 2.0 * m_subtitleSize / 100.0; }
+    double SettingsViewModel::PreviewShadowOffset() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewShadowOffset(m_subtitleSize); }
     bool SettingsViewModel::AutoplayNext() const noexcept { return m_autoplayNext; }
     void SettingsViewModel::AutoplayNext(bool value) { if (m_autoplayNext != value) { m_autoplayNext = value; m_settings->AutoplayNextEpisode(value); Raise(L"AutoplayNext"); } }
     bool SettingsViewModel::SubtitleShadow() const noexcept { return m_subtitleShadow; }
     void SettingsViewModel::SubtitleShadow(bool value) { if (m_subtitleShadow != value) { m_subtitleShadow = value; m_settings->SubtitleShadow(value); Raise(L"SubtitleShadow"); Raise(L"PreviewShadowVisibility"); } }
+    bool SettingsViewModel::SubtitleTrackStyling() const noexcept { return m_subtitleTrackStyling; }
+    void SettingsViewModel::SubtitleTrackStyling(bool value) { if (m_subtitleTrackStyling != value) { m_subtitleTrackStyling = value; m_settings->SubtitleTrackStyling(value); Raise(L"SubtitleTrackStyling"); } }
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
     void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; ::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
@@ -231,11 +236,12 @@ namespace winrt::HaloDesktop::implementation
     }
     void SettingsViewModel::SetFont(std::int32_t index)
     {
-        if (index < 0 || index > 2 || index == m_fontIndex) return;
+        if (index < 0 || index > 3 || index == m_fontIndex) return;
         m_fontIndex = index;
-        static constexpr wchar_t const* families[] = { L"Segoe UI", L"Georgia", L"JetBrains Mono" };
-        m_settings->SubtitleFontFamily(families[index]);
+        m_settings->SubtitleFontFamily(winrt::hstring{
+            ::HaloDesktop::ViewModels::kSubtitleFontFamilies[static_cast<std::size_t>(index)] });
         Raise(L"FontIndex");
+        Raise(L"IsDefaultFont");
         Raise(L"IsSystemFont");
         Raise(L"IsSerifFont");
         Raise(L"IsMonoFont");
@@ -245,8 +251,8 @@ namespace winrt::HaloDesktop::implementation
     {
         if (index < 0 || index > 3 || index == m_outlineIndex) return;
         m_outlineIndex = index;
-        static constexpr wchar_t const* outlines[] = { L"none", L"thin", L"normal", L"thick" };
-        m_settings->SubtitleOutline(outlines[index]);
+        m_settings->SubtitleOutline(winrt::hstring{
+            ::HaloDesktop::ViewModels::kSubtitleOutlines[static_cast<std::size_t>(index)] });
         Raise(L"OutlineIndex");
         Raise(L"IsNoOutline");
         Raise(L"IsThinOutline");
@@ -368,10 +374,11 @@ namespace winrt::HaloDesktop::implementation
         {
             m_subtitleSize = m_settings->SubtitleScalePercent();
             auto const family = m_settings->SubtitleFontFamily();
-            m_fontIndex = family == L"Georgia" ? 1 : family == L"JetBrains Mono" ? 2 : 0;
+            m_fontIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleFontIndex(family));
             auto const outline = m_settings->SubtitleOutline();
-            m_outlineIndex = outline == L"none" ? 0 : outline == L"thin" ? 1 : outline == L"thick" ? 3 : 2;
+            m_outlineIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleOutlineIndex(outline));
             m_subtitleShadow = m_settings->SubtitleShadow();
+            m_subtitleTrackStyling = m_settings->SubtitleTrackStyling();
             m_autoplayNext = m_settings->AutoplayNextEpisode();
             auto const audio = m_settings->PreferredAudioLanguage();
             m_audioLanguageIndex = !audio ? 4 : *audio == L"jpn" ? 1 : *audio == L"ger" ? 2 : *audio == L"spa" ? 3 : 0;
@@ -383,6 +390,7 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"PreviewFontSize");
             Raise(L"FontIndex");
             Raise(L"OutlineIndex");
+            Raise(L"IsDefaultFont");
             Raise(L"IsSystemFont");
             Raise(L"IsSerifFont");
             Raise(L"IsMonoFont");
@@ -394,6 +402,7 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"PreviewShadowVisibility");
             RaisePreviewMetrics();
             Raise(L"SubtitleShadow");
+            Raise(L"SubtitleTrackStyling");
             Raise(L"AutoplayNext");
             Raise(L"AudioLanguageIndex");
             Raise(L"SubtitleLanguageIndex");

@@ -60,6 +60,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Media::FontFamily PreviewFontFamily() const;
         [[nodiscard]] std::int32_t FontIndex() const noexcept;
         [[nodiscard]] std::int32_t OutlineIndex() const noexcept;
+        [[nodiscard]] bool IsDefaultFont() const noexcept;
         [[nodiscard]] bool IsSystemFont() const noexcept;
         [[nodiscard]] bool IsSerifFont() const noexcept;
         [[nodiscard]] bool IsMonoFont() const noexcept;
@@ -80,6 +81,8 @@ namespace winrt::HaloDesktop::implementation
         void AutoplayNext(bool value);
         [[nodiscard]] bool SubtitleShadow() const noexcept;
         void SubtitleShadow(bool value);
+        [[nodiscard]] bool SubtitleTrackStyling() const noexcept;
+        void SubtitleTrackStyling(bool value);
         [[nodiscard]] bool ResumePlayback() const noexcept;
         void ResumePlayback(bool value);
         [[nodiscard]] bool HardwareDecoding() const noexcept;
@@ -139,6 +142,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_addonsError{};
         bool m_autoplayNext{ true };
         bool m_subtitleShadow{ true };
+        bool m_subtitleTrackStyling{ true };
         bool m_resumePlayback{ true };
         bool m_hardwareDecoding{};
         HealthState m_healthState{ HealthState::Checking };

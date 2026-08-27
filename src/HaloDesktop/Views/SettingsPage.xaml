@@ -225,7 +225,9 @@
 
           <StackPanel x:Name="SubtitlesSection" Spacing="12">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Subtitles" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Appearance applies live during playback." /></StackPanel>
-            <Grid Height="220" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
+            <!-- Height comes from the controls rather than a fixed number, so a row added to the
+                 card cannot push its last control out of sight. The preview stretches to match. -->
+            <Grid MinHeight="220" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
               <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
                 <StackPanel>
                   <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
@@ -238,9 +240,10 @@
                     <TextBlock VerticalAlignment="Center" FontSize="13.5" Text="Font" />
                     <Border Grid.Column="1" Style="{StaticResource HaloSegmentedTrayStyle}">
                       <StackPanel Orientation="Horizontal">
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSystemFont, Mode=OneWay}" Click="OnSystemFontClick" Content="System" FontSize="12.5" Padding="14,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSerifFont, Mode=OneWay}" Click="OnSerifFontClick" Content="Serif" FontSize="12.5" Padding="14,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsMonoFont, Mode=OneWay}" Click="OnMonoFontClick" Content="Mono" FontSize="12.5" Padding="14,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsDefaultFont, Mode=OneWay}" Click="OnDefaultFontClick" Content="Default" FontSize="12.5" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" ToolTipService.ToolTip="Leaves the face to the player" />
+                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSystemFont, Mode=OneWay}" Click="OnSystemFontClick" Content="System" FontSize="12.5" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSerifFont, Mode=OneWay}" Click="OnSerifFontClick" Content="Serif" FontSize="12.5" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsMonoFont, Mode=OneWay}" Click="OnMonoFontClick" Content="Mono" FontSize="12.5" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
                       </StackPanel>
                     </Border>
                   </Grid>
@@ -256,6 +259,12 @@
                     </Border>
                   </Grid>
                   <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" FontSize="13.5" Text="Shadow" /><ToggleSwitch Grid.Column="1" HorizontalAlignment="Left" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></Grid>
+                  <!--
+                    The size and font choices above always reach a plain text track. This
+                    row decides whether they also override a track that ships its own
+                    styling, which is the only case where the two can disagree.
+                  -->
+                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="13.5" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Left" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
                 </StackPanel>
               </Border>
               <!--
@@ -264,7 +273,9 @@
                 asset in both themes so the caption keeps the contrast playback gives
                 it; the light palette used to leave white text on a near-white panel.
               -->
-              <Border Grid.Column="1" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="8">
+              <!-- Capped because the stripe asset is 420px tall and would otherwise drive the
+                   whole row taller than the card it sits beside. -->
+              <Border Grid.Column="1" MaxHeight="300" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="8">
                 <Grid>
                   <Image Source="ms-appx:///Assets/stripe-dark.png" Stretch="UniformToFill" />
                   <Rectangle Fill="{StaticResource HaloSubtitleStageScrimBrush}" />
