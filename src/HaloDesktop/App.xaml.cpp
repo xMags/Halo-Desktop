@@ -35,12 +35,21 @@
 #include "Storage/LegacyPackageDataSource.h"
 #include "Storage/PackagedDataMigrator.h"
 
+#include <shobjidl_core.h>
+
 #include <memory>
 
 namespace winrt::HaloDesktop::implementation
 {
     App::App()
     {
+        // Unpackaged processes otherwise get a taskbar identity derived from
+        // the executable path, which would not match the identity the installer
+        // stamps on its shortcuts. Declaring the same explicit id in both
+        // places keeps a pinned shortcut and the running window as one taskbar
+        // entry. This must happen before any window exists.
+        static_cast<void>(SetCurrentProcessExplicitAppUserModelID(L"HaloDesktop.App"));
+
         m_storagePaths = std::make_shared<::HaloDesktop::Storage::AppStoragePaths>();
         auto legacySource = std::make_shared<::HaloDesktop::Storage::InstalledLegacyPackageDataSource>();
         ::HaloDesktop::Storage::PackagedDataMigrator migrator{ m_storagePaths, legacySource };

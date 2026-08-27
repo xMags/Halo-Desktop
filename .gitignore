@@ -16,5 +16,6 @@ external/mpv/*
 !external/mpv/CORRESPONDING-SOURCE.md
 external/vulkan/*
 !external/vulkan/README.md
+installer/Output/
 tools/nuget.exe
 src/HaloDesktop/Config/ServerConfig.local.h

@@ -540,6 +540,7 @@
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\halo-mark.png" />
+    <Image Include="Assets\Halo.ico" />
     <Image Include="Assets\LockScreenLogo.scale-200.png" />
     <Image Include="Assets\SplashScreen.scale-200.png" />
     <Image Include="Assets\Square150x150Logo.scale-200.png" />
@@ -580,6 +581,9 @@
   -->
   <ItemGroup>
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="HaloDesktop.rc" />
   </ItemGroup>
   <!--
     Native payloads Halo redistributes. DeploymentContent is an MSIX concept and

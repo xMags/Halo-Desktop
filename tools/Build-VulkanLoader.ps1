@@ -126,6 +126,10 @@ try {
         -Destination $loaderSource
 
     Write-Host 'Building vulkan-1.dll...' -ForegroundColor White
+    # /Brepro replaces the PE timestamp with a hash of the contents, and
+    # /DEBUG:NONE keeps the build directory's absolute path out of the debug
+    # directory. Together they make the output depend only on the pinned
+    # sources, so the recorded hash survives a rebuild.
     Invoke-Checked -Description 'cmake configure (loader)' -FilePath 'cmake' -Arguments @(
         '-S', $loaderSource,
         '-B', $loaderBuild,
@@ -133,7 +137,10 @@ try {
         '-A', 'x64',
         '-DUPDATE_DEPS=OFF',
         '-DBUILD_TESTS=OFF',
-        "-DVULKAN_HEADERS_INSTALL_DIR=$headersInstall"
+        "-DVULKAN_HEADERS_INSTALL_DIR=$headersInstall",
+        '-DCMAKE_C_FLAGS=/Brepro',
+        '-DCMAKE_SHARED_LINKER_FLAGS=/Brepro /DEBUG:NONE',
+        '-DCMAKE_EXE_LINKER_FLAGS=/Brepro /DEBUG:NONE'
     )
     Invoke-Checked -Description 'cmake build (loader)' -FilePath 'cmake' -Arguments @(
         '--build', $loaderBuild, '--config', 'Release', '--parallel'

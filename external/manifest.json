@@ -20,7 +20,7 @@
       "version": "vulkan-sdk-1.4.357.0",
       "license": "Apache-2.0",
       "restoreCommand": "tools\\Build-VulkanLoader.ps1",
-      "sha256": "EA9182F25C17E5BDFF28674B2D2A2CA0032B6E6B6EF2F1A875B617D7231D5C36",
+      "sha256": "E5156B31AEF6C05E8A1302F53A10386FF32F01B7E6D78B597E91958D7E08E439",
       "size": 802304
     }
   ],

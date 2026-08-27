@@ -1,0 +1,7 @@
+// Gives HaloDesktop.exe its own icon in Explorer, the taskbar, and Alt+Tab.
+// Windows shows the lowest-numbered RT_GROUP_ICON as the executable's icon, so
+// this stays at 1. The generated manifest resource is a different resource
+// type and does not collide with it.
+#include <windows.h>
+
+1 ICON "Assets\\Halo.ico"

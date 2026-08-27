@@ -121,12 +121,10 @@ $msbuild = & $vswhere `
   -m `
   -v:m
 
-$manifest = Get-Item ".\x64\Debug\HaloDesktop\AppxManifest.xml"
-Add-AppxPackage -Register $manifest.FullName -ForceApplicationShutdown
-
-$package = Get-AppxPackage -Name "56fcb18b-d21c-4111-93fb-bef0ffa36c43"
-Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!App"
+& ".\x64\Debug\HaloDesktop\HaloDesktop.exe"
 ```
+
+Halo is an unpackaged application, so it runs straight from the build output. There is no package to register, Developer Mode is not required, and `x64\Release\HaloDesktop` can be copied to another machine and run as is.
 
 Both restore scripts are safe to run again.
 
@@ -140,11 +138,27 @@ Both restore scripts are safe to run again.
 & ".\tools\Verify-Dependencies.ps1"
 ```
 
-If you update `Assets/halo-mark.png`, regenerate the package artwork with:
+If you update `Assets/halo-mark.png`, regenerate the artwork and the application icon with:
 
 ```powershell
 & ".\tools\make-app-assets.ps1"
 ```
+
+## Building the installer
+
+```powershell
+& ".\tools\Build-Installer.ps1" -Version 1.0.0
+```
+
+This restores packages and the pinned native payloads, builds Release x64, verifies the payload hashes and the dependency closure, then compiles `installer/HaloDesktop.iss` with Inno Setup 6. The result is `installer/Output/HaloDesktop-<version>-Setup.exe`, and the script prints its SHA-256. Add `-SkipBuild` to package an existing Release output; the verification still runs, so an unverified folder can never be packaged.
+
+Inno Setup 6 must be installed. The script finds it through its registry entry, so either the per-user or the all-users installation works.
+
+The installer is per-user by default and needs no administrator rights, installing to `%LOCALAPPDATA%\Programs\Halo Desktop`; choosing an all-users install from the privileges dialog puts it in Program Files instead. It creates a Start Menu shortcut, offers an optional desktop shortcut, and closes any running Halo during an upgrade through Restart Manager.
+
+Application data lives separately in `%LOCALAPPDATA%\Halo Desktop` and is never touched by install or upgrade. An interactive uninstall asks whether to delete it and keeps it by default; a silent uninstall always keeps it.
+
+Binaries and the installer are unsigned, so Windows SmartScreen shows an unknown-publisher warning on first run. Choose "More info" then "Run anyway".
 
 ## Local fixture workflow
 
