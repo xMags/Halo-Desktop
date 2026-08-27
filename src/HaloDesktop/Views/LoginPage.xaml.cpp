@@ -11,6 +11,11 @@
 
 namespace winrt::HaloDesktop::implementation
 {
+    namespace
+    {
+        constexpr wchar_t const* SignInHelpUrl = L"https://github.com/xMags/Halo-Desktop/issues";
+    }
+
     LoginPage::LoginPage()
         : m_viewModel(winrt::make<LoginViewModel>(App::Services()))
     {
@@ -31,6 +36,38 @@ namespace winrt::HaloDesktop::implementation
     void LoginPage::OnReopenClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.Reopen(); }
     void LoginPage::OnCancelClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.Cancel(); }
     void LoginPage::OnDetailsClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_viewModel.ToggleDetails(); }
+    void LoginPage::OnHelpClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { OpenSignInHelp(); }
+
+    winrt::fire_and_forget LoginPage::OpenSignInHelp()
+    {
+        auto lifetime = get_strong();
+        auto launched = false;
+        try
+        {
+            launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
+                winrt::Windows::Foundation::Uri{ SignInHelpUrl });
+        }
+        catch (...)
+        {
+        }
+        if (launched)
+        {
+            co_return;
+        }
+
+        try
+        {
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(XamlRoot());
+            dialog.Title(winrt::box_value(L"Help could not be opened"));
+            dialog.Content(winrt::box_value(L"Open the Halo Desktop issues page in a browser and try again."));
+            dialog.CloseButtonText(L"Close");
+            co_await dialog.ShowAsync();
+        }
+        catch (...)
+        {
+        }
+    }
 
     void LoginPage::SubmitLocalCredentials()
     {

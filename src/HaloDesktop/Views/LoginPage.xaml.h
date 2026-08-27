@@ -19,9 +19,11 @@ namespace winrt::HaloDesktop::implementation
         void OnReopenClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCancelClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnDetailsClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnHelpClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
 
     private:
         void SubmitLocalCredentials();
+        winrt::fire_and_forget OpenSignInHelp();
         winrt::HaloDesktop::LoginViewModel m_viewModel{ nullptr };
     };
 }

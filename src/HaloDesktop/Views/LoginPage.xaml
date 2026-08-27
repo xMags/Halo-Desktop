@@ -143,9 +143,10 @@
         </Button>
         <Button
           Margin="0,12,0,0"
+          Click="OnHelpClick"
           Content="Having trouble signing in?"
           Style="{StaticResource LoginLinkButton}"
-          ToolTipService.ToolTip="Help is not available" />
+          ToolTipService.ToolTip="Open Halo Desktop support" />
       </StackPanel>
 
       <!-- Waiting for the browser round trip -->
