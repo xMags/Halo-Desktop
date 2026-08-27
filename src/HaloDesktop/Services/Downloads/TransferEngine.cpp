@@ -23,6 +23,11 @@ namespace
     constexpr std::uint64_t MaximumSubtitleBytes = 32ull * 1024ull * 1024ull;
     constexpr auto ProgressInterval = std::chrono::milliseconds{ 250 };
     constexpr int TransferAttempts = 3;
+    constexpr int MaximumRedirects = 5;
+
+    struct RedirectError final
+    {
+    };
 
     struct HttpCloser final
     {
@@ -44,6 +49,7 @@ namespace
         std::uint32_t Status{};
         std::optional<std::wstring> ETag;
         std::optional<std::wstring> LastModified;
+        std::optional<std::wstring> Location;
         std::optional<std::wstring> ContentRange;
         std::optional<std::uint64_t> ContentLength;
     };
@@ -156,7 +162,7 @@ namespace
         return value.empty() ? std::nullopt : std::optional<std::wstring>{ std::move(value) };
     }
 
-    HttpResponse OpenGet(
+    HttpResponse OpenGetOnce(
         std::wstring const& url,
         std::map<std::wstring, std::wstring, std::less<>> const& headers,
         std::optional<std::uint64_t> partial,
@@ -293,12 +299,85 @@ namespace
         response.Status = status;
         response.ETag = QueryHeader(response.Request.get(), L"ETag");
         response.LastModified = QueryHeader(response.Request.get(), L"Last-Modified");
+        response.Location = QueryHeader(response.Request.get(), L"Location");
         response.ContentRange = QueryHeader(response.Request.get(), L"Content-Range");
         if (auto const length = QueryHeader(response.Request.get(), L"Content-Length"))
         {
             response.ContentLength = ParseUnsigned(*length);
         }
         return response;
+    }
+
+    bool IsRedirectStatus(std::uint32_t status) noexcept
+    {
+        return status == 301 || status == 302 || status == 303
+            || status == 307 || status == 308;
+    }
+
+    bool SameOrigin(
+        winrt::Windows::Foundation::Uri const& left,
+        winrt::Windows::Foundation::Uri const& right) noexcept
+    {
+        return _wcsicmp(left.SchemeName().c_str(), right.SchemeName().c_str()) == 0
+            && _wcsicmp(left.Host().c_str(), right.Host().c_str()) == 0
+            && left.Port() == right.Port();
+    }
+
+    HttpResponse OpenGet(
+        std::wstring const& url,
+        std::map<std::wstring, std::wstring, std::less<>> const& headers,
+        std::optional<std::uint64_t> partial,
+        std::optional<std::wstring> const& validator)
+    {
+        auto currentUrl = url;
+        std::map<std::wstring, std::wstring, std::less<>> const emptyHeaders;
+        bool forwardProtectedHeaders = true;
+        for (int redirectCount = 0;; ++redirectCount)
+        {
+            auto response = OpenGetOnce(
+                currentUrl,
+                forwardProtectedHeaders ? headers : emptyHeaders,
+                partial,
+                validator);
+            if (!IsRedirectStatus(response.Status))
+            {
+                return response;
+            }
+            if (redirectCount >= MaximumRedirects || !response.Location
+                || response.Location->empty() || response.Location->size() > 32768
+                || response.Location->find(L'\0') != std::wstring::npos)
+            {
+                throw RedirectError{};
+            }
+
+            try
+            {
+                winrt::Windows::Foundation::Uri const current{ currentUrl };
+                auto const next = current.CombineUri(*response.Location);
+                auto const nextScheme = next.SchemeName();
+                if (next.Host().empty()
+                    || (_wcsicmp(nextScheme.c_str(), L"http") != 0
+                        && _wcsicmp(nextScheme.c_str(), L"https") != 0)
+                    || (_wcsicmp(current.SchemeName().c_str(), L"https") == 0
+                        && _wcsicmp(nextScheme.c_str(), L"https") != 0))
+                {
+                    throw RedirectError{};
+                }
+                if (!SameOrigin(current, next))
+                {
+                    forwardProtectedHeaders = false;
+                }
+                currentUrl = next.AbsoluteUri();
+            }
+            catch (RedirectError const&)
+            {
+                throw;
+            }
+            catch (...)
+            {
+                throw RedirectError{};
+            }
+        }
     }
 
     std::optional<std::uint64_t> DiskFree(std::filesystem::path const& path) noexcept
@@ -1463,6 +1542,13 @@ namespace HaloDesktop::Services::Downloads
         try
         {
             response = OpenGet(request.Url, request.Headers, requestedPartial, record.Validator);
+        }
+        catch (RedirectError const&)
+        {
+            throw TransferError{
+                .Type = TransferError::Kind::Permanent,
+                .Failure = DownloadFailureCode::SourceRejected,
+            };
         }
         catch (...)
         {

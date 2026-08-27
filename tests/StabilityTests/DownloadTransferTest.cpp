@@ -28,6 +28,7 @@
 namespace
 {
     using HaloDesktop::Services::Downloads::DownloadRecord;
+    using HaloDesktop::Services::Downloads::DownloadFailureCode;
     using HaloDesktop::Services::Downloads::DownloadStartRequest;
     using HaloDesktop::Services::Downloads::DownloadStatus;
     using HaloDesktop::Services::Downloads::SubtitleRequest;
@@ -115,12 +116,28 @@ namespace
         }
     }
 
+    [[nodiscard]] std::string NarrowAscii(std::wstring const& value)
+    {
+        std::string result;
+        result.reserve(value.size());
+        for (auto const character : value)
+        {
+            if (character < 0 || character > 127)
+            {
+                throw std::invalid_argument{ "The loopback test URL is not ASCII." };
+            }
+            result.push_back(static_cast<char>(character));
+        }
+        return result;
+    }
+
     class DownloadHttpServer final
     {
     public:
-        DownloadHttpServer()
+        explicit DownloadHttpServer(std::optional<std::wstring> redirectTarget = std::nullopt)
             : m_firstBody(384u * 1024u, static_cast<std::uint8_t>(0x31)),
-              m_replacementBody(448u * 1024u, static_cast<std::uint8_t>(0x52))
+              m_replacementBody(448u * 1024u, static_cast<std::uint8_t>(0x52)),
+              m_redirectTarget(std::move(redirectTarget))
         {
             WSADATA data{};
             if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
@@ -206,6 +223,26 @@ namespace
             return BaseUrl() + L"/video-cancel";
         }
 
+        [[nodiscard]] std::wstring RelativeRedirectUrl() const
+        {
+            return BaseUrl() + L"/video-relative-redirect";
+        }
+
+        [[nodiscard]] std::wstring CrossOriginRedirectUrl() const
+        {
+            return BaseUrl() + L"/video-cross-origin-redirect";
+        }
+
+        [[nodiscard]] std::wstring RedirectTargetUrl() const
+        {
+            return BaseUrl() + L"/video-redirect-target";
+        }
+
+        [[nodiscard]] std::wstring RedirectLoopUrl() const
+        {
+            return BaseUrl() + L"/video-redirect-loop";
+        }
+
         [[nodiscard]] std::vector<std::uint8_t> const& FirstBody() const noexcept
         {
             return m_firstBody;
@@ -229,6 +266,16 @@ namespace
         [[nodiscard]] int RejectedRequests() const noexcept
         {
             return m_rejectedRequests.load();
+        }
+
+        [[nodiscard]] int CrossOriginRedirectRequests() const noexcept
+        {
+            return m_crossOriginRedirectRequests.load();
+        }
+
+        [[nodiscard]] int RedirectTargetRequests() const noexcept
+        {
+            return m_redirectTargetRequests.load();
         }
 
     private:
@@ -296,6 +343,10 @@ namespace
             auto const replacement = request.starts_with("GET /video-replacement ");
             auto const expiring = request.starts_with("GET /video-expiring ");
             auto const cancel = request.starts_with("GET /video-cancel ");
+            auto const relativeRedirect = request.starts_with("GET /video-relative-redirect ");
+            auto const crossOriginRedirect = request.starts_with("GET /video-cross-origin-redirect ");
+            auto const redirectTarget = request.starts_with("GET /video-redirect-target ");
+            auto const redirectLoop = request.starts_with("GET /video-redirect-loop ");
             auto const subtitle = request.starts_with("GET /subtitle.srt ");
             auto const hasVideoHeader =
                 request.find("\r\nX-Halo-Test: video-secret\r\n") != std::string::npos;
@@ -327,6 +378,28 @@ namespace
             {
                 ++m_authorizedVideoRequests;
                 SendBody(client, m_cancelBody, "application/octet-stream");
+                return;
+            }
+            if (relativeRedirect && hasVideoHeader)
+            {
+                SendRedirect(client, "/video-first");
+                return;
+            }
+            if (crossOriginRedirect && hasVideoHeader && m_redirectTarget)
+            {
+                ++m_crossOriginRedirectRequests;
+                SendRedirect(client, NarrowAscii(*m_redirectTarget));
+                return;
+            }
+            if (redirectTarget && !hasVideoHeader && !hasRefreshedHeader)
+            {
+                ++m_redirectTargetRequests;
+                SendBody(client, m_firstBody, "application/octet-stream");
+                return;
+            }
+            if (redirectLoop && hasVideoHeader)
+            {
+                SendRedirect(client, "/video-redirect-loop");
                 return;
             }
             if (subtitle && hasSubtitleHeader)
@@ -369,17 +442,27 @@ namespace
             }
         }
 
+        void SendRedirect(SOCKET client, std::string const& location)
+        {
+            auto const response = "HTTP/1.1 302 Found\r\nLocation: " + location
+                + "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+            SendAll(client, response.data(), response.size());
+        }
+
         SOCKET m_socket{ INVALID_SOCKET };
         std::uint16_t m_port{};
         std::atomic_bool m_stopping{};
         std::atomic_int m_authorizedVideoRequests{};
         std::atomic_int m_authorizedSubtitleRequests{};
         std::atomic_int m_rejectedRequests{};
+        std::atomic_int m_crossOriginRedirectRequests{};
+        std::atomic_int m_redirectTargetRequests{};
         std::vector<std::uint8_t> m_firstBody;
         std::vector<std::uint8_t> m_replacementBody;
         std::vector<std::uint8_t> m_cancelBody = std::vector<std::uint8_t>(
             8u * 1024u * 1024u,
             static_cast<std::uint8_t>(0x43));
+        std::optional<std::wstring> m_redirectTarget;
         std::jthread m_thread;
     };
 
@@ -478,7 +561,8 @@ void RunDownloadTransferStabilityTest()
 {
     Apartment apartment;
     TemporaryDirectory temporary;
-    DownloadHttpServer server;
+    DownloadHttpServer redirectTarget;
+    DownloadHttpServer server{ redirectTarget.RedirectTargetUrl() };
     std::mutex statusMutex;
     std::vector<DownloadStatus> statuses;
     // Keep callback state alive until after the engine's worker has stopped, even
@@ -608,6 +692,50 @@ void RunDownloadTransferStabilityTest()
         !std::filesystem::exists(cancelled.PartialPath())
             && !std::filesystem::exists(cancelled.TargetPath()),
         "cancelling an active transfer left downloaded data behind");
+
+    auto const relativeRedirect = engine.Start(MakeRequest(
+        server.RelativeRedirectUrl(),
+        L"relative-redirect.mkv",
+        server.FirstBody().size(),
+        false,
+        std::nullopt,
+        L"movie:relative-redirect"));
+    auto const relativeRedirectDone = WaitForStatus(
+        engine, relativeRedirect.JobId, DownloadStatus::Done);
+    Require(
+        ReadBytes(engine.FilesForPlayback(relativeRedirectDone.JobId).VideoPath) == server.FirstBody(),
+        "a same-origin relative redirect did not preserve the protected request");
+
+    auto const crossOriginRedirect = engine.Start(MakeRequest(
+        server.CrossOriginRedirectUrl(),
+        L"cross-origin-redirect.mkv",
+        redirectTarget.FirstBody().size(),
+        false,
+        std::nullopt,
+        L"movie:cross-origin-redirect"));
+    auto const crossOriginRedirectDone = WaitForStatus(
+        engine, crossOriginRedirect.JobId, DownloadStatus::Done);
+    Require(
+        ReadBytes(engine.FilesForPlayback(crossOriginRedirectDone.JobId).VideoPath)
+            == redirectTarget.FirstBody(),
+        "a safe cross-origin redirect did not complete");
+    Require(
+        server.CrossOriginRedirectRequests() == 1
+            && redirectTarget.RedirectTargetRequests() == 1,
+        "a protected source header leaked to a cross-origin redirect target");
+
+    auto const redirectLoop = engine.Start(MakeRequest(
+        server.RedirectLoopUrl(),
+        L"redirect-loop.mkv",
+        server.FirstBody().size(),
+        false,
+        std::nullopt,
+        L"movie:redirect-loop"));
+    auto const redirectLoopFailed = WaitForStatus(
+        engine, redirectLoop.JobId, DownloadStatus::Failed);
+    Require(
+        redirectLoopFailed.Failure == DownloadFailureCode::SourceRejected,
+        "an unbounded redirect chain was not rejected safely");
 
     engine.RemoveChangedHandler(token);
 }
