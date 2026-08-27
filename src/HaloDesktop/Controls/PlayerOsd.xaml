@@ -518,9 +518,16 @@
                         <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
                       </Grid>
                     </Border>
+                    <!--
+                      The switch is 40x20 followed by a fixed 12px column the stock template
+                      reserves for On/Off content this design does not use, and a MinWidth
+                      that pads it out to 154. Pinning the width to the switch plus that
+                      column and pulling the column back off the margin is what lines the
+                      switch up with the trays above and below it.
+                    -->
                     <Grid Margin="0,14,0,0">
                       <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Shadow" />
-                      <ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleAppearance.Shadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
+                      <ToggleSwitch HorizontalAlignment="Right" Margin="0,0,-12,0" MinWidth="0" Width="52" IsOn="{x:Bind ViewModel.SubtitleAppearance.Shadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
                     </Grid>
                   </StackPanel>
                 </Border>
@@ -528,7 +535,7 @@
                   <StackPanel>
                     <Grid>
                       <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Track styling" />
-                      <ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleAppearance.TrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
+                      <ToggleSwitch HorizontalAlignment="Right" Margin="0,0,-12,0" MinWidth="0" Width="52" IsOn="{x:Bind ViewModel.SubtitleAppearance.TrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
                     </Grid>
                     <!-- Static rather than reading the live track: the rule holds for every
                          track, and stating it beats a label that changes under the reader. -->
