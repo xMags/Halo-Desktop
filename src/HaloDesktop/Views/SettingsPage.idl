@@ -51,8 +51,11 @@ namespace HaloDesktop
         Boolean IsThickOutline { get; };
         Int32 AudioLanguageIndex;
         Int32 SubtitleLanguageIndex;
-        Microsoft.UI.Xaml.Visibility ThinOutlineVisibility { get; };
-        Microsoft.UI.Xaml.Visibility HeavyOutlineVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PreviewOutlineVisibility { get; };
+        Double PreviewOutlineOffset { get; };
+        Double PreviewOutlineNegativeOffset { get; };
+        Microsoft.UI.Xaml.Visibility PreviewShadowVisibility { get; };
+        Double PreviewShadowOffset { get; };
         Boolean AutoplayNext;
         Boolean SubtitleShadow;
         Boolean ResumePlayback;

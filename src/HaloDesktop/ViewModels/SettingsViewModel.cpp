@@ -13,6 +13,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <cwctype>
 #include <sstream>
 #include <string>
@@ -91,6 +92,7 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"SubtitleSize");
         Raise(L"SubtitleSizeLabel");
         Raise(L"PreviewFontSize");
+        RaisePreviewMetrics();
     }
     winrt::hstring SettingsViewModel::SubtitleSizeLabel() const
     {
@@ -133,12 +135,22 @@ namespace winrt::HaloDesktop::implementation
         m_settings->PreferredSubtitleLanguage(values[value] ? std::optional<winrt::hstring>{ values[value] } : std::nullopt);
         Raise(L"SubtitleLanguageIndex");
     }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::ThinOutlineVisibility() const noexcept { return m_outlineIndex == 1 ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::HeavyOutlineVisibility() const noexcept { return m_outlineIndex >= 2 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewOutlineVisibility() const noexcept { return m_outlineIndex > 0 ? Visible : Collapsed; }
+    double SettingsViewModel::PreviewOutlineOffset() const noexcept
+    {
+        // Border width follows the caption size the way libass scales its outline with
+        // the font, so the preview keeps telling the truth as the size slider moves.
+        static constexpr double widths[] = { 0.0, 0.8, 1.4, 2.2 };
+        auto const index = static_cast<std::size_t>(std::clamp(m_outlineIndex, 0, 3));
+        return widths[index] * m_subtitleSize / 100.0;
+    }
+    double SettingsViewModel::PreviewOutlineNegativeOffset() const noexcept { return -PreviewOutlineOffset(); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewShadowVisibility() const noexcept { return m_subtitleShadow ? Visible : Collapsed; }
+    double SettingsViewModel::PreviewShadowOffset() const noexcept { return 2.0 * m_subtitleSize / 100.0; }
     bool SettingsViewModel::AutoplayNext() const noexcept { return m_autoplayNext; }
     void SettingsViewModel::AutoplayNext(bool value) { if (m_autoplayNext != value) { m_autoplayNext = value; m_settings->AutoplayNextEpisode(value); Raise(L"AutoplayNext"); } }
     bool SettingsViewModel::SubtitleShadow() const noexcept { return m_subtitleShadow; }
-    void SettingsViewModel::SubtitleShadow(bool value) { if (m_subtitleShadow != value) { m_subtitleShadow = value; m_settings->SubtitleShadow(value); Raise(L"SubtitleShadow"); } }
+    void SettingsViewModel::SubtitleShadow(bool value) { if (m_subtitleShadow != value) { m_subtitleShadow = value; m_settings->SubtitleShadow(value); Raise(L"SubtitleShadow"); Raise(L"PreviewShadowVisibility"); } }
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
     void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; ::HaloDesktop::Services::PlaybackPreferences::ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
@@ -240,8 +252,8 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"IsThinOutline");
         Raise(L"IsNormalOutline");
         Raise(L"IsThickOutline");
-        Raise(L"ThinOutlineVisibility");
-        Raise(L"HeavyOutlineVisibility");
+        Raise(L"PreviewOutlineVisibility");
+        RaisePreviewMetrics();
     }
     void SettingsViewModel::SignOut()
     {
@@ -275,6 +287,13 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"AddonErrorVisibility");
         Raise(L"AddonEmptyVisibility");
         Raise(L"AddonContentVisibility");
+    }
+
+    void SettingsViewModel::RaisePreviewMetrics()
+    {
+        Raise(L"PreviewOutlineOffset");
+        Raise(L"PreviewOutlineNegativeOffset");
+        Raise(L"PreviewShadowOffset");
     }
 
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::ProbeHealthAsync(std::uint64_t version)
@@ -371,8 +390,9 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"IsThinOutline");
             Raise(L"IsNormalOutline");
             Raise(L"IsThickOutline");
-            Raise(L"ThinOutlineVisibility");
-            Raise(L"HeavyOutlineVisibility");
+            Raise(L"PreviewOutlineVisibility");
+            Raise(L"PreviewShadowVisibility");
+            RaisePreviewMetrics();
             Raise(L"SubtitleShadow");
             Raise(L"AutoplayNext");
             Raise(L"AudioLanguageIndex");

@@ -156,6 +156,24 @@
   <FontFamily x:Key="HaloMonoFont">ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono</FontFamily>
   <FontFamily x:Key="HaloMonoBoldFont">ms-appx:///Assets/Fonts/JetBrainsMono-Bold.ttf#JetBrains Mono</FontFamily>
 
+  <!--
+    The subtitle stage stands in for a video frame, so it is deliberately kept out of
+    the theme dictionaries: playback paints white captions with a dark border over
+    picture whichever theme the app is wearing. Tinting the stage with the light
+    palette put white text on a near-white panel, which hid the caption and
+    misrepresented the outline and shadow settings the panel exists to demonstrate.
+  -->
+  <SolidColorBrush x:Key="HaloSubtitleStageBrush" Color="#FF232428" />
+  <SolidColorBrush x:Key="HaloSubtitleStageStrokeBrush" Color="#1FFFFFFF" />
+  <SolidColorBrush x:Key="HaloSubtitleStageTextBrush" Color="#66FFFFFF" />
+  <SolidColorBrush x:Key="HaloSubtitleGlyphBrush" Color="#FFFFFFFF" />
+  <SolidColorBrush x:Key="HaloSubtitleOutlineBrush" Color="#F0000000" />
+  <SolidColorBrush x:Key="HaloSubtitleShadowBrush" Color="#A6000000" />
+  <LinearGradientBrush x:Key="HaloSubtitleStageScrimBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0.4" Color="#00000000" />
+    <GradientStop Offset="1" Color="#73000000" />
+  </LinearGradientBrush>
+
   <CornerRadius x:Key="HaloControlCornerRadius">4</CornerRadius>
   <CornerRadius x:Key="HaloOverlayCornerRadius">8</CornerRadius>
   <x:Double x:Key="HaloGutter">24</x:Double>

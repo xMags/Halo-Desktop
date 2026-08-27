@@ -9,6 +9,22 @@
   NavigationCacheMode="Required">
   <!-- Capped and centred so the form does not strand itself against the left edge
        of a maximised window; the header travels with it. -->
+  <Page.Resources>
+    <!--
+      The subtitle preview draws the same caption several times in one layout slot: a
+      shadow copy, eight border copies ringing the glyphs, and the caption itself on
+      top. Only the offsets differ, so the shared text properties live here.
+    -->
+    <Style x:Key="SubtitlePreviewLayerStyle" TargetType="TextBlock">
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="TextAlignment" Value="Center" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+      <Setter Property="IsHitTestVisible" Value="False" />
+    </Style>
+    <Style x:Key="SubtitlePreviewOutlineStyle" TargetType="TextBlock" BasedOn="{StaticResource SubtitlePreviewLayerStyle}">
+      <Setter Property="Foreground" Value="{StaticResource HaloSubtitleOutlineBrush}" />
+    </Style>
+  </Page.Resources>
   <Grid x:Name="PageRoot" MaxWidth="1000" HorizontalAlignment="Center">
     <!--
       The form is capped so line length stays readable, but the cap, the rail and the
@@ -188,24 +204,36 @@
                   <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" FontSize="13.5" Text="Shadow" /><ToggleSwitch Grid.Column="1" HorizontalAlignment="Left" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></Grid>
                 </StackPanel>
               </Border>
-              <Border Grid.Column="1" Background="{ThemeResource HaloPhTint2Brush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+              <!--
+                A stand-in for a video frame rather than a themed surface, because a
+                video frame is what subtitles are drawn over. The stripe is the dark
+                asset in both themes so the caption keeps the contrast playback gives
+                it; the light palette used to leave white text on a near-white panel.
+              -->
+              <Border Grid.Column="1" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="8">
                 <Grid>
-                  <local:PlaceholderArt />
-                  <TextBlock Margin="12,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{ThemeResource HaloPhTextBrush}" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" />
+                  <Image Source="ms-appx:///Assets/stripe-dark.png" Stretch="UniformToFill" />
+                  <Rectangle Fill="{StaticResource HaloSubtitleStageScrimBrush}" />
+                  <TextBlock Margin="12,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{StaticResource HaloSubtitleStageTextBrush}" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" />
                   <!--
-                    The three copies share one layout slot so they wrap identically; the
-                    shadow copies are displaced by a render transform, which does not
-                    affect layout. Giving them different margins made the caption read
-                    as two overlapping strings.
+                    The copies share one layout slot so they wrap identically; the
+                    offsets come from a render transform, which does not affect layout.
+                    Giving them different margins made the caption read as several
+                    overlapping strings. The border copies ring the glyphs rather than
+                    trailing them, so thickness reads as a border instead of a second
+                    ghosted caption, and the shadow copy is the only trailing one.
                   -->
                   <Grid Margin="14,0,14,16" VerticalAlignment="Bottom">
-                    <TextBlock x:Name="ThinPreviewOutline" Foreground="#D9000000" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.ThinOutlineVisibility, Mode=OneWay}">
-                      <TextBlock.RenderTransform><TranslateTransform X="1.5" Y="1.5" /></TextBlock.RenderTransform>
-                    </TextBlock>
-                    <TextBlock x:Name="HeavyPreviewOutline" Foreground="#F2000000" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.HeavyOutlineVisibility, Mode=OneWay}">
-                      <TextBlock.RenderTransform><TranslateTransform X="2.5" Y="2.5" /></TextBlock.RenderTransform>
-                    </TextBlock>
-                    <TextBlock x:Name="SubtitlePreviewText" Foreground="White" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" FontWeight="SemiBold" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" TextAlignment="Center" TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleShadowBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewShadowVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                    <TextBlock x:Name="SubtitlePreviewText" Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleGlyphBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" />
                   </Grid>
                 </Grid>
               </Border>

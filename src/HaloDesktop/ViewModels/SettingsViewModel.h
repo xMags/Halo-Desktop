@@ -71,8 +71,11 @@ namespace winrt::HaloDesktop::implementation
         void AudioLanguageIndex(std::int32_t value);
         [[nodiscard]] std::int32_t SubtitleLanguageIndex() const noexcept;
         void SubtitleLanguageIndex(std::int32_t value);
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility ThinOutlineVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility HeavyOutlineVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewOutlineVisibility() const noexcept;
+        [[nodiscard]] double PreviewOutlineOffset() const noexcept;
+        [[nodiscard]] double PreviewOutlineNegativeOffset() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewShadowVisibility() const noexcept;
+        [[nodiscard]] double PreviewShadowOffset() const noexcept;
         [[nodiscard]] bool AutoplayNext() const noexcept;
         void AutoplayNext(bool value);
         [[nodiscard]] bool SubtitleShadow() const noexcept;
@@ -107,6 +110,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IAsyncAction RunSignOutAsync();
         void SynchronizeAddons();
         void RaiseAddonState();
+        void RaisePreviewMetrics();
         void Raise(wchar_t const* propertyName);
 
         enum class HealthState
