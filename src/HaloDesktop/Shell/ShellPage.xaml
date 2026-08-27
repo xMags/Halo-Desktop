@@ -141,7 +141,7 @@
               Stretch="UniformToFill" />
           </Border>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
-            <TextBlock x:Name="AccountName" FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" />
+            <TextBlock x:Name="AccountName" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloAccentBrush}" />
           </StackPanel>
         </Grid>
