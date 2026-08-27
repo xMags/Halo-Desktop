@@ -113,6 +113,7 @@ $msbuild = & $vswhere `
   -p:Platform=x64
 
 & ".\tools\fetch-mpv.ps1"
+& ".\tools\Build-VulkanLoader.ps1"
 
 & $msbuild "Halo-Desktop.slnx" `
   -p:Configuration=Debug `
@@ -127,7 +128,17 @@ $package = Get-AppxPackage -Name "56fcb18b-d21c-4111-93fb-bef0ffa36c43"
 Start-Process "shell:AppsFolder\$($package.PackageFamilyName)!App"
 ```
 
-`tools/fetch-mpv.ps1` is safe to run again. It downloads the latest baseline x64 LGPL developer archive, creates the MSVC import library, and places the ignored payload under `external/mpv/`. The fetched release is recorded locally in `external/mpv/VERSION.txt`.
+Both restore scripts are safe to run again.
+
+`tools/fetch-mpv.ps1` downloads one pinned x64 LGPL developer archive, verifies it against a recorded SHA-256, creates the MSVC import library, and places the ignored payload under `external/mpv/`. It downloads a specific release rather than "latest", so the binary Halo links against does not change underneath you. See `external/mpv/CORRESPONDING-SOURCE.md` for the LGPL source pointer.
+
+`tools/Build-VulkanLoader.ps1` builds `vulkan-1.dll` from pinned Khronos sources into `external/vulkan/`. It is required because `libmpv-2.dll` statically imports the Vulkan loader, which ships with GPU drivers rather than with Windows; without it Halo cannot load libmpv on a machine that has no driver installed. Halo renders through D3D11 and does not otherwise use Vulkan.
+
+`tools/Verify-Dependencies.ps1` checks both payloads against `external/manifest.json` and proves the Release output has no dependency outside its own folder and Windows itself. Run it before producing a release:
+
+```powershell
+& ".\tools\Verify-Dependencies.ps1"
+```
 
 If you update `Assets/halo-mark.png`, regenerate the package artwork with:
 

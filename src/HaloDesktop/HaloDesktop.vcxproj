@@ -565,10 +565,18 @@
   -->
   <ItemGroup>
     <None Include="packages.config" />
-    <None Include="$(SolutionDir)external\mpv\bin\libmpv-2.dll" Condition="'$(Platform)'=='x64'">
-      <DeploymentContent>true</DeploymentContent>
-      <Link>libmpv-2.dll</Link>
-    </None>
+  </ItemGroup>
+  <!--
+    Native payloads Halo redistributes. DeploymentContent is an MSIX concept and
+    no longer copies anything now that WindowsPackageType is None, so the
+    unpackaged output folder is populated by an explicit copy instead.
+    vulkan-1.dll is here because libmpv statically imports it: the loader is
+    supplied by GPU drivers rather than by Windows, so without it in the app
+    folder libmpv fails to load on a machine that has no driver installed.
+  -->
+  <ItemGroup Condition="'$(Platform)'=='x64'">
+    <HaloNativePayload Include="$(SolutionDir)external\mpv\bin\libmpv-2.dll" />
+    <HaloNativePayload Include="$(SolutionDir)external\vulkan\bin\vulkan-1.dll" />
   </ItemGroup>
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
@@ -608,5 +616,17 @@
     <Error Condition="!Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.props')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.props'))" />
     <Error Condition="!Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.targets'))" />
     <Error Condition="!Exists('..\..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\..\packages\Microsoft.Windows.ImplementationLibrary.1.0.260126.7\build\native\Microsoft.Windows.ImplementationLibrary.targets'))" />
+  </Target>
+  <!--
+    The external payloads are generated, not tracked in Git, so a fresh clone
+    fails here with an actionable message instead of a link error or a runtime
+    "libmpv-2.dll could not be loaded" much later.
+  -->
+  <Target Name="VerifyHaloNativePayload" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
+    <Error Condition="!Exists('$(SolutionDir)external\mpv\lib\mpv.lib') Or !Exists('$(SolutionDir)external\mpv\bin\libmpv-2.dll')" Text="The pinned libmpv payload is missing. Run tools\fetch-mpv.ps1 to restore external\mpv." />
+    <Error Condition="!Exists('$(SolutionDir)external\vulkan\bin\vulkan-1.dll')" Text="The pinned Vulkan loader is missing. Run tools\Build-VulkanLoader.ps1 to restore external\vulkan." />
+  </Target>
+  <Target Name="CopyHaloNativePayload" AfterTargets="Build" Condition="'$(Platform)'=='x64'" Inputs="@(HaloNativePayload)" Outputs="@(HaloNativePayload-&gt;'$(OutDir)%(Filename)%(Extension)')">
+    <Copy SourceFiles="@(HaloNativePayload)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" UseHardlinksIfPossible="false" />
   </Target>
 </Project>

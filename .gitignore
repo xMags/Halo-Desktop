@@ -13,5 +13,8 @@ design/
 /docs/
 external/mpv/*
 !external/mpv/README.md
+!external/mpv/CORRESPONDING-SOURCE.md
+external/vulkan/*
+!external/vulkan/README.md
 tools/nuget.exe
 src/HaloDesktop/Config/ServerConfig.local.h

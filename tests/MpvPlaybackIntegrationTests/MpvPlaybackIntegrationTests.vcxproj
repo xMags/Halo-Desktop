@@ -39,7 +39,13 @@
       <SubSystem>Console</SubSystem>
     </Link>
     <PostBuildEvent>
-      <Command>copy /Y "$(RepositoryRoot)external\mpv\bin\libmpv-2.dll" "$(OutDir)libmpv-2.dll"</Command>
+      <!--
+        The Vulkan loader travels with libmpv here for the same reason it does
+        in the app: libmpv statically imports vulkan-1.dll, so without it the
+        test cannot load libmpv on a machine with no GPU driver installed.
+      -->
+      <Command>copy /Y "$(RepositoryRoot)external\mpv\bin\libmpv-2.dll" "$(OutDir)libmpv-2.dll"
+copy /Y "$(RepositoryRoot)external\vulkan\bin\vulkan-1.dll" "$(OutDir)vulkan-1.dll"</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

@@ -1,13 +1,31 @@
+<#
+.SYNOPSIS
+    Restores the pinned libmpv developer payload into external\mpv.
+
+.DESCRIPTION
+    Halo redistributes libmpv-2.dll, so the payload is pinned to one upstream
+    release asset by SHA-256. The release tag and asset name only locate the
+    file; the hash decides whether the bytes are accepted. A re-tagged,
+    replaced, or tampered asset therefore fails loudly instead of silently
+    changing what Halo ships.
+
+    Bumping libmpv is a deliberate act: update the three pinned values below,
+    run this script, then copy the printed hash and size into
+    external\manifest.json.
+#>
 [CmdletBinding()]
 param()
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$releaseTag = '2026-08-23-9f9f8c4dd4'
+$assetName = 'mpv-dev-lgpl-x86_64-20260823-git-9f9f8c4dd4.7z'
+$assetSha256 = '16B9AEAEF838A79C61D0299E410AB45604ECD6591A17DA7ECF7AEF6A6FDD1C17'
+
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $externalRoot = Join-Path $repositoryRoot 'external\mpv'
 $temporaryRoot = Join-Path $env:TEMP ("HaloDesktop-mpv-" + [guid]::NewGuid().ToString('N'))
-$archivePath = $null
 
 function Assert-GeneratedPath {
     param(
@@ -78,22 +96,20 @@ function New-DefinitionFile {
 }
 
 try {
-    $release = Invoke-RestMethod `
-        -Uri 'https://api.github.com/repos/zhongfly/mpv-winbuild/releases/latest' `
-        -Headers @{ 'User-Agent' = 'HaloDesktop-mpv-fetcher' }
-    $asset = $release.assets |
-        Where-Object { $_.name -match '^mpv-dev-lgpl-x86_64-\d' } |
-        Select-Object -First 1
-    if (-not $asset) {
-        throw 'The latest release has no LGPL x64 libmpv developer archive.'
-    }
-
     New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
-    $archivePath = Join-Path $temporaryRoot $asset.name
-    Write-Host "Downloading $($asset.name) from release $($release.tag_name)..." -ForegroundColor White
-    Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $archivePath
+    $archivePath = Join-Path $temporaryRoot $assetName
+    $downloadUrl = "https://github.com/zhongfly/mpv-winbuild/releases/download/$releaseTag/$assetName"
 
-    Write-Host 'Extracting libmpv payload...' -ForegroundColor White
+    Write-Host "Downloading pinned $assetName from release $releaseTag..." -ForegroundColor White
+    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+
+    $actualAssetHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
+    if ($actualAssetHash -ne $assetSha256) {
+        throw "The pinned libmpv archive does not match its expected hash. Expected $assetSha256, found $actualAssetHash."
+    }
+    Write-Host 'Archive hash verified.' -ForegroundColor White
+
+    # tar.exe on Windows is bsdtar, which reads the 7-Zip container directly.
     & tar.exe -xf $archivePath -C $temporaryRoot
     if ($LASTEXITCODE -ne 0) {
         throw "tar.exe failed with exit code $LASTEXITCODE."
@@ -123,7 +139,8 @@ try {
     }
 
     Copy-Item -LiteralPath $clientHeader.Directory.FullName -Destination $includeRoot -Recurse
-    Copy-Item -LiteralPath $dll.FullName -Destination (Join-Path $binaryRoot 'libmpv-2.dll')
+    $installedDll = Join-Path $binaryRoot 'libmpv-2.dll'
+    Copy-Item -LiteralPath $dll.FullName -Destination $installedDll
 
     $definitionPath = Join-Path $externalRoot 'mpv.def'
     Assert-GeneratedPath -Path $definitionPath
@@ -131,7 +148,7 @@ try {
         Copy-Item -LiteralPath $definition.FullName -Destination $definitionPath -Force
     }
     else {
-        New-DefinitionFile -DllPath (Join-Path $binaryRoot 'libmpv-2.dll') -DefinitionPath $definitionPath
+        New-DefinitionFile -DllPath $installedDll -DefinitionPath $definitionPath
     }
 
     $lib = Get-VisualStudioTool -Name 'lib.exe'
@@ -145,8 +162,19 @@ try {
         Remove-Item -LiteralPath $exportPath -Force
     }
 
-    Set-Content -LiteralPath (Join-Path $externalRoot 'VERSION.txt') -Value $release.tag_name -Encoding ascii
-    Write-Host "libmpv $($release.tag_name) is ready in external\mpv." -ForegroundColor Green
+    # The upstream developer archive carries no legal text of its own, so the
+    # LGPL notice and the corresponding-source pointer are maintained in the
+    # repository instead: licenses\third-party\GNU-LGPL-2.1.txt and
+    # external\mpv\CORRESPONDING-SOURCE.md.
+    Set-Content -LiteralPath (Join-Path $externalRoot 'VERSION.txt') -Value $releaseTag -Encoding ascii
+
+    $dllHash = (Get-FileHash -LiteralPath $installedDll -Algorithm SHA256).Hash
+    $dllSize = (Get-Item -LiteralPath $installedDll).Length
+    Write-Host ''
+    Write-Host "libmpv $releaseTag is ready in external\mpv." -ForegroundColor Green
+    Write-Host "  sha256: $dllHash" -ForegroundColor White
+    Write-Host "  size:   $dllSize" -ForegroundColor White
+    Write-Host 'If you changed the pin, copy these into external\manifest.json.' -ForegroundColor White
 }
 finally {
     if (Test-Path -LiteralPath $temporaryRoot) {
