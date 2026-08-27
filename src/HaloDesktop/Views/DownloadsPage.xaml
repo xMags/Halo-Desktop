@@ -62,11 +62,21 @@
             <StackPanel Spacing="10">
               <Grid><TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.StorageLine, Mode=OneWay}" /><TextBlock HorizontalAlignment="Right" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.FreeLine, Mode=OneWay}" /></Grid>
               <ProgressBar Height="8" Maximum="1" Value="{x:Bind ViewModel.StorageFraction, Mode=OneWay}" />
-              <StackPanel Orientation="Horizontal" Spacing="18">
-                <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
-                <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
-                <Button Margin="12,0,0,0" Padding="12,3" Click="OnManageFolderClick" Content="Manage folder" />
-              </StackPanel>
+              <!--
+                The action sits on the card's right edge, under the free-space figure in
+                the header, so the card reads down one edge rather than trailing off after
+                the legend. Every part of the legend is centred on the same line: the swatch
+                and the byte count asked for it, the labels did not, and a stretched label
+                puts its text at the top of the row instead of beside the swatch.
+              -->
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="18">
+                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
+                </StackPanel>
+                <Button Grid.Column="1" Margin="12,0,0,0" Padding="12,3" VerticalAlignment="Center" Click="OnManageFolderClick" Content="Manage folder" />
+              </Grid>
             </StackPanel>
           </Border>
 
