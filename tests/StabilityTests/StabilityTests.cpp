@@ -5,9 +5,13 @@
 #include "DownloadTransferTest.h"
 #include "StorageTests.h"
 
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <iterator>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -191,6 +195,49 @@ namespace
         Require(state.CanApply(*second), "the newer page operation was not current");
         state.Complete(*second);
     }
+
+    void TestMutableDownloadRowBindings()
+    {
+        auto xamlPath = std::filesystem::path{ L"DownloadsPage.xaml" };
+        if (!std::filesystem::is_regular_file(xamlPath))
+        {
+            xamlPath = L"src/HaloDesktop/Views/DownloadsPage.xaml";
+        }
+        std::ifstream input{ xamlPath, std::ios::binary };
+        if (!input)
+        {
+            throw std::runtime_error{ "the Downloads page XAML test resource was unavailable" };
+        }
+        auto const xaml = std::string{
+            std::istreambuf_iterator<char>{ input },
+            std::istreambuf_iterator<char>{} };
+        constexpr std::string_view mutableProperties[]{
+            "Poster",
+            "Tag",
+            "Name",
+            "Sub",
+            "DownloadingVisibility",
+            "QueuedVisibility",
+            "PausedVisibility",
+            "FailedVisibility",
+            "Progress",
+            "Detail",
+        };
+        for (auto const property : mutableProperties)
+        {
+            auto const binding = std::string{ "{x:Bind " } + std::string{ property };
+            auto position = xaml.find(binding);
+            Require(position != std::string::npos, "a mutable download row property was not bound");
+            while (position != std::string::npos)
+            {
+                auto const mode = position + binding.size();
+                Require(
+                    xaml.compare(mode, std::string_view{ ", Mode=OneWay}" }.size(), ", Mode=OneWay}") == 0,
+                    "a mutable download row property used a one-time binding");
+                position = xaml.find(binding, mode);
+            }
+        }
+    }
 } // namespace
 
 int main()
@@ -203,6 +250,7 @@ int main()
         TestFilteredFeaturedSelection();
         TestOptionalSubtitleFallback();
         TestDownloadPageOperationLifetime();
+        TestMutableDownloadRowBindings();
         RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();
         std::cout << "StabilityTests passed\n";

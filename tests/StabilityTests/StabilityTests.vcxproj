@@ -99,5 +99,11 @@
     <ClInclude Include="DownloadTransferTest.h" />
     <ClInclude Include="StorageTests.h" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">
+      <Link>DownloadsPage.xaml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>
