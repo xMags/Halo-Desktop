@@ -96,6 +96,7 @@ namespace HaloDesktop
         void OpenPlayer(String key);
         void OpenBest();
         void OpenSettings();
+        void GoBack();
     }
 
     [default_interface]

@@ -28,6 +28,7 @@ namespace winrt::HaloDesktop::implementation
     void DetailPage::OnSeasonOneClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SelectSeason(0); }
     void DetailPage::OnSeasonTwoClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SelectSeason(1); }
     void DetailPage::OnSeasonChanged(winrt::Windows::Foundation::IInspectable const& sender,Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&){m_viewModel.SelectSeason(sender.as<Microsoft::UI::Xaml::Controls::ComboBox>().SelectedIndex());}
+    void DetailPage::OnBackClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.GoBack(); }
     void DetailPage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&){m_viewModel.Retry();}
     void DetailPage::OnLibraryClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&){m_viewModel.ToggleLibrary();}
     void DetailPage::OnEpisodeClick(winrt::Windows::Foundation::IInspectable const& sender,Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenSources(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag()); }

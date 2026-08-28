@@ -8,9 +8,17 @@
   Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
-  <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+  <!-- Pinned outside the scroller. The loading and error states replace the scrolled
+       content wholesale, and the back button has to survive both: a title that fails
+       to load is exactly when there is nothing else to leave the page with. The title
+       falls back to the one the caller navigated with until the detail arrives. -->
+  <local:SectionHeader ShowBack="True" BackClick="OnBackClick" Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
+  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
-      <local:SectionHeader Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
         <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Background, Mode=OneWay}" FallbackUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
@@ -115,7 +123,7 @@
       </Grid>
     </StackPanel>
   </ScrollViewer>
-  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading title details…" /></StackPanel>
-  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Title details could not be loaded." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+  <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading title details…" /></StackPanel>
+  <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Title details could not be loaded." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
   </Grid>
 </Page>

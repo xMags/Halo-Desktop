@@ -46,6 +46,7 @@ namespace HaloDesktop
         void OpenPrimarySource();
         void BrowseSources();
         void OpenDownloads();
+        void GoBack();
     }
 
     [default_interface]

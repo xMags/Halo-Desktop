@@ -207,6 +207,13 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::OpenPlayer(winrt::hstring const& key) { auto request=m_sources->BuildPlaybackRequest(key); if(request)m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player,request); }
     void SourcesViewModel::OpenBest() { if (m_bestSource) OpenPlayer(m_bestSource.Key()); }
     void SourcesViewModel::OpenSettings() { m_navigation->GoTo(::HaloDesktop::Services::Page::Settings); }
+    // Sources is only ever reached from another shell page, so there is always
+    // something behind it; the guard is for a cold navigation in testing.
+    void SourcesViewModel::GoBack()
+    {
+        if (m_navigation->CanGoBack()) m_navigation->GoBack();
+        else m_navigation->GoTo(::HaloDesktop::Services::Page::Home);
+    }
     concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> SourcesViewModel::StartDownloadAsync(
         winrt::hstring key,
         bool replaceExisting)

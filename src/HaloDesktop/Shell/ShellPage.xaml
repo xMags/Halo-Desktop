@@ -13,6 +13,13 @@
       Key="K"
       Modifiers="Control"
       Invoked="OnSearchAcceleratorInvoked" />
+    <!-- The rail's own back button stays collapsed, so its Alt+Left accelerator never
+         reaches the user. This one carries the shortcut instead, alongside the mouse
+         back button handled in the code-behind. -->
+    <KeyboardAccelerator
+      Key="Left"
+      Modifiers="Menu"
+      Invoked="OnBackAcceleratorInvoked" />
   </Page.KeyboardAccelerators>
 
   <NavigationView

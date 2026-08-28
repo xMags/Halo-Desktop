@@ -139,6 +139,7 @@ namespace winrt::HaloDesktop::implementation
         void OpenPlayer(winrt::hstring const& key);
         void OpenBest();
         void OpenSettings();
+        void GoBack();
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailColumnVisibility() const noexcept;
         // Called by the page with the measured width of the list column. The
         // optional columns depend on the room the list actually has, which the

@@ -8,6 +8,7 @@
 #include "Shell/LayoutMetricsService.h"
 
 #include <array>
+#include <winrt/Microsoft.UI.Input.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -166,10 +167,29 @@ namespace winrt::HaloDesktop::implementation
                 }
             } });
 
+        // The mouse back button is a shell-wide gesture, not a content one, so it
+        // listens on the NavigationView rather than the frame host: a press over the
+        // rail should go back just as one over the page does. Handled presses count,
+        // because the button a press lands on has no interest in the X buttons.
+        m_backPointerHandler = winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+            [weak](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->OnShellPointerPressed(sender, args);
+                }
+            } });
+
         auto const host = ContentHost();
         host.AddHandler(
             Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
             m_pointerPressedHandler,
+            true);
+        NavigationControl().AddHandler(
+            Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
+            m_backPointerHandler,
             true);
         for (auto const& routedEvent : {
                  Microsoft::UI::Xaml::UIElement::PointerReleasedEvent(),
@@ -206,8 +226,21 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
         }
+        try
+        {
+            if (m_backPointerHandler)
+            {
+                NavigationControl().RemoveHandler(
+                    Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
+                    m_backPointerHandler);
+            }
+        }
+        catch (...)
+        {
+        }
         m_pointerPressedHandler = nullptr;
         m_pointerEndedHandler = nullptr;
+        m_backPointerHandler = nullptr;
     }
 
     void ShellPage::OnContentPointerPressed(
@@ -276,6 +309,35 @@ namespace winrt::HaloDesktop::implementation
         // which focuses its own input on arrival.
         App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Search);
         args.Handled(true);
+    }
+
+    // Pages reached from another page carry their own back button in the section
+    // header. These two are the shortcuts that work anywhere in the shell, including
+    // on the rail destinations, which have no header button by design.
+    void ShellPage::OnBackAcceleratorInvoked(
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
+        Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args)
+    {
+        args.Handled(App::Services().Navigation->GoBack());
+    }
+
+    void ShellPage::OnShellPointerPressed(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        if (args.Pointer().PointerDeviceType() != Microsoft::UI::Input::PointerDeviceType::Mouse)
+        {
+            return;
+        }
+        auto const point = args.GetCurrentPoint(nullptr);
+        if (!point || !point.Properties().IsXButton1Pressed())
+        {
+            return;
+        }
+        if (App::Services().Navigation->GoBack())
+        {
+            args.Handled(true);
+        }
     }
 
     void ShellPage::OnAccountClick(

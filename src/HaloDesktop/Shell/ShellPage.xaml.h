@@ -34,6 +34,9 @@ namespace winrt::HaloDesktop::implementation
         void OnSearchAcceleratorInvoked(
             Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
             Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
+        void OnBackAcceleratorInvoked(
+            Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
+            Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args);
         void OnAccountClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -60,6 +63,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] static bool IsHomeSearchTarget(Microsoft::UI::Xaml::DependencyObject const& element);
         void AttachPointerHandlers();
         void DetachPointerHandlers() noexcept;
+        void OnShellPointerPressed(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
 
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::InfoBadge DownloadsBadgeControl() const;
@@ -80,6 +86,7 @@ namespace winrt::HaloDesktop::implementation
         std::optional<std::uint32_t> m_nonTextPointerId;
         winrt::Windows::Foundation::IInspectable m_pointerPressedHandler{ nullptr };
         winrt::Windows::Foundation::IInspectable m_pointerEndedHandler{ nullptr };
+        winrt::Windows::Foundation::IInspectable m_backPointerHandler{ nullptr };
         winrt::event_token m_gettingFocusToken{};
         std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
