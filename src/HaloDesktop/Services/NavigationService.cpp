@@ -56,6 +56,13 @@ namespace
         return page == Page::Login || page == Page::Player;
     }
 
+    // Sources is presented as a sheet over whatever the shell is showing, so it
+    // is neither a shell destination nor a full-window overlay.
+    bool IsSheetPage(HaloDesktop::Services::Page page) noexcept
+    {
+        return page == HaloDesktop::Services::Page::Sources;
+    }
+
     HaloDesktop::Services::Page PageFromType(winrt::Windows::UI::Xaml::Interop::TypeName const& type)
     {
         using HaloDesktop::Services::Page;
@@ -131,12 +138,26 @@ namespace HaloDesktop::Services
         m_overlayOpen = false;
     }
 
+    void NavigationService::AttachSheetFrame(winrt::Microsoft::UI::Xaml::Controls::Frame const& frame)
+    {
+        if (!frame)
+        {
+            throw std::invalid_argument("A sheet frame is required");
+        }
+
+        m_sheetFrame = frame;
+        m_sheetFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        m_sheetOpen = false;
+    }
+
     void NavigationService::Detach() noexcept
     {
         m_shellNavigatedRevoker.revoke();
         m_shellFrame = nullptr;
         m_overlayFrame = nullptr;
+        m_sheetFrame = nullptr;
         m_overlayOpen = false;
+        m_sheetOpen = false;
         m_routeChangedHandler = {};
     }
 
@@ -144,7 +165,7 @@ namespace HaloDesktop::Services
         Page page,
         winrt::Windows::Foundation::IInspectable const& parameter)
     {
-        if (!m_shellFrame || IsOverlayPage(page))
+        if (!m_shellFrame || IsOverlayPage(page) || IsSheetPage(page))
         {
             return false;
         }
@@ -172,6 +193,13 @@ namespace HaloDesktop::Services
             return true;
         }
 
+        // Back over an open sheet dismisses the sheet rather than moving the shell
+        // underneath it, which the user cannot see changing anyway.
+        if (m_sheetOpen)
+        {
+            return CloseSheet();
+        }
+
         if (!CanGoBack())
         {
             return false;
@@ -186,6 +214,10 @@ namespace HaloDesktop::Services
         if (m_overlayOpen)
         {
             return m_overlayFrame && m_overlayFrame.CanGoBack();
+        }
+        if (m_sheetOpen)
+        {
+            return true;
         }
         return m_shellFrame && m_shellFrame.CanGoBack();
     }
@@ -241,6 +273,51 @@ namespace HaloDesktop::Services
             m_routeChangedHandler(m_currentPage);
         }
         return true;
+    }
+
+    bool NavigationService::ShowSheet(
+        Page page,
+        winrt::Windows::Foundation::IInspectable const& parameter)
+    {
+        if (!m_sheetFrame || !IsSheetPage(page))
+        {
+            return false;
+        }
+
+        // Always a fresh navigation: reopening the sheet for a different episode
+        // has to reach the page's parameter handling, which reusing content skips.
+        auto const navigated = m_sheetFrame.Navigate(
+            PageType(page),
+            parameter,
+            winrt::Microsoft::UI::Xaml::Media::Animation::SuppressNavigationTransitionInfo{});
+        if (!navigated)
+        {
+            return false;
+        }
+
+        m_sheetFrame.BackStack().Clear();
+        m_sheetOpen = true;
+        m_sheetFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Visible);
+        return true;
+    }
+
+    bool NavigationService::CloseSheet()
+    {
+        if (!m_sheetFrame || !m_sheetOpen)
+        {
+            return false;
+        }
+
+        m_sheetFrame.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        m_sheetFrame.Content(nullptr);
+        m_sheetFrame.BackStack().Clear();
+        m_sheetOpen = false;
+        return true;
+    }
+
+    bool NavigationService::IsSheetOpen() const noexcept
+    {
+        return m_sheetOpen;
     }
 
     Page NavigationService::CurrentPage() const noexcept

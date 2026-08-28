@@ -102,6 +102,9 @@ namespace HaloDesktop
         StreamStatus Status { get; };
         String Size { get; };
         String Detail { get; };
+        UInt64 SizeBytes { get; };
+        Int32 Rank { get; };
+        Windows.Foundation.Collections.IVectorView<String> SubtitleLanguages { get; };
     };
 
     [default_interface]
@@ -112,6 +115,7 @@ namespace HaloDesktop
         String Name { get; };
         String Note { get; };
         Int32 Count { get; };
+        Boolean Answered { get; };
         Windows.Foundation.Collections.IVectorView<StreamSource> Sources { get; };
     };
 

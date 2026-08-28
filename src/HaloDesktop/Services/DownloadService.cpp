@@ -2,6 +2,7 @@
 #include "Services/DownloadService.h"
 
 #include "Models/Models.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/StreamInfo.h"
 
 #include <algorithm>
@@ -157,15 +158,17 @@ namespace HaloDesktop::Services
     DownloadService::DownloadService(
         std::shared_ptr<Downloads::TransferEngine> engine,
         std::shared_ptr<ISessionService> session,
+        std::shared_ptr<DevicePreferencesStore> devicePreferences,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
         : m_engine(std::move(engine)),
           m_session(std::move(session)),
+          m_devicePreferences(std::move(devicePreferences)),
           m_dispatcher(std::move(dispatcher)),
           m_transfers(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
           m_ready(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
           m_throughput(winrt::single_threaded_observable_vector<double>())
     {
-        if (!m_engine || !m_session || !m_dispatcher)
+        if (!m_engine || !m_session || !m_devicePreferences || !m_dispatcher)
         {
             throw std::invalid_argument{ "DownloadService requires all dependencies." };
         }
@@ -679,10 +682,12 @@ namespace HaloDesktop::Services
         m_storedBytes = 0;
         m_inFlightBytes = 0;
         m_aggregateRate = 0.0;
+        std::uint64_t bytesPerSecond{};
         std::vector<winrt::HaloDesktop::DownloadItem> transfers;
         std::vector<winrt::HaloDesktop::DownloadItem> ready;
         for (auto const& record : m_records)
         {
+            bytesPerSecond += record.BytesPerSecond;
             m_aggregateRate += static_cast<double>(record.BytesPerSecond) / (1024.0 * 1024.0);
             if (record.Status == DownloadStatus::Done)
             {
@@ -701,6 +706,9 @@ namespace HaloDesktop::Services
         for (auto const& item : ready) m_ready.Append(item);
         if (m_throughput.Size() >= 30) m_throughput.RemoveAt(0);
         m_throughput.Append(m_aggregateRate);
+        // Megabits, not mebibytes: the number is compared against what a line is
+        // sold as, and the store drops anything that is not a new peak.
+        m_devicePreferences->RecordMeasuredLineMbps(static_cast<double>(bytesPerSecond) * 8.0 / 1'000'000.0);
         NotifyChanged();
     }
 

@@ -25,6 +25,9 @@ namespace HaloDesktop::Services
         Api::Dto::StreamRecord Stream;
         ParsedStreamInfo Info;
         winrt::HaloDesktop::SourcesNavParams Navigation{ nullptr };
+        // Position in the whole resolve's ranking, ascending. Assigned after every
+        // addon has answered, so it is comparable across addon groups.
+        std::int32_t Rank{};
     };
 
     // UI-thread-only facade. Raw third-party URLs and request headers remain in

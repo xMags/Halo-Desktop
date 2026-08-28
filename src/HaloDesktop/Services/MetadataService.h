@@ -27,6 +27,7 @@ namespace HaloDesktop::Services
             winrt::hstring type,
             winrt::hstring metaId) override;
         [[nodiscard]] winrt::HaloDesktop::MediaDetail Detail() const override;
+        [[nodiscard]] std::int32_t RuntimeMinutes() const noexcept override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode>
             Episodes(std::int32_t season) const override;
         void OnAccountChanged();
@@ -36,6 +37,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<WatchStateService> m_watch;
         std::shared_ptr<IDownloadService> m_downloads;
         winrt::HaloDesktop::MediaDetail m_detail{ nullptr };
+        std::int32_t m_runtimeMinutes{};
         std::vector<winrt::HaloDesktop::Episode> m_episodes;
         // Prevent an older detail response from replacing the current title.
         std::uint64_t m_requestVersion{};

@@ -117,7 +117,7 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Subtitles->Stop();
         if(next.Playback){co_await StartRequestAsync(next.Playback);co_return;}
         co_await PrepareForWindowCloseAsync();
-        auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->GoTo(::HaloDesktop::Services::Page::Sources,next.Sources);
+        auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,next.Sources);
     }
 
     winrt::fire_and_forget PlayerPage::BeginClose()

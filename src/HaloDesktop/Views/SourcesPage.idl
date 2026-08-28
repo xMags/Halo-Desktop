@@ -1,11 +1,18 @@
 namespace HaloDesktop
 {
     [default_interface]
-    runtimeclass SourceResolutionItemViewModel
+    runtimeclass SourceSpecItemViewModel
+    {
+        String Key { get; };
+        String Value { get; };
+    }
+
+    [default_interface]
+    runtimeclass SourceProviderItemViewModel
     {
         String Name { get; };
         String Value { get; };
-        Microsoft.UI.Xaml.Visibility ResolvedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AnsweredVisibility { get; };
         Microsoft.UI.Xaml.Visibility FailedVisibility { get; };
     }
 
@@ -15,9 +22,9 @@ namespace HaloDesktop
         String Label { get; };
         String Count { get; };
         Double Share { get; };
-        Microsoft.UI.Xaml.Visibility Quality2160Visibility { get; };
-        Microsoft.UI.Xaml.Visibility Quality1080Visibility { get; };
-        Microsoft.UI.Xaml.Visibility QualityOtherVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopTierVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MidTierVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LowTierVisibility { get; };
     }
 
     [default_interface]
@@ -27,76 +34,113 @@ namespace HaloDesktop
         String Value { get; };
     }
 
-    [default_interface]
-    runtimeclass SourceDisplayItemViewModel
+    runtimeclass SourceDisplayItemViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Microsoft.UI.Xaml.Visibility HeaderVisibility { get; };
         Microsoft.UI.Xaml.Visibility RowVisibility { get; };
-        String Key { get; };
+        Microsoft.UI.Xaml.Visibility ShowMoreVisibility { get; };
+
         String GroupName { get; };
         String GroupNote { get; };
         String GroupCount { get; };
-        String Quality { get; };
-        String Range { get; };
-        String File { get; };
-        String Codec { get; };
-        String Audio { get; };
-        String Languages { get; };
+        String ShowMoreLabel { get; };
+
+        String Key { get; };
+        String QualityHead { get; };
+        String QualitySub { get; };
         String StatusLabel { get; };
-        String Size { get; };
-        String Detail { get; };
-        Microsoft.UI.Xaml.Visibility Quality2160Visibility { get; };
-        Microsoft.UI.Xaml.Visibility Quality1080Visibility { get; };
-        Microsoft.UI.Xaml.Visibility QualityOtherVisibility { get; };
         Microsoft.UI.Xaml.Visibility InstantVisibility { get; };
-        Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
-        Microsoft.UI.Xaml.Visibility UncachedVisibility { get; };
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
-        Microsoft.UI.Xaml.Visibility UnknownVisibility { get; };
-        Microsoft.UI.Xaml.Visibility DetailColumnVisibility { get; };
-        Microsoft.UI.Xaml.Visibility CompactSummaryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ColdVisibility { get; };
+        String SoundAndSize { get; };
+        String LanguageLine { get; };
+        String Warning { get; };
+        Microsoft.UI.Xaml.Visibility WarningVisibility { get; };
+        String FileName { get; };
+        String Reason { get; };
+        Object Specs { get; };
+
+        Microsoft.UI.Xaml.Visibility ExpandedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ExpandGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CollapseGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectionVisibility { get; };
     }
 
     runtimeclass SourcesViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Object Items { get; };
-        Object ResolutionItems { get; };
+        Object ProviderItems { get; };
         Object QualityItems { get; };
-        String Title { get; };
-        String Poster { get; };
-        String EpisodeLabel { get; };
-        String ResolveSummary { get; };
-        String AllFilterLabel { get; };
-        String InstantFilterLabel { get; };
-        String Quality2160FilterLabel { get; };
-        String Quality1080FilterLabel { get; };
-        String BestQuality { get; };
-        String BestRange { get; };
-        String BestFile { get; };
-        String BestCodec { get; };
-        String BestAudio { get; };
-        String BestLanguages { get; };
-        String BestSize { get; };
-        String BestStatusLine { get; };
-        String BestStatusBadge { get; };
         Object PickerRules { get; };
-        String TeachingTipTitle { get; };
-        String TeachingTipBody { get; };
-        Boolean TeachingTipOpen { get; };
-        Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+
+        Double SheetWidth { get; };
+
+        String Kicker { get; };
+        String Heading { get; };
+        String CountLine { get; };
+
+        String AllFilterCount { get; };
+        String PlaysNowFilterCount { get; };
+        String UltraHdFilterCount { get; };
+        String FullHdFilterCount { get; };
+        String SortLabel { get; };
+        Int32 FilterIndex { get; };
+        Int32 SortIndex { get; };
+
+        Microsoft.UI.Xaml.Visibility FilterRowVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ListVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResolvingVisibility { get; };
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
-        Microsoft.UI.Xaml.Visibility DetailColumnVisibility { get; };
+
+        String EmptyTitle { get; };
+        String EmptyBody { get; };
+
+        Microsoft.UI.Xaml.Visibility BannerVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BannerCautionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BannerInfoVisibility { get; };
+        String BannerTitle { get; };
+        String BannerBody { get; };
+        String BannerAction { get; };
+
+        Microsoft.UI.Xaml.Visibility PickVisibility { get; };
+        String PickQualityHead { get; };
+        String PickQualitySub { get; };
+        String PickStatusLabel { get; };
+        Microsoft.UI.Xaml.Visibility PickInstantVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickOnDiskVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickCachingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickColdVisibility { get; };
+        String PickWhy { get; };
+        String PickLine { get; };
+        String PickFileName { get; };
+        String PickWatchNote { get; };
+        Microsoft.UI.Xaml.Visibility PickWatchNoteVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickSelectionVisibility { get; };
+
+        Microsoft.UI.Xaml.Visibility InfoVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InfoExpandGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InfoCollapseGlyphVisibility { get; };
+
+        Int32 SelectedIndex { get; };
+
         void Load(Object parameter);
-        void SetListWidth(Double width);
         void Retry();
         void SetFilter(Int32 index);
-        void DismissTeachingTip();
+        void SetSort(Int32 index);
+        void ToggleInfo();
+        void ToggleExpanded(String key);
+        void SelectKey(String key);
+        void SelectPick();
+        void MoveSelection(Int32 delta);
+        void ExpandSelected();
+        void CollapseSelected();
+        void RevealCold();
+        void PlaySelected();
         void OpenPlayer(String key);
-        void OpenBest();
         void OpenSettings();
-        void GoBack();
+        void Close();
+        String FileNameFor(String key);
     }
 
     [default_interface]

@@ -3,8 +3,8 @@
 #if __has_include("SourceDisplayItemViewModel.g.cpp")
 #include "SourceDisplayItemViewModel.g.cpp"
 #endif
-#if __has_include("SourceResolutionItemViewModel.g.cpp")
-#include "SourceResolutionItemViewModel.g.cpp"
+#if __has_include("SourceProviderItemViewModel.g.cpp")
+#include "SourceProviderItemViewModel.g.cpp"
 #endif
 #if __has_include("SourceQualityItemViewModel.g.cpp")
 #include "SourceQualityItemViewModel.g.cpp"
@@ -12,168 +12,476 @@
 #if __has_include("SourcePickerRuleViewModel.g.cpp")
 #include "SourcePickerRuleViewModel.g.cpp"
 #endif
+#if __has_include("SourceSpecItemViewModel.g.cpp")
+#include "SourceSpecItemViewModel.g.cpp"
+#endif
 #if __has_include("SourcesViewModel.g.cpp")
 #include "SourcesViewModel.g.cpp"
 #endif
 
 #include "Models/Models.h"
-
-#include <algorithm>
+#include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Services/SettingsSyncService.h"
-#include "Services/DevicePreferencesStore.h"
+#include "Services/WatchStateService.h"
+#include "Shell/LayoutMetricsService.h"
 #include "ViewModels/ObservableHelper.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace
 {
+    namespace Sources = ::HaloDesktop::Sources;
+
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
-    winrt::hstring StatusLabel(winrt::HaloDesktop::StreamStatus status)
+    constexpr std::int32_t FilterAll = 0;
+    constexpr std::int32_t FilterPlaysNow = 1;
+    constexpr std::int32_t FilterUltraHd = 2;
+    constexpr std::int32_t FilterFullHd = 3;
+    constexpr std::int32_t FilterCount = 4;
+
+    constexpr std::int32_t SortRecommended = 0;
+    constexpr std::int32_t SortBestPicture = 1;
+    constexpr std::int32_t SortSmallestFile = 2;
+    constexpr std::int32_t SortFastestStart = 3;
+    constexpr std::int32_t SortCount = 4;
+
+    // 700 px at the shipped window size, 880 px once the content area is wide
+    // enough that the sheet would otherwise leave the list looking stranded.
+    constexpr double NarrowSheetWidth = 700.0;
+    constexpr double WideSheetWidth = 880.0;
+
+    wchar_t const* SortName(std::int32_t index)
     {
-        switch (status)
+        switch (index)
         {
-        case winrt::HaloDesktop::StreamStatus::Instant: return L"INSTANT";
-        case winrt::HaloDesktop::StreamStatus::Caching: return L"CACHING";
-        case winrt::HaloDesktop::StreamStatus::Uncached: return L"UNCACHED";
-        case winrt::HaloDesktop::StreamStatus::OnDisk: return L"ON DISK";
-        case winrt::HaloDesktop::StreamStatus::Unknown: return L"UNKNOWN";
+        case SortBestPicture: return L"Best picture";
+        case SortSmallestFile: return L"Smallest file";
+        case SortFastestStart: return L"Fastest start";
+        default: break;
         }
-        return L"UNKNOWN";
+        return L"Recommended";
     }
 
-    winrt::hstring FilterLabel(wchar_t const* name, std::int32_t count)
+    wchar_t const* FilterName(std::int32_t index)
     {
-        return winrt::hstring{ name } + L" " + winrt::to_hstring(count);
+        switch (index)
+        {
+        case FilterPlaysNow: return L"plays now";
+        case FilterUltraHd: return L"4K";
+        case FilterFullHd: return L"Full HD";
+        default: break;
+        }
+        return L"all";
+    }
+
+    void SortEntries(std::vector<Sources::SourceEntry>& entries, std::int32_t sortIndex)
+    {
+        switch (sortIndex)
+        {
+        case SortBestPicture:
+            std::stable_sort(entries.begin(), entries.end(), [](auto const& left, auto const& right)
+            {
+                if (left.Tier != right.Tier) return left.Tier < right.Tier;
+                return left.SizeBytes > right.SizeBytes;
+            });
+            return;
+        case SortSmallestFile:
+            std::stable_sort(entries.begin(), entries.end(), [](auto const& left, auto const& right)
+            {
+                // A source that never reported a size cannot claim to be the
+                // smallest, so the unknowns sink instead of leading the list.
+                if ((left.SizeBytes == 0) != (right.SizeBytes == 0)) return right.SizeBytes == 0;
+                return left.SizeBytes < right.SizeBytes;
+            });
+            return;
+        case SortFastestStart:
+            std::stable_sort(entries.begin(), entries.end(), [](auto const& left, auto const& right)
+            {
+                if (left.Speed != right.Speed) return left.Speed < right.Speed;
+                return left.Rank < right.Rank;
+            });
+            return;
+        default:
+            std::stable_sort(entries.begin(), entries.end(), [](auto const& left, auto const& right)
+            {
+                return left.Rank < right.Rank;
+            });
+            return;
+        }
     }
 }
 
 namespace winrt::HaloDesktop::implementation
 {
-    SourceResolutionItemViewModel::SourceResolutionItemViewModel(winrt::hstring name, winrt::hstring value, bool resolved)
-        : m_name(std::move(name)), m_value(std::move(value)), m_resolved(resolved) {}
-    winrt::hstring SourceResolutionItemViewModel::Name() const { return m_name; }
-    winrt::hstring SourceResolutionItemViewModel::Value() const { return m_value; }
-    Microsoft::UI::Xaml::Visibility SourceResolutionItemViewModel::ResolvedVisibility() const noexcept { return m_resolved ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceResolutionItemViewModel::FailedVisibility() const noexcept { return m_resolved ? Collapsed : Visible; }
+    SourceSpecItemViewModel::SourceSpecItemViewModel(winrt::hstring key, winrt::hstring value)
+        : m_key(std::move(key)), m_value(std::move(value)) {}
+    winrt::hstring SourceSpecItemViewModel::Key() const { return m_key; }
+    winrt::hstring SourceSpecItemViewModel::Value() const { return m_value; }
 
-    SourceQualityItemViewModel::SourceQualityItemViewModel(winrt::hstring label, std::int32_t count, std::int32_t largest)
-        : m_label(std::move(label)), m_count(count), m_largest(largest) {}
-    winrt::hstring SourceQualityItemViewModel::Label() const { return m_label; }
+    SourceProviderItemViewModel::SourceProviderItemViewModel(winrt::hstring name, winrt::hstring value, bool answered)
+        : m_name(std::move(name)), m_value(std::move(value)), m_answered(answered) {}
+    winrt::hstring SourceProviderItemViewModel::Name() const { return m_name; }
+    winrt::hstring SourceProviderItemViewModel::Value() const { return m_value; }
+    Microsoft::UI::Xaml::Visibility SourceProviderItemViewModel::AnsweredVisibility() const noexcept { return m_answered ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceProviderItemViewModel::FailedVisibility() const noexcept { return m_answered ? Collapsed : Visible; }
+
+    SourceQualityItemViewModel::SourceQualityItemViewModel(Sources::QualityTier tier, std::int32_t count, std::int32_t total)
+        : m_tier(tier), m_count(count), m_total(total) {}
+    winrt::hstring SourceQualityItemViewModel::Label() const { return Sources::TierLabel(m_tier); }
     winrt::hstring SourceQualityItemViewModel::Count() const { return winrt::to_hstring(m_count); }
-    // Scaled against the largest bucket rather than the total: with one dominant
-    // quality every other bar would otherwise collapse to an unreadable sliver.
-    double SourceQualityItemViewModel::Share() const noexcept { return m_largest > 0 ? static_cast<double>(m_count) / static_cast<double>(m_largest) : 0.0; }
-    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::Quality2160Visibility() const noexcept { return m_label == L"2160p" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::Quality1080Visibility() const noexcept { return m_label == L"1080p" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::QualityOtherVisibility() const noexcept { return m_label != L"2160p" && m_label != L"1080p" ? Visible : Collapsed; }
+    double SourceQualityItemViewModel::Share() const noexcept
+    {
+        return m_total > 0 ? static_cast<double>(m_count) / static_cast<double>(m_total) : 0.0;
+    }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::TopTierVisibility() const noexcept { return m_tier == Sources::QualityTier::UltraHd ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::MidTierVisibility() const noexcept { return m_tier == Sources::QualityTier::FullHd ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceQualityItemViewModel::LowTierVisibility() const noexcept
+    {
+        return m_tier != Sources::QualityTier::UltraHd && m_tier != Sources::QualityTier::FullHd ? Visible : Collapsed;
+    }
 
     SourcePickerRuleViewModel::SourcePickerRuleViewModel(winrt::hstring name, winrt::hstring value)
         : m_name(std::move(name)), m_value(std::move(value)) {}
     winrt::hstring SourcePickerRuleViewModel::Name() const { return m_name; }
     winrt::hstring SourcePickerRuleViewModel::Value() const { return m_value; }
 
-    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::hstring groupName, winrt::hstring groupNote, winrt::hstring groupCount)
-        : m_groupName(std::move(groupName)), m_groupNote(std::move(groupNote)), m_groupCount(std::move(groupCount)), m_isHeader(true) {}
-    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::HaloDesktop::StreamSource source, bool detailColumns) : m_source(std::move(source)), m_detailColumns(detailColumns) {}
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::HeaderVisibility() const noexcept { return m_isHeader ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::RowVisibility() const noexcept { return m_isHeader ? Collapsed : Visible; }
-    winrt::hstring SourceDisplayItemViewModel::Key() const { return m_source ? m_source.Key() : L""; }
+    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::hstring name, winrt::hstring note, winrt::hstring count)
+        : m_kind(Kind::GroupHeader), m_groupName(std::move(name)), m_groupNote(std::move(note)), m_groupCount(std::move(count)) {}
+
+    SourceDisplayItemViewModel::SourceDisplayItemViewModel(winrt::hstring showMoreLabel)
+        : m_kind(Kind::ShowMore), m_showMoreLabel(std::move(showMoreLabel)) {}
+
+    SourceDisplayItemViewModel::SourceDisplayItemViewModel(
+        Sources::SourceEntry entry,
+        winrt::hstring statusLabel,
+        winrt::hstring soundAndSize,
+        winrt::hstring languageLine,
+        winrt::hstring warning,
+        winrt::hstring reason,
+        std::vector<Sources::SpecRow> specs)
+        : m_kind(Kind::Row),
+          m_entry(std::move(entry)),
+          m_statusLabel(std::move(statusLabel)),
+          m_soundAndSize(std::move(soundAndSize)),
+          m_languageLine(std::move(languageLine)),
+          m_warning(std::move(warning)),
+          m_reason(std::move(reason)),
+          m_specs(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+    {
+        for (auto& [key, value] : specs)
+        {
+            m_specs.Append(winrt::make<SourceSpecItemViewModel>(std::move(key), std::move(value)));
+        }
+    }
+
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::HeaderVisibility() const noexcept { return m_kind == Kind::GroupHeader ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::RowVisibility() const noexcept { return m_kind == Kind::Row ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ShowMoreVisibility() const noexcept { return m_kind == Kind::ShowMore ? Visible : Collapsed; }
+
     winrt::hstring SourceDisplayItemViewModel::GroupName() const { return m_groupName; }
     winrt::hstring SourceDisplayItemViewModel::GroupNote() const { return m_groupNote; }
     winrt::hstring SourceDisplayItemViewModel::GroupCount() const { return m_groupCount; }
-    winrt::hstring SourceDisplayItemViewModel::Quality() const { return m_source ? m_source.Quality() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Range() const { return m_source ? m_source.Range() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::File() const { return m_source ? m_source.File() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Codec() const { return m_source ? m_source.Codec() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Audio() const { return m_source ? m_source.Audio() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Languages() const { return m_source ? m_source.Languages() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::StatusLabel() const { return m_source ? ::StatusLabel(m_source.Status()) : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Size() const { return m_source ? m_source.Size() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::Detail() const { return m_source ? m_source.Detail() : L""; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::Quality2160Visibility() const noexcept { return m_source && m_source.Quality() == L"2160p" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::Quality1080Visibility() const noexcept { return m_source && m_source.Quality() == L"1080p" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::QualityOtherVisibility() const noexcept { return m_source && m_source.Quality() != L"2160p" && m_source.Quality() != L"1080p" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::InstantVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Instant ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::CachingVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Caching ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::UncachedVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Uncached ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::OnDiskVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::UnknownVisibility() const noexcept { return m_source && m_source.Status() == winrt::HaloDesktop::StreamStatus::Unknown ? Visible : Collapsed; }
-    // The technical detail is shown either as three columns or as one summary
-    // line under the file name, never both, so the two are exact opposites.
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::DetailColumnVisibility() const noexcept { return m_detailColumns ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::CompactSummaryVisibility() const noexcept { return m_detailColumns ? Collapsed : Visible; }
+    winrt::hstring SourceDisplayItemViewModel::ShowMoreLabel() const { return m_showMoreLabel; }
+
+    winrt::hstring SourceDisplayItemViewModel::Key() const { return m_entry.Source ? m_entry.Source.Key() : L""; }
+    winrt::hstring SourceDisplayItemViewModel::QualityHead() const { return Sources::TierLabel(m_entry.Tier); }
+    winrt::hstring SourceDisplayItemViewModel::QualitySub() const { return m_entry.Source ? Sources::RangeLabel(m_entry.Source.Range()) : L""; }
+    winrt::hstring SourceDisplayItemViewModel::StatusLabel() const { return m_statusLabel; }
+
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::InstantVisibility() const noexcept
+    {
+        return m_entry.Source && m_entry.Source.Status() == winrt::HaloDesktop::StreamStatus::Instant ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::OnDiskVisibility() const noexcept
+    {
+        return m_entry.Source && m_entry.Source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::CachingVisibility() const noexcept
+    {
+        return m_entry.Source && m_entry.Source.Status() == winrt::HaloDesktop::StreamStatus::Caching ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ColdVisibility() const noexcept
+    {
+        if (!m_entry.Source) return Collapsed;
+        auto const status = m_entry.Source.Status();
+        return status == winrt::HaloDesktop::StreamStatus::Uncached
+                || status == winrt::HaloDesktop::StreamStatus::Unknown
+            ? Visible
+            : Collapsed;
+    }
+
+    winrt::hstring SourceDisplayItemViewModel::SoundAndSize() const { return m_soundAndSize; }
+    winrt::hstring SourceDisplayItemViewModel::LanguageLine() const { return m_languageLine; }
+    winrt::hstring SourceDisplayItemViewModel::Warning() const { return m_warning; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::WarningVisibility() const noexcept { return m_warning.empty() ? Collapsed : Visible; }
+    winrt::hstring SourceDisplayItemViewModel::FileName() const { return m_entry.Source ? m_entry.Source.File() : L""; }
+    winrt::hstring SourceDisplayItemViewModel::Reason() const { return m_reason; }
+    winrt::Windows::Foundation::IInspectable SourceDisplayItemViewModel::Specs() const { return m_specs; }
+
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ExpandedVisibility() const noexcept { return m_expanded ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ExpandGlyphVisibility() const noexcept { return m_expanded ? Collapsed : Visible; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::CollapseGlyphVisibility() const noexcept { return m_expanded ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::SelectionVisibility() const noexcept { return m_selected ? Visible : Collapsed; }
+
+    bool SourceDisplayItemViewModel::IsRow() const noexcept { return m_kind == Kind::Row; }
+    Sources::SourceEntry const& SourceDisplayItemViewModel::Entry() const noexcept { return m_entry; }
+
+    void SourceDisplayItemViewModel::SetExpanded(bool value)
+    {
+        if (m_expanded == value) return;
+        m_expanded = value;
+        Raise(L"ExpandedVisibility");
+        Raise(L"ExpandGlyphVisibility");
+        Raise(L"CollapseGlyphVisibility");
+    }
+
+    void SourceDisplayItemViewModel::SetSelected(bool value)
+    {
+        if (m_selected == value) return;
+        m_selected = value;
+        Raise(L"SelectionVisibility");
+    }
+
+    winrt::event_token SourceDisplayItemViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+    void SourceDisplayItemViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
+    void SourceDisplayItemViewModel::Raise(wchar_t const* property)
+    {
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
+    }
 
     SourcesViewModel::SourcesViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_sources(services.Sources), m_navigation(services.Navigation), m_settings(services.SettingsSync), m_downloads(services.Downloads),
+        : m_sources(services.Sources),
+          m_metadata(services.Metadata),
+          m_navigation(services.Navigation),
+          m_settings(services.SettingsSync),
+          m_downloads(services.Downloads),
           m_devicePreferences(services.DevicePreferences),
+          m_watch(services.WatchState),
+          m_layout(services.LayoutMetrics),
           m_sourceGroups(services.Sources->Groups()),
           m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_resolutionItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_providerItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_pickerRules(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_devicePreferences)
+        if (!m_devicePreferences || !m_watch || !m_metadata)
         {
-            throw std::invalid_argument{ "SourcesViewModel requires device preferences." };
+            throw std::invalid_argument{ "SourcesViewModel requires its dependencies." };
         }
-        m_teachingTipOpen = !m_devicePreferences->SourceRankingTipDismissed();
+        ApplyLayoutMetrics();
     }
 
     SourcesViewModel::~SourcesViewModel() { Deactivate(); }
+
     void SourcesViewModel::Activate()
     {
-        if (m_downloadToken != 0) return;
-        m_downloadToken = m_downloads->AddChangedHandler([weak = get_weak()]()
+        if (m_downloadToken == 0)
         {
-            if (auto const self = weak.get())
+            m_downloadToken = m_downloads->AddChangedHandler([weak = get_weak()]()
             {
+                auto const self = weak.get();
+                if (!self) return;
                 self->m_sources->RefreshDownloadStates();
-                self->m_sourceGroups = self->m_sources->Groups();
-                self->m_bestSource = self->m_sources->BestSource();
+                self->AdoptResolve();
                 self->Rebuild();
+                self->RebuildFooter();
                 self->RaiseState();
-            }
-        });
+            });
+        }
+        if (m_layoutToken == 0 && m_layout)
+        {
+            m_layoutToken = m_layout->AddChangedHandler([weak = get_weak()]()
+            {
+                if (auto const self = weak.get()) self->ApplyLayoutMetrics();
+            });
+            ApplyLayoutMetrics();
+        }
     }
+
     void SourcesViewModel::Deactivate() noexcept
     {
-        if (m_downloadToken == 0) return;
-        m_downloads->RemoveChangedHandler(m_downloadToken);
-        m_downloadToken = 0;
+        if (m_downloadToken != 0)
+        {
+            m_downloads->RemoveChangedHandler(m_downloadToken);
+            m_downloadToken = 0;
+        }
+        if (m_layoutToken != 0 && m_layout)
+        {
+            m_layout->RemoveChangedHandler(m_layoutToken);
+            m_layoutToken = 0;
+        }
     }
 
     winrt::Windows::Foundation::IInspectable SourcesViewModel::Items() const { return m_items; }
-    winrt::Windows::Foundation::IInspectable SourcesViewModel::ResolutionItems() const { return m_resolutionItems; }
+    winrt::Windows::Foundation::IInspectable SourcesViewModel::ProviderItems() const { return m_providerItems; }
     winrt::Windows::Foundation::IInspectable SourcesViewModel::QualityItems() const { return m_qualityItems; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SourcesViewModel::ItemsView() const { return m_items; }
-    winrt::hstring SourcesViewModel::Title() const { return m_parameters ? m_parameters.ShowName() : L""; }
-    winrt::hstring SourcesViewModel::Poster() const { return m_parameters ? m_parameters.Poster() : L""; }
-    winrt::hstring SourcesViewModel::EpisodeLabel() const { return m_parameters && !m_parameters.EpisodeLabel().empty() ? m_parameters.EpisodeLabel() + L" \x00B7 " + m_parameters.Title() : L"MOVIE"; }
-    winrt::hstring SourcesViewModel::ResolveSummary() const { return m_sources->ResolveSummary(); }
-    winrt::hstring SourcesViewModel::AllFilterLabel() const { return FilterLabel(L"All", m_sources->Count(L"All")); }
-    winrt::hstring SourcesViewModel::InstantFilterLabel() const { return FilterLabel(L"Instant", m_sources->Count(L"Instant")); }
-    winrt::hstring SourcesViewModel::Quality2160FilterLabel() const { return FilterLabel(L"2160p", m_sources->Count(L"2160p")); }
-    winrt::hstring SourcesViewModel::Quality1080FilterLabel() const { return FilterLabel(L"1080p", m_sources->Count(L"1080p")); }
-    winrt::hstring SourcesViewModel::BestQuality() const { return m_bestSource ? m_bestSource.Quality() : L""; }
-    winrt::hstring SourcesViewModel::BestRange() const { return m_bestSource ? m_bestSource.Range() : L""; }
-    winrt::hstring SourcesViewModel::BestFile() const { return m_bestSource ? m_bestSource.File() : L""; }
-    winrt::hstring SourcesViewModel::BestCodec() const { return m_bestSource ? m_bestSource.Codec() : L""; }
-    winrt::hstring SourcesViewModel::BestAudio() const { return m_bestSource ? m_bestSource.Audio() : L""; }
-    winrt::hstring SourcesViewModel::BestLanguages() const { return m_bestSource ? m_bestSource.Languages() : L""; }
-    winrt::hstring SourcesViewModel::BestSize() const { return m_bestSource ? m_bestSource.Size() : L""; }
-    winrt::hstring SourcesViewModel::BestStatusLine() const { if(!m_bestSource)return L"";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::OnDisk)return L"Stored on this device";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::Instant)return L"Instant · reported cached";if(m_bestSource.Status()==winrt::HaloDesktop::StreamStatus::Uncached)return L"Addon reports a fetch is required";return L"Cache status was not provided"; }
-    winrt::hstring SourcesViewModel::BestStatusBadge() const { return m_bestSource ? ::StatusLabel(m_bestSource.Status()) : L""; }
     winrt::Windows::Foundation::IInspectable SourcesViewModel::PickerRules() const { return m_pickerRules; }
-    winrt::hstring SourcesViewModel::TeachingTipTitle() const { return L"How the best source is chosen"; }
-    winrt::hstring SourcesViewModel::TeachingTipBody() const { return L"Ready-to-play sources rank first, followed by quality and file size."; }
-    bool SourcesViewModel::TeachingTipOpen() const noexcept { return m_teachingTipOpen; }
-    Microsoft::UI::Xaml::Visibility SourcesViewModel::ContentVisibility() const noexcept { return !m_loading && !m_error && m_bestSource ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourcesViewModel::LoadingVisibility() const noexcept { return m_loading ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourcesViewModel::ErrorVisibility() const noexcept { return m_error ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SourcesViewModel::EmptyVisibility() const noexcept { return !m_loading && !m_error && !m_bestSource ? Visible : Collapsed; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SourcesViewModel::ItemsView() const { return m_items; }
+
+    double SourcesViewModel::SheetWidth() const noexcept { return m_sheetWidth; }
+
+    winrt::hstring SourcesViewModel::Kicker() const
+    {
+        if (!m_parameters) return L"";
+        auto const show = m_parameters.ShowName();
+        auto const episode = m_parameters.EpisodeLabel();
+        if (episode.empty()) return show;
+        return show.empty() ? episode : episode + L" \x00B7 " + show;
+    }
+
+    winrt::hstring SourcesViewModel::Heading() const
+    {
+        auto const title = m_parameters ? m_parameters.Title() : L"";
+        return title.empty() ? winrt::hstring{ L"Where to play this" } : L"Where to play " + title;
+    }
+
+    winrt::hstring SourcesViewModel::CountLine() const
+    {
+        if (m_loading) return L"Asking your providers\x2026";
+        if (m_error) return L"No provider could be reached";
+        return m_sources->ResolveSummary();
+    }
+
+    winrt::hstring SourcesViewModel::AllFilterCount() const { return winrt::to_hstring(Filtered(FilterAll).size()); }
+    winrt::hstring SourcesViewModel::PlaysNowFilterCount() const { return winrt::to_hstring(Filtered(FilterPlaysNow).size()); }
+    winrt::hstring SourcesViewModel::UltraHdFilterCount() const { return winrt::to_hstring(Filtered(FilterUltraHd).size()); }
+    winrt::hstring SourcesViewModel::FullHdFilterCount() const { return winrt::to_hstring(Filtered(FilterFullHd).size()); }
+    winrt::hstring SourcesViewModel::SortLabel() const { return SortName(m_sortIndex); }
+    std::int32_t SourcesViewModel::FilterIndex() const noexcept { return m_filterIndex; }
+    std::int32_t SourcesViewModel::SortIndex() const noexcept { return m_sortIndex; }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::ListVisibility() const noexcept
+    {
+        return !m_loading && !m_pool.empty() && !Filtered(m_filterIndex).empty() ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::ResolvingVisibility() const noexcept { return m_loading ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::EmptyVisibility() const noexcept
+    {
+        return !m_loading && (m_pool.empty() || Filtered(m_filterIndex).empty()) ? Visible : Collapsed;
+    }
+    // The filters are only meaningful over a list; with nothing to narrow they
+    // would be four buttons that all lead to the same empty block.
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::FilterRowVisibility() const noexcept
+    {
+        return !m_loading && !m_pool.empty() ? Visible : Collapsed;
+    }
+
+    winrt::hstring SourcesViewModel::EmptyTitle() const
+    {
+        if (m_error) return L"Nothing could be reached";
+        if (m_pool.empty()) return L"Nothing playable came back";
+        return L"No source matches that filter";
+    }
+
+    winrt::hstring SourcesViewModel::EmptyBody() const
+    {
+        if (m_error)
+        {
+            return L"Halo could not reach any provider. Files you have already downloaded still play from Downloads.";
+        }
+        if (m_pool.empty())
+        {
+            return L"Every provider answered, and none of them had a file for this. "
+                   L"This usually clears up within a day of release.";
+        }
+        return L"Try All, or widen the quality you are willing to accept.";
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::BannerVisibility() const noexcept
+    {
+        return !m_loading && (m_error || m_failedProviders > 0) ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::BannerCautionVisibility() const noexcept
+    {
+        return !m_loading && !m_error && m_failedProviders > 0 ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::BannerInfoVisibility() const noexcept
+    {
+        return !m_loading && m_error ? Visible : Collapsed;
+    }
+
+    winrt::hstring SourcesViewModel::BannerTitle() const
+    {
+        if (m_error) return L"You are offline";
+        if (m_failedProviders == 1) return m_firstFailure;
+        return winrt::to_hstring(m_failedProviders) + L" providers did not answer";
+    }
+
+    winrt::hstring SourcesViewModel::BannerBody() const
+    {
+        if (m_error) return L"Only files already downloaded to this device can play right now.";
+        if (m_answeredProviders == 0) return L"Nothing was returned, so some sources may be missing.";
+        return L"Showing what the other "
+            + Sources::CountLabel(static_cast<std::size_t>(m_answeredProviders), L"provider", L"providers")
+            + L" returned. Some sources may be missing.";
+    }
+
+    winrt::hstring SourcesViewModel::BannerAction() const
+    {
+        return m_error ? winrt::hstring{ L"Retry connection" } : winrt::hstring{ L"Ask them again" };
+    }
+
+    bool SourcesViewModel::HasPick() const noexcept
+    {
+        if (m_loading || m_error || m_pool.empty() || m_sortIndex != SortRecommended) return false;
+        return Matches(m_pool.front(), m_filterIndex);
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickVisibility() const noexcept { return HasPick() ? Visible : Collapsed; }
+    winrt::hstring SourcesViewModel::PickQualityHead() const { return HasPick() ? Sources::TierLabel(m_pool.front().Tier) : L""; }
+    winrt::hstring SourcesViewModel::PickQualitySub() const { return HasPick() ? Sources::RangeLabel(m_pool.front().Source.Range()) : L""; }
+    winrt::hstring SourcesViewModel::PickStatusLabel() const { return HasPick() ? Sources::StatusLabel(m_pool.front().Source.Status()) : L""; }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickInstantVisibility() const noexcept
+    {
+        return HasPick() && m_pool.front().Source.Status() == winrt::HaloDesktop::StreamStatus::Instant ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickOnDiskVisibility() const noexcept
+    {
+        return HasPick() && m_pool.front().Source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickCachingVisibility() const noexcept
+    {
+        return HasPick() && m_pool.front().Source.Status() == winrt::HaloDesktop::StreamStatus::Caching ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickColdVisibility() const noexcept
+    {
+        if (!HasPick()) return Collapsed;
+        auto const status = m_pool.front().Source.Status();
+        return status == winrt::HaloDesktop::StreamStatus::Uncached
+                || status == winrt::HaloDesktop::StreamStatus::Unknown
+            ? Visible
+            : Collapsed;
+    }
+
+    winrt::hstring SourcesViewModel::PickWhy() const
+    {
+        return HasPick() ? Sources::PickHeadline(m_pool.front(), m_pool.size() == 1) : L"";
+    }
+    winrt::hstring SourcesViewModel::PickLine() const { return HasPick() ? Sources::PickSummary(m_pool.front(), m_device) : L""; }
+    winrt::hstring SourcesViewModel::PickFileName() const { return HasPick() ? m_pool.front().Source.File() : L""; }
+    winrt::hstring SourcesViewModel::PickWatchNote() const { return HasPick() ? Sources::WatchNote(m_device) : L""; }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickWatchNoteVisibility() const noexcept
+    {
+        return HasPick() && !Sources::WatchNote(m_device).empty() ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickSelectionVisibility() const noexcept
+    {
+        return HasPick() && m_selectedIndex < 0 ? Visible : Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::InfoVisibility() const noexcept { return m_infoOpen ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::InfoExpandGlyphVisibility() const noexcept { return m_infoOpen ? Collapsed : Visible; }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::InfoCollapseGlyphVisibility() const noexcept { return m_infoOpen ? Visible : Collapsed; }
+
+    std::int32_t SourcesViewModel::SelectedIndex() const noexcept { return m_selectedIndex; }
 
     void SourcesViewModel::Load(winrt::Windows::Foundation::IInspectable const& parameter)
     {
@@ -195,33 +503,168 @@ namespace winrt::HaloDesktop::implementation
         }
         if (!m_parameters)
         {
+            m_loading = false;
             m_error = true;
             RaiseState();
             return;
         }
         static_cast<void>(LoadAsync());
     }
+
     void SourcesViewModel::Retry() { if (m_parameters) static_cast<void>(LoadAsync()); }
-    void SourcesViewModel::SetFilter(std::int32_t index) { if (index < 0 || index > 3 || index == m_filterIndex) return; m_filterIndex = index; Rebuild(); }
-    void SourcesViewModel::DismissTeachingTip() { if (!m_teachingTipOpen) return; m_teachingTipOpen = false; m_devicePreferences->SourceRankingTipDismissed(true); Raise(L"TeachingTipOpen"); }
-    void SourcesViewModel::OpenPlayer(winrt::hstring const& key) { auto request=m_sources->BuildPlaybackRequest(key); if(request)m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player,request); }
-    void SourcesViewModel::OpenBest() { if (m_bestSource) OpenPlayer(m_bestSource.Key()); }
-    void SourcesViewModel::OpenSettings() { m_navigation->GoTo(::HaloDesktop::Services::Page::Settings); }
-    // Sources is only ever reached from another shell page, so there is always
-    // something behind it; the guard is for a cold navigation in testing.
-    void SourcesViewModel::GoBack()
+
+    void SourcesViewModel::SetFilter(std::int32_t index)
     {
-        if (m_navigation->CanGoBack()) m_navigation->GoBack();
-        else m_navigation->GoTo(::HaloDesktop::Services::Page::Home);
+        if (index < 0 || index >= FilterCount || index == m_filterIndex) return;
+        m_filterIndex = index;
+        m_expandedKey = L"";
+        m_selectedIndex = -1;
+        Rebuild();
+        RaiseState();
     }
+
+    void SourcesViewModel::SetSort(std::int32_t index)
+    {
+        if (index < 0 || index >= SortCount || index == m_sortIndex) return;
+        m_sortIndex = index;
+        m_expandedKey = L"";
+        m_selectedIndex = -1;
+        Rebuild();
+        RaiseState();
+    }
+
+    void SourcesViewModel::ToggleInfo()
+    {
+        m_infoOpen = !m_infoOpen;
+        Raise(L"InfoVisibility");
+        Raise(L"InfoExpandGlyphVisibility");
+        Raise(L"InfoCollapseGlyphVisibility");
+    }
+
+    void SourcesViewModel::ToggleExpanded(winrt::hstring const& key)
+    {
+        if (key.empty()) return;
+        m_expandedKey = m_expandedKey == key ? winrt::hstring{} : key;
+        for (auto const& item : m_items)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow()) row->SetExpanded(row->Key() == m_expandedKey);
+        }
+        SelectKey(key);
+    }
+
+    void SourcesViewModel::SelectKey(winrt::hstring const& key)
+    {
+        auto const index = IndexOfKey(key);
+        if (index < 0) return;
+        m_selectedIndex = index;
+        ApplySelection();
+    }
+
+    void SourcesViewModel::SelectPick()
+    {
+        if (!HasPick()) return;
+        m_selectedIndex = -1;
+        ApplySelection();
+    }
+
+    void SourcesViewModel::MoveSelection(std::int32_t delta)
+    {
+        if (delta == 0) return;
+        std::vector<std::int32_t> stops;
+        if (HasPick()) stops.push_back(-1);
+        for (std::uint32_t index{}; index < m_items.Size(); ++index)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(
+                m_items.GetAt(index).as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow()) stops.push_back(static_cast<std::int32_t>(index));
+        }
+        if (stops.empty()) return;
+
+        auto const found = std::find(stops.begin(), stops.end(), m_selectedIndex);
+        auto position = found == stops.end() ? 0 : static_cast<std::int32_t>(std::distance(stops.begin(), found));
+        position = std::clamp(position + delta, 0, static_cast<std::int32_t>(stops.size()) - 1);
+        m_selectedIndex = stops[static_cast<std::size_t>(position)];
+        ApplySelection();
+    }
+
+    void SourcesViewModel::ExpandSelected()
+    {
+        auto const key = SelectedKey();
+        if (key.empty() || m_expandedKey == key) return;
+        ToggleExpanded(key);
+    }
+
+    void SourcesViewModel::CollapseSelected()
+    {
+        if (m_expandedKey.empty()) return;
+        ToggleExpanded(m_expandedKey);
+    }
+
+    void SourcesViewModel::RevealCold()
+    {
+        if (m_coldRevealed) return;
+        m_coldRevealed = true;
+        Rebuild();
+        ApplySelection();
+    }
+
+    void SourcesViewModel::PlaySelected()
+    {
+        auto const key = SelectedKey();
+        OpenPlayer(key.empty() ? PickKey() : key);
+    }
+
+    void SourcesViewModel::OpenPlayer(winrt::hstring const& key)
+    {
+        if (key.empty()) return;
+        auto const request = m_sources->BuildPlaybackRequest(key);
+        if (!request) return;
+        m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player, request);
+        m_navigation->CloseSheet();
+    }
+
+    void SourcesViewModel::OpenSettings()
+    {
+        m_navigation->CloseSheet();
+        m_navigation->GoTo(::HaloDesktop::Services::Page::Settings);
+    }
+
+    void SourcesViewModel::Close() { m_navigation->CloseSheet(); }
+
+    winrt::hstring SourcesViewModel::FileNameFor(winrt::hstring const& key) const
+    {
+        auto const found = std::find_if(m_pool.begin(), m_pool.end(), [&key](auto const& entry)
+        {
+            return entry.Source && entry.Source.Key() == key;
+        });
+        return found == m_pool.end() ? winrt::hstring{} : found->Source.File();
+    }
+
     concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> SourcesViewModel::StartDownloadAsync(
         winrt::hstring key,
         bool replaceExisting)
     {
         co_return co_await m_sources->StartDownloadAsync(std::move(key), replaceExisting);
     }
-    winrt::hstring SourcesViewModel::BestKey() const { return m_bestSource ? m_bestSource.Key() : L""; }
-    winrt::event_token SourcesViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
+
+    winrt::hstring SourcesViewModel::SelectedKey() const
+    {
+        if (m_selectedIndex < 0 || static_cast<std::uint32_t>(m_selectedIndex) >= m_items.Size()) return {};
+        auto const row = winrt::get_self<SourceDisplayItemViewModel>(
+            m_items.GetAt(static_cast<std::uint32_t>(m_selectedIndex)).as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+        return row->IsRow() ? row->Key() : winrt::hstring{};
+    }
+
+    winrt::hstring SourcesViewModel::PickKey() const
+    {
+        return m_pool.empty() || !m_pool.front().Source ? winrt::hstring{} : m_pool.front().Source.Key();
+    }
+
+    winrt::event_token SourcesViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
     void SourcesViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
 
     winrt::Windows::Foundation::IAsyncAction SourcesViewModel::LoadAsync()
@@ -231,7 +674,14 @@ namespace winrt::HaloDesktop::implementation
         auto const version = ++m_loadVersion;
         m_loading = true;
         m_error = false;
+        m_filterIndex = FilterAll;
+        m_sortIndex = SortRecommended;
+        m_selectedIndex = -1;
+        m_expandedKey = L"";
+        m_coldRevealed = false;
+        m_items.Clear();
         RaiseState();
+
         bool failed{};
         try { co_await m_sources->LoadAsync(m_parameters); }
         catch (...) { failed = true; }
@@ -239,103 +689,297 @@ namespace winrt::HaloDesktop::implementation
         catch (...) {}
         co_await uiContext;
         if (version != m_loadVersion) co_return;
+
         m_loading = false;
         m_error = failed;
-        if (!failed)
-        {
-            m_sourceGroups = m_sources->Groups();
-            m_bestSource = m_sources->BestSource();
-            Rebuild();
-            RebuildAside();
-        }
+        AdoptResolve();
+        Rebuild();
+        RebuildFooter();
         RaiseState();
+    }
+
+    // Rebuilds the decorated pool from whatever the service currently holds. Also
+    // runs when a download completes, because that changes a source's status.
+    void SourcesViewModel::AdoptResolve()
+    {
+        m_answeredProviders = 0;
+        m_failedProviders = 0;
+        m_firstFailure = L"";
+        m_smallestBytes = 0;
+        m_pool.clear();
+
+        // A throw leaves the service holding whatever it resolved last, which may
+        // belong to a different title entirely. Nothing of it may be shown here.
+        if (m_error)
+        {
+            m_sourceGroups = winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView();
+            m_device = {};
+            return;
+        }
+        m_sourceGroups = m_sources->Groups();
+
+        m_device = {};
+        try { m_device.PreferredSubtitleLanguage = m_settings->PreferredSubtitleLanguage(); }
+        catch (...) { m_device.PreferredSubtitleLanguage.reset(); }
+        m_device.LineMbps = m_devicePreferences->MeasuredLineMbps();
+
+        if (m_parameters)
+        {
+            if (auto const row = m_watch->Find(m_parameters.VideoId()))
+            {
+                if (row->DurationSec > 0.0)
+                {
+                    m_device.DurationSeconds = row->DurationSec;
+                    m_device.WatchedDurationSeconds = row->DurationSec;
+                    m_device.WatchedSeconds = row->Watched ? 0.0 : row->PositionSec;
+                }
+            }
+            // Only the metadata that belongs to this title may stand in for the
+            // runtime; the service holds whichever title was opened last.
+            if (m_device.DurationSeconds <= 0.0)
+            {
+                auto const detail = m_metadata->Detail();
+                if (detail && detail.Id() == m_parameters.MetaId())
+                {
+                    m_device.DurationSeconds = m_metadata->RuntimeMinutes() * 60.0;
+                }
+            }
+        }
+
+        for (auto const& group : m_sourceGroups)
+        {
+            if (group.Answered()) ++m_answeredProviders;
+            else
+            {
+                ++m_failedProviders;
+                if (m_firstFailure.empty()) m_firstFailure = group.Name() + L" " + group.Note();
+            }
+            for (auto const& source : group.Sources())
+            {
+                m_pool.push_back(Sources::MakeEntry(source, group.Name(), m_device.DurationSeconds));
+            }
+        }
+        std::stable_sort(m_pool.begin(), m_pool.end(), [](auto const& left, auto const& right)
+        {
+            return left.Rank < right.Rank;
+        });
+
+        for (auto const& entry : m_pool)
+        {
+            if (entry.SizeBytes == 0) continue;
+            if (m_smallestBytes == 0 || entry.SizeBytes < m_smallestBytes) m_smallestBytes = entry.SizeBytes;
+        }
+    }
+
+    bool SourcesViewModel::Matches(Sources::SourceEntry const& entry, std::int32_t filterIndex) const noexcept
+    {
+        switch (filterIndex)
+        {
+        case FilterPlaysNow: return entry.Speed == Sources::StartSpeed::Immediate;
+        case FilterUltraHd: return entry.Tier == Sources::QualityTier::UltraHd;
+        case FilterFullHd: return entry.Tier == Sources::QualityTier::FullHd;
+        default: break;
+        }
+        return true;
+    }
+
+    std::vector<Sources::SourceEntry> SourcesViewModel::Filtered(std::int32_t filterIndex) const
+    {
+        std::vector<Sources::SourceEntry> result;
+        result.reserve(m_pool.size());
+        for (auto const& entry : m_pool)
+        {
+            if (Matches(entry, filterIndex)) result.push_back(entry);
+        }
+        return result;
+    }
+
+    winrt::HaloDesktop::SourceDisplayItemViewModel SourcesViewModel::RowFor(
+        Sources::SourceEntry const& entry,
+        Sources::SourceEntry const* pick) const
+    {
+        auto const& source = entry.Source;
+        auto const soundAndSize = L"\x00B7 " + Sources::SoundLabel(source.Audio())
+            + L" \x00B7 " + Sources::SizeLabel(source.Size());
+        auto const languageLine = Sources::AudioLanguageLine(source.Languages())
+            + L" \x00B7 " + Sources::SubtitleStatement(source.SubtitleLanguages(), m_device.PreferredSubtitleLanguage);
+        return winrt::make<SourceDisplayItemViewModel>(
+            entry,
+            Sources::StatusLabel(source.Status()),
+            soundAndSize,
+            languageLine,
+            Sources::BitrateWarning(entry, m_device.LineMbps),
+            Sources::ReasonFor(entry, pick, entry.SizeBytes != 0 && entry.SizeBytes == m_smallestBytes),
+            Sources::SpecsFor(entry, m_device));
     }
 
     void SourcesViewModel::Rebuild()
     {
         m_items.Clear();
-        for (auto const& group : m_sourceGroups)
+        if (m_loading) return;
+
+        auto listed = Filtered(m_filterIndex);
+        SortEntries(listed, m_sortIndex);
+
+        Sources::SourceEntry const* pick = m_pool.empty() ? nullptr : &m_pool.front();
+        if (HasPick())
         {
-            if (group.Sources().Size() == 0)
+            // The pick has its own block above the list, so it is not repeated in it.
+            listed.erase(
+                std::remove_if(listed.begin(), listed.end(), [pick](auto const& entry)
+                {
+                    return entry.Source.Key() == pick->Source.Key();
+                }),
+                listed.end());
+        }
+
+        if (m_sortIndex != SortRecommended)
+        {
+            if (listed.empty()) return;
+            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                winrt::hstring{ L"Sorted by " } + SortName(m_sortIndex),
+                m_filterIndex == FilterAll
+                    ? winrt::hstring{ L"Every source that answered" }
+                    : L"Filtered to " + winrt::hstring{ FilterName(m_filterIndex) },
+                Sources::CountLabel(listed.size(), L"source", L"sources")));
+            for (auto const& entry : listed) m_items.Append(RowFor(entry, pick));
+            return;
+        }
+
+        for (auto const speed : {
+                 Sources::StartSpeed::Immediate,
+                 Sources::StartSpeed::ShortWait,
+                 Sources::StartSpeed::NeedsDownload })
+        {
+            std::vector<Sources::SourceEntry> group;
+            for (auto const& entry : listed)
             {
-                m_items.Append(winrt::make<SourceDisplayItemViewModel>(group.Name(), group.Note(), L"ERROR"));
+                if (entry.Speed == speed) group.push_back(entry);
+            }
+            if (group.empty()) continue;
+
+            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                Sources::OutcomeGroupName(speed),
+                Sources::OutcomeGroupNote(speed),
+                Sources::CountLabel(group.size(), L"source", L"sources")));
+
+            // Cold sources are the ones nobody should have to scroll past to reach
+            // something playable, so they stay behind one deliberate click.
+            if (speed == Sources::StartSpeed::NeedsDownload && !m_coldRevealed)
+            {
+                m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                    L"Show " + Sources::CountLabel(group.size(), L"source", L"sources")
+                        + L" that need downloading first"));
                 continue;
             }
-            bool headerAdded{};
-            for (auto const& source : group.Sources())
-            {
-                if (!MatchesFilter(source)) continue;
-                if (!headerAdded)
-                {
-                    m_items.Append(winrt::make<SourceDisplayItemViewModel>(group.Name(), group.Note(), winrt::to_hstring(group.Count()) + L" SOURCES"));
-                    headerAdded = true;
-                }
-                m_items.Append(winrt::make<SourceDisplayItemViewModel>(source, m_detailColumns));
-            }
+            for (auto const& entry : group) m_items.Append(RowFor(entry, pick));
         }
-        Raise(L"Items");
+
+        for (auto const& item : m_items)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow() && row->Key() == m_expandedKey) row->SetExpanded(true);
+        }
     }
 
-    Microsoft::UI::Xaml::Visibility SourcesViewModel::DetailColumnVisibility() const noexcept { return m_detailColumns ? Visible : Collapsed; }
-
-    void SourcesViewModel::SetListWidth(double width)
+    void SourcesViewModel::RebuildFooter()
     {
-        // Everything but the file name is fixed width, so the threshold is that
-        // fixed cost plus a file column wide enough to still read a release name.
-        // The flag cannot feed back into the measurement: the list column is
-        // sized by its parent, not by what these rows ask for.
-        constexpr double DetailColumnsRequire = 980.0;
-        auto const detailColumns = width >= DetailColumnsRequire;
-        if (detailColumns == m_detailColumns) return;
-        m_detailColumns = detailColumns;
-        Raise(L"DetailColumnVisibility");
-        Rebuild();
-    }
-
-    void SourcesViewModel::RebuildAside()
-    {
-        m_resolutionItems.Clear();
+        m_providerItems.Clear();
         for (auto const& group : m_sourceGroups)
         {
-            // An addon that returned nothing puts its reason in the note; the dot
-            // beside the row is the only thing that separates the two cases.
-            auto const resolved = group.Sources().Size() > 0;
-            auto const value = resolved ? winrt::to_hstring(group.Count()) + L" sources" : group.Note();
-            m_resolutionItems.Append(winrt::make<SourceResolutionItemViewModel>(group.Name(), value, resolved));
+            auto const value = group.Answered()
+                ? Sources::CountLabel(static_cast<std::size_t>(group.Count()), L"source", L"sources")
+                : group.Note();
+            m_providerItems.Append(winrt::make<SourceProviderItemViewModel>(group.Name(), value, group.Answered()));
         }
 
-        constexpr wchar_t const* Qualities[]{ L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" };
-        std::int32_t largest{};
-        // Parenthesised so the windows.h max macro cannot swallow the call.
-        for (auto const* quality : Qualities) largest = (std::max)(largest, m_sources->Count(quality));
         m_qualityItems.Clear();
-        for (auto const* quality : Qualities)
+        auto const total = static_cast<std::int32_t>(m_pool.size());
+        for (auto const tier : {
+                 Sources::QualityTier::UltraHd,
+                 Sources::QualityTier::FullHd,
+                 Sources::QualityTier::Hd })
         {
-            auto const count = m_sources->Count(quality);
-            if (count > 0) m_qualityItems.Append(winrt::make<SourceQualityItemViewModel>(quality, count, largest));
+            auto const count = static_cast<std::int32_t>(std::count_if(
+                m_pool.begin(),
+                m_pool.end(),
+                [tier](auto const& entry) { return entry.Tier == tier; }));
+            m_qualityItems.Append(winrt::make<SourceQualityItemViewModel>(tier, count, total));
         }
 
         m_pickerRules.Clear();
-        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Cached first", L"ON"));
-        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Audio preference", m_settings->PreferredAudioLanguage().value_or(L"Automatic")));
-        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Subtitle preference", m_settings->PreferredSubtitleLanguage().value_or(L"Off")));
-        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Autoplay next", m_settings->AutoplayNextEpisode() ? L"ON" : L"OFF"));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(L"Prefer sources that play instantly", L"On"));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(
+            L"Preferred audio language",
+            Sources::LanguageName(m_settings->PreferredAudioLanguage().value_or(L"Automatic"))));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(
+            L"Preferred subtitles",
+            m_device.PreferredSubtitleLanguage
+                ? Sources::LanguageName(*m_device.PreferredSubtitleLanguage)
+                : winrt::hstring{ L"Off" }));
+        m_pickerRules.Append(winrt::make<SourcePickerRuleViewModel>(
+            L"Autoplay next episode",
+            m_settings->AutoplayNextEpisode() ? L"On" : L"Off"));
 
-        Raise(L"ResolutionItems");
+        Raise(L"ProviderItems");
         Raise(L"QualityItems");
         Raise(L"PickerRules");
     }
 
+    std::int32_t SourcesViewModel::IndexOfKey(winrt::hstring const& key) const
+    {
+        for (std::uint32_t index{}; index < m_items.Size(); ++index)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(
+                m_items.GetAt(index).as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow() && row->Key() == key) return static_cast<std::int32_t>(index);
+        }
+        return -1;
+    }
+
+    void SourcesViewModel::ApplySelection()
+    {
+        for (std::uint32_t index{}; index < m_items.Size(); ++index)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(
+                m_items.GetAt(index).as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow()) row->SetSelected(static_cast<std::int32_t>(index) == m_selectedIndex);
+        }
+        Raise(L"PickSelectionVisibility");
+        Raise(L"SelectedIndex");
+    }
+
+    void SourcesViewModel::ApplyLayoutMetrics()
+    {
+        if (!m_layout) return;
+        auto const wide = m_layout->Current().Step == ::HaloDesktop::Shell::LayoutStep::Wide;
+        auto const width = wide ? WideSheetWidth : NarrowSheetWidth;
+        if (width == m_sheetWidth) return;
+        m_sheetWidth = width;
+        Raise(L"SheetWidth");
+    }
+
     void SourcesViewModel::RaiseState()
     {
-        for (auto const* property : { L"Title",L"Poster",L"EpisodeLabel",L"ResolveSummary",L"AllFilterLabel",L"InstantFilterLabel",L"Quality2160FilterLabel",L"Quality1080FilterLabel",L"BestQuality",L"BestRange",L"BestFile",L"BestCodec",L"BestAudio",L"BestLanguages",L"BestSize",L"BestStatusLine",L"BestStatusBadge",L"ContentVisibility",L"LoadingVisibility",L"ErrorVisibility",L"EmptyVisibility" }) Raise(property);
+        for (auto const* property : {
+                 L"Items", L"Kicker", L"Heading", L"CountLine",
+                 L"AllFilterCount", L"PlaysNowFilterCount", L"UltraHdFilterCount", L"FullHdFilterCount",
+                 L"SortLabel", L"FilterIndex", L"SortIndex",
+                 L"FilterRowVisibility", L"ListVisibility", L"ResolvingVisibility", L"EmptyVisibility",
+                 L"EmptyTitle", L"EmptyBody",
+                 L"BannerVisibility", L"BannerCautionVisibility", L"BannerInfoVisibility",
+                 L"BannerTitle", L"BannerBody", L"BannerAction",
+                 L"PickVisibility", L"PickQualityHead", L"PickQualitySub", L"PickStatusLabel",
+                 L"PickInstantVisibility", L"PickOnDiskVisibility", L"PickCachingVisibility", L"PickColdVisibility",
+                 L"PickWhy", L"PickLine", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
+                 L"PickSelectionVisibility", L"SelectedIndex" })
+        {
+            Raise(property);
+        }
     }
-    void SourcesViewModel::Raise(wchar_t const* property) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property); }
-    bool SourcesViewModel::MatchesFilter(winrt::HaloDesktop::StreamSource const& source) const
+
+    void SourcesViewModel::Raise(wchar_t const* property)
     {
-        if (m_filterIndex == 0) return true;
-        if (m_filterIndex == 1) return source.Status() == winrt::HaloDesktop::StreamStatus::Instant || source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk;
-        if (m_filterIndex == 2) return source.Quality() == L"2160p";
-        return source.Quality() == L"1080p";
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
 }

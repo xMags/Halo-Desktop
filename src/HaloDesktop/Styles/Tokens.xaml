@@ -25,6 +25,7 @@
       <Color x:Key="HaloSuccessTintColor">#246CCB5F</Color>
       <Color x:Key="HaloCautionColor">#FFFCE100</Color>
       <Color x:Key="HaloCautionTintColor">#21FCE100</Color>
+      <Color x:Key="HaloCautionStrokeColor">#3DFCE100</Color>
       <Color x:Key="HaloCriticalColor">#FFFF99A4</Color>
       <Color x:Key="HaloCriticalTintColor">#14FF99A4</Color>
       <Color x:Key="HaloDividerColor">#15FFFFFF</Color>
@@ -60,6 +61,7 @@
       <SolidColorBrush x:Key="HaloSuccessTintBrush" Color="{StaticResource HaloSuccessTintColor}" />
       <SolidColorBrush x:Key="HaloCautionBrush" Color="{StaticResource HaloCautionColor}" />
       <SolidColorBrush x:Key="HaloCautionTintBrush" Color="{StaticResource HaloCautionTintColor}" />
+      <SolidColorBrush x:Key="HaloCautionStrokeBrush" Color="{StaticResource HaloCautionStrokeColor}" />
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
@@ -99,6 +101,7 @@
       <Color x:Key="HaloSuccessTintColor">#1A0F7B0F</Color>
       <Color x:Key="HaloCautionColor">#FF9D5D00</Color>
       <Color x:Key="HaloCautionTintColor">#219D5D00</Color>
+      <Color x:Key="HaloCautionStrokeColor">#3D9D5D00</Color>
       <Color x:Key="HaloCriticalColor">#FFC42B1C</Color>
       <Color x:Key="HaloCriticalTintColor">#14C42B1C</Color>
       <Color x:Key="HaloDividerColor">#0F000000</Color>
@@ -134,6 +137,7 @@
       <SolidColorBrush x:Key="HaloSuccessTintBrush" Color="{StaticResource HaloSuccessTintColor}" />
       <SolidColorBrush x:Key="HaloCautionBrush" Color="{StaticResource HaloCautionColor}" />
       <SolidColorBrush x:Key="HaloCautionTintBrush" Color="{StaticResource HaloCautionTintColor}" />
+      <SolidColorBrush x:Key="HaloCautionStrokeBrush" Color="{StaticResource HaloCautionStrokeColor}" />
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
@@ -163,6 +167,17 @@
     palette put white text on a near-white panel, which hid the caption and
     misrepresented the outline and shadow settings the panel exists to demonstrate.
   -->
+  <!--
+    The sheet scrim is deliberately outside the theme dictionaries. It exists to
+    push the page behind the sheet back, and a light-theme scrim that lightened
+    instead of darkened would leave the sheet floating on nothing.
+  -->
+  <SolidColorBrush x:Key="HaloSheetScrimBrush" Color="#6B000000" />
+  <LinearGradientBrush x:Key="HaloSheetShadowBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+    <GradientStop Offset="0" Color="#00000000" />
+    <GradientStop Offset="1" Color="#57000000" />
+  </LinearGradientBrush>
+
   <SolidColorBrush x:Key="HaloSubtitleStageBrush" Color="#FF232428" />
   <SolidColorBrush x:Key="HaloSubtitleStageStrokeBrush" Color="#1FFFFFFF" />
   <SolidColorBrush x:Key="HaloSubtitleStageTextBrush" Color="#66FFFFFF" />

@@ -148,7 +148,7 @@ namespace winrt::HaloDesktop::implementation
             OpenHeroDetail();
             return;
         }
-        m_navigation->GoTo(
+        m_navigation->ShowSheet(
             ::HaloDesktop::Services::Page::Sources,
             winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
                 m_hero.Type(),
@@ -167,7 +167,7 @@ namespace winrt::HaloDesktop::implementation
             static_cast<void>(ToggleHeroLibraryAsync());
         }
     }
-    void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, item); }
+    void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item) { if (item) m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, item); }
     void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
     void HomeViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
     {

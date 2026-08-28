@@ -251,6 +251,7 @@
     <ClInclude Include="ViewModels\ObservableHelper.h" />
     <ClInclude Include="ViewModels\SettingsViewModel.h" />
     <ClInclude Include="ViewModels\SearchViewModel.h" />
+    <ClInclude Include="ViewModels\SourcePresentation.h" />
     <ClInclude Include="ViewModels\SourcesViewModel.h" />
     <ClInclude Include="Views\CatalogPage.xaml.h">
       <DependentUpon>CatalogPage.xaml</DependentUpon>
@@ -435,6 +436,7 @@
     <ClCompile Include="ViewModels\PlayerViewModel.cpp" />
     <ClCompile Include="ViewModels\SearchViewModel.cpp" />
     <ClCompile Include="ViewModels\SettingsViewModel.cpp" />
+    <ClCompile Include="ViewModels\SourcePresentation.cpp" />
     <ClCompile Include="ViewModels\SourcesViewModel.cpp" />
     <ClCompile Include="Views\CatalogPage.xaml.cpp">
       <DependentUpon>CatalogPage.xaml</DependentUpon>

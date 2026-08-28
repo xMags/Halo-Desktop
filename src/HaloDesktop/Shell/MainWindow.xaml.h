@@ -20,6 +20,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Grid RootGridControl() const;
         [[nodiscard]] winrt::HaloDesktop::TitleBar AppTitleBarControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame OverlayFrameControl() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame SheetFrameControl() const;
         void PrepareForWindowClose() noexcept;
         winrt::fire_and_forget FinishOrderedPlayerClose();
         void UpdateCaptionButtonColors();

@@ -123,6 +123,7 @@ namespace winrt::HaloDesktop::implementation
         m_downloadService = std::make_shared<::HaloDesktop::Services::DownloadService>(
             m_downloadEngine,
             m_sessionService,
+            m_devicePreferences,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Downloads = m_downloadService;
         auto metadataService = std::make_shared<::HaloDesktop::Services::MetadataService>(

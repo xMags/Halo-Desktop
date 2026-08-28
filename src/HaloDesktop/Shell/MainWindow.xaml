@@ -37,6 +37,13 @@
         <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" />
         <Grid Grid.Row="1">
             <local:ShellPage x:Name="ShellLayer" />
+            <!-- The sheet layer is deliberately unpainted: the sources sheet draws its
+                 own scrim and lets the shell page it was opened from show through. It
+                 sits below the overlay so opening the player covers the sheet. -->
+            <Frame
+                x:Name="SheetFrame"
+                Background="Transparent"
+                Visibility="Collapsed" />
             <Frame
                 x:Name="OverlayFrame"
                 Background="{ThemeResource HaloMicaBrush}"

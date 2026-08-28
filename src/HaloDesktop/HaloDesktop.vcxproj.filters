@@ -154,6 +154,7 @@
     <ClCompile Include="ViewModels\PlayerViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SearchViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SettingsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\SourcePresentation.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SourcesViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="Views\CatalogPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
     <ClCompile Include="Views\DetailPage.xaml.cpp"><Filter>Views</Filter></ClCompile>
@@ -255,6 +256,7 @@
     <ClInclude Include="ViewModels\ObservableHelper.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SettingsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SearchViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\SourcePresentation.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SourcesViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="Views\CatalogPage.xaml.h"><Filter>Views</Filter></ClInclude>
     <ClInclude Include="Views\DetailPage.xaml.h"><Filter>Views</Filter></ClInclude>

@@ -75,6 +75,9 @@ namespace HaloDesktop::Services
         virtual ~IMetadataService() = default;
         [[nodiscard]] virtual concurrency::task<void> LoadAsync(winrt::hstring type,winrt::hstring metaId) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaDetail Detail() const = 0;
+        // Title-level runtime in whole minutes, zero when the addon gave none or
+        // the value did not parse. Episodes of a series share the title's value.
+        [[nodiscard]] virtual std::int32_t RuntimeMinutes() const noexcept = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> Episodes(std::int32_t season) const = 0;
     };
 

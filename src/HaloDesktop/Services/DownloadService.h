@@ -15,6 +15,8 @@
 
 namespace HaloDesktop::Services
 {
+    class DevicePreferencesStore;
+
     // UI-thread-only facade over the thread-safe transfer engine. Engine
     // callbacks are always marshalled through the captured dispatcher before
     // observable collections or UI callbacks are touched.
@@ -26,6 +28,7 @@ namespace HaloDesktop::Services
         DownloadService(
             std::shared_ptr<Downloads::TransferEngine> engine,
             std::shared_ptr<ISessionService> session,
+            std::shared_ptr<DevicePreferencesStore> devicePreferences,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
         ~DownloadService() override;
 
@@ -91,6 +94,9 @@ namespace HaloDesktop::Services
 
         std::shared_ptr<Downloads::TransferEngine> m_engine;
         std::shared_ptr<ISessionService> m_session;
+        // Transfers are the only sustained throughput this app produces, so they
+        // are also the only honest measurement of the line behind it.
+        std::shared_ptr<DevicePreferencesStore> m_devicePreferences;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_transfers{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_ready{ nullptr };

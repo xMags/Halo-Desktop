@@ -452,7 +452,7 @@ namespace winrt::HaloDesktop::implementation
             auto const index = static_cast<std::size_t>(tag[4] - L'0');
             if (m_jumpItems[index])
             {
-                App::Services().Navigation->GoTo(Page::Sources, m_jumpItems[index]);
+                App::Services().Navigation->ShowSheet(Page::Sources, m_jumpItems[index]);
             }
             return;
         }

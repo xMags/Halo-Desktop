@@ -254,7 +254,7 @@ namespace winrt::HaloDesktop::implementation
     {
         if (auto const parameters = m_downloads->BuildSourcesNavigation(m_selectedId))
         {
-            m_navigation->GoTo(::HaloDesktop::Services::Page::Sources, parameters);
+            m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, parameters);
         }
     }
     winrt::Windows::Foundation::IAsyncAction DownloadsViewModel::SetDownloadDirectoryAsync(

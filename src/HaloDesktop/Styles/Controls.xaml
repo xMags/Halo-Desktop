@@ -390,6 +390,113 @@
     </Setter>
   </Style>
 
+  <!--
+    The sources sheet. Its surface is the window background rather than a card so
+    it reads as another plane of the app, not a dialog floating on top of it.
+  -->
+  <Style x:Key="HaloSheetSurfaceStyle" TargetType="Border">
+    <Setter Property="Background" Value="{ThemeResource HaloMicaBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDividerBrush}" />
+    <Setter Property="BorderThickness" Value="1,0,0,0" />
+  </Style>
+
+  <!--
+    Count pills. Unselected is borderless on purpose: four outlined pills in a row
+    read as a toolbar, and only the active one is meant to carry weight.
+  -->
+  <Style x:Key="HaloFilterPillStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="13,0" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="15">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="15" Opacity="0" />
+            <Border
+              x:Name="SelectionLayer"
+              Background="{ThemeResource HaloCtrlHoverBrush}"
+              BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="15"
+              Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="Normal"
+              Foreground="{ThemeResource HaloText3Brush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                    <Setter Target="Label.FontWeight" Value="SemiBold" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    The whole collapsed row of a source card is one hit target for expanding it.
+    Borderless and transparent because the card around it already draws the frame,
+    and a second border inside the first is one line too many.
+  -->
+  <Style x:Key="HaloSheetRowButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+
+  <!-- The card frame itself. Selection is drawn as a separate ring on top. -->
+  <Style x:Key="HaloSourceCardStyle" TargetType="Border">
+    <Setter Property="Background" Value="{ThemeResource HaloCardBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloCardStrokeBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="10" />
+  </Style>
+
   <!-- The 3px inset tray the segmented selectors sit inside. -->
   <Style x:Key="HaloSegmentedTrayStyle" TargetType="Border">
     <Setter Property="Padding" Value="3" />

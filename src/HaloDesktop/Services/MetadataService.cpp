@@ -4,7 +4,9 @@
 #include "Models/Models.h"
 #include "Services/WatchStateService.h"
 #include <algorithm>
+#include <cwctype>
 #include <iomanip>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
 #include <utility>
@@ -17,6 +19,41 @@ namespace
         output << L'S' << std::setw(2) << std::setfill(L'0') << season
             << L'E' << std::setw(2) << episode;
         return winrt::hstring{ output.str() };
+    }
+
+    // Addons write the runtime free-form ("48 min", "1 h 52 min", "120"), so the
+    // leading run of digits is the only part worth trusting. An hour-and-minute
+    // form is folded together; anything else falls back to the first number.
+    std::int32_t RuntimeMinutesFrom(std::optional<winrt::hstring> const& value)
+    {
+        if (!value) return 0;
+        std::wstring const text{ value->c_str() };
+        std::vector<std::pair<std::int32_t, wchar_t>> parts;
+        for (std::size_t index{}; index < text.size();)
+        {
+            if (!std::iswdigit(text[index])) { ++index; continue; }
+            std::int64_t number{};
+            while (index < text.size() && std::iswdigit(text[index]) && number < 100000)
+            {
+                number = number * 10 + (text[index] - L'0');
+                ++index;
+            }
+            while (index < text.size() && std::iswspace(text[index])) ++index;
+            auto const unit = index < text.size()
+                ? static_cast<wchar_t>(std::towlower(text[index]))
+                : L'\0';
+            parts.emplace_back(static_cast<std::int32_t>(number), unit);
+        }
+        if (parts.empty()) return 0;
+        std::int32_t minutes{};
+        auto matched = false;
+        for (auto const& [number, unit] : parts)
+        {
+            if (unit == L'h') { minutes += number * 60; matched = true; }
+            else if (unit == L'm') { minutes += number; matched = true; }
+        }
+        if (!matched) minutes = parts.front().first;
+        return minutes > 0 && minutes < 100000 ? minutes : 0;
     }
 
     winrt::hstring Join(std::vector<winrt::hstring> const& values)
@@ -94,6 +131,7 @@ namespace HaloDesktop::Services
             return left < right;
         });
 
+        m_runtimeMinutes = RuntimeMinutesFrom(meta.Runtime);
         std::vector<winrt::hstring> facts;
         if (meta.Runtime) facts.push_back(L"Runtime · " + *meta.Runtime);
         if (!meta.Genres.empty()) facts.push_back(L"Genres · " + Join(meta.Genres));
@@ -154,6 +192,8 @@ namespace HaloDesktop::Services
             return left.Season() < right.Season();
         });
     }
+
+    std::int32_t MetadataService::RuntimeMinutes() const noexcept { return m_runtimeMinutes; }
 
     winrt::HaloDesktop::MediaDetail MetadataService::Detail() const
     {

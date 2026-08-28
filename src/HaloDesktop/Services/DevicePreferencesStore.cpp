@@ -15,6 +15,11 @@ namespace
     constexpr std::size_t MaximumHistoryItems = 20;
     constexpr std::size_t MaximumHistoryItemLength = 120;
     constexpr std::size_t MaximumSubtitleMemoryCharacters = 512u * 1024u;
+    // A residential line faster than this is not something the warning needs to
+    // model, and it keeps a corrupted file from producing an absurd threshold.
+    constexpr double MaximumLineMbps = 100000.0;
+    // A new peak has to clear the stored one by a tenth before it is worth a write.
+    constexpr double LineMbpsWriteMargin = 1.1;
 
     using HaloDesktop::Services::DevicePreferences;
     using JsonObject = winrt::Windows::Data::Json::JsonObject;
@@ -69,6 +74,11 @@ namespace
                 result.SubtitleSelectionMemory = JsonObject::Parse(memory.Stringify());
             }
         }
+        auto const line = root.GetNamedNumber(L"measuredLineMbps", 0.0);
+        if (std::isfinite(line) && line > 0.0)
+        {
+            result.MeasuredLineMbps = (std::min)(line, MaximumLineMbps);
+        }
         result.SourceRankingTipDismissed = root.GetNamedBoolean(L"sourceRankingTipDismissed", false);
         result.ResumePlayback = root.GetNamedBoolean(L"resumePlayback", true);
         result.HardwareDecoding = root.GetNamedBoolean(L"hardwareDecoding", true);
@@ -107,6 +117,9 @@ namespace
         {
             root.Insert(L"subtitleSelectionMemory", JsonObject{});
         }
+        root.Insert(
+            L"measuredLineMbps",
+            JsonValue::CreateNumberValue(std::clamp(value.MeasuredLineMbps, 0.0, MaximumLineMbps)));
         root.Insert(L"sourceRankingTipDismissed", JsonValue::CreateBooleanValue(value.SourceRankingTipDismissed));
         root.Insert(L"resumePlayback", JsonValue::CreateBooleanValue(value.ResumePlayback));
         root.Insert(L"hardwareDecoding", JsonValue::CreateBooleanValue(value.HardwareDecoding));
@@ -228,6 +241,39 @@ namespace HaloDesktop::Services
         {
             current.HardwareDecoding = value;
         });
+    }
+
+    double DevicePreferencesStore::MeasuredLineMbps() const noexcept
+    {
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_lineMbps) return *m_lineMbps;
+        }
+        auto value = 0.0;
+        try { value = Read().MeasuredLineMbps; } catch (...) { value = 0.0; }
+        std::scoped_lock const lock{ m_mutex };
+        m_lineMbps = value;
+        return value;
+    }
+
+    void DevicePreferencesStore::RecordMeasuredLineMbps(double megabitsPerSecond)
+    {
+        if (!std::isfinite(megabitsPerSecond) || megabitsPerSecond <= 0.0) return;
+        auto const sample = (std::min)(megabitsPerSecond, MaximumLineMbps);
+        if (sample <= MeasuredLineMbps() * LineMbpsWriteMargin) return;
+        try
+        {
+            Mutate(m_path, m_mutex, [sample](DevicePreferences& current)
+            {
+                if (sample > current.MeasuredLineMbps) current.MeasuredLineMbps = sample;
+            });
+        }
+        catch (...)
+        {
+            return;
+        }
+        std::scoped_lock const lock{ m_mutex };
+        m_lineMbps = sample;
     }
 
     bool DevicePreferencesStore::ImportIfMissing(DevicePreferences const& value)

@@ -144,7 +144,10 @@ namespace winrt::HaloDesktop::implementation
             hstring languages,
             HaloDesktop::StreamStatus status,
             hstring size,
-            hstring detail);
+            hstring detail,
+            std::uint64_t sizeBytes,
+            std::int32_t rank,
+            Windows::Foundation::Collections::IVectorView<hstring> subtitleLanguages);
 
         [[nodiscard]] hstring Key() const;
         [[nodiscard]] hstring Quality() const;
@@ -156,6 +159,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] HaloDesktop::StreamStatus Status() const noexcept;
         [[nodiscard]] hstring Size() const;
         [[nodiscard]] hstring Detail() const;
+        // Bytes and rank travel beside their formatted twins because the sources
+        // sheet sorts on them; re-parsing "6.20 GB" back into a number would make
+        // the sort depend on the display format.
+        [[nodiscard]] std::uint64_t SizeBytes() const noexcept;
+        // Position in the service's own ranking, ascending, zero for its pick.
+        [[nodiscard]] std::int32_t Rank() const noexcept;
+        [[nodiscard]] Windows::Foundation::Collections::IVectorView<hstring> SubtitleLanguages() const;
 
     private:
         hstring m_key;
@@ -168,18 +178,24 @@ namespace winrt::HaloDesktop::implementation
         HaloDesktop::StreamStatus m_status{ HaloDesktop::StreamStatus::Uncached };
         hstring m_size;
         hstring m_detail;
+        std::uint64_t m_sizeBytes{};
+        std::int32_t m_rank{};
+        Windows::Foundation::Collections::IVectorView<hstring> m_subtitleLanguages{ nullptr };
     };
 
     struct SourceGroup : SourceGroupT<SourceGroup>
     {
         SourceGroup() = default;
         SourceGroup(hstring name,hstring note,std::int32_t count,Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources);
-        SourceGroup(hstring addonId, hstring name, hstring note, std::int32_t count, Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources);
+        SourceGroup(hstring addonId, hstring name, hstring note, std::int32_t count, Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources, bool answered);
 
         [[nodiscard]] hstring AddonId() const;
         [[nodiscard]] hstring Name() const;
         [[nodiscard]] hstring Note() const;
         [[nodiscard]] std::int32_t Count() const noexcept;
+        // An addon that answered with nothing and an addon that never answered
+        // both hold zero sources, and only this tells the two of them apart.
+        [[nodiscard]] bool Answered() const noexcept;
         [[nodiscard]] Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> Sources() const;
 
     private:
@@ -187,6 +203,7 @@ namespace winrt::HaloDesktop::implementation
         hstring m_name;
         hstring m_note;
         std::int32_t m_count{};
+        bool m_answered{};
         Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> m_sources{ nullptr };
     };
 

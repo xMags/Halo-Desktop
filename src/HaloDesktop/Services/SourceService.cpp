@@ -40,6 +40,21 @@ namespace
         return *info.Cached ? winrt::HaloDesktop::StreamStatus::Instant : winrt::HaloDesktop::StreamStatus::Uncached;
     }
 
+    // Only the language tags travel with the display source. Subtitle ids and
+    // URLs stay in the resolved record, the same way stream URLs do.
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> SubtitleLanguages(
+        HaloDesktop::Api::Dto::StreamRecord const& stream)
+    {
+        std::vector<winrt::hstring> languages;
+        languages.reserve(stream.Subtitles.size());
+        for (auto const& subtitle : stream.Subtitles)
+        {
+            if (subtitle.Lang.empty()) continue;
+            languages.push_back(subtitle.Lang);
+        }
+        return winrt::single_threaded_vector(std::move(languages)).GetView();
+    }
+
     winrt::HaloDesktop::StreamSource MakeDisplaySource(
         HaloDesktop::Services::ResolvedSourceRecord const& resolved,
         bool onDisk)
@@ -55,7 +70,10 @@ namespace
             JoinLanguages(info.Languages),
             DisplayStatus(info, onDisk),
             HaloDesktop::Services::FormatStreamSize(info.SizeBytes),
-            info.Detail);
+            info.Detail,
+            info.SizeBytes.value_or(0),
+            resolved.Rank,
+            SubtitleLanguages(resolved.Stream));
     }
 
     std::wstring Trim(std::wstring value)
@@ -146,26 +164,59 @@ namespace HaloDesktop::Services
         std::size_t sourceCount{};
         auto const onDisk = m_downloads->HasCompleted(parameters.VideoId());
 
+        // Two passes on purpose. A rank is only meaningful once every addon has
+        // answered, so the records are collected first, ranked across the whole
+        // resolve, and only then projected into the display sources that carry it.
+        std::vector<std::vector<winrt::hstring>> groupKeys;
+        groupKeys.reserve(payload.Results.size());
         for (auto const& payloadGroup : payload.Results)
         {
-            std::vector<winrt::HaloDesktop::StreamSource> sources;
-            sources.reserve(payloadGroup.Streams.size());
+            std::vector<winrt::hstring> keys;
+            keys.reserve(payloadGroup.Streams.size());
             for (auto const& stream : payloadGroup.Streams)
             {
                 auto const key = winrt::to_hstring(winrt::Windows::Foundation::GuidHelper::CreateNewGuid());
                 ResolvedSourceRecord resolved{ key, payloadGroup.AddonId, stream, ParseStreamInfo(stream), parameters };
-                sources.push_back(MakeDisplaySource(resolved, onDisk));
                 records.emplace(std::wstring(key.c_str()), std::move(resolved));
                 orderedKeys.push_back(key);
+                keys.push_back(key);
+            }
+            sourceCount += keys.size();
+            groupKeys.push_back(std::move(keys));
+        }
+
+        auto rankedKeys = orderedKeys;
+        std::stable_sort(
+            rankedKeys.begin(),
+            rankedKeys.end(),
+            [&records](winrt::hstring const& left, winrt::hstring const& right)
+            {
+                return CompareStreams(
+                    records.at(std::wstring{ left.c_str() }).Info,
+                    records.at(std::wstring{ right.c_str() }).Info) < 0;
+            });
+        for (std::size_t position{}; position < rankedKeys.size(); ++position)
+        {
+            records.at(std::wstring{ rankedKeys[position].c_str() }).Rank =
+                static_cast<std::int32_t>(position);
+        }
+
+        for (std::size_t index{}; index < groupKeys.size(); ++index)
+        {
+            std::vector<winrt::HaloDesktop::StreamSource> sources;
+            sources.reserve(groupKeys[index].size());
+            for (auto const& key : groupKeys[index])
+            {
+                sources.push_back(MakeDisplaySource(records.at(std::wstring{ key.c_str() }), onDisk));
             }
             auto const groupSourceCount = sources.size();
-            sourceCount += groupSourceCount;
             groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(
-                payloadGroup.AddonId,
-                SanitizeAddonName(payloadGroup.AddonName),
+                payload.Results[index].AddonId,
+                SanitizeAddonName(payload.Results[index].AddonName),
                 L"RESOLVED",
                 static_cast<std::int32_t>(groupSourceCount),
-                winrt::single_threaded_vector(std::move(sources)).GetView()));
+                winrt::single_threaded_vector(std::move(sources)).GetView(),
+                true));
         }
 
         for (auto const& failure : payload.Errors)
@@ -175,28 +226,27 @@ namespace HaloDesktop::Services
                 SanitizeAddonName(failure.Name),
                 AddonFailureCopy(failure.Code),
                 0,
-                winrt::single_threaded_vector<winrt::HaloDesktop::StreamSource>().GetView()));
+                winrt::single_threaded_vector<winrt::HaloDesktop::StreamSource>().GetView(),
+                false));
         }
 
         m_records = std::move(records);
         m_orderedKeys = std::move(orderedKeys);
         m_groups = winrt::single_threaded_vector(std::move(groups)).GetView();
         m_best = nullptr;
-        if (!m_orderedKeys.empty())
+        if (!rankedKeys.empty())
         {
-            auto bestKey = m_orderedKeys.front();
-            for (auto const& key : m_orderedKeys)
-            {
-                auto const& candidate = m_records.at(std::wstring(key.c_str()));
-                auto const& best = m_records.at(std::wstring(bestKey.c_str()));
-                if (CompareStreams(candidate.Info, best.Info) < 0) bestKey = key;
-            }
-            m_best = MakeDisplaySource(m_records.at(std::wstring(bestKey.c_str())), onDisk);
+            m_best = MakeDisplaySource(m_records.at(std::wstring(rankedKeys.front().c_str())), onDisk);
         }
 
+        // The ratio form ("3 of 4 providers") only appears when somebody failed;
+        // naming it unconditionally would imply a problem on every healthy resolve.
+        auto const providers = payload.Results.size() + payload.Errors.size();
         std::wostringstream summary;
-        summary << sourceCount << L" sources from " << payload.Results.size() << L" addons \x00B7 resolved in "
-                << std::fixed << std::setprecision(1) << elapsed << L" s";
+        summary << sourceCount << (sourceCount == 1 ? L" source from " : L" sources from ");
+        if (!payload.Errors.empty()) summary << payload.Results.size() << L" of ";
+        summary << providers << (providers == 1 ? L" provider, found in " : L" providers, found in ")
+                << std::fixed << std::setprecision(1) << elapsed << L" seconds";
         m_summary = winrt::hstring{ summary.str() };
     }
 
@@ -448,7 +498,8 @@ namespace HaloDesktop::Services
                 group.Name(),
                 group.Note(),
                 group.Count(),
-                winrt::single_threaded_vector(std::move(sources)).GetView()));
+                winrt::single_threaded_vector(std::move(sources)).GetView(),
+                group.Answered()));
         }
         m_groups = winrt::single_threaded_vector(std::move(groups)).GetView();
         if (m_best)
@@ -503,13 +554,15 @@ namespace HaloDesktop::Services
         return winrt::hstring{ cleaned };
     }
 
+    // Sentence fragments rather than badges: the sources sheet reads them as
+    // "<provider> did not answer in time", so they have to complete that sentence.
     winrt::hstring AddonFailureCopy(std::optional<winrt::hstring> const& code)
     {
-        if (!code) return L"IS UNAVAILABLE";
-        if (*code == L"timeout") return L"DID NOT RESPOND IN TIME";
-        if (*code == L"upstream_http") return L"RETURNED AN ERROR";
-        if (*code == L"blocked_target") return L"WAS BLOCKED FOR SAFETY";
-        if (*code == L"invalid_response") return L"RETURNED INVALID DATA";
-        return L"IS UNAVAILABLE";
+        if (!code) return L"is unavailable";
+        if (*code == L"timeout") return L"did not answer in time";
+        if (*code == L"upstream_http") return L"returned an error";
+        if (*code == L"blocked_target") return L"was blocked for safety";
+        if (*code == L"invalid_response") return L"returned invalid data";
+        return L"is unavailable";
     }
 }

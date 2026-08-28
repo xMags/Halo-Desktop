@@ -146,7 +146,7 @@ namespace winrt::HaloDesktop::implementation
     bool Episode::Downloaded() const noexcept { return m_downloaded; }
 
     StreamSource::StreamSource(hstring quality,hstring range,hstring file,hstring codec,hstring audio,hstring languages,HaloDesktop::StreamStatus status,hstring size)
-        : StreamSource(L"",std::move(quality),std::move(range),std::move(file),std::move(codec),std::move(audio),std::move(languages),status,std::move(size),L"") {}
+        : StreamSource(L"",std::move(quality),std::move(range),std::move(file),std::move(codec),std::move(audio),std::move(languages),status,std::move(size),L"",0,0,nullptr) {}
 
     StreamSource::StreamSource(
         hstring key,
@@ -158,7 +158,10 @@ namespace winrt::HaloDesktop::implementation
         hstring languages,
         HaloDesktop::StreamStatus status,
         hstring size,
-        hstring detail)
+        hstring detail,
+        std::uint64_t sizeBytes,
+        std::int32_t rank,
+        Windows::Foundation::Collections::IVectorView<hstring> subtitleLanguages)
         : m_key(std::move(key)),
           m_quality(std::move(quality)),
           m_range(std::move(range)),
@@ -168,7 +171,12 @@ namespace winrt::HaloDesktop::implementation
           m_languages(std::move(languages)),
           m_status(status),
           m_size(std::move(size)),
-          m_detail(std::move(detail))
+          m_detail(std::move(detail)),
+          m_sizeBytes(sizeBytes),
+          m_rank(rank),
+          m_subtitleLanguages(subtitleLanguages
+              ? std::move(subtitleLanguages)
+              : single_threaded_vector<hstring>().GetView())
     {
     }
 
@@ -182,17 +190,21 @@ namespace winrt::HaloDesktop::implementation
     HaloDesktop::StreamStatus StreamSource::Status() const noexcept { return m_status; }
     hstring StreamSource::Size() const { return m_size; }
     hstring StreamSource::Detail() const { return m_detail; }
+    std::uint64_t StreamSource::SizeBytes() const noexcept { return m_sizeBytes; }
+    std::int32_t StreamSource::Rank() const noexcept { return m_rank; }
+    Windows::Foundation::Collections::IVectorView<hstring> StreamSource::SubtitleLanguages() const { return m_subtitleLanguages; }
 
     SourceGroup::SourceGroup(hstring name,hstring note,std::int32_t count,Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources)
-        : SourceGroup(L"",std::move(name),std::move(note),count,std::move(sources)) {}
+        : SourceGroup(L"",std::move(name),std::move(note),count,std::move(sources),count > 0) {}
 
     SourceGroup::SourceGroup(
         hstring addonId,
         hstring name,
         hstring note,
         std::int32_t count,
-        Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources)
-        : m_addonId(std::move(addonId)), m_name(std::move(name)), m_note(std::move(note)), m_count(count), m_sources(std::move(sources))
+        Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> sources,
+        bool answered)
+        : m_addonId(std::move(addonId)), m_name(std::move(name)), m_note(std::move(note)), m_count(count), m_answered(answered), m_sources(std::move(sources))
     {
     }
 
@@ -200,6 +212,7 @@ namespace winrt::HaloDesktop::implementation
     hstring SourceGroup::Name() const { return m_name; }
     hstring SourceGroup::Note() const { return m_note; }
     std::int32_t SourceGroup::Count() const noexcept { return m_count; }
+    bool SourceGroup::Answered() const noexcept { return m_answered; }
     Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> SourceGroup::Sources() const { return m_sources; }
 
     DownloadItem::DownloadItem(

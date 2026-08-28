@@ -32,6 +32,7 @@ namespace winrt::HaloDesktop::implementation
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
+        App::Services().Navigation->AttachSheetFrame(SheetFrameControl());
         App::Services().WindowPresentation->Attach(
             m_windowSizing->WindowHandle(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
@@ -127,6 +128,11 @@ namespace winrt::HaloDesktop::implementation
         return RootGridControl().FindName(L"OverlayFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
     }
 
+    Microsoft::UI::Xaml::Controls::Frame MainWindow::SheetFrameControl() const
+    {
+        return RootGridControl().FindName(L"SheetFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
+    }
+
     void MainWindow::PrepareForWindowClose() noexcept
     {
         if (m_closePrepared)
@@ -154,6 +160,7 @@ namespace winrt::HaloDesktop::implementation
             // during WindowsXamlManager shutdown.
             Content(nullptr);
             OverlayFrame(nullptr);
+            SheetFrame(nullptr);
             ShellLayer(nullptr);
             AppTitleBar(nullptr);
             TitleBarRow(nullptr);
