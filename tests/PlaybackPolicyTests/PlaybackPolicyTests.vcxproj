@@ -63,6 +63,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp">
       <Link>ProtectedHttpHeaders.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AddonSelectionPolicy.cpp">
+      <Link>AddonSelectionPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Playback\TemporaryFileCollection.cpp">
       <Link>TemporaryFileCollection.cpp</Link>
     </ClCompile>

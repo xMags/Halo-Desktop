@@ -314,6 +314,9 @@ namespace
         }
         return ::HaloDesktop::Api::Dto::AddonRecord{
             .Id = RequireString(object, L"id"),
+            // Fail-soft: an addon that omits its manifest id stays usable and is
+            // simply never merged with another row.
+            .ManifestId = OptionalDisplayString(manifest, L"id", 512).value_or(L""),
             .TransportUrl = transportUrl,
             .Name = DisplayString(manifest, L"name", 512),
             .Version = DisplayString(manifest, L"version", 64),

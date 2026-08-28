@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
+#include "Services/AddonSelectionPolicy.h"
 #include "Services/ContinueArtworkService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/LibraryService.h"
@@ -112,6 +113,29 @@ namespace
         else output << std::setw(2) << std::setfill(L'0') << minutes << L':' << std::setw(2) << remainder;
         output << L" LEFT";
         return winrt::hstring{ output.str() };
+    }
+
+    // Collapses the global and user addon lists onto one row per addon before
+    // anything queries their catalogs. Without it an addon present in both lists
+    // contributes its shelves, or its search group, twice.
+    std::vector<::HaloDesktop::Api::Dto::AddonRecord> DistinctAddons(
+        std::vector<::HaloDesktop::Api::Dto::AddonRecord> records)
+    {
+        std::vector<::HaloDesktop::Services::AddonIdentity> identities;
+        identities.reserve(records.size());
+        for (auto const& record : records)
+        {
+            identities.push_back({ std::wstring{ record.ManifestId }, record.IsGlobal });
+        }
+
+        std::vector<::HaloDesktop::Api::Dto::AddonRecord> distinct;
+        distinct.reserve(records.size());
+        // The selected indices rise strictly, so every record is moved at most once.
+        for (auto const index : ::HaloDesktop::Services::SelectDistinctAddons(identities))
+        {
+            distinct.push_back(std::move(records[index]));
+        }
+        return distinct;
     }
 
     std::wstring Lower(winrt::hstring const& input)
@@ -233,7 +257,8 @@ namespace HaloDesktop::Services
             }
 
             std::vector<CatalogQuery> queries;
-            for (auto const& addon : m_addons->Records())
+            auto const addons = DistinctAddons(m_addons->Records());
+            for (auto const& addon : addons)
             {
                 if (addon.HideCatalogs)
                 {
@@ -363,7 +388,8 @@ namespace HaloDesktop::Services
         }
 
         std::vector<CatalogQuery> queries;
-        for (auto const& addon : m_addons->Records()) for (auto const& catalog : addon.Catalogs)
+        auto const addons = DistinctAddons(m_addons->Records());
+        for (auto const& addon : addons) for (auto const& catalog : addon.Catalogs)
             if (catalog.SupportsSearch) queries.push_back({ addon.Id, addon.Name, catalog });
         std::vector<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> tasks;
         for (auto const& item : queries) tasks.push_back(m_apiClient->GetCatalogAsync(item.AddonId, item.Catalog.Type, item.Catalog.Id, { { L"search", winrt::hstring{ term } } }));

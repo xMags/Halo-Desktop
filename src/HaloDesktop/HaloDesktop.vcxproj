@@ -194,6 +194,7 @@
     <ClInclude Include="Playback\NullEngine.h" />
     <ClInclude Include="Services\AppServices.h" />
     <ClInclude Include="Services\AddonService.h" />
+    <ClInclude Include="Services\AddonSelectionPolicy.h" />
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\CatalogRefreshPolicy.h" />
     <ClInclude Include="Services\ContinueArtworkService.h" />
@@ -379,6 +380,9 @@
     </ClCompile>
     <ClCompile Include="Services\DownloadService.cpp" />
     <ClCompile Include="Services\AddonService.cpp" />
+    <ClCompile Include="Services\AddonSelectionPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Services\CatalogService.cpp" />
     <ClCompile Include="Services\CatalogRefreshPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

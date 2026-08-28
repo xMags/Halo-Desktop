@@ -54,6 +54,9 @@ namespace HaloDesktop::Api::Dto
         };
 
         winrt::hstring Id;
+        // The addon's own declared identity, shared by the global and user rows
+        // that name the same addon. Empty when the manifest omitted one.
+        winrt::hstring ManifestId;
         std::optional<winrt::hstring> TransportUrl;
         winrt::hstring Name;
         winrt::hstring Version;
