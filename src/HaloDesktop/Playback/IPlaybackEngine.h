@@ -55,6 +55,13 @@ namespace HaloDesktop::Playback
         double Speed{ 1.0 };
         bool Paused{};
         bool Buffering{};
+        // A seek whose new position is not live yet. Deliberately separate from
+        // Buffering: the watch reporter reads Buffering as playback having stopped,
+        // and a seek must not make it fire a progress report per keypress.
+        bool SeekPending{};
+        // Cleared by every Open and set once the engine reports the first frame of
+        // that file. Tells a waiting caller whether the video surface is still black.
+        bool FirstFrameReady{};
         bool TracksReady{};
         std::uint64_t FileSerial{};
         std::uint64_t EndSerial{};

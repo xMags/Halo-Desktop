@@ -97,6 +97,10 @@ namespace HaloDesktop
         Boolean SpeedTabSelected { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PlayingVisibility { get; };
+        Boolean IsBuffering { get; };
+        Microsoft.UI.Xaml.Visibility BufferingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BufferingLabelVisibility { get; };
+        Double BufferingRingSize { get; };
         Microsoft.UI.Xaml.Visibility EnterFullscreenIconVisibility { get; };
         Microsoft.UI.Xaml.Visibility ExitFullscreenIconVisibility { get; };
         Microsoft.UI.Xaml.Visibility PanelVisibility { get; };

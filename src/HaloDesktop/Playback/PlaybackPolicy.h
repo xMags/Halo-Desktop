@@ -2,6 +2,7 @@
 
 #include "Playback/IPlaybackEngine.h"
 
+#include <chrono>
 #include <cstdint>
 #include <optional>
 #include <string>
@@ -65,6 +66,22 @@ namespace HaloDesktop::Playback
         std::optional<bool> pausedForCache,
         bool playbackReady,
         bool pausedForCacheActive) noexcept;
+    // The player reports one stall for two causes: the stream opening or starving,
+    // and a seek whose position is not live yet. A paused player is never stalled, so
+    // the indicator can never land on top of the paused chip.
+    [[nodiscard]] bool IsPlaybackStalled(
+        bool buffering,
+        bool seekPending,
+        bool paused) noexcept;
+    // How long a stall must last before it earns an indicator. A cached seek resolves
+    // in tens of milliseconds and a marginal connection makes the cache flag flap, so
+    // reporting either immediately reads as a rendering glitch. Opening a file is
+    // exempt: the video surface is still black, so there is nothing to flicker against.
+    [[nodiscard]] std::chrono::milliseconds BufferingIndicatorDelay(bool firstFrameReady) noexcept;
+    // How much longer a visible indicator has to stay up. Zero once it has been shown
+    // long enough to be dismissed at once.
+    [[nodiscard]] std::chrono::milliseconds BufferingIndicatorHoldRemaining(
+        std::chrono::milliseconds shownFor) noexcept;
     [[nodiscard]] bool ShouldReportPlaybackChange(
         bool endChanged,
         bool wasPlaying,

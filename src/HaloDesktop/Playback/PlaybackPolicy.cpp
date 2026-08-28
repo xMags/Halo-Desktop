@@ -13,6 +13,8 @@
 namespace
 {
     constexpr std::wstring_view ExternalSubtitleMarker=L"halo-subtitle:";
+    constexpr std::chrono::milliseconds BufferingIndicatorShowDelay{ 350 };
+    constexpr std::chrono::milliseconds BufferingIndicatorMinimumVisible{ 500 };
 
     std::wstring NormalizeFingerprintComponent(std::wstring value)
     {
@@ -196,6 +198,22 @@ namespace HaloDesktop::Playback
     {
         if(pausedForCache)return *pausedForCache;
         return playbackReady&&!pausedForCacheActive?false:current;
+    }
+
+    bool IsPlaybackStalled(bool buffering,bool seekPending,bool paused)noexcept
+    {
+        return (buffering||seekPending)&&!paused;
+    }
+
+    std::chrono::milliseconds BufferingIndicatorDelay(bool firstFrameReady)noexcept
+    {
+        return firstFrameReady?BufferingIndicatorShowDelay:std::chrono::milliseconds::zero();
+    }
+
+    std::chrono::milliseconds BufferingIndicatorHoldRemaining(std::chrono::milliseconds shownFor)noexcept
+    {
+        if(shownFor>=BufferingIndicatorMinimumVisible)return std::chrono::milliseconds::zero();
+        return BufferingIndicatorMinimumVisible-shownFor;
     }
 
     bool ShouldReportPlaybackChange(bool endChanged,bool wasPlaying,bool isPlaying)noexcept

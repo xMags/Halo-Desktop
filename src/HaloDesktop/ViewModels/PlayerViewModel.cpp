@@ -256,6 +256,19 @@ namespace winrt::HaloDesktop::implementation
                     }
                 }
             });
+        m_bufferingTimer = dispatcher.CreateTimer();
+        m_bufferingTimer.IsRepeating(false);
+        m_bufferingTickRevoker = m_bufferingTimer.Tick(
+            winrt::auto_revoke,
+            [weak = get_weak()]([[maybe_unused]] winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer const& timer,
+                                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args) {
+                // The timer serves whichever edge was outstanding, so the stall state
+                // it finds is the answer for both.
+                if (auto const self = weak.get())
+                {
+                    self->SetBufferingVisible(self->m_stalled);
+                }
+            });
         m_upNextTimer = dispatcher.CreateTimer();
         m_upNextTimer.Interval(std::chrono::seconds(1));
         m_upNextTimer.IsRepeating(true);
@@ -313,14 +326,30 @@ namespace winrt::HaloDesktop::implementation
             {
                 m_upNextTimer.Stop();
             }
+            if (m_bufferingTimer)
+            {
+                m_bufferingTimer.Stop();
+            }
         }
         catch (...)
         {
         }
         m_hideTickRevoker.revoke();
         m_upNextTickRevoker.revoke();
+        m_bufferingTickRevoker.revoke();
         m_hideTimer = nullptr;
         m_upNextTimer = nullptr;
+        m_bufferingTimer = nullptr;
+        m_stalled = false;
+        // Best-effort: Deactivate is noexcept, but a handler may still be attached and
+        // a re-activated view model must not inherit a stale visible indicator.
+        try
+        {
+            SetBufferingVisible(false);
+        }
+        catch (...)
+        {
+        }
         if (m_engineToken != 0)
         {
             m_engine->RemoveChangedHandler(m_engineToken);
@@ -490,6 +519,29 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_state.Paused ? Collapsed : Visible;
     }
+    bool PlayerViewModel::IsBuffering() const noexcept
+    {
+        return m_bufferingVisible;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::BufferingVisibility() const noexcept
+    {
+        return m_bufferingVisible ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::BufferingLabelVisibility() const noexcept
+    {
+        // Only worth a caption before the first frame, when the surface is black and
+        // the ring is the only thing on screen.
+        return m_state.FirstFrameReady ? Collapsed : Visible;
+    }
+    double PlayerViewModel::BufferingRingSize() const noexcept
+    {
+        auto const fullscreen = m_windowPresentation->IsFullscreen();
+        if (!m_state.FirstFrameReady)
+        {
+            return fullscreen ? 72.0 : 56.0;
+        }
+        return fullscreen ? 44.0 : 36.0;
+    }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::EnterFullscreenIconVisibility() const noexcept
     {
         return m_windowPresentation->IsFullscreen() ? Collapsed : Visible;
@@ -594,6 +646,7 @@ namespace winrt::HaloDesktop::implementation
         m_scrubbing = true;
         m_scrubPosition = m_state.PositionSeconds;
         m_lastScrubSeek = std::chrono::steady_clock::now() - ScrubPreviewInterval;
+        ApplyBufferingState();
         NotifyUserActivity();
     }
     void PlayerViewModel::ScrubTo(double seconds)
@@ -625,6 +678,7 @@ namespace winrt::HaloDesktop::implementation
         // release delegate is still completing the final seek.
         m_engine->SeekAbsolute(m_scrubPosition);
         m_scrubbing = false;
+        ApplyBufferingState();
         // The Slider already owns this value. Its next engine notification can
         // refresh the binding after WinUI finishes pointer capture cleanup.
         Raise(L"PositionText");
@@ -841,6 +895,7 @@ namespace winrt::HaloDesktop::implementation
             RebuildTracks();
         }
         RaisePlaybackState();
+        ApplyBufferingState();
         if (m_state.Paused != wasPaused)
         {
             if (m_state.Paused)
@@ -859,7 +914,8 @@ namespace winrt::HaloDesktop::implementation
                                      L"SpeedText", L"IsSpeedThreeQuarter", L"IsSpeedNormal", L"IsSpeedOneQuarter",
                                      L"IsSpeedOneHalf", L"IsSpeedOneThreeQuarter", L"IsSpeedDouble",
                                      L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
-                                     L"IsPaused", L"PausedVisibility", L"PlayingVisibility" })
+                                     L"IsPaused", L"PausedVisibility", L"PlayingVisibility",
+                                     L"BufferingLabelVisibility", L"BufferingRingSize" })
         {
             Raise(property);
         }
@@ -939,9 +995,95 @@ namespace winrt::HaloDesktop::implementation
     {
         for (auto const property : { L"IsFullscreen", L"EnterFullscreenIconVisibility",
                                      L"ExitFullscreenIconVisibility", L"PlayButtonSize", L"TransportButtonSize",
-                                     L"HeaderPadding", L"TransportPadding", L"TitleFontSize" })
+                                     L"HeaderPadding", L"TransportPadding", L"TitleFontSize",
+                                     L"BufferingRingSize" })
         {
             Raise(property);
+        }
+    }
+    // Debounced on both edges. A cached seek resolves in tens of milliseconds and a
+    // marginal connection makes the cache flag flap, so an undelayed indicator would
+    // flash for a frame or strobe. Opening a file skips the delay because the surface
+    // is still black and there is nothing to flicker against.
+    void PlayerViewModel::ApplyBufferingState()
+    {
+        // A scrub issues a throttled preview seek every few frames. Reporting each one
+        // would park the ring on top of the very frame the drag exists to preview, so
+        // the indicator waits for the release and the final seek behind it.
+        auto const stalled = !m_scrubbing
+            && ::HaloDesktop::Playback::IsPlaybackStalled(
+                m_state.Buffering,
+                m_state.SeekPending,
+                m_state.Paused);
+        if (stalled == m_stalled)
+        {
+            return;
+        }
+        m_stalled = stalled;
+        StopBufferingTimer();
+        if (stalled)
+        {
+            if (m_bufferingVisible)
+            {
+                return;
+            }
+            auto const delay = ::HaloDesktop::Playback::BufferingIndicatorDelay(m_state.FirstFrameReady);
+            if (delay <= std::chrono::milliseconds::zero())
+            {
+                SetBufferingVisible(true);
+                return;
+            }
+            StartBufferingTimer(delay);
+            return;
+        }
+        if (!m_bufferingVisible)
+        {
+            return;
+        }
+        auto const shownFor = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - m_bufferingShownAt);
+        auto const remaining = ::HaloDesktop::Playback::BufferingIndicatorHoldRemaining(shownFor);
+        if (remaining <= std::chrono::milliseconds::zero())
+        {
+            SetBufferingVisible(false);
+            return;
+        }
+        StartBufferingTimer(remaining);
+    }
+    void PlayerViewModel::SetBufferingVisible(bool visible)
+    {
+        if (visible == m_bufferingVisible)
+        {
+            return;
+        }
+        m_bufferingVisible = visible;
+        if (visible)
+        {
+            m_bufferingShownAt = std::chrono::steady_clock::now();
+        }
+        Raise(L"IsBuffering");
+        Raise(L"BufferingVisibility");
+    }
+    void PlayerViewModel::StartBufferingTimer(std::chrono::milliseconds delay)
+    {
+        if (!m_bufferingTimer)
+        {
+            return;
+        }
+        m_bufferingTimer.Interval(delay);
+        m_bufferingTimer.Start();
+    }
+    void PlayerViewModel::StopBufferingTimer() noexcept
+    {
+        try
+        {
+            if (m_bufferingTimer)
+            {
+                m_bufferingTimer.Stop();
+            }
+        }
+        catch (...)
+        {
         }
     }
     bool PlayerViewModel::KeepsOsdVisible() const noexcept

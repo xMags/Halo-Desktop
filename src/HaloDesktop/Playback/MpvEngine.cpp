@@ -100,6 +100,8 @@ namespace HaloDesktop::Playback
         m_state.DurationSeconds = 0.0;
         m_state.Paused = false;
         m_state.Buffering = false;
+        m_state.SeekPending = false;
+        m_state.FirstFrameReady = false;
         m_pausedForCache = false;
         m_state.TracksReady = false;
         m_state.Tracks.clear();
@@ -128,6 +130,8 @@ namespace HaloDesktop::Playback
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
+        m_state.SeekPending = false;
+        m_state.FirstFrameReady = false;
         m_pausedForCache = false;
         m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
@@ -357,6 +361,7 @@ namespace HaloDesktop::Playback
     {
         if (update.Seeking)
         {
+            m_state.SeekPending = *update.Seeking;
             if (*update.Seeking)
             {
                 if (m_seekTarget)
@@ -407,6 +412,10 @@ namespace HaloDesktop::Playback
             update.Buffering,
             update.PlaybackReady.value_or(false),
             m_pausedForCache);
+        if (update.PlaybackReady.value_or(false))
+        {
+            m_state.FirstFrameReady = true;
+        }
         if (update.Ended && *update.Ended)
         {
             m_state.Paused = true;
@@ -417,7 +426,7 @@ namespace HaloDesktop::Playback
             m_state.TracksReady = true;
         }
         if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
-        if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
+        if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;m_state.SeekPending=false;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
         SynchronizeAudioSession();
         NotifyChanged();
     }
@@ -433,6 +442,8 @@ namespace HaloDesktop::Playback
         m_state.PositionSeconds = 0.0;
         m_state.DurationSeconds = 0.0;
         m_state.Buffering = true;
+        m_state.SeekPending = false;
+        m_state.FirstFrameReady = false;
         m_pausedForCache = false;
         m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;

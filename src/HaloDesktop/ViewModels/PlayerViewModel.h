@@ -152,6 +152,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool SpeedTabSelected() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PlayingVisibility() const noexcept;
+        [[nodiscard]] bool IsBuffering() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility BufferingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility BufferingLabelVisibility() const noexcept;
+        [[nodiscard]] double BufferingRingSize() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EnterFullscreenIconVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExitFullscreenIconVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PanelVisibility() const noexcept;
@@ -214,6 +218,10 @@ namespace winrt::HaloDesktop::implementation
         void Raise(wchar_t const* propertyName);
         void RestartHideTimer();
         void StopUpNextTimer() noexcept;
+        void ApplyBufferingState();
+        void SetBufferingVisible(bool visible);
+        void StartBufferingTimer(std::chrono::milliseconds delay);
+        void StopBufferingTimer() noexcept;
         [[nodiscard]] bool KeepsOsdVisible() const noexcept;
         [[nodiscard]] bool HasUpNext() const noexcept;
         [[nodiscard]] double ScrubTarget(double seconds) const noexcept;
@@ -225,8 +233,13 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Playback::PlaybackState m_state;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_hideTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_upNextTimer{ nullptr };
+        // One-shot, reused for both edges of the buffering indicator: it delays the
+        // show while a stall might still be instant, then holds a shown indicator.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_bufferingTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_hideTickRevoker{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_upNextTickRevoker{};
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_bufferingTickRevoker{};
+        std::chrono::steady_clock::time_point m_bufferingShownAt{};
         std::int32_t m_panelIndex{ -1 };
         std::int32_t m_subtitleTabIndex{ 0 };
         std::int32_t m_upNextRemaining{ 8 };
@@ -251,6 +264,8 @@ namespace winrt::HaloDesktop::implementation
         double m_scrubPosition{};
         std::chrono::steady_clock::time_point m_lastScrubSeek{};
         bool m_scrubbing{};
+        bool m_stalled{};
+        bool m_bufferingVisible{};
         bool m_upNextOpen{};
         bool m_upNextCountdown{};
         bool m_upNextClaimed{};

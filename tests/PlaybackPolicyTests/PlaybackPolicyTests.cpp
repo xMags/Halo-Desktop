@@ -99,6 +99,18 @@ namespace
         Require(ResolveBufferingState(false,true,true,true),"cache pause did not override playback-ready state");
         Require(ResolveBufferingState(true,std::nullopt,true,true),"playback restart overrode active cache buffering");
         Require(!ResolveBufferingState(true,false,false,false),"cache resume did not clear rebuffering");
+
+        Require(IsPlaybackStalled(true,false,false),"a starved cache did not stall playback");
+        Require(IsPlaybackStalled(false,true,false),"an unresolved seek did not stall playback");
+        Require(!IsPlaybackStalled(true,true,true),"a paused player reported a stall");
+        Require(!IsPlaybackStalled(false,false,false),"running playback reported a stall");
+        Require(BufferingIndicatorDelay(false)==std::chrono::milliseconds::zero(),"opening a file delayed the indicator behind a black surface");
+        Require(BufferingIndicatorDelay(true)>std::chrono::milliseconds::zero(),"a stall after the first frame skipped the anti-flicker delay");
+        Require(BufferingIndicatorHoldRemaining(std::chrono::milliseconds::zero())>std::chrono::milliseconds::zero(),"an indicator shown this instant was allowed to hide at once");
+        Require(BufferingIndicatorHoldRemaining(std::chrono::hours{1})==std::chrono::milliseconds::zero(),"a long-standing indicator was still held open");
+        Require(BufferingIndicatorHoldRemaining(std::chrono::milliseconds{200})
+                    ==BufferingIndicatorHoldRemaining(std::chrono::milliseconds::zero())-std::chrono::milliseconds{200},
+                "the remaining hold did not shrink with the time already shown");
         Require(ShouldReportPlaybackChange(true,true,false),"combined EOF transition did not request a report");
         Require(ShouldReportPlaybackChange(false,true,false),"playing-to-stopped transition did not request a report");
         Require(!ShouldReportPlaybackChange(false,true,true),"unchanged playing state requested a report");
