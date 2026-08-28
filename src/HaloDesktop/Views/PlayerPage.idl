@@ -89,7 +89,7 @@ namespace HaloDesktop
         String UpNextKicker { get; };
         String UpNextTitle { get; };
         String UpNextEpisodeLabel { get; };
-        String UpNextPoster { get; };
+        String UpNextArt { get; };
         String SubtitleDelayText { get; };
         String AudioDelayText { get; };
         Boolean IsPaused { get; };

@@ -78,6 +78,7 @@ namespace HaloDesktop::Playback
                 *next,
                 (*next).Title(),
                 (*next).EpisodeLabel(),
+                L"",
             };
         }
 
@@ -165,6 +166,6 @@ namespace HaloDesktop::Playback
                 stream.RequestHeaders);
         }
 
-        co_return UpNextResult{ sources, playback, video.Title, episodeLabel };
+        co_return UpNextResult{ sources, playback, video.Title, episodeLabel, video.Thumbnail.value_or(L"") };
     }
 }

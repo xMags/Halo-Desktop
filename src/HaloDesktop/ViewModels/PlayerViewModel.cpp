@@ -492,7 +492,10 @@ namespace winrt::HaloDesktop::implementation
         return m_upNextTitle;
     }
     winrt::hstring PlayerViewModel::UpNextEpisodeLabel() const{return m_upNextEpisodeLabel;}
-    winrt::hstring PlayerViewModel::UpNextPoster() const{return m_upNextPoster;}
+    // The card is a 16:9 frame, so the episode's own still belongs in it. The
+    // poster only stands in when the addon supplied no still, where it is centre
+    // cropped rather than left blank.
+    winrt::hstring PlayerViewModel::UpNextArt() const{return m_upNextStill.empty()?m_upNextPoster:m_upNextStill;}
     winrt::hstring PlayerViewModel::SubtitleDelayText() const
     {
         return winrt::hstring(std::to_wstring(m_subtitleDelayMs) + L" MS");
@@ -626,12 +629,14 @@ namespace winrt::HaloDesktop::implementation
     void PlayerViewModel::SetUpNext(
         winrt::hstring const& title,
         winrt::hstring const& episodeLabel,
-        winrt::hstring const& poster)
+        winrt::hstring const& poster,
+        winrt::hstring const& still)
     {
         StopUpNextTimer();
         m_upNextTitle = title;
         m_upNextEpisodeLabel = episodeLabel;
         m_upNextPoster = poster;
+        m_upNextStill = still;
         m_upNextRemaining = 8;
         m_upNextOpen = false;
         m_upNextCountdown = false;
@@ -961,7 +966,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
                L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
-               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel", L"UpNextPoster" })
+               L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel", L"UpNextArt" })
         {
             Raise(property);
         }

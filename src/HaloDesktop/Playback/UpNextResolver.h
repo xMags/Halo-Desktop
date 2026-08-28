@@ -24,6 +24,9 @@ namespace HaloDesktop::Playback
         winrt::HaloDesktop::PlaybackRequest Playback{ nullptr };
         winrt::hstring Title;
         winrt::hstring EpisodeLabel;
+        // The next episode's own still, when the addon supplies one. Empty for a
+        // downloaded continuation, which is resolved from the local index alone.
+        winrt::hstring Still;
     };
 
     // Resolves only the server-authoritative metadata chain. Local-file
