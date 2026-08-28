@@ -680,53 +680,59 @@
     <!--
       The quality badge stays up for the whole file, so it sits outside OsdRoot with
       the buffering indicator instead of fading with the controls. Hit testing is off
-      so it cannot swallow the press that wakes the OSD underneath it, and the margin
-      follows the header padding so it lines up with the title row at both window
-      sizes. The dark hairline keeps the gold readable over a bright frame.
+      so it cannot swallow the press that wakes the OSD underneath it. The row is
+      sized to the back button so the badge centres on the header rather than hanging
+      from the top of it, and the dark hairline keeps the gold readable over a bright
+      frame.
     -->
-    <Border
+    <Grid
+      Height="34"
       Margin="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}"
-      Padding="3"
       HorizontalAlignment="Right"
-      VerticalAlignment="Top"
-      BorderBrush="#59000000"
-      BorderThickness="1"
-      CornerRadius="5"
-      IsHitTestVisible="False"
-      Visibility="{x:Bind ViewModel.QualityBadgeVisibility, Mode=OneWay}">
-      <Border.Background>
-        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-          <GradientStop Offset="0" Color="#FFF8E7A6" />
-          <GradientStop Offset="0.46" Color="#FFE7C25C" />
-          <GradientStop Offset="0.54" Color="#FFC79A2E" />
-          <GradientStop Offset="1" Color="#FFEBCC72" />
-        </LinearGradientBrush>
-      </Border.Background>
-      <StackPanel Orientation="Horizontal" Spacing="6">
-        <Border Padding="6,2" VerticalAlignment="Center" Background="#FF0A0A0C" CornerRadius="3">
+      VerticalAlignment="Top">
+      <Border
+        Padding="3"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Center"
+        BorderBrush="#59000000"
+        BorderThickness="1"
+        CornerRadius="5"
+        IsHitTestVisible="False"
+        Visibility="{x:Bind ViewModel.QualityBadgeVisibility, Mode=OneWay}">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+            <GradientStop Offset="0" Color="#FFF8E7A6" />
+            <GradientStop Offset="0.46" Color="#FFE7C25C" />
+            <GradientStop Offset="0.54" Color="#FFC79A2E" />
+            <GradientStop Offset="1" Color="#FFEBCC72" />
+          </LinearGradientBrush>
+        </Border.Background>
+        <StackPanel Orientation="Horizontal" Spacing="6">
+          <Border Padding="6,2" VerticalAlignment="Center" Background="#FF0A0A0C" CornerRadius="3">
+            <TextBlock
+              CharacterSpacing="60"
+              FontFamily="{StaticResource HaloMonoBoldFont}"
+              FontSize="{x:Bind ViewModel.QualityBadgeFontSize, Mode=OneWay}"
+              Text="{x:Bind ViewModel.QualityTierText, Mode=OneWay}">
+              <TextBlock.Foreground>
+                <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+                  <GradientStop Offset="0" Color="#FFF8E7A6" />
+                  <GradientStop Offset="1" Color="#FFD3A63A" />
+                </LinearGradientBrush>
+              </TextBlock.Foreground>
+            </TextBlock>
+          </Border>
           <TextBlock
-            CharacterSpacing="60"
+            Margin="0,0,4,0"
+            VerticalAlignment="Center"
+            CharacterSpacing="120"
             FontFamily="{StaticResource HaloMonoBoldFont}"
             FontSize="{x:Bind ViewModel.QualityBadgeFontSize, Mode=OneWay}"
-            Text="{x:Bind ViewModel.QualityTierText, Mode=OneWay}">
-            <TextBlock.Foreground>
-              <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-                <GradientStop Offset="0" Color="#FFF8E7A6" />
-                <GradientStop Offset="1" Color="#FFD3A63A" />
-              </LinearGradientBrush>
-            </TextBlock.Foreground>
-          </TextBlock>
-        </Border>
-        <TextBlock
-          Margin="0,0,4,0"
-          VerticalAlignment="Center"
-          CharacterSpacing="120"
-          FontFamily="{StaticResource HaloMonoBoldFont}"
-          FontSize="{x:Bind ViewModel.QualityBadgeFontSize, Mode=OneWay}"
-          Foreground="#FF14100A"
-          Text="{x:Bind ViewModel.QualityDetailText, Mode=OneWay}"
-          Visibility="{x:Bind ViewModel.QualityDetailVisibility, Mode=OneWay}" />
-      </StackPanel>
-    </Border>
+            Foreground="#FF14100A"
+            Text="{x:Bind ViewModel.QualityDetailText, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.QualityDetailVisibility, Mode=OneWay}" />
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </UserControl>
