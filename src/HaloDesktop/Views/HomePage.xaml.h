@@ -4,6 +4,7 @@
 
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.System.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -26,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         void OnFeaturedLibraryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnFeaturedPointerEntered(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFeaturedPointerExited(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnFeaturedKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
         void OnContinueItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueSeeAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueScrollLeft(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);

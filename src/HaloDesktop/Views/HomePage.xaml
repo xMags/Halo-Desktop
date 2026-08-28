@@ -62,6 +62,7 @@
         <FlipView
           x:Name="FeaturedFlip"
           AutomationProperties.Name="Featured titles"
+          KeyDown="OnFeaturedKeyDown"
           SelectedIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}">
           <FlipView.ItemTemplate>
             <DataTemplate x:DataType="local:FeaturedItem">

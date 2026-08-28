@@ -76,6 +76,20 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_featured.Size() > 0 ? Visible : Collapsed;
     }
+    // Arrow-key navigation, wrapped so it never leaves the strip. Goes through
+    // the setter so a manual step also restarts the auto-advance countdown.
+    void HomeViewModel::StepFeatured(std::int32_t direction)
+    {
+        auto const count = m_featured.Size();
+        if (count == 0)
+        {
+            return;
+        }
+        auto const index = m_featuredIndex + direction;
+        auto const wrapped = ((index % static_cast<std::int32_t>(count)) + static_cast<std::int32_t>(count))
+            % static_cast<std::int32_t>(count);
+        FeaturedIndex(wrapped);
+    }
     Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return m_refreshError && HasUsableContent() ? Visible : Collapsed; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }

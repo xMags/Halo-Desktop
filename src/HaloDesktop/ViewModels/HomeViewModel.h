@@ -23,6 +23,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] std::int32_t FeaturedCount() const noexcept;
         [[nodiscard]] std::int32_t FeaturedIndex() const noexcept;
         void FeaturedIndex(std::int32_t value);
+        void StepFeatured(std::int32_t direction);
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FeaturedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RefreshErrorVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ContinueCountLabel() const;

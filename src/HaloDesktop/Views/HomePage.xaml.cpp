@@ -15,6 +15,31 @@
 
 namespace
 {
+    // The FlipView flips cards by panning its internal ScrollViewer, and nothing
+    // on the public surface disables that gesture. Take the manipulation away
+    // from the template's scroll host: the auto-advance timer, the pips pager
+    // and the arrow keys all move the selection directly, so none of them need
+    // it. The host is named "ScrollingHost" in the WinUI 3.2.4.0 template; on a
+    // future SDK bump that reaches the scroll host differently, this scan just
+    // finds nothing and swiping silently comes back.
+    void DisableFlipViewSwipe(winrt::Microsoft::UI::Xaml::DependencyObject const& node)
+    {
+        if (auto const element = node.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>())
+        {
+            if (element.Name() == L"ScrollingHost")
+            {
+                element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>().ManipulationMode(
+                    winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
+                return;
+            }
+        }
+        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(node);
+        for (auto index = 0; index < count; ++index)
+        {
+            DisableFlipViewSwipe(winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(node, index));
+        }
+    }
+
     winrt::HaloDesktop::Shelf CreateShelfSnapshot(winrt::HaloDesktop::MediaShelf const& shelf)
     {
         std::vector<winrt::HaloDesktop::MediaSummary> items;
@@ -70,6 +95,9 @@ namespace winrt::HaloDesktop::implementation
                 .as<Microsoft::UI::Xaml::Controls::FlipView>()
                 .ItemsSource(viewModel->FeaturedItemsView());
         }
+        DisableFlipViewSwipe(
+            FindName(L"FeaturedFlip")
+                .as<winrt::Microsoft::UI::Xaml::DependencyObject>());
         m_viewModel.EnsureLoaded();
     }
 
@@ -157,6 +185,27 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         m_viewModel.ResumeFeatured();
+    }
+
+    // Left and Right flip the strip while focus is anywhere on it. The FlipView
+    // is not a tab stop by default, so its own key handling would not see these.
+    void HomePage::OnFeaturedKeyDown(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        switch (args.Key())
+        {
+        case winrt::Windows::System::VirtualKey::Left:
+            args.Handled(true);
+            m_viewModel.StepFeatured(-1);
+            break;
+        case winrt::Windows::System::VirtualKey::Right:
+            args.Handled(true);
+            m_viewModel.StepFeatured(1);
+            break;
+        default:
+            break;
+        }
     }
 
     void HomePage::OnContinueItemClick(

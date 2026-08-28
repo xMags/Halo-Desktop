@@ -5,6 +5,7 @@ namespace HaloDesktop
         Object FeaturedItems { get; };
         Int32 FeaturedCount { get; };
         Int32 FeaturedIndex;
+        void StepFeatured(Int32 direction);
         Microsoft.UI.Xaml.Visibility FeaturedVisibility { get; };
         Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
         String ContinueCountLabel { get; };
