@@ -352,13 +352,19 @@
           </Grid>
 
           <!-- The list -->
+          <!--
+            The end-of-list breathing room is a margin on the content, not padding
+            on the scroller. ScrollViewer padding insets the viewport rather than
+            the extent, so as bottom padding it becomes a dead band the list can
+            never scroll into: it just masks the last card above the footer.
+          -->
           <ScrollViewer
             x:Name="ListScroller"
             Grid.Row="2"
-            Padding="32,0,32,26"
+            Padding="32,0,32,0"
             VerticalScrollBarVisibility="Auto"
             Visibility="{x:Bind ViewModel.ListVisibility, Mode=OneWay}">
-            <StackPanel>
+            <StackPanel Margin="0,0,0,26">
               <Grid x:Name="PickCard" Visibility="{x:Bind ViewModel.PickVisibility, Mode=OneWay}">
                 <Border
                   Background="{ThemeResource HaloCardBrush}"
