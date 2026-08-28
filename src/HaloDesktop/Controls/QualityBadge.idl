@@ -1,0 +1,22 @@
+namespace HaloDesktop
+{
+    enum QualityBadgeTone
+    {
+        // Reserved for the top picture tier, so the colour still means something
+        // in a list where most rows carry a badge.
+        Gold,
+        Muted,
+    };
+
+    [default_interface]
+    runtimeclass QualityBadge : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        QualityBadge();
+        String Tier;
+        // Dropped from the badge when empty, which is how a source with no
+        // high dynamic range shows as the tier alone.
+        String Detail;
+        QualityBadgeTone Tone;
+        Double LabelSize;
+    }
+}

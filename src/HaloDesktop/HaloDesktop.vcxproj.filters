@@ -27,6 +27,7 @@
     <Page Include="Controls\PlayerOsd.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\VideoHostControl.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\ContinueCard.xaml"><Filter>Controls</Filter></Page>
+    <Page Include="Controls\QualityBadge.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\PosterCard.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SectionHeader.xaml"><Filter>Controls</Filter></Page>
     <Page Include="Controls\SettingRow.xaml"><Filter>Controls</Filter></Page>
@@ -55,6 +56,7 @@
     <Midl Include="Controls\VideoHostControl.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\MediaShelf.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\ContinueCard.idl"><Filter>Controls</Filter></Midl>
+    <Midl Include="Controls\QualityBadge.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\PosterCard.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SectionHeader.idl"><Filter>Controls</Filter></Midl>
     <Midl Include="Controls\SettingRow.idl"><Filter>Controls</Filter></Midl>
@@ -91,6 +93,7 @@
     <ClCompile Include="Controls\PlaceholderArt.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\VideoHostControl.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\ContinueCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
+    <ClCompile Include="Controls\QualityBadge.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><Filter>Controls</Filter></ClCompile>
@@ -186,6 +189,7 @@
     <ClInclude Include="Controls\PlaceholderArt.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\VideoHostControl.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\ContinueCard.xaml.h"><Filter>Controls</Filter></ClInclude>
+    <ClInclude Include="Controls\QualityBadge.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Controls\SettingRow.xaml.h"><Filter>Controls</Filter></ClInclude>

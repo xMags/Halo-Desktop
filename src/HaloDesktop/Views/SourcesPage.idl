@@ -1,3 +1,8 @@
+// The badge tone is declared with the control that renders it. This is the one
+// type this sheet borrows from another file, so it is imported rather than
+// restated.
+import "Controls/QualityBadge.idl";
+
 namespace HaloDesktop
 {
     [default_interface]
@@ -46,8 +51,9 @@ namespace HaloDesktop
         String ShowMoreLabel { get; };
 
         String Key { get; };
-        String QualityHead { get; };
-        String QualitySub { get; };
+        String QualityBadgeTier { get; };
+        String QualityBadgeDetail { get; };
+        QualityBadgeTone QualityTone { get; };
         String StatusLabel { get; };
         Microsoft.UI.Xaml.Visibility InstantVisibility { get; };
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
@@ -105,8 +111,9 @@ namespace HaloDesktop
         String BannerAction { get; };
 
         Microsoft.UI.Xaml.Visibility PickVisibility { get; };
-        String PickQualityHead { get; };
-        String PickQualitySub { get; };
+        String PickQualityBadgeTier { get; };
+        String PickQualityBadgeDetail { get; };
+        QualityBadgeTone PickQualityTone { get; };
         String PickStatusLabel { get; };
         Microsoft.UI.Xaml.Visibility PickInstantVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickOnDiskVisibility { get; };

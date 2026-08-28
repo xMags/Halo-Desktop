@@ -109,8 +109,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring ShowMoreLabel() const;
 
         [[nodiscard]] winrt::hstring Key() const;
-        [[nodiscard]] winrt::hstring QualityHead() const;
-        [[nodiscard]] winrt::hstring QualitySub() const;
+        [[nodiscard]] winrt::hstring QualityBadgeTier() const;
+        [[nodiscard]] winrt::hstring QualityBadgeDetail() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityBadgeTone QualityTone() const noexcept;
         [[nodiscard]] winrt::hstring StatusLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InstantVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OnDiskVisibility() const noexcept;
@@ -200,8 +201,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring BannerAction() const;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring PickQualityHead() const;
-        [[nodiscard]] winrt::hstring PickQualitySub() const;
+        [[nodiscard]] winrt::hstring PickQualityBadgeTier() const;
+        [[nodiscard]] winrt::hstring PickQualityBadgeDetail() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityBadgeTone PickQualityTone() const noexcept;
         [[nodiscard]] winrt::hstring PickStatusLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickInstantVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickOnDiskVisibility() const noexcept;

@@ -40,6 +40,11 @@
       <Color x:Key="HaloDetailScrimColor">#FA202020</Color>
       <Color x:Key="HaloInfoBgColor">#1460CDFF</Color>
       <Color x:Key="HaloInfoStrokeColor">#4760CDFF</Color>
+      <Color x:Key="HaloBadgeMutedFillColor">#1FFFFFFF</Color>
+      <Color x:Key="HaloBadgeMutedPlateColor">#FF1B1B1F</Color>
+      <Color x:Key="HaloBadgeMutedTierColor">#C8FFFFFF</Color>
+      <Color x:Key="HaloBadgeMutedInkColor">#9BFFFFFF</Color>
+      <Color x:Key="HaloBadgeMutedStrokeColor">#26FFFFFF</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
@@ -76,6 +81,11 @@
       <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
       <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
       <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedFillBrush" Color="{StaticResource HaloBadgeMutedFillColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedPlateBrush" Color="{StaticResource HaloBadgeMutedPlateColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedTierBrush" Color="{StaticResource HaloBadgeMutedTierColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
 
       <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-dark.png" />
     </ResourceDictionary>
@@ -116,6 +126,11 @@
       <Color x:Key="HaloDetailScrimColor">#FCF3F3F3</Color>
       <Color x:Key="HaloInfoBgColor">#0F005FB8</Color>
       <Color x:Key="HaloInfoStrokeColor">#33005FB8</Color>
+      <Color x:Key="HaloBadgeMutedFillColor">#14000000</Color>
+      <Color x:Key="HaloBadgeMutedPlateColor">#FF4A4A52</Color>
+      <Color x:Key="HaloBadgeMutedTierColor">#FFF4F4F6</Color>
+      <Color x:Key="HaloBadgeMutedInkColor">#A8000000</Color>
+      <Color x:Key="HaloBadgeMutedStrokeColor">#1F000000</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
@@ -152,6 +167,11 @@
       <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
       <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
       <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedFillBrush" Color="{StaticResource HaloBadgeMutedFillColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedPlateBrush" Color="{StaticResource HaloBadgeMutedPlateColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedTierBrush" Color="{StaticResource HaloBadgeMutedTierColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
+      <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
 
       <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-light.png" />
     </ResourceDictionary>
@@ -173,6 +193,27 @@
     instead of darkened would leave the sheet floating on nothing.
   -->
   <SolidColorBrush x:Key="HaloSheetScrimBrush" Color="#6B000000" />
+
+  <!--
+    Gold is a mark rather than a palette colour, so like the sheet scrim it sits
+    outside the theme dictionaries: the quality badge has to mean the same thing
+    stamped on a dark video frame and on the light sources sheet. Only the muted
+    variant, which has no meaning of its own beyond "not the top tier", follows
+    the theme.
+  -->
+  <LinearGradientBrush x:Key="HaloBadgeGoldBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFF8E7A6" />
+    <GradientStop Offset="0.46" Color="#FFE7C25C" />
+    <GradientStop Offset="0.54" Color="#FFC79A2E" />
+    <GradientStop Offset="1" Color="#FFEBCC72" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="HaloBadgeGoldTierBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFF8E7A6" />
+    <GradientStop Offset="1" Color="#FFD3A63A" />
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="HaloBadgeGoldPlateBrush" Color="#FF0A0A0C" />
+  <SolidColorBrush x:Key="HaloBadgeGoldInkBrush" Color="#FF14100A" />
+  <SolidColorBrush x:Key="HaloBadgeGoldStrokeBrush" Color="#59000000" />
   <LinearGradientBrush x:Key="HaloSheetShadowBrush" StartPoint="0,0.5" EndPoint="1,0.5">
     <GradientStop Offset="0" Color="#00000000" />
     <GradientStop Offset="1" Color="#57000000" />

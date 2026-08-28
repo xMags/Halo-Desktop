@@ -169,6 +169,7 @@
     </ClInclude>
     <ClInclude Include="Controls\MediaShelf.xaml.h"><DependentUpon>MediaShelf.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\ContinueCard.xaml.h"><DependentUpon>ContinueCard.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Controls\QualityBadge.xaml.h"><DependentUpon>QualityBadge.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><DependentUpon>PosterCard.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
@@ -292,6 +293,7 @@
     <Page Include="Controls\PlayerOsd.xaml" />
     <Page Include="Controls\VideoHostControl.xaml" />
     <Page Include="Controls\ContinueCard.xaml" />
+    <Page Include="Controls\QualityBadge.xaml" />
     <Page Include="Controls\PosterCard.xaml" />
     <Page Include="Controls\SectionHeader.xaml" />
     <Page Include="Controls\SettingRow.xaml" />
@@ -340,6 +342,7 @@
       <DependentUpon>VideoHostControl.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Controls\ContinueCard.xaml.cpp"><DependentUpon>ContinueCard.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Controls\QualityBadge.xaml.cpp"><DependentUpon>QualityBadge.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><DependentUpon>PosterCard.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
@@ -482,6 +485,7 @@
     </Midl>
     <Midl Include="Controls\MediaShelf.idl"><SubType>Code</SubType><DependentUpon>MediaShelf.xaml</DependentUpon></Midl>
     <Midl Include="Controls\ContinueCard.idl"><SubType>Code</SubType><DependentUpon>ContinueCard.xaml</DependentUpon></Midl>
+    <Midl Include="Controls\QualityBadge.idl"><SubType>Code</SubType><DependentUpon>QualityBadge.xaml</DependentUpon></Midl>
     <Midl Include="Controls\PosterCard.idl"><SubType>Code</SubType><DependentUpon>PosterCard.xaml</DependentUpon></Midl>
     <Midl Include="Controls\SectionHeader.idl">
       <SubType>Code</SubType>

@@ -75,6 +75,13 @@ namespace HaloDesktop::Sources
 
     [[nodiscard]] QualityTier TierOf(winrt::hstring const& quality) noexcept;
     [[nodiscard]] winrt::hstring TierLabel(QualityTier tier);
+    // The same tiers set in the badge's voice. Deliberately still tiers rather
+    // than the player's resolution tokens: FullHd covers 1440p as well as 1080p,
+    // so a "1080P" stamp would misreport half of what it sits on.
+    [[nodiscard]] winrt::hstring BadgeTierLabel(QualityTier tier);
+    // Gold is spent only on the top tier, so it still means something in a list
+    // where nearly every row carries a badge.
+    [[nodiscard]] bool IsPremiumTier(QualityTier tier) noexcept;
     [[nodiscard]] StartSpeed SpeedOf(winrt::HaloDesktop::StreamStatus status) noexcept;
     [[nodiscard]] winrt::hstring StatusLabel(winrt::HaloDesktop::StreamStatus status);
     [[nodiscard]] winrt::hstring RangeLabel(winrt::hstring const& range);

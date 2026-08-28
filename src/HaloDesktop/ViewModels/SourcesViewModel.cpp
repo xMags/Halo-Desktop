@@ -188,8 +188,16 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourceDisplayItemViewModel::ShowMoreLabel() const { return m_showMoreLabel; }
 
     winrt::hstring SourceDisplayItemViewModel::Key() const { return m_entry.Source ? m_entry.Source.Key() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::QualityHead() const { return Sources::TierLabel(m_entry.Tier); }
-    winrt::hstring SourceDisplayItemViewModel::QualitySub() const { return m_entry.Source ? Sources::RangeLabel(m_entry.Source.Range()) : L""; }
+    winrt::hstring SourceDisplayItemViewModel::QualityBadgeTier() const { return Sources::BadgeTierLabel(m_entry.Tier); }
+    // Only high dynamic range earns the qualifier. Standard range is the norm and
+    // stamping every other row with it would say nothing; the details panel still
+    // spells it out for anyone who opens a source.
+    winrt::hstring SourceDisplayItemViewModel::QualityBadgeDetail() const { return m_entry.Hdr ? winrt::hstring{ L"HDR" } : winrt::hstring{}; }
+    winrt::HaloDesktop::QualityBadgeTone SourceDisplayItemViewModel::QualityTone() const noexcept
+    {
+        return Sources::IsPremiumTier(m_entry.Tier) ? winrt::HaloDesktop::QualityBadgeTone::Gold
+                                                    : winrt::HaloDesktop::QualityBadgeTone::Muted;
+    }
     winrt::hstring SourceDisplayItemViewModel::StatusLabel() const { return m_statusLabel; }
 
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::InstantVisibility() const noexcept
@@ -445,8 +453,13 @@ namespace winrt::HaloDesktop::implementation
     }
 
     Microsoft::UI::Xaml::Visibility SourcesViewModel::PickVisibility() const noexcept { return HasPick() ? Visible : Collapsed; }
-    winrt::hstring SourcesViewModel::PickQualityHead() const { return HasPick() ? Sources::TierLabel(m_pool.front().Tier) : L""; }
-    winrt::hstring SourcesViewModel::PickQualitySub() const { return HasPick() ? Sources::RangeLabel(m_pool.front().Source.Range()) : L""; }
+    winrt::hstring SourcesViewModel::PickQualityBadgeTier() const { return HasPick() ? Sources::BadgeTierLabel(m_pool.front().Tier) : winrt::hstring{}; }
+    winrt::hstring SourcesViewModel::PickQualityBadgeDetail() const { return HasPick() && m_pool.front().Hdr ? winrt::hstring{ L"HDR" } : winrt::hstring{}; }
+    winrt::HaloDesktop::QualityBadgeTone SourcesViewModel::PickQualityTone() const noexcept
+    {
+        return HasPick() && Sources::IsPremiumTier(m_pool.front().Tier) ? winrt::HaloDesktop::QualityBadgeTone::Gold
+                                                                       : winrt::HaloDesktop::QualityBadgeTone::Muted;
+    }
     winrt::hstring SourcesViewModel::PickStatusLabel() const { return HasPick() ? Sources::StatusLabel(m_pool.front().Source.Status()) : L""; }
 
     Microsoft::UI::Xaml::Visibility SourcesViewModel::PickInstantVisibility() const noexcept
@@ -979,7 +992,7 @@ namespace winrt::HaloDesktop::implementation
                  L"EmptyTitle", L"EmptyBody",
                  L"BannerVisibility", L"BannerCautionVisibility", L"BannerInfoVisibility",
                  L"BannerTitle", L"BannerBody", L"BannerAction",
-                 L"PickVisibility", L"PickQualityHead", L"PickQualitySub", L"PickStatusLabel",
+                 L"PickVisibility", L"PickQualityBadgeTier", L"PickQualityBadgeDetail", L"PickQualityTone", L"PickStatusLabel",
                  L"PickInstantVisibility", L"PickOnDiskVisibility", L"PickCachingVisibility", L"PickColdVisibility",
                  L"PickWhy", L"PickLine", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
                  L"PickSelectionVisibility", L"SelectedIndex" })

@@ -441,10 +441,6 @@ namespace winrt::HaloDesktop::implementation
         // whose first frame has not been decoded yet.
         return m_qualityBadge.Tier.empty() ? Collapsed : Visible;
     }
-    Microsoft::UI::Xaml::Visibility PlayerViewModel::QualityDetailVisibility() const noexcept
-    {
-        return m_qualityBadge.Detail.empty() ? Collapsed : Visible;
-    }
     double PlayerViewModel::QualityBadgeFontSize() const noexcept
     {
         return m_windowPresentation->IsFullscreen() ? 12.5 : 10.5;
@@ -949,8 +945,7 @@ namespace winrt::HaloDesktop::implementation
                                      L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
                                      L"IsPaused", L"PausedVisibility", L"PlayingVisibility",
                                      L"BufferingLabelVisibility", L"BufferingRingSize",
-                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility",
-                                     L"QualityDetailVisibility" })
+                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility" })
         {
             Raise(property);
         }

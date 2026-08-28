@@ -126,7 +126,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring QualityTierText() const;
         [[nodiscard]] winrt::hstring QualityDetailText() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityBadgeVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityDetailVisibility() const noexcept;
         [[nodiscard]] double QualityBadgeFontSize() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleTracks() const;
