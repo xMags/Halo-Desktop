@@ -330,10 +330,20 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourcesViewModel::Kicker() const
     {
         if (!m_parameters) return L"";
+        // The kicker only carries what the heading below does not already say. A
+        // movie's show name is its own title, and an entry resumed from Continue
+        // watching names the show rather than the episode, so in both cases
+        // repeating the show name would print the same words twice.
         auto const show = m_parameters.ShowName();
         auto const episode = m_parameters.EpisodeLabel();
-        if (episode.empty()) return show;
-        return show.empty() ? episode : episode + L" \x00B7 " + show;
+        auto const redundant = show.empty() || show == m_parameters.Title();
+        if (episode.empty()) return redundant ? winrt::hstring{} : show;
+        return redundant ? episode : episode + L" \x00B7 " + show;
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::KickerVisibility() const noexcept
+    {
+        return Kicker().empty() ? Collapsed : Visible;
     }
 
     winrt::hstring SourcesViewModel::Heading() const
@@ -962,7 +972,7 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::RaiseState()
     {
         for (auto const* property : {
-                 L"Items", L"Kicker", L"Heading", L"CountLine",
+                 L"Items", L"Kicker", L"KickerVisibility", L"Heading", L"CountLine",
                  L"AllFilterCount", L"PlaysNowFilterCount", L"UltraHdFilterCount", L"FullHdFilterCount",
                  L"SortLabel", L"FilterIndex", L"SortIndex",
                  L"FilterRowVisibility", L"ListVisibility", L"ResolvingVisibility", L"EmptyVisibility",

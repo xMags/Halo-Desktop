@@ -526,6 +526,38 @@ namespace HaloDesktop::Services
             return record.Status == DownloadStatus::Done && record.Media.VideoId == videoId.c_str();
         });
     }
+    // Filename rather than the source URL: a debrid link is minted per resolve, so
+    // its hash stops matching the moment the link is re-issued, while the release
+    // filename is the same thing the viewer recognises on both sides.
+    bool DownloadService::HasCompletedFile(
+        winrt::hstring const& videoId,
+        winrt::hstring const& fileName) const noexcept
+    {
+        if (fileName.empty())
+        {
+            return false;
+        }
+        std::wstring_view const wanted{ fileName.c_str(), fileName.size() };
+        return std::any_of(m_records.begin(), m_records.end(), [&](auto const& record)
+        {
+            if (record.Status != DownloadStatus::Done
+                || record.Media.VideoId != videoId.c_str()
+                || !record.Media.FileName)
+            {
+                return false;
+            }
+            auto const& saved = *record.Media.FileName;
+            if (saved.size() != wanted.size())
+            {
+                return false;
+            }
+            return std::equal(saved.begin(), saved.end(), wanted.begin(), [](wchar_t left, wchar_t right)
+            {
+                return std::towlower(left) == std::towlower(right);
+            });
+        });
+    }
+
     std::int32_t DownloadService::ActiveCount() const noexcept
     {
         return static_cast<std::int32_t>(std::count_if(m_records.begin(), m_records.end(), [](auto const& record)

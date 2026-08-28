@@ -136,7 +136,13 @@
             <Grid ColumnSpacing="16">
               <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
               <StackPanel>
-                <TextBlock CharacterSpacing="60" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.Kicker, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                <TextBlock
+                  CharacterSpacing="60"
+                  FontSize="12"
+                  Foreground="{ThemeResource HaloText3Brush}"
+                  Text="{x:Bind ViewModel.Kicker, Mode=OneWay}"
+                  TextTrimming="CharacterEllipsis"
+                  Visibility="{x:Bind ViewModel.KickerVisibility, Mode=OneWay}" />
                 <TextBlock
                   Margin="0,6,0,0"
                   CharacterSpacing="-10"
@@ -466,13 +472,13 @@
                         <StackPanel>
                           <Grid>
                             <Button
-                              Padding="18,15,150,15"
+                              Padding="18,15,136,15"
                               AutomationProperties.Name="Show source details"
                               Click="OnCardClick"
                               Style="{StaticResource HaloSheetRowButtonStyle}"
                               Tag="{x:Bind Key}">
                               <Grid ColumnSpacing="18">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="78" /><ColumnDefinition Width="*" /><ColumnDefinition Width="84" /></Grid.ColumnDefinitions>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="78" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
                                   <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" LineHeight="18" Text="{x:Bind QualityHead}" />
                                   <TextBlock Margin="0,3,0,0" FontSize="11" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind QualitySub}" />
@@ -502,6 +508,7 @@
                                 </StackPanel>
                                 <TextBlock
                                   Grid.Column="2"
+                                  MaxWidth="112"
                                   VerticalAlignment="Center"
                                   FontSize="12"
                                   Foreground="{ThemeResource HaloText4Brush}"

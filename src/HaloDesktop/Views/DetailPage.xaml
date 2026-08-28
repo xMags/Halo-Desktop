@@ -15,8 +15,8 @@
   <!-- Pinned outside the scroller. The loading and error states replace the scrolled
        content wholesale, and the back button has to survive both: a title that fails
        to load is exactly when there is nothing else to leave the page with. The title
-       falls back to the one the caller navigated with until the detail arrives. -->
-  <local:SectionHeader ShowBack="True" BackClick="OnBackClick" Title="{x:Bind ViewModel.Title, Mode=OneWay}" />
+       shows only in those two states, since the hero carries it the rest of the time. -->
+  <local:SectionHeader ShowBack="True" BackClick="OnBackClick" Title="{x:Bind ViewModel.HeaderTitle, Mode=OneWay}" />
   <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
       <Grid Height="268">

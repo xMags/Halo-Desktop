@@ -162,7 +162,6 @@ namespace HaloDesktop::Services
         std::vector<winrt::hstring> orderedKeys;
         std::vector<winrt::HaloDesktop::SourceGroup> groups;
         std::size_t sourceCount{};
-        auto const onDisk = m_downloads->HasCompleted(parameters.VideoId());
 
         // Two passes on purpose. A rank is only meaningful once every addon has
         // answered, so the records are collected first, ranked across the whole
@@ -207,7 +206,8 @@ namespace HaloDesktop::Services
             sources.reserve(groupKeys[index].size());
             for (auto const& key : groupKeys[index])
             {
-                sources.push_back(MakeDisplaySource(records.at(std::wstring{ key.c_str() }), onDisk));
+                auto const& record = records.at(std::wstring{ key.c_str() });
+                sources.push_back(MakeDisplaySource(record, IsOnDisk(record)));
             }
             auto const groupSourceCount = sources.size();
             groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(
@@ -236,7 +236,8 @@ namespace HaloDesktop::Services
         m_best = nullptr;
         if (!rankedKeys.empty())
         {
-            m_best = MakeDisplaySource(m_records.at(std::wstring(rankedKeys.front().c_str())), onDisk);
+            auto const& best = m_records.at(std::wstring(rankedKeys.front().c_str()));
+            m_best = MakeDisplaySource(best, IsOnDisk(best));
         }
 
         // The ratio form ("3 of 4 providers") only appears when somebody failed;
@@ -488,9 +489,7 @@ namespace HaloDesktop::Services
                 auto const found = m_records.find(std::wstring{ source.Key().c_str() });
                 if (found != m_records.end())
                 {
-                    sources.push_back(MakeDisplaySource(
-                        found->second,
-                        m_downloads->HasCompleted(found->second.Navigation.VideoId())));
+                    sources.push_back(MakeDisplaySource(found->second, IsOnDisk(found->second)));
                 }
             }
             groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SourceGroup>(
@@ -507,11 +506,15 @@ namespace HaloDesktop::Services
             auto const found = m_records.find(std::wstring{ m_best.Key().c_str() });
             if (found != m_records.end())
             {
-                m_best = MakeDisplaySource(
-                    found->second,
-                    m_downloads->HasCompleted(found->second.Navigation.VideoId()));
+                m_best = MakeDisplaySource(found->second, IsOnDisk(found->second));
             }
         }
+    }
+
+    bool SourceService::IsOnDisk(ResolvedSourceRecord const& resolved) const noexcept
+    {
+        return resolved.Navigation
+            && m_downloads->HasCompletedFile(resolved.Navigation.VideoId(), resolved.Info.Filename);
     }
 
     std::optional<ResolvedSourceRecord> SourceService::NativeRecord(winrt::hstring const& key) const

@@ -172,6 +172,7 @@ namespace winrt::HaloDesktop::implementation
 
         [[nodiscard]] double SheetWidth() const noexcept;
         [[nodiscard]] winrt::hstring Kicker() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility KickerVisibility() const noexcept;
         [[nodiscard]] winrt::hstring Heading() const;
         [[nodiscard]] winrt::hstring CountLine() const;
 

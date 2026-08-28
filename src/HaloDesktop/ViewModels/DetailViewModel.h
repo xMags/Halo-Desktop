@@ -14,7 +14,7 @@ namespace winrt::HaloDesktop::implementation
     {
         explicit DetailViewModel(::HaloDesktop::Services::AppServices const& services);
         ~DetailViewModel();void Activate();void Deactivate()noexcept;
-        winrt::hstring Title()const;winrt::hstring Kicker()const;winrt::hstring MetaLine()const;winrt::hstring Synopsis()const;winrt::hstring Poster()const;winrt::hstring Background()const;winrt::hstring PrimaryActionLabel()const;winrt::hstring SourceActionLabel()const;winrt::hstring SeasonMeta()const;winrt::hstring LibraryLabel()const;std::int32_t SeasonIndex()const noexcept;
+        winrt::hstring Title()const;winrt::hstring HeaderTitle()const;winrt::hstring Kicker()const;winrt::hstring MetaLine()const;winrt::hstring Synopsis()const;winrt::hstring Poster()const;winrt::hstring Background()const;winrt::hstring PrimaryActionLabel()const;winrt::hstring SourceActionLabel()const;winrt::hstring SeasonMeta()const;winrt::hstring LibraryLabel()const;std::int32_t SeasonIndex()const noexcept;
         winrt::Windows::Foundation::IInspectable Episodes()const;winrt::Windows::Foundation::IInspectable Facts()const;winrt::Windows::Foundation::IInspectable Availability()const;winrt::Windows::Foundation::IInspectable Seasons()const;
         auto EpisodesView()const{return m_episodes;}auto FactsView()const{return m_facts;}auto AvailabilityView()const{return m_availability;}auto SeasonsView()const{return m_seasons;}
         Microsoft::UI::Xaml::Visibility ContentVisibility()const noexcept;Microsoft::UI::Xaml::Visibility LoadingVisibility()const noexcept;Microsoft::UI::Xaml::Visibility ErrorVisibility()const noexcept;Microsoft::UI::Xaml::Visibility EpisodeSectionVisibility()const noexcept;

@@ -57,6 +57,9 @@ namespace HaloDesktop::Services
 
     private:
         [[nodiscard]] bool Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept;
+        // Asked per source rather than once per resolve: a finished download makes
+        // one file local, not every source that happens to be for the same video.
+        [[nodiscard]] bool IsOnDisk(ResolvedSourceRecord const& resolved) const noexcept;
         [[nodiscard]] concurrency::task<std::optional<Downloads::SubtitleRequest>> PrepareSubtitleAsync(
             Api::Dto::StreamRecord stream,
             winrt::hstring mediaType,

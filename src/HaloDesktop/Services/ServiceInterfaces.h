@@ -123,6 +123,13 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
         [[nodiscard]] virtual bool IsPausedAll() const noexcept = 0;
         [[nodiscard]] virtual bool HasCompleted(winrt::hstring const& videoId) const noexcept = 0;
+        // Whether a finished download of this video is this exact file. Distinct
+        // from HasCompleted, which answers "is any copy of this video saved" and
+        // is what an episode row wants; a source row has to answer for itself, or
+        // every source for a downloaded video claims to be the one on disk.
+        [[nodiscard]] virtual bool HasCompletedFile(
+            winrt::hstring const& videoId,
+            winrt::hstring const& fileName) const noexcept = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
         [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
         [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;
