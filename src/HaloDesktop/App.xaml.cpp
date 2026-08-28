@@ -114,8 +114,9 @@ namespace winrt::HaloDesktop::implementation
         m_services.WatchState = watchStateService;
         // Owned by the catalog service alone: nothing else needs a continue still,
         // and the cache is only useful next to the shelf that reads it.
-        auto continueArtworkService =
-            std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(m_apiClient);
+        auto continueArtworkService = std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(
+            m_apiClient,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
             m_apiClient,
             addonService,

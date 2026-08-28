@@ -7,6 +7,7 @@
 #include <vector>
 #include <ppltasks.h>
 #include <winrt/HaloDesktop.h>
+#include <winrt/Microsoft.UI.Dispatching.h>
 
 namespace HaloDesktop::Api
 {
@@ -26,7 +27,9 @@ namespace HaloDesktop::Services
     class ContinueArtworkService final : public std::enable_shared_from_this<ContinueArtworkService>
     {
     public:
-        explicit ContinueArtworkService(std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient);
+        ContinueArtworkService(
+            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         // Retires whatever fill is in flight and returns the stamp the next one must
         // carry. A snapshot that has been replaced must not write to the new one.
@@ -54,6 +57,11 @@ namespace HaloDesktop::Services
         static void Apply(winrt::HaloDesktop::ContinueItem const& item, MetaArtwork const& artwork);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        // Results come back on a worker thread and are handed to items the shelf
+        // has already realised. Queueing them rather than resuming into the UI
+        // apartment keeps each update between XAML's own work instead of nested
+        // inside it, which is what a bound item mutated mid-layout cannot survive.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         // Keyed by item id, which already carries the type and the meta id. Holds
         // failures as well as hits, so one unreachable addon cannot be retried on
         // every catalog refresh for the rest of the session.

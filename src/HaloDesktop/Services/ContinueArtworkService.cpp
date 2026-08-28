@@ -7,15 +7,18 @@
 #include <pplawait.h>
 #include <stdexcept>
 #include <utility>
+#include <wil/cppwinrt_helpers.h>
 
 namespace HaloDesktop::Services
 {
-    ContinueArtworkService::ContinueArtworkService(std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient)
-        : m_apiClient(std::move(apiClient))
+    ContinueArtworkService::ContinueArtworkService(
+        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
+        : m_apiClient(std::move(apiClient)), m_dispatcher(std::move(dispatcher))
     {
-        if (!m_apiClient)
+        if (!m_apiClient || !m_dispatcher)
         {
-            throw std::invalid_argument{ "ContinueArtworkService requires an API client." };
+            throw std::invalid_argument{ "ContinueArtworkService requires an API client and a dispatcher." };
         }
     }
 
@@ -28,6 +31,12 @@ namespace HaloDesktop::Services
         std::vector<winrt::HaloDesktop::ContinueItem> items,
         std::uint64_t generation)
     {
+        // The cache and the generation stamp belong to the dispatcher thread, and
+        // a caller is not required to already be on it.
+        if (!m_dispatcher.HasThreadAccess())
+        {
+            co_await wil::resume_foreground(m_dispatcher);
+        }
         std::vector<concurrency::task<void>> lookups;
         lookups.reserve(items.size());
         for (auto const& item : items)
@@ -60,7 +69,6 @@ namespace HaloDesktop::Services
         // Holds the service up for as long as the lookup runs, so the resumption
         // below cannot land on a destroyed cache during shutdown.
         auto const lifetime = shared_from_this();
-        auto const uiContext = winrt::apartment_context{};
         auto const key = std::wstring{ item.ItemId() };
         if (auto const cached = m_cache.find(key); cached != m_cache.end())
         {
@@ -88,7 +96,7 @@ namespace HaloDesktop::Services
             // Cached empty below, which leaves the card on its poster.
         }
 
-        co_await uiContext;
+        co_await wil::resume_foreground(m_dispatcher);
         if (generation != m_generation)
         {
             co_return;
