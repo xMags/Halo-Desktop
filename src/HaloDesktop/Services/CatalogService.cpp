@@ -414,24 +414,44 @@ namespace HaloDesktop::Services
         return FeaturedForFilter(0);
     }
 
+    // Expressed through the set so both shapes obey one selection rule.
     winrt::HaloDesktop::MediaSummary CatalogService::FeaturedForFilter(
         std::int32_t filterIndex) const
     {
-        auto const filter = ::HaloDesktop::ViewModels::HomeFilterFromIndex(filterIndex);
+        auto const featured = FeaturedSetForFilter(filterIndex, 1);
+        return featured.Size() > 0 ? featured.GetAt(0) : nullptr;
+    }
+
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+    CatalogService::FeaturedSetForFilter(std::int32_t filterIndex, std::uint32_t count) const
+    {
+        std::vector<winrt::HaloDesktop::MediaSummary> pool;
+        std::vector<::HaloDesktop::ViewModels::FeaturedCandidate> candidates;
         for (auto const& shelf : m_catalogShelves)
         {
             for (auto const& item : shelf.Items())
             {
-                auto const kind = item.Kind() == winrt::HaloDesktop::MediaKind::Series
-                    ? ::HaloDesktop::ViewModels::HomeMediaKind::Series
-                    : ::HaloDesktop::ViewModels::HomeMediaKind::Movie;
-                if (::HaloDesktop::ViewModels::MatchesHomeFilter(filter, kind))
-                {
-                    return item;
-                }
+                candidates.push_back({
+                    std::wstring{ item.Type() } + L':' + std::wstring{ item.Id() },
+                    item.Kind() == winrt::HaloDesktop::MediaKind::Series
+                        ? ::HaloDesktop::ViewModels::HomeMediaKind::Series
+                        : ::HaloDesktop::ViewModels::HomeMediaKind::Movie,
+                    !item.Background().empty(),
+                });
+                pool.push_back(item);
             }
         }
-        return nullptr;
+
+        std::vector<winrt::HaloDesktop::MediaSummary> featured;
+        featured.reserve(count);
+        for (auto const index : ::HaloDesktop::ViewModels::SelectFeaturedItems(
+                 ::HaloDesktop::ViewModels::HomeFilterFromIndex(filterIndex),
+                 candidates,
+                 count))
+        {
+            featured.push_back(pool[index]);
+        }
+        return winrt::single_threaded_vector(std::move(featured)).GetView();
     }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> CatalogService::ContinueWatching() const { return m_continue; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> CatalogService::Shelves() const { return m_shelves; }

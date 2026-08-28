@@ -2,18 +2,10 @@ namespace HaloDesktop
 {
     runtimeclass HomeViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        String HeroTitle { get; };
-        String HeroSynopsis { get; };
-        String HeroRating { get; };
-        String HeroMeta { get; };
-        String HeroBackground { get; };
-        String HeroActionLabel { get; };
-        String HeroLibraryLabel { get; };
-        Boolean HeroLibraryBusy { get; };
-        Boolean HeroLibraryEnabled { get; };
-        Microsoft.UI.Xaml.Visibility HeroVisibility { get; };
-        String HeroLibraryErrorText { get; };
-        Microsoft.UI.Xaml.Visibility HeroLibraryErrorVisibility { get; };
+        Object FeaturedItems { get; };
+        Int32 FeaturedCount { get; };
+        Int32 FeaturedIndex;
+        Microsoft.UI.Xaml.Visibility FeaturedVisibility { get; };
         Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
         String ContinueCountLabel { get; };
         Object ContinueItems { get; };
@@ -27,9 +19,12 @@ namespace HaloDesktop
         void Retry();
         void EnsureLoaded();
         void OpenDetail(Object item);
-        void OpenHeroDetail();
-        void OpenHeroSources();
-        void ToggleHeroLibrary();
+        void OpenFeaturedDetail(Object item);
+        void OpenFeaturedSources(Object item);
+        void ToggleFeaturedLibrary(Object item);
+        void PauseFeatured();
+        void ResumeFeatured();
+        void Deactivate();
         void OpenContinue(Object item);
         void OpenSearch(String query);
         void OpenCatalog(Object shelf);

@@ -66,8 +66,20 @@ namespace winrt::HaloDesktop::implementation
             FindName(L"ShelfList")
                 .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
                 .ItemsSource(viewModel->ShelvesView());
+            FindName(L"FeaturedFlip")
+                .as<Microsoft::UI::Xaml::Controls::FlipView>()
+                .ItemsSource(viewModel->FeaturedItemsView());
         }
         m_viewModel.EnsureLoaded();
+    }
+
+    void HomePage::OnUnloaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        // Stop the carousel while Home is off screen; it restarts on the next
+        // OnLoaded through EnsureLoaded.
+        m_viewModel.Deactivate();
     }
 
     void HomePage::OnSearchSubmitted(
@@ -100,25 +112,51 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.SetFilter(2);
     }
 
-    void HomePage::OnResumeClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+    // The card buttons hand their FeaturedItem through Tag, the same trick
+    // ContinueCard uses, because a DataTemplate has no other way to say which
+    // row a click came from.
+    void HomePage::OnFeaturedActionClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenHeroSources();
+        if (auto const button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>())
+        {
+            m_viewModel.OpenFeaturedSources(button.Tag());
+        }
     }
 
-    void HomePage::OnDetailsClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+    void HomePage::OnFeaturedDetailsClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenHeroDetail();
+        if (auto const button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>())
+        {
+            m_viewModel.OpenFeaturedDetail(button.Tag());
+        }
     }
 
-    void HomePage::OnHeroLibraryClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+    void HomePage::OnFeaturedLibraryClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.ToggleHeroLibrary();
+        if (auto const button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>())
+        {
+            m_viewModel.ToggleFeaturedLibrary(button.Tag());
+        }
+    }
+
+    void HomePage::OnFeaturedPointerEntered(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        m_viewModel.PauseFeatured();
+    }
+
+    void HomePage::OnFeaturedPointerExited(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        m_viewModel.ResumeFeatured();
     }
 
     void HomePage::OnContinueItemClick(

@@ -61,6 +61,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const = 0;
+        // Up to count distinct titles for the home carousel, in catalog order.
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+            FeaturedSetForFilter(std::int32_t filterIndex, std::uint32_t count) const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;

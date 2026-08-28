@@ -5,6 +5,7 @@
 #include "DownloadTransferTest.h"
 #include "StorageTests.h"
 
+#include <cstddef>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
@@ -109,6 +110,49 @@ namespace
             !HaloDesktop::ViewModels::FirstMatchingHomeItem(
                 HaloDesktop::ViewModels::HomeFilter::Series, moviesOnly),
             "a filtered hero was fabricated when no catalog title matched");
+    }
+
+    // Backdrops lead, order is catalog order inside each group, keys never
+    // repeat and unaddressable titles never earn a slot.
+    void TestSelectFeaturedItems()
+    {
+        using HaloDesktop::ViewModels::FeaturedCandidate;
+        using HaloDesktop::ViewModels::HomeFilter;
+        using HaloDesktop::ViewModels::HomeMediaKind;
+        using HaloDesktop::ViewModels::SelectFeaturedItems;
+
+        std::vector<FeaturedCandidate> const candidates{
+            { L"movie:a", HomeMediaKind::Movie, false },
+            { L"movie:b", HomeMediaKind::Movie, true },
+            { L"series:c", HomeMediaKind::Series, true },
+            { L"movie:a", HomeMediaKind::Movie, true }, // same title again, higher in rank
+            { L"movie:d", HomeMediaKind::Movie, false },
+            { L"", HomeMediaKind::Movie, true }, // unaddressable: no type:id to open
+            { L"series:e", HomeMediaKind::Series, false },
+        };
+
+        auto const allTwo = SelectFeaturedItems(HomeFilter::All, candidates, 2);
+        Require(allTwo.size() == 2 && allTwo[0] == 1 && allTwo[1] == 2,
+            "the featured strip did not lead with the top backdrops in catalog order");
+
+        // index 3 is the duplicate of index 0, index 5 has an empty key, so the
+        // fifth slot is the last non-backdrop in catalog order, not a repeat.
+        auto const allFive = SelectFeaturedItems(HomeFilter::All, candidates, 5);
+        Require(allFive == std::vector<std::size_t>({ 1, 2, 3, 4, 6 }),
+            "non-backdrops did not top up the strip in catalog order, or a duplicate took a slot");
+
+        auto const movies = SelectFeaturedItems(HomeFilter::Movies, candidates, 10);
+        Require(movies == std::vector<std::size_t>({ 1, 3, 4 }),
+            "a non-movie leaked into the Movies strip");
+
+        auto const series = SelectFeaturedItems(HomeFilter::Series, candidates, 10);
+        Require(series == std::vector<std::size_t>({ 2, 6 }),
+            "a non-series leaked into the Series strip");
+
+        Require(SelectFeaturedItems(HomeFilter::All, candidates, 0).empty(),
+            "a zero-width featured strip was filled");
+        Require(SelectFeaturedItems(HomeFilter::All, {}, 5).empty(),
+            "a featured strip was fabricated from an empty pool");
     }
 
     HaloDesktop::Services::Downloads::DownloadStartRequest ProtectedVideoRequest()
@@ -248,6 +292,7 @@ int main()
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();
+        TestSelectFeaturedItems();
         TestOptionalSubtitleFallback();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

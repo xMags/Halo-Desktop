@@ -16,6 +16,9 @@
 #if __has_include("Episode.g.cpp")
 #include "Episode.g.cpp"
 #endif
+#if __has_include("FeaturedItem.g.cpp")
+#include "FeaturedItem.g.cpp"
+#endif
 #if __has_include("MediaDetail.g.cpp")
 #include "MediaDetail.g.cpp"
 #endif
@@ -396,6 +399,142 @@ namespace winrt::HaloDesktop::implementation
         }
         m_still = std::move(value);
         m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"Art" });
+    }
+
+    FeaturedItem::FeaturedItem(HaloDesktop::MediaSummary media, bool inLibrary, double titleSize)
+        : m_media(std::move(media)), m_inLibrary(inLibrary), m_titleSize(titleSize)
+    {
+    }
+
+    HaloDesktop::MediaSummary FeaturedItem::Media() const { return m_media; }
+    hstring FeaturedItem::Title() const { return m_media ? m_media.Title() : hstring{}; }
+    hstring FeaturedItem::Meta() const { return m_media ? m_media.ReleaseInfo() : hstring{}; }
+    hstring FeaturedItem::Synopsis() const { return m_media ? m_media.Description() : hstring{}; }
+
+    hstring FeaturedItem::Rating() const
+    {
+        if (!m_media || m_media.Rating().empty())
+        {
+            return {};
+        }
+        return L"★ " + m_media.Rating();
+    }
+
+    // The strip is a backdrop, so the poster is only a fallback for a title whose
+    // catalog gave no wide art.
+    hstring FeaturedItem::Background() const
+    {
+        if (!m_media)
+        {
+            return {};
+        }
+        return m_media.Background().empty() ? m_media.Poster() : m_media.Background();
+    }
+
+    hstring FeaturedItem::ActionLabel() const
+    {
+        return m_media && m_media.Kind() == HaloDesktop::MediaKind::Series ? L"Choose episode" : L"Play";
+    }
+
+    double FeaturedItem::TitleSize() const noexcept { return m_titleSize; }
+
+    hstring FeaturedItem::LibraryLabel() const
+    {
+        if (m_libraryBusy)
+        {
+            return L"Saving…";
+        }
+        return m_inLibrary ? L"In library" : L"Add to library";
+    }
+
+    bool FeaturedItem::InLibrary() const noexcept { return m_inLibrary; }
+    bool FeaturedItem::LibraryBusy() const noexcept { return m_libraryBusy; }
+    bool FeaturedItem::LibraryEnabled() const noexcept { return m_media != nullptr && !m_libraryBusy; }
+
+    // The filled star and the outline are separate icons swapped by visibility,
+    // so each keeps its own themed brush without a value converter.
+    Microsoft::UI::Xaml::Visibility FeaturedItem::InLibraryVisibility() const noexcept
+    {
+        return m_inLibrary ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::NotInLibraryVisibility() const noexcept
+    {
+        return m_inLibrary ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible;
+    }
+
+    hstring FeaturedItem::LibraryErrorText() const { return m_libraryError; }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::LibraryErrorVisibility() const noexcept
+    {
+        return m_libraryError.empty() ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible;
+    }
+
+    winrt::event_token FeaturedItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+
+    void FeaturedItem::PropertyChanged(winrt::event_token const& token) noexcept
+    {
+        m_propertyChanged.remove(token);
+    }
+
+    void FeaturedItem::SetInLibrary(bool value)
+    {
+        if (m_inLibrary == value)
+        {
+            return;
+        }
+        m_inLibrary = value;
+        RaiseLibraryState();
+    }
+
+    void FeaturedItem::SetLibraryBusy(bool value)
+    {
+        if (m_libraryBusy == value)
+        {
+            return;
+        }
+        m_libraryBusy = value;
+        RaiseLibraryState();
+    }
+
+    void FeaturedItem::SetLibraryError(hstring value)
+    {
+        if (m_libraryError == value)
+        {
+            return;
+        }
+        m_libraryError = std::move(value);
+        for (auto const name : { L"LibraryErrorText", L"LibraryErrorVisibility" })
+        {
+            m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ name });
+        }
+    }
+
+    void FeaturedItem::SetTitleSize(double value)
+    {
+        if (m_titleSize == value)
+        {
+            return;
+        }
+        m_titleSize = value;
+        m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"TitleSize" });
+    }
+
+    void FeaturedItem::RaiseLibraryState()
+    {
+        for (auto const name : {
+                 L"LibraryLabel",
+                 L"InLibrary",
+                 L"LibraryBusy",
+                 L"LibraryEnabled",
+                 L"InLibraryVisibility",
+                 L"NotInLibraryVisibility" })
+        {
+            m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ name });
+        }
     }
 
     SearchGroup::SearchGroup(

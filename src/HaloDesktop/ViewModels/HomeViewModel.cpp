@@ -9,6 +9,8 @@
 #include "Services/NavigationService.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "ViewModels/ObservableHelper.h"
+#include <chrono>
+#include <cstdint>
 #include <optional>
 #include <utility>
 #include <vector>
@@ -16,12 +18,14 @@ namespace
 {
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
+    auto constexpr FeaturedCardCount = 5u;
 }
 namespace winrt::HaloDesktop::implementation
 {
     HomeViewModel::HomeViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_layout(services.LayoutMetrics), m_catalog(services.Catalog), m_library(services.Library),
           m_navigation(services.Navigation),
+          m_featured(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_continueItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_shelves(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
@@ -35,6 +39,11 @@ namespace winrt::HaloDesktop::implementation
     HomeViewModel::~HomeViewModel()
     {
         if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
+        if (m_featuredTimer)
+        {
+            m_featuredTimer.Stop();
+            m_featuredTimer.Tick(m_featuredTickToken);
+        }
     }
     // Hero art scales with the page because it is a backdrop, and its title with
     // it because that is a display element sized to the art. Body and label text
@@ -46,18 +55,27 @@ namespace winrt::HaloDesktop::implementation
         auto const gutter = m_layout ? m_layout->Current().Gutter : 24.0;
         return Microsoft::UI::Xaml::Thickness{ gutter, 0.0, gutter, 0.0 };
     }
-    winrt::hstring HomeViewModel::HeroTitle() const { return m_hero ? m_hero.Title() : L""; }
-    winrt::hstring HomeViewModel::HeroSynopsis() const { return m_hero ? m_hero.Description() : L""; }
-    winrt::hstring HomeViewModel::HeroRating() const { return m_hero && !m_hero.Rating().empty() ? L"★ " + m_hero.Rating() : L""; }
-    winrt::hstring HomeViewModel::HeroMeta() const { return m_hero ? m_hero.ReleaseInfo() : L""; }
-    winrt::hstring HomeViewModel::HeroBackground() const { return m_hero ? (!m_hero.Background().empty() ? m_hero.Background() : m_hero.Poster()) : L""; }
-    winrt::hstring HomeViewModel::HeroActionLabel() const { return m_hero && m_hero.Kind() == winrt::HaloDesktop::MediaKind::Series ? L"Choose episode" : L"Play"; }
-    winrt::hstring HomeViewModel::HeroLibraryLabel() const { return m_heroLibraryBusy ? L"Saving…" : (m_heroInLibrary ? L"In library" : L"Add to library"); }
-    bool HomeViewModel::HeroLibraryBusy() const noexcept { return m_heroLibraryBusy; }
-    bool HomeViewModel::HeroLibraryEnabled() const noexcept { return m_hero && !m_heroLibraryBusy; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::HeroVisibility() const noexcept { return m_hero ? Visible : Collapsed; }
-    winrt::hstring HomeViewModel::HeroLibraryErrorText() const { return m_heroLibraryError; }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::HeroLibraryErrorVisibility() const noexcept { return m_heroLibraryError.empty() ? Collapsed : Visible; }
+    winrt::Windows::Foundation::IInspectable HomeViewModel::FeaturedItems() const { return m_featured; }
+    std::int32_t HomeViewModel::FeaturedCount() const noexcept { return static_cast<std::int32_t>(m_featured.Size()); }
+    std::int32_t HomeViewModel::FeaturedIndex() const noexcept { return m_featuredIndex; }
+    void HomeViewModel::FeaturedIndex(std::int32_t value)
+    {
+        // FlipView reports -1 while its source is being replaced; that is the
+        // reset-to-first-card signal, not a real selection.
+        if (value < 0) { value = 0; }
+        auto const count = m_featured.Size();
+        if (count == 0 || value >= static_cast<std::int32_t>(count)) { return; }
+        if (value == m_featuredIndex) { return; }
+        m_featuredIndex = value;
+        Raise(L"FeaturedIndex");
+        // A manual swipe or pip click restarts the countdown, so the strip sits
+        // still for a full interval before moving on again.
+        RestartFeaturedTimer();
+    }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::FeaturedVisibility() const noexcept
+    {
+        return m_featured.Size() > 0 ? Visible : Collapsed;
+    }
     Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return m_refreshError && HasUsableContent() ? Visible : Collapsed; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }
@@ -88,11 +106,12 @@ namespace winrt::HaloDesktop::implementation
 
     bool HomeViewModel::HasUsableContent() const noexcept
     {
-        return m_hero || m_shelves.Size() > 0 || m_continueItems.Size() > 0;
+        return m_featured.Size() > 0 || m_shelves.Size() > 0 || m_continueItems.Size() > 0;
     }
 
     void HomeViewModel::EnsureLoaded()
     {
+        m_active = true;
         if (!m_catalog->HasLoaded())
         {
             static_cast<void>(LoadAsync());
@@ -110,6 +129,7 @@ namespace winrt::HaloDesktop::implementation
         {
             static_cast<void>(LoadAsync());
         }
+        RestartFeaturedTimer();
     }
 
     void HomeViewModel::AdoptSnapshot()
@@ -136,35 +156,46 @@ namespace winrt::HaloDesktop::implementation
         for (auto const name : { L"ContinueItems", L"ContinueCountLabel", L"ContentVisibility", L"EmptyVisibility" }) Raise(name);
     }
     void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));} }
-    void HomeViewModel::OpenHeroDetail() { OpenDetail(m_hero); }
-    void HomeViewModel::OpenHeroSources()
+    void HomeViewModel::OpenFeaturedDetail(winrt::Windows::Foundation::IInspectable const& item)
     {
-        if (!m_hero)
+        if (auto const featured = item.try_as<winrt::HaloDesktop::FeaturedItem>())
+        {
+            OpenDetail(featured.Media());
+        }
+    }
+    void HomeViewModel::OpenFeaturedSources(winrt::Windows::Foundation::IInspectable const& item)
+    {
+        auto const featured = item.try_as<winrt::HaloDesktop::FeaturedItem>();
+        if (!featured)
         {
             return;
         }
-        if (m_hero.Kind() == winrt::HaloDesktop::MediaKind::Series)
+        auto const media = featured.Media();
+        if (media.Kind() == winrt::HaloDesktop::MediaKind::Series)
         {
-            OpenHeroDetail();
+            OpenFeaturedDetail(featured);
             return;
         }
         m_navigation->ShowSheet(
             ::HaloDesktop::Services::Page::Sources,
             winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
-                m_hero.Type(),
-                m_hero.Id(),
-                m_hero.Id(),
-                m_hero.Type() + L":" + m_hero.Id(),
-                m_hero.Title(),
-                m_hero.Title(),
+                media.Type(),
+                media.Id(),
+                media.Id(),
+                media.Type() + L":" + media.Id(),
+                media.Title(),
+                media.Title(),
                 L"",
-                m_hero.Poster()));
+                media.Poster()));
     }
-    void HomeViewModel::ToggleHeroLibrary()
+    void HomeViewModel::ToggleFeaturedLibrary(winrt::Windows::Foundation::IInspectable const& item)
     {
-        if (m_hero && !m_heroLibraryBusy)
+        if (auto const featured = item.try_as<winrt::HaloDesktop::FeaturedItem>())
         {
-            static_cast<void>(ToggleHeroLibraryAsync());
+            if (!featured.LibraryBusy())
+            {
+                static_cast<void>(ToggleFeaturedLibraryAsync(featured));
+            }
         }
     }
     void HomeViewModel::OpenContinue(winrt::Windows::Foundation::IInspectable const& item)
@@ -211,6 +242,16 @@ namespace winrt::HaloDesktop::implementation
     void HomeViewModel::RaiseLayoutMetrics()
     {
         for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"ContentPadding" }) Raise(property);
+        // The carousel re-renders at the new step, so every realised card gets
+        // the new title size too; the template cannot see this view model.
+        auto const titleSize = m_layout ? m_layout->Current().HeroTitleSize : 36.0;
+        for (auto const& entry : m_featured)
+        {
+            if (auto const item = entry.try_as<winrt::HaloDesktop::FeaturedItem>())
+            {
+                winrt::get_self<winrt::HaloDesktop::implementation::FeaturedItem>(item)->SetTitleSize(titleSize);
+            }
+        }
     }
     winrt::event_token HomeViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void HomeViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
@@ -265,39 +306,30 @@ namespace winrt::HaloDesktop::implementation
         RaiseState();
     }
 
-    winrt::Windows::Foundation::IAsyncAction HomeViewModel::ToggleHeroLibraryAsync()
+    winrt::Windows::Foundation::IAsyncAction HomeViewModel::ToggleFeaturedLibraryAsync(winrt::HaloDesktop::FeaturedItem item)
     {
         auto lifetime = get_strong();
-        if (!m_hero || m_heroLibraryBusy)
-        {
-            co_return;
-        }
-
         auto const uiContext = winrt::apartment_context{};
-        auto const hero = m_hero;
-        auto const nextMembership = !m_heroInLibrary;
-        m_heroLibraryBusy = true;
-        m_heroLibraryError.clear();
-        for (auto const property : {
-                 L"HeroLibraryLabel",
-                 L"HeroLibraryEnabled",
-                 L"HeroLibraryBusy",
-                 L"HeroLibraryErrorText",
-                 L"HeroLibraryErrorVisibility" })
+        auto const media = item.Media();
+        auto const nextMembership = !item.InLibrary();
         {
-            Raise(property);
+            // Scoped, not held across the await: the get_self pointer is raw and
+            // the object is alive only because the projected handle keeps it so.
+            auto const impl = winrt::get_self<winrt::HaloDesktop::implementation::FeaturedItem>(item);
+            impl->SetLibraryBusy(true);
+            impl->SetLibraryError({});
         }
 
         bool failed{};
         try
         {
             co_await m_library->SetMembershipAsync(
-                hero.Type(),
-                hero.Id(),
-                hero.Title(),
-                hero.Poster().empty()
+                media.Type(),
+                media.Id(),
+                media.Title(),
+                media.Poster().empty()
                     ? std::nullopt
-                    : std::optional<winrt::hstring>{ hero.Poster() },
+                    : std::optional<winrt::hstring>{ media.Poster() },
                 nextMembership);
         }
         catch (...)
@@ -306,28 +338,27 @@ namespace winrt::HaloDesktop::implementation
         }
         co_await uiContext;
 
-        m_heroLibraryBusy = false;
+        auto const impl = winrt::get_self<winrt::HaloDesktop::implementation::FeaturedItem>(item);
+        impl->SetLibraryBusy(false);
         if (!failed)
         {
+            impl->SetInLibrary(nextMembership);
             m_catalog->RebuildLibrary();
             m_sourceShelves = m_catalog->Shelves();
             m_appliedVersion = m_catalog->SnapshotVersion();
             ApplyContinue();
             Rebuild();
         }
-        else if (m_hero && m_hero.Type() == hero.Type() && m_hero.Id() == hero.Id())
+        else
         {
-            m_heroLibraryError = L"Library could not be updated. Try again.";
+            impl->SetLibraryError(L"Library could not be updated. Try again.");
         }
-        SynchronizeHeroLibraryState();
         RaiseState();
     }
 
     void HomeViewModel::Rebuild()
     {
-        m_heroLibraryError.clear();
-        m_hero = m_catalog->FeaturedForFilter(m_filterIndex);
-        SynchronizeHeroLibraryState();
+        RebuildFeatured();
         if (!m_sourceShelves)
         {
             m_shelves.Clear();
@@ -358,26 +389,140 @@ namespace winrt::HaloDesktop::implementation
         RaiseState();
     }
 
-    void HomeViewModel::SynchronizeHeroLibraryState()
+    void HomeViewModel::RebuildFeatured()
     {
-        m_heroInLibrary = m_hero && m_library->Contains(m_hero.Type(), m_hero.Id());
+        auto const summaries = m_catalog->FeaturedSetForFilter(m_filterIndex, FeaturedCardCount);
+        auto const titleSize = m_layout ? m_layout->Current().HeroTitleSize : 36.0;
+        std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
+        rebuilt.reserve(summaries.Size());
+        for (auto const& summary : summaries)
+        {
+            rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::FeaturedItem>(
+                summary, m_library->Contains(summary.Type(), summary.Id()), titleSize));
+        }
+        // Membership changes rebuild everything, but the strip itself is usually
+        // unchanged. Replacing it then would restart the carousel under the
+        // pointer, so an identical run of titles keeps its cards and its place.
+        bool unchanged = m_featured.Size() == rebuilt.size();
+        if (unchanged)
+        {
+            for (std::uint32_t index = 0; index < rebuilt.size(); ++index)
+            {
+                auto const current = m_featured.GetAt(index).try_as<winrt::HaloDesktop::FeaturedItem>();
+                auto const next = rebuilt[index].try_as<winrt::HaloDesktop::FeaturedItem>();
+                if (!current || !next
+                    || current.Media().Type() != next.Media().Type()
+                    || current.Media().Id() != next.Media().Id())
+                {
+                    unchanged = false;
+                    break;
+                }
+            }
+        }
+        if (!unchanged)
+        {
+            m_featured.ReplaceAll(rebuilt);
+            m_featuredIndex = 0;
+            Raise(L"FeaturedIndex");
+        }
+        else
+        {
+            // New cards carried the fresh membership; the kept ones may hold a
+            // flag set before a save went through, so re-derive it for all.
+            SynchronizeFeaturedLibraryState();
+        }
+        RestartFeaturedTimer();
+    }
+
+    void HomeViewModel::SynchronizeFeaturedLibraryState()
+    {
+        for (auto const& entry : m_featured)
+        {
+            auto const item = entry.try_as<winrt::HaloDesktop::FeaturedItem>();
+            if (!item)
+            {
+                continue;
+            }
+            winrt::get_self<winrt::HaloDesktop::implementation::FeaturedItem>(item)
+                ->SetInLibrary(m_library->Contains(item.Media().Type(), item.Media().Id()));
+        }
+    }
+
+    void HomeViewModel::AdvanceFeatured()
+    {
+        auto const count = m_featured.Size();
+        if (count < 2)
+        {
+            return;
+        }
+        FeaturedIndex((m_featuredIndex + 1) % static_cast<std::int32_t>(count));
+    }
+
+    void HomeViewModel::RestartFeaturedTimer()
+    {
+        if (m_featuredTimer)
+        {
+            m_featuredTimer.Stop();
+        }
+        if (!(m_active && !m_featuredPaused && m_featured.Size() >= 2))
+        {
+            return;
+        }
+        if (!m_featuredTimer)
+        {
+            m_featuredTimer = winrt::Microsoft::UI::Xaml::DispatcherTimer{};
+            m_featuredTimer.Interval(std::chrono::seconds{ 7 });
+            // Weak capture: the tick is queued through the dispatcher, so it can
+            // outlive this view model unless Deactivate or the destructor stops it.
+            m_featuredTickToken = m_featuredTimer.Tick([weak = get_weak()](
+                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&)
+            {
+                if (auto strong = weak.get())
+                {
+                    strong->AdvanceFeatured();
+                }
+            });
+        }
+        m_featuredTimer.Start();
+    }
+
+    void HomeViewModel::StopFeaturedTimer()
+    {
+        if (m_featuredTimer)
+        {
+            m_featuredTimer.Stop();
+        }
+    }
+
+    // The strip stops advancing while a pointer rests on it, and stops entirely
+    // once Home is off screen: a timer ticking behind another page would animate
+    // a carousel nobody is looking at.
+    void HomeViewModel::PauseFeatured()
+    {
+        if (m_featuredPaused) { return; }
+        m_featuredPaused = true;
+        StopFeaturedTimer();
+    }
+    void HomeViewModel::ResumeFeatured()
+    {
+        if (!m_featuredPaused) { return; }
+        m_featuredPaused = false;
+        RestartFeaturedTimer();
+    }
+    void HomeViewModel::Deactivate()
+    {
+        m_active = false;
+        StopFeaturedTimer();
     }
 
     void HomeViewModel::RaiseState()
     {
         for (auto const name : {
-                 L"HeroTitle",
-                 L"HeroSynopsis",
-                 L"HeroRating",
-                 L"HeroMeta",
-                 L"HeroBackground",
-                 L"HeroActionLabel",
-                 L"HeroLibraryLabel",
-                 L"HeroLibraryBusy",
-                 L"HeroLibraryEnabled",
-                 L"HeroVisibility",
-                 L"HeroLibraryErrorText",
-                 L"HeroLibraryErrorVisibility",
+                 L"FeaturedItems",
+                 L"FeaturedCount",
+                 L"FeaturedIndex",
+                 L"FeaturedVisibility",
                  L"RefreshErrorVisibility",
                  L"ContinueItems",
                  L"ContinueCountLabel",

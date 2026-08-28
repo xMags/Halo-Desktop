@@ -5,6 +5,7 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
+  Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
@@ -45,52 +46,88 @@
           <Button Content="Retry" Click="OnRetryClick" />
         </InfoBar.ActionButton>
       </InfoBar>
-      <Grid Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" CornerRadius="8" Visibility="{x:Bind ViewModel.HeroVisibility, Mode=OneWay}">
-        <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
-        <local:ArtworkImage SourceUrl="{x:Bind ViewModel.HeroBackground, Mode=OneWay}" />
-        <Rectangle>
-          <Rectangle.Fill>
-            <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-              <GradientStop Offset="0" Color="{ThemeResource HaloHeroScrim1Color}" />
-              <GradientStop Offset="0.52" Color="{ThemeResource HaloHeroScrim2Color}" />
-              <GradientStop Offset="0.92" Color="#0018181A" />
-            </LinearGradientBrush>
-          </Rectangle.Fill>
-        </Rectangle>
-        <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
-          <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
-          <TextBlock FontSize="{x:Bind ViewModel.HeroTitleSize, Mode=OneWay}" Style="{StaticResource HaloHeroTitle}" Text="{x:Bind ViewModel.HeroTitle, Mode=OneWay}" />
-          <StackPanel Orientation="Horizontal" Spacing="10">
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.HeroRating, Mode=OneWay}" />
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
-            <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.HeroMeta, Mode=OneWay}" />
-          </StackPanel>
-          <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind ViewModel.HeroSynopsis, Mode=OneWay}" />
-          <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
-            <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
-              <StackPanel Orientation="Horizontal" Spacing="9">
-                <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
-                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.HeroActionLabel, Mode=OneWay}" />
-              </StackPanel>
-            </Button>
-            <Button Height="36" Padding="18,0" Click="OnDetailsClick" Content="Details" />
-            <Button
-              Height="36"
-              Padding="14,0"
-              AutomationProperties.Name="{x:Bind ViewModel.HeroLibraryLabel, Mode=OneWay}"
-              Click="OnHeroLibraryClick"
-              IsEnabled="{x:Bind ViewModel.HeroLibraryEnabled, Mode=OneWay}">
-              <StackPanel Orientation="Horizontal" Spacing="8">
-                <FontIcon FontSize="14" Glyph="&#xE734;" />
-                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.HeroLibraryLabel, Mode=OneWay}" />
-              </StackPanel>
-            </Button>
-          </StackPanel>
-          <TextBlock
-            Foreground="{ThemeResource HaloCriticalBrush}"
-            Text="{x:Bind ViewModel.HeroLibraryErrorText, Mode=OneWay}"
-            Visibility="{x:Bind ViewModel.HeroLibraryErrorVisibility, Mode=OneWay}" />
-        </StackPanel>
+      <!--
+        The featured strip is a FlipView advanced by a dispatcher timer, with a
+        pips pager underneath for position and manual jumps. Hovering over the
+        strip pauses the advance, and leaving the page stops it entirely: a timer
+        ticking behind another page would animate a carousel nobody is looking at.
+      -->
+      <Grid
+        Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}"
+        Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}"
+        CornerRadius="8"
+        PointerEntered="OnFeaturedPointerEntered"
+        PointerExited="OnFeaturedPointerExited"
+        Visibility="{x:Bind ViewModel.FeaturedVisibility, Mode=OneWay}">
+        <FlipView
+          x:Name="FeaturedFlip"
+          AutomationProperties.Name="Featured titles"
+          SelectedIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}">
+          <FlipView.ItemTemplate>
+            <DataTemplate x:DataType="local:FeaturedItem">
+              <Grid>
+                <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
+                <local:ArtworkImage SourceUrl="{x:Bind Background, Mode=OneWay}" />
+                <Rectangle>
+                  <Rectangle.Fill>
+                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                      <GradientStop Offset="0" Color="{ThemeResource HaloHeroScrim1Color}" />
+                      <GradientStop Offset="0.52" Color="{ThemeResource HaloHeroScrim2Color}" />
+                      <GradientStop Offset="0.92" Color="#0018181A" />
+                    </LinearGradientBrush>
+                  </Rectangle.Fill>
+                </Rectangle>
+                <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
+                  <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
+                  <TextBlock FontSize="{x:Bind TitleSize, Mode=OneWay}" Style="{StaticResource HaloHeroTitle}" Text="{x:Bind Title}" />
+                  <StackPanel Orientation="Horizontal" Spacing="10">
+                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Rating, Mode=OneWay}" />
+                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
+                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Meta, Mode=OneWay}" />
+                  </StackPanel>
+                  <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind Synopsis, Mode=OneWay}" />
+                  <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
+                    <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Tag="{x:Bind}" Click="OnFeaturedActionClick" Style="{StaticResource HaloAccentButtonStyle}">
+                      <StackPanel Orientation="Horizontal" Spacing="9">
+                        <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                        <TextBlock VerticalAlignment="Center" Text="{x:Bind ActionLabel, Mode=OneWay}" />
+                      </StackPanel>
+                    </Button>
+                    <Button Height="36" Padding="18,0" Tag="{x:Bind}" Click="OnFeaturedDetailsClick" Content="Details" />
+                    <!--
+                      The filled star and the outline are separate icons swapped
+                      by visibility, so each keeps its own themed brush without a
+                      value converter.
+                    -->
+                    <Button
+                      Height="36"
+                      Padding="14,0"
+                      AutomationProperties.Name="{x:Bind LibraryLabel, Mode=OneWay}"
+                      Tag="{x:Bind}"
+                      Click="OnFeaturedLibraryClick"
+                      IsEnabled="{x:Bind LibraryEnabled, Mode=OneWay}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon FontSize="14" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE735;" Visibility="{x:Bind InLibraryVisibility, Mode=OneWay}" />
+                        <FontIcon FontSize="14" Glyph="&#xE734;" Visibility="{x:Bind NotInLibraryVisibility, Mode=OneWay}" />
+                        <TextBlock VerticalAlignment="Center" Text="{x:Bind LibraryLabel, Mode=OneWay}" />
+                      </StackPanel>
+                    </Button>
+                  </StackPanel>
+                  <TextBlock
+                    Foreground="{ThemeResource HaloCriticalBrush}"
+                    Text="{x:Bind LibraryErrorText, Mode=OneWay}"
+                    Visibility="{x:Bind LibraryErrorVisibility, Mode=OneWay}" />
+                </StackPanel>
+              </Grid>
+            </DataTemplate>
+          </FlipView.ItemTemplate>
+        </FlipView>
+        <PipsPager
+          Margin="0,0,0,14"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Bottom"
+          NumberOfPages="{x:Bind ViewModel.FeaturedCount, Mode=OneWay}"
+          SelectedPageIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}" />
       </Grid>
       <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
         <Grid Margin="0,0,0,12">

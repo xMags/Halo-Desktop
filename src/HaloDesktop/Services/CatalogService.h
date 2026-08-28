@@ -42,6 +42,8 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const override;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+            FeaturedSetForFilter(std::int32_t filterIndex, std::uint32_t count) const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;

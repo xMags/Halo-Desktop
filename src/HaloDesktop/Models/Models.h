@@ -5,6 +5,7 @@
 #include "DetailNavParams.g.h"
 #include "DownloadItem.g.h"
 #include "Episode.g.h"
+#include "FeaturedItem.g.h"
 #include "MediaDetail.g.h"
 #include "MediaSummary.g.h"
 #include "SearchGroup.g.h"
@@ -356,6 +357,52 @@ namespace winrt::HaloDesktop::implementation
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
+    struct FeaturedItem : FeaturedItemT<FeaturedItem>
+    {
+        FeaturedItem() = default;
+        // The title size scales with the layout step the page is shown at. It
+        // rides on the card because a FlipView template cannot see the view model
+        // that owns that step, and the page updates every card on resize.
+        explicit FeaturedItem(HaloDesktop::MediaSummary media, bool inLibrary, double titleSize = 36.0);
+
+        [[nodiscard]] HaloDesktop::MediaSummary Media() const;
+        [[nodiscard]] hstring Title() const;
+        [[nodiscard]] hstring Rating() const;
+        [[nodiscard]] hstring Meta() const;
+        [[nodiscard]] hstring Synopsis() const;
+        [[nodiscard]] hstring Background() const;
+        [[nodiscard]] hstring ActionLabel() const;
+        [[nodiscard]] double TitleSize() const noexcept;
+        [[nodiscard]] hstring LibraryLabel() const;
+        [[nodiscard]] bool InLibrary() const noexcept;
+        [[nodiscard]] bool LibraryBusy() const noexcept;
+        [[nodiscard]] bool LibraryEnabled() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility InLibraryVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility NotInLibraryVisibility() const noexcept;
+        [[nodiscard]] hstring LibraryErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility LibraryErrorVisibility() const noexcept;
+
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+        // Not projected: only the view model driving the save mutates these, and
+        // it does so on the UI thread after the library call has completed.
+        void SetInLibrary(bool value);
+        void SetLibraryBusy(bool value);
+        void SetLibraryError(hstring value);
+        void SetTitleSize(double value);
+
+    private:
+        void RaiseLibraryState();
+
+        HaloDesktop::MediaSummary m_media{ nullptr };
+        hstring m_libraryError;
+        double m_titleSize{ 36.0 };
+        bool m_inLibrary{};
+        bool m_libraryBusy{};
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
+    };
+
     struct SearchGroup : SearchGroupT<SearchGroup>
     {
         SearchGroup() = default;
@@ -420,6 +467,7 @@ namespace winrt::HaloDesktop::factory_implementation
     struct DownloadItem : DownloadItemT<DownloadItem, implementation::DownloadItem> {};
     struct Addon : AddonT<Addon, implementation::Addon> {};
     struct ContinueItem : ContinueItemT<ContinueItem, implementation::ContinueItem> {};
+    struct FeaturedItem : FeaturedItemT<FeaturedItem, implementation::FeaturedItem> {};
     struct SearchGroup : SearchGroupT<SearchGroup, implementation::SearchGroup> {};
     struct Shelf : ShelfT<Shelf, implementation::Shelf> {};
     struct DetailNavParams : DetailNavParamsT<DetailNavParams, implementation::DetailNavParams> {};

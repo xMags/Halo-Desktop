@@ -173,6 +173,30 @@ namespace HaloDesktop
         Double Progress { get; };
     };
 
+    // A card in the home carousel. Each one carries its own library state: the
+    // strip shows several titles at once, so a single shared busy or error flag
+    // would report one card's save on all of them.
+    runtimeclass FeaturedItem : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        FeaturedItem();
+        MediaSummary Media { get; };
+        String Title { get; };
+        String Rating { get; };
+        String Meta { get; };
+        String Synopsis { get; };
+        String Background { get; };
+        String ActionLabel { get; };
+        Double TitleSize { get; };
+        String LibraryLabel { get; };
+        Boolean InLibrary { get; };
+        Boolean LibraryBusy { get; };
+        Boolean LibraryEnabled { get; };
+        Microsoft.UI.Xaml.Visibility InLibraryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NotInLibraryVisibility { get; };
+        String LibraryErrorText { get; };
+        Microsoft.UI.Xaml.Visibility LibraryErrorVisibility { get; };
+    };
+
     [default_interface]
     runtimeclass SearchGroup
     {
