@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
 
 #include <array>
@@ -452,7 +453,9 @@ namespace winrt::HaloDesktop::implementation
             auto const index = static_cast<std::size_t>(tag[4] - L'0');
             if (m_jumpItems[index])
             {
-                App::Services().Navigation->ShowSheet(Page::Sources, m_jumpItems[index]);
+                ::HaloDesktop::Services::OpenContinueItem(
+                    *App::Services().Navigation,
+                    m_jumpItems[index]);
             }
             return;
         }

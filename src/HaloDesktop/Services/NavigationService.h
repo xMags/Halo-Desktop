@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Navigation.h>
 #include <winrt/Windows.Foundation.h>
@@ -76,4 +77,12 @@ namespace HaloDesktop::Services
         bool m_overlayOpen{};
         bool m_sheetOpen{};
     };
+
+    // Resuming a continue-watching entry lands on the title's own page with the
+    // source sheet over it, so closing the sheet leaves the viewer somewhere they
+    // can act rather than back where they started. Free rather than a member: the
+    // service routes pages, and this is one particular model's route.
+    void OpenContinueItem(
+        NavigationService& navigation,
+        winrt::HaloDesktop::ContinueItem const& item);
 }

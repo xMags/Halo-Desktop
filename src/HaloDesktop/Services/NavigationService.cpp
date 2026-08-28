@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/NavigationService.h"
 
+#include "Models/Models.h"
 #include "Views/CatalogPage.xaml.h"
 #include "Views/DetailPage.xaml.h"
 #include "Views/DownloadsPage.xaml.h"
@@ -338,6 +339,30 @@ namespace HaloDesktop::Services
     void NavigationService::SetRouteChangedHandler(RouteChangedHandler handler)
     {
         m_routeChangedHandler = std::move(handler);
+    }
+
+    void OpenContinueItem(
+        NavigationService& navigation,
+        winrt::HaloDesktop::ContinueItem const& item)
+    {
+        if (!item)
+        {
+            return;
+        }
+
+        // With no title to load, the page behind the sheet could only ever show
+        // its own error state, which is worse than leaving the caller's page up.
+        if (!item.Type().empty() && !item.MetaId().empty())
+        {
+            navigation.GoTo(
+                Page::Detail,
+                winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(
+                    item.Type(),
+                    item.MetaId(),
+                    item.Name(),
+                    item.Poster()));
+        }
+        navigation.ShowSheet(Page::Sources, item);
     }
 
     void NavigationService::OnNavigated(
