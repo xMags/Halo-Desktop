@@ -4,6 +4,7 @@
 #include "Playback/ScopedReentrancyGuard.h"
 #include "Playback/TemporaryFileCollection.h"
 #include "Security/ProtectedHttpHeaders.h"
+#include "Services/AddonSelectionPolicy.h"
 #include "Shell/WindowPresentationPolicy.h"
 
 #include <chrono>
@@ -340,6 +341,32 @@ namespace
         Require(badge(-1920,-1080).Tier.empty(),"a negative frame size earned a badge");
     }
 
+    void TestAddonSelection()
+    {
+        using HaloDesktop::Services::AddonIdentity;
+        using HaloDesktop::Services::SelectDistinctAddons;
+        auto const select=[](std::vector<AddonIdentity> const&addons){return SelectDistinctAddons(addons);};
+
+        Require(select({}).empty(),"an empty addon list produced selections");
+
+        std::vector<AddonIdentity> const distinct{{L"com.linvo.cinemeta",true},{L"org.stremio.opensubtitlesv3",true}};
+        Require(select(distinct)==std::vector<std::size_t>{0,1},"unrelated addons were collapsed");
+
+        // The shape that duplicated every Cinemeta shelf on Home: the same addon
+        // installed globally and by the user.
+        std::vector<AddonIdentity> const both{{L"com.linvo.cinemeta",true},{L"org.stremio.opensubtitlesv3",true},{L"com.linvo.cinemeta",false}};
+        Require(select(both)==std::vector<std::size_t>{2,1},"an addon in both lists was selected twice");
+
+        std::vector<AddonIdentity> const userFirst{{L"com.linvo.cinemeta",false},{L"com.linvo.cinemeta",true}};
+        Require(select(userFirst)==std::vector<std::size_t>{0},"a global row displaced the user's own row");
+
+        std::vector<AddonIdentity> const twoUserRows{{L"com.example.mirror",false},{L"com.example.mirror",false}};
+        Require(select(twoUserRows)==std::vector<std::size_t>{0},"two of the user's own rows for one addon were kept");
+
+        std::vector<AddonIdentity> const anonymous{{L"",true},{L"",false},{L"com.linvo.cinemeta",true}};
+        Require(select(anonymous)==std::vector<std::size_t>{0,1,2},"addons with no manifest id were merged together");
+    }
+
     void TestTemporaryFileCleanup()
     {
         auto const suffix=std::to_wstring(std::chrono::steady_clock::now().time_since_epoch().count());
@@ -377,6 +404,7 @@ int main()
         TestWindowPresentationPolicy();
         TestPlayerOverlayMoveState();
         TestVideoQualityBadges();
+        TestAddonSelection();
         TestTemporaryFileCleanup();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
