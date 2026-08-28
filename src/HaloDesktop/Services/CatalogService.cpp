@@ -492,16 +492,19 @@ namespace HaloDesktop::Services
     {
         std::vector<winrt::HaloDesktop::Shelf> shelves;
         shelves.reserve(catalogShelves.Size() + (libraryItems.Size() > 0 ? 1u : 0u));
-        for (auto const& shelf : catalogShelves)
-        {
-            shelves.push_back(shelf);
-        }
+        // What the viewer chose to keep leads, ahead of what the addons are
+        // advertising. Home renders in-progress titles above this list, so the
+        // page reads as continue watching, then the library, then the catalogs.
         if (libraryItems.Size() > 0)
         {
             shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
                 L"My library",
                 L"SYNCED · " + winrt::to_hstring(libraryItems.Size()),
                 libraryItems));
+        }
+        for (auto const& shelf : catalogShelves)
+        {
+            shelves.push_back(shelf);
         }
         return shelves;
     }
