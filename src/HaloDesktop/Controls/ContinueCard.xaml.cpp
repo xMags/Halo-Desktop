@@ -32,10 +32,10 @@ namespace winrt::HaloDesktop::implementation
         if (auto text = FindName(L"MetaText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value);
     }
 
-    winrt::hstring ContinueCard::Poster() const { return m_poster; }
-    void ContinueCard::Poster(winrt::hstring const& value)
+    winrt::hstring ContinueCard::Art() const { return m_art; }
+    void ContinueCard::Art(winrt::hstring const& value)
     {
-        m_poster = value;
+        m_art = value;
         auto still = FindName(L"Still").try_as<winrt::HaloDesktop::ArtworkImage>();
         if (!still) return;
         still.DecodeWidth(::HaloDesktop::Shell::ContinueDecodeWidth());

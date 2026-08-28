@@ -154,8 +154,7 @@ namespace HaloDesktop
         Boolean Enabled;
     };
 
-    [default_interface]
-    runtimeclass ContinueItem
+    runtimeclass ContinueItem : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         ContinueItem();
         String Name { get; };
@@ -164,6 +163,10 @@ namespace HaloDesktop
         String VideoId { get; };
         String ItemId { get; };
         String Poster { get; };
+        // The landscape image a continue card draws. Starts as the poster, because
+        // that is all watch state remembers, and becomes the episode still or the
+        // backdrop once the item's meta has been resolved.
+        String Art { get; };
         String Sub { get; };
         String Tag { get; };
         String TimeLeft { get; };

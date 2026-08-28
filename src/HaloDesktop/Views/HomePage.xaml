@@ -121,7 +121,7 @@
                 <local:ContinueCard
                   Title="{x:Bind Name}"
                   Meta="{x:Bind Sub}"
-                  Poster="{x:Bind Poster}"
+                  Art="{x:Bind Art, Mode=OneWay}"
                   EpisodeTag="{x:Bind Tag}"
                   TimeLeft="{x:Bind TimeLeft}"
                   Progress="{x:Bind Progress}"

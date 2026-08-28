@@ -195,6 +195,7 @@
     <ClInclude Include="Services\AddonService.h" />
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\CatalogRefreshPolicy.h" />
+    <ClInclude Include="Services\ContinueArtworkService.h" />
     <ClInclude Include="Services\DevicePreferencesStore.h" />
     <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\MetadataService.h" />
@@ -379,6 +380,7 @@
     <ClCompile Include="Services\CatalogRefreshPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Services\ContinueArtworkService.cpp" />
     <ClCompile Include="Services\DevicePreferencesStore.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />

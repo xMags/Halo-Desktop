@@ -10,6 +10,7 @@
 #include "Playback/UpNextResolver.h"
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
+#include "Services/ContinueArtworkService.h"
 #include "Services/DownloadService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/TransferEngine.h"
@@ -111,12 +112,17 @@ namespace winrt::HaloDesktop::implementation
         m_services.Library = libraryService;
         auto watchStateService = std::make_shared<::HaloDesktop::Services::WatchStateService>(m_apiClient);
         m_services.WatchState = watchStateService;
+        // Owned by the catalog service alone: nothing else needs a continue still,
+        // and the cache is only useful next to the shelf that reads it.
+        auto continueArtworkService =
+            std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(m_apiClient);
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
             m_apiClient,
             addonService,
             m_services.Library,
             m_services.WatchState,
-            m_devicePreferences);
+            m_devicePreferences,
+            continueArtworkService);
         m_services.Catalog = catalogService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState());

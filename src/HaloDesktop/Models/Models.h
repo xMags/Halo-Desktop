@@ -328,10 +328,18 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring VideoId() const;
         [[nodiscard]] hstring ItemId() const;
         [[nodiscard]] hstring Poster() const;
+        [[nodiscard]] hstring Art() const;
         [[nodiscard]] hstring Sub() const;
         [[nodiscard]] hstring Tag() const;
         [[nodiscard]] hstring TimeLeft() const;
         [[nodiscard]] double Progress() const noexcept;
+
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+        // Not projected: only the artwork service resolves a still, and the shelf
+        // is already on screen by the time it does.
+        void SetStill(hstring value);
 
     private:
         hstring m_name;
@@ -340,10 +348,12 @@ namespace winrt::HaloDesktop::implementation
         hstring m_videoId;
         hstring m_itemId;
         hstring m_poster;
+        hstring m_still;
         hstring m_sub;
         hstring m_tag;
         hstring m_timeLeft;
         double m_progress{};
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
     struct SearchGroup : SearchGroupT<SearchGroup>

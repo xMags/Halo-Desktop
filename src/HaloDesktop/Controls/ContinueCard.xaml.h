@@ -18,8 +18,8 @@ namespace winrt::HaloDesktop::implementation
         void Title(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring Meta() const;
         void Meta(winrt::hstring const& value);
-        [[nodiscard]] winrt::hstring Poster() const;
-        void Poster(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring Art() const;
+        void Art(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring EpisodeTag() const;
         void EpisodeTag(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring TimeLeft() const;
@@ -40,7 +40,7 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
-        winrt::hstring m_poster;
+        winrt::hstring m_art;
         winrt::hstring m_episodeTag;
         winrt::hstring m_timeLeft;
         double m_progress{};

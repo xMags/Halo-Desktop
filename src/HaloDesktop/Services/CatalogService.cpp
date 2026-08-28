@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
+#include "Services/ContinueArtworkService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/LibraryService.h"
 #include "Services/WatchStateService.h"
@@ -128,14 +129,16 @@ namespace HaloDesktop::Services
         std::shared_ptr<AddonService> addons,
         std::shared_ptr<LibraryService> library,
         std::shared_ptr<WatchStateService> watchState,
-        std::shared_ptr<DevicePreferencesStore> preferences)
+        std::shared_ptr<DevicePreferencesStore> preferences,
+        std::shared_ptr<ContinueArtworkService> artwork)
         : m_apiClient(std::move(apiClient)),
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_watchState(std::move(watchState)),
-          m_preferences(std::move(preferences))
+          m_preferences(std::move(preferences)),
+          m_artwork(std::move(artwork))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences)
+        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences || !m_artwork)
         {
             throw std::invalid_argument{ "CatalogService requires all dependencies." };
         }
@@ -326,6 +329,7 @@ namespace HaloDesktop::Services
             m_shelves = shelves;
             m_continue = continued;
             ++m_snapshotVersion;
+            BeginContinueArtworkFill();
             m_refreshState.CompleteRefresh(*ticket, true);
         }
         catch (...)
@@ -429,6 +433,7 @@ namespace HaloDesktop::Services
         m_shelves = shelves;
         m_continue = continued;
         ++m_snapshotVersion;
+        BeginContinueArtworkFill();
     }
 
     std::vector<winrt::HaloDesktop::MediaSummary> CatalogService::BuildLibraryItems() const
@@ -478,6 +483,36 @@ namespace HaloDesktop::Services
     void CatalogService::BuildContinue()
     {
         m_continue = winrt::single_threaded_vector(BuildContinueItems()).GetView();
+        BeginContinueArtworkFill();
+    }
+
+    void CatalogService::BeginContinueArtworkFill()
+    {
+        if (!m_continue || m_continue.Size() == 0)
+        {
+            return;
+        }
+        std::vector<winrt::HaloDesktop::ContinueItem> items;
+        items.reserve(m_continue.Size());
+        for (auto const& item : m_continue)
+        {
+            items.push_back(item);
+        }
+        auto const generation = m_artwork->BeginGeneration();
+        // Not awaited: the snapshot above is already committed, and every card that
+        // earns a still updates itself. The stamp retires this fill as soon as a
+        // newer snapshot starts one, and the continuation exists only so a failed
+        // lookup cannot surface as an unobserved task exception.
+        m_artwork->FillAsync(std::move(items), generation).then([](concurrency::task<void> completed)
+        {
+            try
+            {
+                completed.get();
+            }
+            catch (...)
+            {
+            }
+        });
     }
 
     std::vector<winrt::HaloDesktop::ContinueItem> CatalogService::BuildContinueItems() const
@@ -587,5 +622,6 @@ namespace HaloDesktop::Services
         m_libraryItems = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>().GetView();
         m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
         ++m_snapshotVersion;
+        m_artwork->OnAccountChanged();
     }
 }

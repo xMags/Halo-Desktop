@@ -12,6 +12,7 @@ namespace HaloDesktop::Api { class ApiClient; }
 namespace HaloDesktop::Services
 {
     class AddonService;
+    class ContinueArtworkService;
     class DevicePreferencesStore;
     class LibraryService;
     class WatchStateService;
@@ -26,7 +27,8 @@ namespace HaloDesktop::Services
             std::shared_ptr<AddonService> addons,
             std::shared_ptr<LibraryService> library,
             std::shared_ptr<WatchStateService> watchState,
-            std::shared_ptr<DevicePreferencesStore> preferences);
+            std::shared_ptr<DevicePreferencesStore> preferences,
+            std::shared_ptr<ContinueArtworkService> artwork);
 
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
@@ -60,6 +62,9 @@ namespace HaloDesktop::Services
             winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> const& libraryItems) const;
         [[nodiscard]] std::vector<winrt::HaloDesktop::ContinueItem> BuildContinueItems() const;
         void BuildContinue();
+        // Detached on purpose: the shelf is committed and on screen, and each card
+        // takes its own still as that item's meta returns.
+        void BeginContinueArtworkFill();
         void LoadRecentTerms();
         void SaveRecentTerms();
 
@@ -68,6 +73,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<WatchStateService> m_watchState;
         std::shared_ptr<DevicePreferencesStore> m_preferences;
+        std::shared_ptr<ContinueArtworkService> m_artwork;
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };

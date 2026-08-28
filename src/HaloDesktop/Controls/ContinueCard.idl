@@ -6,7 +6,7 @@ namespace HaloDesktop
         ContinueCard();
         String Title;
         String Meta;
-        String Poster;
+        String Art;
         String EpisodeTag;
         String TimeLeft;
         Double Progress;

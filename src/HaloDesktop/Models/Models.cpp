@@ -372,10 +372,31 @@ namespace winrt::HaloDesktop::implementation
     hstring ContinueItem::VideoId() const { return m_videoId; }
     hstring ContinueItem::ItemId() const { return m_itemId; }
     hstring ContinueItem::Poster() const { return m_poster; }
+    hstring ContinueItem::Art() const { return m_still.empty() ? m_poster : m_still; }
     hstring ContinueItem::Sub() const { return m_sub; }
     hstring ContinueItem::Tag() const { return m_tag; }
     hstring ContinueItem::TimeLeft() const { return m_timeLeft; }
     double ContinueItem::Progress() const noexcept { return m_progress; }
+
+    winrt::event_token ContinueItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
+    {
+        return m_propertyChanged.add(handler);
+    }
+
+    void ContinueItem::PropertyChanged(winrt::event_token const& token) noexcept
+    {
+        m_propertyChanged.remove(token);
+    }
+
+    void ContinueItem::SetStill(hstring value)
+    {
+        if (m_still == value)
+        {
+            return;
+        }
+        m_still = std::move(value);
+        m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"Art" });
+    }
 
     SearchGroup::SearchGroup(
         hstring title,
