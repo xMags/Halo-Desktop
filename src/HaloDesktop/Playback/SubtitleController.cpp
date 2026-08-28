@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Playback/SubtitleController.h"
+#include "Playback/ScopedReentrancyGuard.h"
 
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
@@ -389,6 +390,12 @@ namespace HaloDesktop::Playback
 
     void SubtitleController::OnEngineChanged()
     {
+        ScopedReentrancyGuard const guard{m_handlingEngineChange};
+        if (!guard)
+        {
+            return;
+        }
+
         auto const state=m_engine->State();
         if(!m_request||state.FileSerial==0)return;
         if(state.FileSerial!=m_fileSerial)

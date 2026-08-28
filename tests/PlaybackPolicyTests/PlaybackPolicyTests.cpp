@@ -1,6 +1,7 @@
 #include "Api/OpenSubtitlesHashPolicy.h"
 #include "Api/ResponseSizePolicy.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Playback/ScopedReentrancyGuard.h"
 #include "Playback/TemporaryFileCollection.h"
 #include "Security/ProtectedHttpHeaders.h"
 #include "Shell/WindowPresentationPolicy.h"
@@ -21,6 +22,28 @@ namespace
     void Require(bool condition,char const* message)
     {
         if(!condition)throw std::runtime_error(message);
+    }
+
+    void TestScopedReentrancyGuard()
+    {
+        bool active{};
+        {
+            HaloDesktop::Playback::ScopedReentrancyGuard const outer{active};
+            Require(static_cast<bool>(outer)&&active,"the outer callback did not acquire its guard");
+            HaloDesktop::Playback::ScopedReentrancyGuard const nested{active};
+            Require(!static_cast<bool>(nested)&&active,"a nested callback bypassed its guard");
+        }
+        Require(!active,"the outer callback did not release its guard");
+
+        try
+        {
+            HaloDesktop::Playback::ScopedReentrancyGuard const guard{active};
+            throw std::runtime_error{"test unwind"};
+        }
+        catch(std::runtime_error const&)
+        {
+        }
+        Require(!active,"exception unwinding left the callback guard active");
     }
 
     void RequireInvalid(std::function<void()> const& action,char const* message)
@@ -343,6 +366,7 @@ int main()
 {
     try
     {
+        TestScopedReentrancyGuard();
         TestLanguages();
         TestResume();
         TestHeaders();

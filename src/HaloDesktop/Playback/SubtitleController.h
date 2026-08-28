@@ -86,7 +86,7 @@ namespace HaloDesktop::Playback
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};std::unordered_map<std::wstring,NativeChoice>m_choices;std::vector<AddonSubtitleDisplay>m_display;
         std::optional<std::filesystem::path> m_localSubtitlePath;
         TemporaryFileCollection m_temporaryFiles;
-        std::function<void()>m_changed,m_error;PlaybackChangedToken m_engineToken{};std::uint64_t m_fileSerial{},m_appliedSerial{},m_generation{},m_selectionAttempt{},m_pendingSelectionAttempt{},m_preferenceRevision{},m_appliedPreferenceRevision{},m_initialSubtitleSelectionSerial{},m_autoSubtitleSelectionSerial{};bool m_discoveryComplete{},m_pendingSelectionDeliberate{};
+        std::function<void()>m_changed,m_error;PlaybackChangedToken m_engineToken{};std::uint64_t m_fileSerial{},m_appliedSerial{},m_generation{},m_selectionAttempt{},m_pendingSelectionAttempt{},m_preferenceRevision{},m_appliedPreferenceRevision{},m_initialSubtitleSelectionSerial{},m_autoSubtitleSelectionSerial{};bool m_discoveryComplete{},m_pendingSelectionDeliberate{},m_handlingEngineChange{};
     };
 
     [[nodiscard]] winrt::hstring SubtitleLanguageLabel(winrt::hstring code);
