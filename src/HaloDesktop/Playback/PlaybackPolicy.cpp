@@ -45,6 +45,25 @@ namespace
         output += value;
     }
 
+    struct VideoQualityTier final
+    {
+        std::int64_t MinimumPixels;
+        wchar_t const* Token;
+        wchar_t const* Detail;
+    };
+
+    // Frame area rather than either dimension on its own. Scope framing keeps a
+    // master's width while losing a third of its height, portrait video swaps the
+    // two, and an ultrawide panel's width overstates its tier; area places all
+    // three where a viewer would. The floors sit between the neighbouring formats
+    // rather than on them, so a slightly cropped master keeps its tier.
+    constexpr VideoQualityTier VideoQualityTiers[]{
+        { 5'500'000, L"4K", L"ULTRA HD" },
+        { 3'000'000, L"1440P", L"QHD" },
+        { 1'400'000, L"1080P", L"FULL HD" },
+        { 600'000, L"720P", L"HD" },
+    };
+
     void AppendEscapedListValue(std::wstring& output, std::wstring const& value)
     {
         for (auto const character : value)
@@ -143,6 +162,42 @@ namespace HaloDesktop::Playback
             result += L" \x00B7 " + found->Codec;
         }
         return result;
+    }
+
+    VideoQualityBadge ClassifyVideoQuality(VideoFormat const& format)
+    {
+        if (format.Width <= 0 || format.Height <= 0)
+        {
+            return {};
+        }
+
+        auto const pixels = static_cast<std::int64_t>(format.Width) * static_cast<std::int64_t>(format.Height);
+        VideoQualityBadge badge{ L"SD", {} };
+        for (auto const& tier : VideoQualityTiers)
+        {
+            if (pixels >= tier.MinimumPixels)
+            {
+                badge = { tier.Token, tier.Detail };
+                break;
+            }
+        }
+        // Dynamic range replaces the resolution qualifier rather than joining it: it
+        // is the rarer fact, and the tier token already carries the resolution.
+        switch (format.DynamicRange)
+        {
+        case VideoDynamicRange::Hdr:
+            badge.Detail = L"HDR";
+            break;
+        case VideoDynamicRange::Hlg:
+            badge.Detail = L"HLG";
+            break;
+        case VideoDynamicRange::DolbyVision:
+            badge.Detail = L"DOLBY VISION";
+            break;
+        case VideoDynamicRange::Standard:
+            break;
+        }
+        return badge;
     }
 
     std::wstring EncodeExternalSubtitleTrackTitle(std::wstring const&identity,std::wstring const&displayTitle)

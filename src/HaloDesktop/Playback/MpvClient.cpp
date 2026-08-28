@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cwctype>
+#include <limits>
 #include <stdexcept>
 #include <string_view>
 #include <utility>
@@ -77,6 +78,54 @@ namespace
     {
         auto const value = FindMapValue(map, key);
         return value && value->format == MPV_FORMAT_FLAG && value->u.flag != 0;
+    }
+
+    std::int32_t ClampVideoDimension(std::optional<std::int64_t> value) noexcept
+    {
+        if (!value || *value <= 0)
+        {
+            return 0;
+        }
+        return static_cast<std::int32_t>(
+            (std::min)(*value, static_cast<std::int64_t>((std::numeric_limits<std::int32_t>::max)())));
+    }
+
+    HaloDesktop::Playback::VideoFormat ReadVideoFormat(mpv_node const& node)
+    {
+        HaloDesktop::Playback::VideoFormat format;
+        if (node.format != MPV_FORMAT_NODE_MAP)
+        {
+            return format;
+        }
+
+        // dw and dh are the display size after aspect correction; w and h are what
+        // the decoder produced, which is narrower for anamorphic content. Fall back
+        // to the decoded size only when the corrected size is absent.
+        format.Width = ClampVideoDimension(ReadInteger(node, "dw"));
+        format.Height = ClampVideoDimension(ReadInteger(node, "dh"));
+        if (format.Width == 0 || format.Height == 0)
+        {
+            format.Width = ClampVideoDimension(ReadInteger(node, "w"));
+            format.Height = ClampVideoDimension(ReadInteger(node, "h"));
+        }
+
+        // Dolby Vision outranks the transfer function: its base layer is usually
+        // PQ, so testing gamma first would report every DV file as plain HDR.
+        if (ReadInteger(node, "dolby-vision-profile"))
+        {
+            format.DynamicRange = HaloDesktop::Playback::VideoDynamicRange::DolbyVision;
+            return format;
+        }
+        auto const gamma = ReadString(node, "gamma");
+        if (gamma == L"pq")
+        {
+            format.DynamicRange = HaloDesktop::Playback::VideoDynamicRange::Hdr;
+        }
+        else if (gamma == L"hlg")
+        {
+            format.DynamicRange = HaloDesktop::Playback::VideoDynamicRange::Hlg;
+        }
+        return format;
     }
 
     std::wstring Uppercase(std::wstring value)
@@ -189,6 +238,10 @@ namespace
         else if (name == "track-list" && property->format == MPV_FORMAT_NODE)
         {
             update.Tracks = ReadTracks(*static_cast<mpv_node const*>(property->data));
+        }
+        else if (name == "video-params" && property->format == MPV_FORMAT_NODE)
+        {
+            update.Video = ReadVideoFormat(*static_cast<mpv_node const*>(property->data));
         }
         else
         {
@@ -307,6 +360,7 @@ namespace HaloDesktop::Playback
             CheckMpv("observe volume", mpv_observe_property(handle, 0, "volume", MPV_FORMAT_DOUBLE));
             CheckMpv("observe speed", mpv_observe_property(handle, 0, "speed", MPV_FORMAT_DOUBLE));
             CheckMpv("observe track-list", mpv_observe_property(handle, 0, "track-list", MPV_FORMAT_NODE));
+            CheckMpv("observe video-params", mpv_observe_property(handle, 0, "video-params", MPV_FORMAT_NODE));
             CheckMpv("observe eof-reached", mpv_observe_property(handle, 0, "eof-reached", MPV_FORMAT_FLAG));
             CheckMpv("observe paused-for-cache", mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG));
             return handle;

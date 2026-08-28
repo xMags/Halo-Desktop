@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Playback/SubtitleController.h"
 #include "PlaybackTrackViewModel.g.h"
 #include "AddonSubtitleViewModel.g.h"
@@ -122,6 +123,11 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness TransportPadding() const noexcept;
         [[nodiscard]] double TitleFontSize() const noexcept;
+        [[nodiscard]] winrt::hstring QualityTierText() const;
+        [[nodiscard]] winrt::hstring QualityDetailText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityBadgeVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityDetailVisibility() const noexcept;
+        [[nodiscard]] double QualityBadgeFontSize() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AddonSubtitles()const;
@@ -231,6 +237,9 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> m_windowPresentation;
         ::HaloDesktop::Playback::PlaybackChangedToken m_engineToken{};
         ::HaloDesktop::Playback::PlaybackState m_state;
+        // Classified once per format change rather than per notification: the engine
+        // reports several times a second and the format holds for a whole file.
+        ::HaloDesktop::Playback::VideoQualityBadge m_qualityBadge;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_hideTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_upNextTimer{ nullptr };
         // One-shot, reused for both edges of the buffering indicator: it delays the

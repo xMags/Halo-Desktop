@@ -30,6 +30,7 @@ namespace HaloDesktop::Playback
         std::optional<PlaybackEndReason> EndReason;
         // True while libmpv is between a seek request and the restart that completes it.
         std::optional<bool> Seeking;
+        std::optional<VideoFormat> Video;
         std::optional<std::vector<TrackInfo>> Tracks;
     };
 

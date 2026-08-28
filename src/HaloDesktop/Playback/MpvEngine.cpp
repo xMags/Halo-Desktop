@@ -105,6 +105,7 @@ namespace HaloDesktop::Playback
         m_pausedForCache = false;
         m_state.TracksReady = false;
         m_state.Tracks.clear();
+        m_state.Video.reset();
         m_audioSessionSerial = 0;
     }
 
@@ -136,6 +137,10 @@ namespace HaloDesktop::Playback
         m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
+        // libmpv clears video-params by reporting no value at all, and an empty
+        // property change carries nothing to translate, so the previous file's
+        // format has to be dropped here or it would describe the next one.
+        m_state.Video.reset();
         if (m_client)
         {
             m_client->Open(m_source);
@@ -420,6 +425,10 @@ namespace HaloDesktop::Playback
         {
             m_state.Paused = true;
         }
+        if (update.Video)
+        {
+            m_state.Video = *update.Video;
+        }
         if (update.Tracks)
         {
             m_state.Tracks = std::move(*update.Tracks);
@@ -448,6 +457,8 @@ namespace HaloDesktop::Playback
         m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
+        // The format survives on purpose: a replay reopens the same file, so
+        // clearing it would blink the quality badge off and straight back on.
         if (m_client)
         {
             m_client->Open(m_source);

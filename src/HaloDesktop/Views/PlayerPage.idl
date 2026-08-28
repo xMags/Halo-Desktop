@@ -74,6 +74,11 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
         Microsoft.UI.Xaml.Thickness TransportPadding { get; };
         Double TitleFontSize { get; };
+        String QualityTierText { get; };
+        String QualityDetailText { get; };
+        Microsoft.UI.Xaml.Visibility QualityBadgeVisibility { get; };
+        Microsoft.UI.Xaml.Visibility QualityDetailVisibility { get; };
+        Double QualityBadgeFontSize { get; };
         Object AudioTracks { get; };
         Object SubtitleTracks { get; };
         Object AddonSubtitles { get; };

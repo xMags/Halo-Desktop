@@ -47,6 +47,26 @@ namespace HaloDesktop::Playback
         bool operator==(TrackInfo const&) const = default;
     };
 
+    enum class VideoDynamicRange
+    {
+        Standard,
+        Hdr,
+        Hlg,
+        DolbyVision,
+    };
+
+    // Geometry and transfer characteristics of the running video. Width and height
+    // are the display size after aspect correction, so anamorphic content is
+    // described by what the viewer sees rather than by how it was stored.
+    struct VideoFormat final
+    {
+        std::int32_t Width{};
+        std::int32_t Height{};
+        VideoDynamicRange DynamicRange{ VideoDynamicRange::Standard };
+
+        bool operator==(VideoFormat const&) const = default;
+    };
+
     struct PlaybackState final
     {
         double PositionSeconds{};
@@ -69,6 +89,9 @@ namespace HaloDesktop::Playback
         std::uint64_t AudioSelectionSerial{};
         std::uint64_t SubtitleSelectionSerial{};
         PlaybackEndReason EndReason{ PlaybackEndReason::None };
+        // Empty until the engine reports the first decoded video frame of the open
+        // file, and for files that carry no video at all.
+        std::optional<VideoFormat> Video;
         std::vector<TrackInfo> Tracks;
     };
 

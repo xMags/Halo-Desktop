@@ -427,6 +427,28 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_windowPresentation->IsFullscreen() ? 19.0 : 15.0;
     }
+    winrt::hstring PlayerViewModel::QualityTierText() const
+    {
+        return winrt::hstring(m_qualityBadge.Tier);
+    }
+    winrt::hstring PlayerViewModel::QualityDetailText() const
+    {
+        return winrt::hstring(m_qualityBadge.Detail);
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::QualityBadgeVisibility() const noexcept
+    {
+        // No tier means no video worth describing: an audio-only file, or a file
+        // whose first frame has not been decoded yet.
+        return m_qualityBadge.Tier.empty() ? Collapsed : Visible;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::QualityDetailVisibility() const noexcept
+    {
+        return m_qualityBadge.Detail.empty() ? Collapsed : Visible;
+    }
+    double PlayerViewModel::QualityBadgeFontSize() const noexcept
+    {
+        return m_windowPresentation->IsFullscreen() ? 12.5 : 10.5;
+    }
     winrt::Windows::Foundation::IInspectable PlayerViewModel::AudioTracks() const
     {
         return m_audioTracks;
@@ -889,10 +911,16 @@ namespace winrt::HaloDesktop::implementation
         auto const wasPaused = m_state.Paused;
         auto nextState = m_engine->State();
         auto const tracksChanged = nextState.Tracks != m_state.Tracks;
+        auto const videoChanged = nextState.Video != m_state.Video;
         m_state = std::move(nextState);
         if (tracksChanged)
         {
             RebuildTracks();
+        }
+        if (videoChanged)
+        {
+            m_qualityBadge = m_state.Video ? ::HaloDesktop::Playback::ClassifyVideoQuality(*m_state.Video)
+                                           : ::HaloDesktop::Playback::VideoQualityBadge{};
         }
         RaisePlaybackState();
         ApplyBufferingState();
@@ -915,7 +943,9 @@ namespace winrt::HaloDesktop::implementation
                                      L"IsSpeedOneHalf", L"IsSpeedOneThreeQuarter", L"IsSpeedDouble",
                                      L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
                                      L"IsPaused", L"PausedVisibility", L"PlayingVisibility",
-                                     L"BufferingLabelVisibility", L"BufferingRingSize" })
+                                     L"BufferingLabelVisibility", L"BufferingRingSize",
+                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility",
+                                     L"QualityDetailVisibility" })
         {
             Raise(property);
         }
@@ -996,7 +1026,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property : { L"IsFullscreen", L"EnterFullscreenIconVisibility",
                                      L"ExitFullscreenIconVisibility", L"PlayButtonSize", L"TransportButtonSize",
                                      L"HeaderPadding", L"TransportPadding", L"TitleFontSize",
-                                     L"BufferingRingSize" })
+                                     L"BufferingRingSize", L"QualityBadgeFontSize" })
         {
             Raise(property);
         }

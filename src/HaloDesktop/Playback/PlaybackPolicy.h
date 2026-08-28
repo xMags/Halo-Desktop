@@ -34,6 +34,17 @@ namespace HaloDesktop::Playback
         double DurationSeconds{};
     };
 
+    // Two halves of the player's quality badge: a short resolution token and the
+    // qualifier that follows it. An empty Tier means the video is not described
+    // well enough to badge, and an empty Detail means the tier stands alone.
+    struct VideoQualityBadge final
+    {
+        std::wstring Tier;
+        std::wstring Detail;
+
+        bool operator==(VideoQualityBadge const&) const = default;
+    };
+
     [[nodiscard]] std::wstring NormalizeLanguage(std::wstring value);
     [[nodiscard]] std::wstring LanguageDisplayName(std::wstring const& code);
     [[nodiscard]] bool LanguageMatches(std::wstring const& left, std::wstring const& right);
@@ -43,6 +54,10 @@ namespace HaloDesktop::Playback
         std::wstring const& language,
         bool embeddedOnly);
     [[nodiscard]] std::wstring TrackSummary(std::vector<TrackInfo> const& tracks, TrackType type);
+    // Classifies on width first with a height fallback, because scope framing keeps
+    // the width of its tier while losing most of the height: a 2.39:1 feature
+    // mastered at 4K is 3840x1600, and a height rule would call it 1080p.
+    [[nodiscard]] VideoQualityBadge ClassifyVideoQuality(VideoFormat const& format);
     [[nodiscard]] std::wstring EncodeExternalSubtitleTrackTitle(
         std::wstring const& identity,
         std::wstring const& displayTitle);
