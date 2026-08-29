@@ -10,6 +10,11 @@
 
 namespace
 {
+    // JSON numbers are doubles. 2^64 is the first value outside uint64_t, so it
+    // is an exclusive ceiling. Comparing against uint64_t::max converted to a
+    // double is unsafe because that conversion rounds up to this same value.
+    constexpr double Uint64ExclusiveUpperBound = 18446744073709551616.0;
+
     winrt::Windows::Data::Json::JsonObject RequireObject(
         winrt::Windows::Data::Json::IJsonValue const& value,
         wchar_t const* description)
@@ -234,10 +239,15 @@ namespace
         record.VideoHash = OptionalDisplayString(hints, L"videoHash", 64);
         if (hints.HasKey(L"videoSize"))
         {
-            auto const value = hints.GetNamedNumber(L"videoSize");
-            if (std::isfinite(value) && value > 0)
+            auto const field = hints.GetNamedValue(L"videoSize");
+            if (field.ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
             {
-                record.VideoSize = static_cast<std::uint64_t>(value);
+                auto const value = field.GetNumber();
+                if (std::isfinite(value) && value > 0 && std::floor(value) == value
+                    && value < Uint64ExclusiveUpperBound)
+                {
+                    record.VideoSize = static_cast<std::uint64_t>(value);
+                }
             }
         }
         if (hints.HasKey(L"proxyHeaders"))

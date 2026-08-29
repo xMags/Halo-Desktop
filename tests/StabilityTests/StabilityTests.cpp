@@ -2,6 +2,7 @@
 #include <ws2tcpip.h>
 
 #include "Services/CatalogRefreshPolicy.h"
+#include "Api/Dto.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/Auth/LoopbackListener.h"
@@ -45,6 +46,31 @@ namespace
             HaloDesktop::Services::DecideCatalogCommit(3, 1) ==
                 HaloDesktop::Services::CatalogCommitDecision::Commit,
             "a partial catalog success was rejected");
+    }
+
+    void TestStreamVideoSizeValidation()
+    {
+        auto parseSize = [](std::wstring_view value)
+        {
+            auto const json = std::wstring{
+                LR"({"results":[{"addon":{"id":"addon","name":"Addon"},"streams":[{"url":"https://example.test/video","behaviorHints":{"videoSize":)" }
+                + std::wstring{ value }
+                + LR"(}}]}],"errors":[]})";
+            auto const payload = HaloDesktop::Api::Mappers::ParseStreams(
+                winrt::Windows::Data::Json::JsonValue::Parse(json));
+            Require(payload.Results.size() == 1 && payload.Results.front().Streams.size() == 1,
+                "an invalid optional stream size discarded an otherwise playable source");
+            return payload.Results.front().Streams.front().VideoSize;
+        };
+
+        Require(parseSize(L"123456") == 123456,
+            "a valid stream size was not retained");
+        Require(!parseSize(L"1.5"),
+            "a fractional stream size was truncated into an integer");
+        Require(!parseSize(L"1e300"),
+            "an out-of-range stream size reached an integer conversion");
+        Require(!parseSize(L"18446744073709551616"),
+            "2^64 was accepted as a uint64 stream size");
     }
 
     void TestCatalogDirtySingleFlight()
@@ -346,6 +372,7 @@ int main()
     try
     {
         TestCatalogCommitDecisions();
+        TestStreamVideoSizeValidation();
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();
