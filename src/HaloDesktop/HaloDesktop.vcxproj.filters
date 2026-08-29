@@ -84,6 +84,7 @@
     <ClCompile Include="Api\OpenSubtitlesHash.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\ResponseSizePolicy.cpp"><Filter>Api</Filter></ClCompile>
+    <ClCompile Include="Api\JsonNumberPolicy.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="Api\Mappers.cpp"><Filter>Api</Filter></ClCompile>
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="App.xaml.cpp" />
@@ -182,6 +183,7 @@
     <ClInclude Include="Api\OpenSubtitlesHash.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\OpenSubtitlesHashPolicy.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="Api\ResponseSizePolicy.h"><Filter>Api</Filter></ClInclude>
+    <ClInclude Include="Api\JsonNumberPolicy.h"><Filter>Api</Filter></ClInclude>
     <ClInclude Include="pch.h" />
     <ClInclude Include="App.xaml.h" />
     <ClInclude Include="Controls\ArtworkImage.xaml.h"><Filter>Controls</Filter></ClInclude>

@@ -6,6 +6,7 @@
 #include <cmath>
 #include <cwctype>
 #include <iomanip>
+#include <limits>
 #include <regex>
 #include <set>
 #include <sstream>
@@ -104,7 +105,15 @@ namespace
             auto const value = std::stold(number);
             if (!std::isfinite(value) || value <= 0) return std::nullopt;
             auto const multiplier = std::towupper(match[2].str()[0]) == L'G' ? 1024.0L * 1024.0L * 1024.0L : 1024.0L * 1024.0L;
-            return static_cast<std::uint64_t>(value * multiplier);
+            auto const bytes = value * multiplier;
+            // long double is double precision on MSVC, so compare against an
+            // exclusive 2^64 ceiling instead of a rounded uint64_t maximum.
+            constexpr long double Uint64ExclusiveUpperBound = 18446744073709551616.0L;
+            if (!std::isfinite(bytes) || bytes <= 0 || bytes >= Uint64ExclusiveUpperBound)
+            {
+                return std::nullopt;
+            }
+            return static_cast<std::uint64_t>(bytes);
         }
         catch (...)
         {

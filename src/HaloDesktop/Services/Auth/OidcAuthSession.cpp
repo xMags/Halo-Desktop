@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Api/JsonNumberPolicy.h"
 #include "Services/Auth/OidcAuthSession.h"
 
 #include "Api/BoundedHttpContent.h"
@@ -112,12 +113,14 @@ namespace
         current.ExpiresAt = 0;
         if (object.HasKey(L"expires_in"))
         {
-            auto const seconds = object.GetNamedNumber(L"expires_in");
-            if (!std::isfinite(seconds) || seconds <= 0)
+            auto const expiry = ::HaloDesktop::Api::CheckedTokenExpiry(
+                object.GetNamedNumber(L"expires_in"),
+                NowMilliseconds());
+            if (!expiry)
             {
                 throw std::invalid_argument{ "The identity provider returned an invalid token lifetime." };
             }
-            current.ExpiresAt = NowMilliseconds() + static_cast<std::int64_t>(seconds * 1000.0);
+            current.ExpiresAt = *expiry;
         }
         return current;
     }

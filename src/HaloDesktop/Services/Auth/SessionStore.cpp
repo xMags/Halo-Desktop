@@ -1,9 +1,9 @@
 #include "pch.h"
+#include "Api/JsonNumberPolicy.h"
 #include "Services/Auth/SessionStore.h"
 
 #include "Security/Dpapi.h"
 
-#include <cmath>
 #include <limits>
 #include <stdexcept>
 #include <string>
@@ -55,30 +55,24 @@ namespace
         winrt::Windows::Data::Json::JsonObject const& object,
         wchar_t const* name)
     {
-        auto const number = object.GetNamedNumber(name);
-        if (!std::isfinite(number)
-            || number <= 0
-            || number > static_cast<double>((std::numeric_limits<std::int64_t>::max)())
-            || std::floor(number) != number)
+        auto const number = ::HaloDesktop::Api::CheckedPositiveInt64(object.GetNamedNumber(name));
+        if (!number)
         {
             throw std::invalid_argument{ "The protected session contains an invalid expiry." };
         }
-        return static_cast<std::int64_t>(number);
+        return *number;
     }
 
     std::int64_t RequiredNonnegativeEpochMilliseconds(
         winrt::Windows::Data::Json::JsonObject const& object,
         wchar_t const* name)
     {
-        auto const number = object.GetNamedNumber(name);
-        if (!std::isfinite(number)
-            || number < 0
-            || number > static_cast<double>((std::numeric_limits<std::int64_t>::max)())
-            || std::floor(number) != number)
+        auto const number = ::HaloDesktop::Api::CheckedNonnegativeInt64(object.GetNamedNumber(name));
+        if (!number)
         {
             throw std::invalid_argument{ "The protected session contains an invalid expiry." };
         }
-        return static_cast<std::int64_t>(number);
+        return *number;
     }
 
     std::optional<::HaloDesktop::Services::Auth::StoredSession> ParseSession(std::string const& raw)

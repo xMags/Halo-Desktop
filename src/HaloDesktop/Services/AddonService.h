@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <ppltasks.h>
 
 namespace HaloDesktop::Api
 {
@@ -47,6 +48,7 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };
         std::vector<::HaloDesktop::Api::Dto::AddonRecord> m_records;
         std::optional<concurrency::task<void>> m_loadTask;
+        std::optional<concurrency::task<void>> m_mutationTail;
         bool m_canEditLists{};
         bool m_seedAttempted{};
         std::uint64_t m_accountVersion{};

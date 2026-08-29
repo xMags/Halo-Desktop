@@ -154,6 +154,7 @@
     <ClInclude Include="Api\BoundedHttpContent.h" />
     <ClInclude Include="Api\Dto.h" />
     <ClInclude Include="Api\HttpExecutor.h" />
+    <ClInclude Include="Api\JsonNumberPolicy.h" />
     <ClInclude Include="Api\OpenSubtitlesHash.h" />
     <ClInclude Include="Api\OpenSubtitlesHashPolicy.h" />
     <ClInclude Include="Api\ResponseSizePolicy.h" />
@@ -323,6 +324,7 @@
     <ClCompile Include="Api\ApiClient.cpp" />
     <ClCompile Include="Api\BoundedHttpContent.cpp" />
     <ClCompile Include="Api\HttpExecutor.cpp" />
+    <ClCompile Include="Api\JsonNumberPolicy.cpp" />
     <ClCompile Include="Api\OpenSubtitlesHash.cpp" />
     <ClCompile Include="Api\OpenSubtitlesHashPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>

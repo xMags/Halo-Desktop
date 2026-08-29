@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Api/Dto.h"
+#include "Api/JsonNumberPolicy.h"
 
 #include <algorithm>
 #include <cmath>
@@ -77,13 +78,12 @@ namespace
         winrt::Windows::Data::Json::JsonObject const& object,
         wchar_t const* key)
     {
-        auto const value = object.GetNamedNumber(key);
-        if (!std::isfinite(value) || value <= 0 || std::floor(value) != value
-            || value > static_cast<double>((std::numeric_limits<std::int64_t>::max)()))
+        auto const value = ::HaloDesktop::Api::CheckedPositiveInt64(object.GetNamedNumber(key));
+        if (!value)
         {
             throw std::invalid_argument{ "The server returned an invalid integer field." };
         }
-        return static_cast<std::int64_t>(value);
+        return *value;
     }
 
     std::vector<winrt::hstring> StringArray(
@@ -318,7 +318,7 @@ namespace
         }
         auto const position = object.GetNamedNumber(L"position");
         if (!std::isfinite(position) || position < 0 || std::floor(position) != position
-            || position > static_cast<double>((std::numeric_limits<std::int32_t>::max)()))
+            || position >= static_cast<double>(1ULL << 31))
         {
             throw std::invalid_argument{ "The addon position is invalid." };
         }
@@ -428,15 +428,15 @@ namespace HaloDesktop::Api::Mappers
     Dto::SettingsPayload ParseSettings(winrt::Windows::Data::Json::IJsonValue const& value)
     {
         auto const object = RequireObject(value, L"The settings response must be a JSON object.");
-        auto const updatedAt = object.GetNamedNumber(L"updatedAt");
-        if (!std::isfinite(updatedAt) || updatedAt < 0 || std::floor(updatedAt) != updatedAt
-            || updatedAt > static_cast<double>((std::numeric_limits<std::int64_t>::max)()))
+        auto const updatedAt = ::HaloDesktop::Api::CheckedNonnegativeInt64(
+            object.GetNamedNumber(L"updatedAt"));
+        if (!updatedAt)
         {
             throw std::invalid_argument{ "The settings response has an invalid timestamp." };
         }
         return Dto::SettingsPayload{
             .Value = object.GetNamedObject(L"value"),
-            .UpdatedAt = static_cast<std::int64_t>(updatedAt),
+            .UpdatedAt = *updatedAt,
         };
     }
 
@@ -473,8 +473,18 @@ namespace HaloDesktop::Api::Mappers
         {
             auto const object = RequireObject(item, L"A library row must be an object.");
             std::optional<std::int64_t> removedAt;
-            if (object.HasKey(L"removedAt") && object.GetNamedValue(L"removedAt").ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
-                removedAt = static_cast<std::int64_t>(object.GetNamedNumber(L"removedAt"));
+            if (object.HasKey(L"removedAt"))
+            {
+                auto const field = object.GetNamedValue(L"removedAt");
+                if (field.ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+                {
+                    removedAt = RequirePositiveInteger(object, L"removedAt");
+                }
+                else if (field.ValueType() != winrt::Windows::Data::Json::JsonValueType::Null)
+                {
+                    throw std::invalid_argument{ "The library row contains an invalid removal timestamp." };
+                }
+            }
             result.push_back({
                 DisplayString(object, L"id", 2048), DisplayString(object, L"type", 128), DisplayString(object, L"name", 512),
                 OptionalHttpUrl(object, L"poster"), RequirePositiveInteger(object, L"addedAt"), removedAt, RequirePositiveInteger(object, L"updatedAt") });
@@ -492,7 +502,15 @@ namespace HaloDesktop::Api::Mappers
             auto const object = RequireObject(item, L"A watch-state row must be an object.");
             auto const position = object.GetNamedNumber(L"positionSec");
             auto const duration = object.GetNamedNumber(L"durationSec");
-            if (!std::isfinite(position) || !std::isfinite(duration) || position < 0 || duration < 0) continue;
+            constexpr double MaximumWatchSeconds = static_cast<double>((std::numeric_limits<std::int32_t>::max)());
+            if (!std::isfinite(position) || !std::isfinite(duration)
+                || position < 0 || duration < 0
+                || position > duration
+                || position > MaximumWatchSeconds
+                || duration > MaximumWatchSeconds)
+            {
+                continue;
+            }
             result.push_back({
                 DisplayString(object, L"videoId", 2048), DisplayString(object, L"itemId", 2048), position, duration,
                 object.GetNamedBoolean(L"watched"), OptionalDisplayString(object, L"name", 512), OptionalHttpUrl(object, L"poster"),

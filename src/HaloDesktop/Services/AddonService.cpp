@@ -190,55 +190,121 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         auto const accountVersion = m_accountVersion;
-        auto const url = Trimmed(transportUrl);
-        if (!m_canEditLists)
+        auto const previousMutation = m_mutationTail;
+        concurrency::task_completion_event<void> mutationCompleted;
+        auto const mutationGate = concurrency::create_task(mutationCompleted);
+        m_mutationTail = mutationGate.then([](concurrency::task<void> completed)
         {
-            throw std::runtime_error{ "The addon list cannot be edited safely." };
-        }
-        winrt::Windows::Foundation::Uri uri{ url };
-        if (url.empty() || uri.Host().empty()
-            || (uri.SchemeName() != L"http" && uri.SchemeName() != L"https"))
+            try { completed.get(); } catch (...) {}
+        });
+        try
         {
-            throw std::invalid_argument{ "Enter a valid addon URL." };
-        }
-        for (auto const& record : m_records)
-        {
-            if (record.TransportUrl && *record.TransportUrl == url)
+            if (previousMutation)
             {
-                throw std::invalid_argument{ "That addon is already installed." };
+                auto pendingMutation = *previousMutation;
+                try { co_await pendingMutation; } catch (...) {}
             }
-        }
 
-        auto urls = TransportUrls(false);
-        urls.push_back(url);
-        co_await m_apiClient->PutAddonsAsync(std::move(urls), false);
-        co_await uiContext;
-        if (accountVersion != m_accountVersion) co_return;
-        m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync(m_accountVersion);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+
+            auto const url = Trimmed(transportUrl);
+            if (!m_canEditLists)
+            {
+                throw std::runtime_error{ "The addon list cannot be edited safely." };
+            }
+            winrt::Windows::Foundation::Uri uri{ url };
+            if (url.empty() || uri.Host().empty()
+                || (uri.SchemeName() != L"http" && uri.SchemeName() != L"https"))
+            {
+                throw std::invalid_argument{ "Enter a valid addon URL." };
+            }
+            for (auto const& record : m_records)
+            {
+                if (record.TransportUrl && *record.TransportUrl == url)
+                {
+                    throw std::invalid_argument{ "That addon is already installed." };
+                }
+            }
+
+            auto urls = TransportUrls(false);
+            urls.push_back(url);
+            co_await m_apiClient->PutAddonsAsync(std::move(urls), false);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            m_queryCache->Invalidate(AddonsCacheKey);
+            co_await LoadCoreAsync(m_accountVersion);
+            mutationCompleted.set();
+        }
+        catch (...)
+        {
+            mutationCompleted.set();
+            throw;
+        }
     }
 
     concurrency::task<void> AddonService::RemoveAsync(winrt::hstring addonId)
     {
         auto const uiContext = winrt::apartment_context{};
         auto const accountVersion = m_accountVersion;
-        auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
+        auto const previousMutation = m_mutationTail;
+        concurrency::task_completion_event<void> mutationCompleted;
+        auto const mutationGate = concurrency::create_task(mutationCompleted);
+        m_mutationTail = mutationGate.then([](concurrency::task<void> completed)
         {
-            return record.Id == addonId;
+            try { completed.get(); } catch (...) {}
         });
-        if (found == m_records.end() || !found->TransportUrl || !m_canEditLists
-            || (found->IsGlobal && !m_session->IsAdmin()))
+        try
         {
-            throw std::runtime_error{ "The addon cannot be removed safely." };
-        }
+            if (previousMutation)
+            {
+                auto pendingMutation = *previousMutation;
+                try { co_await pendingMutation; } catch (...) {}
+            }
 
-        auto urls = TransportUrls(found->IsGlobal);
-        std::erase(urls, *found->TransportUrl);
-        co_await m_apiClient->PutAddonsAsync(std::move(urls), found->IsGlobal);
-        co_await uiContext;
-        if (accountVersion != m_accountVersion) co_return;
-        m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync(m_accountVersion);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+
+            auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
+            {
+                return record.Id == addonId;
+            });
+            if (found == m_records.end() || !found->TransportUrl || !m_canEditLists
+                || (found->IsGlobal && !m_session->IsAdmin()))
+            {
+                throw std::runtime_error{ "The addon cannot be removed safely." };
+            }
+
+            auto urls = TransportUrls(found->IsGlobal);
+            std::erase(urls, *found->TransportUrl);
+            co_await m_apiClient->PutAddonsAsync(std::move(urls), found->IsGlobal);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            m_queryCache->Invalidate(AddonsCacheKey);
+            co_await LoadCoreAsync(m_accountVersion);
+            mutationCompleted.set();
+        }
+        catch (...)
+        {
+            mutationCompleted.set();
+            throw;
+        }
     }
 
     concurrency::task<void> AddonService::SetCatalogsVisibleAsync(
@@ -247,19 +313,52 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         auto const accountVersion = m_accountVersion;
-        auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
+        auto const previousMutation = m_mutationTail;
+        concurrency::task_completion_event<void> mutationCompleted;
+        auto const mutationGate = concurrency::create_task(mutationCompleted);
+        m_mutationTail = mutationGate.then([](concurrency::task<void> completed)
         {
-            return record.Id == addonId;
+            try { completed.get(); } catch (...) {}
         });
-        if (found == m_records.end() || (found->IsGlobal && !m_session->IsAdmin()))
+        try
         {
-            throw std::runtime_error{ "The addon cannot be changed." };
+            if (previousMutation)
+            {
+                auto pendingMutation = *previousMutation;
+                try { co_await pendingMutation; } catch (...) {}
+            }
+
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+
+            auto const found = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
+            {
+                return record.Id == addonId;
+            });
+            if (found == m_records.end() || (found->IsGlobal && !m_session->IsAdmin()))
+            {
+                throw std::runtime_error{ "The addon cannot be changed." };
+            }
+            co_await m_apiClient->PatchAddonAsync(found->Id, found->IsGlobal, !visible);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            m_queryCache->Invalidate(AddonsCacheKey);
+            co_await LoadCoreAsync(m_accountVersion);
+            mutationCompleted.set();
         }
-        co_await m_apiClient->PatchAddonAsync(found->Id, found->IsGlobal, !visible);
-        co_await uiContext;
-        if (accountVersion != m_accountVersion) co_return;
-        m_queryCache->Invalidate(AddonsCacheKey);
-        co_await LoadCoreAsync(m_accountVersion);
+        catch (...)
+        {
+            mutationCompleted.set();
+            throw;
+        }
     }
 
     void AddonService::Apply(::HaloDesktop::Api::Dto::AddonsPayload payload)
@@ -312,6 +411,7 @@ namespace HaloDesktop::Services
     {
         ++m_accountVersion;
         m_loadTask.reset();
+        m_mutationTail.reset();
         m_records.clear();
         m_items.Clear();
         m_canEditLists = false;

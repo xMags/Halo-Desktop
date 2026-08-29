@@ -1646,6 +1646,17 @@ namespace HaloDesktop::Services::Downloads
                 .Failure = DownloadFailureCode::StorageFull,
             };
         }
+        if (auto const free = DiskFree(record.RootPath))
+        {
+            auto const remaining = total > partial ? total - partial : 0;
+            if (!HasSufficientSpace(*free, remaining))
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::StorageFull,
+                };
+            }
+        }
         auto const disposition = partial == 0 ? CREATE_ALWAYS : OPEN_ALWAYS;
         wil::unique_hfile output{ CreateFileW(
             record.PartialPath().c_str(),
@@ -1688,6 +1699,17 @@ namespace HaloDesktop::Services::Downloads
             {
                 throw TransferError{ .Type = TransferError::Kind::Paused };
             }
+            if (auto const free = DiskFree(record.RootPath))
+            {
+                auto const remaining = total > written ? total - written : 0;
+                if (!HasSufficientSpace(*free, remaining))
+                {
+                    throw TransferError{
+                        .Type = TransferError::Kind::Permanent,
+                        .Failure = DownloadFailureCode::StorageFull,
+                    };
+                }
+            }
             DWORD read{};
             if (!WinHttpReadData(
                 response.Request.get(),
@@ -1703,6 +1725,17 @@ namespace HaloDesktop::Services::Downloads
             if (read == 0)
             {
                 break;
+            }
+            // Chunked responses do not reveal their final size. Recheck after
+            // receiving this chunk, before committing it to disk, so an
+            // unknown-size transfer cannot consume the 64 MiB safety reserve.
+            if (auto const free = DiskFree(record.RootPath);
+                free && !HasSufficientSpace(*free, read))
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::StorageFull,
+                };
             }
             if (stopToken.stop_requested())
             {
@@ -2163,6 +2196,11 @@ namespace HaloDesktop::Services::Downloads
             || !HasSufficientSpace(64ull * 1024ull * 1024ull + 100, 100))
         {
             throw std::runtime_error{ "The download free-space reserve is invalid." };
+        }
+        if (HasSufficientSpace(64ull * 1024ull * 1024ull - 1, 0)
+            || !HasSufficientSpace(64ull * 1024ull * 1024ull, 0))
+        {
+            throw std::runtime_error{ "Unknown-size downloads did not enforce the free-space reserve." };
         }
     }
 }

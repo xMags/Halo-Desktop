@@ -3,9 +3,11 @@
 
 #include "Services/CatalogRefreshPolicy.h"
 #include "Api/Dto.h"
+#include "Api/JsonNumberPolicy.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/Auth/LoopbackListener.h"
+#include "Services/StreamInfo.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
 #include "StorageTests.h"
@@ -16,6 +18,7 @@
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -71,6 +74,65 @@ namespace
             "an out-of-range stream size reached an integer conversion");
         Require(!parseSize(L"18446744073709551616"),
             "2^64 was accepted as a uint64 stream size");
+    }
+
+    void TestNumericBoundaryValidation()
+    {
+        using HaloDesktop::Api::CheckedNonnegativeInt64;
+        using HaloDesktop::Api::CheckedPositiveInt64;
+        using HaloDesktop::Api::CheckedTokenExpiry;
+
+        Require(CheckedPositiveInt64(9'223'372'036'854'774'784.0).has_value(),
+            "the largest safely representable positive int64 double was rejected");
+        Require(!CheckedPositiveInt64(9'223'372'036'854'775'808.0).has_value(),
+            "2^63 reached the positive int64 conversion");
+        Require(!CheckedNonnegativeInt64(9'223'372'036'854'775'808.0).has_value(),
+            "2^63 reached the nonnegative int64 conversion");
+        Require(CheckedTokenExpiry(60.0, 1'000).value_or(0) == 61'000,
+            "a valid token lifetime was rejected");
+        Require(!CheckedTokenExpiry(1.5, 1'000).has_value(),
+            "a fractional token lifetime was accepted");
+        Require(!CheckedTokenExpiry(9'223'372'036'854'775'808.0, 1'000).has_value(),
+            "an oversized token lifetime was accepted");
+        Require(!CheckedTokenExpiry(60.0, (std::numeric_limits<std::int64_t>::max)() - 59'999).has_value(),
+            "a token expiry addition overflow was accepted");
+
+        auto rejected = false;
+        try
+        {
+            static_cast<void>(HaloDesktop::Api::Mappers::ParseMe(
+                winrt::Windows::Data::Json::JsonValue::Parse(
+                    LR"({"id":"user","username":"name","isAdmin":false,"createdAt":9223372036854775808})")));
+        }
+        catch (...)
+        {
+            rejected = true;
+        }
+        Require(rejected, "an oversized account timestamp was accepted");
+
+        auto const oversizedWatch = HaloDesktop::Api::Mappers::ParseWatchState(
+            winrt::Windows::Data::Json::JsonValue::Parse(
+                LR"([{"videoId":"video","itemId":"movie:item","positionSec":1,"durationSec":9223372036854775808,"watched":false,"updatedAt":1}])"));
+        Require(oversizedWatch.empty(), "an oversized watch duration was accepted");
+
+        auto removalRejected = false;
+        try
+        {
+            static_cast<void>(HaloDesktop::Api::Mappers::ParseLibrary(
+                winrt::Windows::Data::Json::JsonValue::Parse(
+                    LR"([{"id":"movie:item","type":"movie","name":"Item","addedAt":1,"removedAt":9223372036854775808,"updatedAt":1}])")));
+        }
+        catch (...)
+        {
+            removalRejected = true;
+        }
+        Require(removalRejected, "an oversized library removal timestamp was accepted");
+
+        HaloDesktop::Api::Dto::StreamRecord stream;
+        stream.Url = L"https://example.test/video";
+        stream.Title = L"9999999999999999999 GB";
+        Require(!HaloDesktop::Services::ParseStreamInfo(stream).SizeBytes,
+            "an out-of-range textual source size was converted to uint64");
     }
 
     void TestCatalogDirtySingleFlight()
@@ -373,6 +435,7 @@ int main()
     {
         TestCatalogCommitDecisions();
         TestStreamVideoSizeValidation();
+        TestNumericBoundaryValidation();
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();

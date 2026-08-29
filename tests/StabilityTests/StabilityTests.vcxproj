@@ -61,6 +61,12 @@
     <ClCompile Include="..\..\src\HaloDesktop\Api\Mappers.cpp">
       <Link>Mappers.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\JsonNumberPolicy.cpp">
+      <Link>JsonNumberPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\StreamInfo.cpp">
+      <Link>StreamInfo.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LoopbackListener.cpp">
       <Link>LoopbackListener.cpp</Link>
     </ClCompile>

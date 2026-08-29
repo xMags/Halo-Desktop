@@ -3,6 +3,7 @@
 
 #include "Api/BoundedHttpContent.h"
 #include "Api/HttpExecutor.h"
+#include "Api/JsonNumberPolicy.h"
 #include "Services/Auth/LoopbackListener.h"
 
 #include <array>
@@ -266,15 +267,15 @@ namespace
         std::int64_t expiresAt{};
         if (object.HasKey(L"expires_in"))
         {
-            auto const seconds = object.GetNamedNumber(L"expires_in");
-            if (!std::isfinite(seconds) || seconds <= 0
-                || seconds > static_cast<double>((std::numeric_limits<std::int32_t>::max)()))
+            auto const computedExpiry = ::HaloDesktop::Api::CheckedTokenExpiry(
+                object.GetNamedNumber(L"expires_in"),
+                std::chrono::duration_cast<std::chrono::milliseconds>(
+                    std::chrono::system_clock::now().time_since_epoch()).count());
+            if (!computedExpiry)
             {
                 throw std::invalid_argument{ "The identity provider returned an invalid token lifetime." };
             }
-            expiresAt = std::chrono::duration_cast<std::chrono::milliseconds>(
-                std::chrono::system_clock::now().time_since_epoch()).count()
-                + static_cast<std::int64_t>(seconds * 1000.0);
+            expiresAt = *computedExpiry;
         }
         auto optionalString = [&object](wchar_t const* name) -> std::optional<winrt::hstring>
         {
