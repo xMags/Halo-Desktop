@@ -306,7 +306,7 @@
               <ToggleButton IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SPEED" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.SpeedText, Mode=OneWay}" /></StackPanel></ToggleButton>
               <ToggleButton IsChecked="{x:Bind ViewModel.UpNextOpen, Mode=OneWay}" Click="OnUpNextClick" Style="{StaticResource PlayerChipButtonStyle}" Visibility="{x:Bind ViewModel.UpNextAvailableVisibility, Mode=OneWay}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="UP NEXT" /><TextBlock MaxWidth="210" Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel></ToggleButton>
             </StackPanel>
-            <TextBlock Grid.Column="1" Padding="0,0,0,8" VerticalAlignment="Bottom" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="#70FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · ESC EXIT" />
+            <TextBlock Grid.Column="1" Padding="0,0,0,8" VerticalAlignment="Bottom" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="#70FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · Z FILL · ESC EXIT" />
           </Grid>
           <Grid Height="32" Margin="0,4,0,0">
             <Border Height="6" Margin="8,0" VerticalAlignment="Center" Background="#29FFFFFF" CornerRadius="3" IsHitTestVisible="False" />
@@ -378,7 +378,7 @@
             </Border>
           </Grid>
           <Grid Margin="0,2,0,0">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <Button Width="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.PlayButtonSize, Mode=OneWay}" AutomationProperties.Name="Play or pause" Click="OnTogglePauseClick" Style="{StaticResource PlayerPlayButtonStyle}">
               <Grid Width="14" Height="14">
                 <Viewbox Width="14" Height="14" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}">
@@ -424,7 +424,17 @@
               </Slider.Resources>
             </Slider>
             <TextBlock Grid.Column="7" Width="28" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" Foreground="White" Text="{x:Bind ViewModel.VolumeText, Mode=OneWay}" />
-            <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
+            <Button Grid.Column="8" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle picture fill" Click="OnVideoFitClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
+              <Grid Width="15" Height="15">
+                <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.FitIconVisibility, Mode=OneWay}">
+                  <Canvas Width="16" Height="16"><Path Data="M 1.5,3 H 14.5 V 13 H 1.5 Z" Opacity="0.5" Stroke="White" StrokeThickness="1.2" /><Path Data="M 4.5,5.5 H 11.5 V 10.5 H 4.5 Z" Stroke="White" StrokeThickness="1.2" /></Canvas>
+                </Viewbox>
+                <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.FillIconVisibility, Mode=OneWay}">
+                  <Canvas Width="16" Height="16"><Path Data="M 1.5,3 H 14.5 V 13 H 1.5 Z" Opacity="0.5" Stroke="White" StrokeThickness="1.2" /><Path Data="M 4.5,1 H 11.5 V 15 H 4.5 Z" Stroke="White" StrokeThickness="1.2" /></Canvas>
+                </Viewbox>
+              </Grid>
+            </Button>
+            <Button Grid.Column="9" Width="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Height="{x:Bind ViewModel.TransportButtonSize, Mode=OneWay}" Margin="10,0,0,0" AutomationProperties.Name="Toggle fullscreen" Click="OnFullscreenClick" CornerRadius="6" Style="{StaticResource PlayerTransportButtonStyle}">
               <Grid Width="15" Height="15">
                 <Viewbox Width="15" Height="15" Visibility="{x:Bind ViewModel.EnterFullscreenIconVisibility, Mode=OneWay}">
                   <Canvas Width="16" Height="16"><Path Data="M 2,6 V 2 H 6 M 14,6 V 2 H 10 M 2,10 V 14 H 6 M 14,10 V 14 H 10" Stroke="White" StrokeThickness="1.2" /></Canvas>

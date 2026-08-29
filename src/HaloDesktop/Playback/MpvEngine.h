@@ -53,6 +53,7 @@ namespace HaloDesktop::Playback
             std::wstring const& language) override;
         void RemoveTrack(std::int64_t id) override;
         void ApplySubtitleStyle(SubtitleStyle const& style) override;
+        void SetVideoFit(VideoFitMode mode) override;
         [[nodiscard]] PlaybackState State() const override;
         [[nodiscard]] double DurationNow() const noexcept override;
         PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) override;

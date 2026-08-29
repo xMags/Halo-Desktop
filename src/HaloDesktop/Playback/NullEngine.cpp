@@ -69,6 +69,7 @@ namespace HaloDesktop::Playback
     {
         m_source = std::move(source);
         m_state.PositionSeconds=0.0;
+        m_state.VideoFit=VideoFitMode::Fit;
         ++m_state.FileSerial;
         m_state.EndReason=PlaybackEndReason::None;
         NotifyChanged();
@@ -169,6 +170,7 @@ namespace HaloDesktop::Playback
     void NullEngine::AddExternalSubtitle([[maybe_unused]]std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){++m_state.SubtitleSelectionSerial;for(auto&track:m_state.Tracks)if(track.Type==TrackType::Subtitle)track.Selected=false;m_state.Tracks.push_back({++m_nextTrackId,TrackType::Subtitle,displayTitle,L"External subtitle",L"SRT",true,true,language,identity});NotifyChanged();}
     void NullEngine::RemoveTrack(std::int64_t id){std::erase_if(m_state.Tracks,[id](auto const&track){return track.Id==id;});NotifyChanged();}
     void NullEngine::ApplySubtitleStyle(SubtitleStyle const&style){m_subtitleStyle=style;}
+    void NullEngine::SetVideoFit(VideoFitMode mode){if(m_state.VideoFit==mode)return;m_state.VideoFit=mode;NotifyChanged();}
     PlaybackState NullEngine::State() const
     {
         return m_state;

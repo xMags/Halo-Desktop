@@ -37,6 +37,8 @@ namespace winrt::HaloDesktop::implementation
                            Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
         void OnFullscreenInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
                                  Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
+        void OnFillInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
+                           Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
         void OnEscapeInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,
                              Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&);
         void OnOverlayPreviewKeyDown(winrt::Windows::Foundation::IInspectable const&,

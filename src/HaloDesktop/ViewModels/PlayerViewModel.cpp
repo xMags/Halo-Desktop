@@ -578,6 +578,20 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_windowPresentation->IsFullscreen() ? Visible : Collapsed;
     }
+    bool PlayerViewModel::IsVideoFilled() const noexcept
+    {
+        return m_state.VideoFit == ::HaloDesktop::Playback::VideoFitMode::Fill;
+    }
+    // The button shows the mode that is live, not the one a press would select, so
+    // it reads the same way as the fullscreen button beside it.
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::FitIconVisibility() const noexcept
+    {
+        return IsVideoFilled() ? Collapsed : Visible;
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::FillIconVisibility() const noexcept
+    {
+        return IsVideoFilled() ? Visible : Collapsed;
+    }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::PanelVisibility() const noexcept
     {
         return m_panelIndex >= 0 ? Visible : Collapsed;
@@ -873,6 +887,14 @@ namespace winrt::HaloDesktop::implementation
         RaisePresentationMetrics();
         NotifyUserActivity();
     }
+    void PlayerViewModel::ToggleVideoFit()
+    {
+        using ::HaloDesktop::Playback::VideoFitMode;
+        m_engine->SetVideoFit(IsVideoFilled() ? VideoFitMode::Fit : VideoFitMode::Fill);
+        // The engine notification is what refreshes the icon; this only keeps the
+        // OSD from fading out from under the press that caused it.
+        NotifyUserActivity();
+    }
     void PlayerViewModel::HandleEscape()
     {
         NotifyUserActivity();
@@ -958,7 +980,8 @@ namespace winrt::HaloDesktop::implementation
                                      L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
                                      L"IsPaused", L"PausedVisibility", L"PlayingVisibility",
                                      L"BufferingLabelVisibility", L"BufferingRingSize",
-                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility" })
+                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility",
+                                     L"IsVideoFilled", L"FitIconVisibility", L"FillIconVisibility" })
         {
             Raise(property);
         }

@@ -209,12 +209,13 @@ namespace winrt::HaloDesktop::implementation
     void PlayerPage::OnUpInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.ChangeVolume(5.0);CompleteKeyboardAction(args);}
     void PlayerPage::OnDownInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.ChangeVolume(-5.0);CompleteKeyboardAction(args);}
     void PlayerPage::OnFullscreenInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.ToggleFullscreen();CompleteKeyboardAction(args);}
+    void PlayerPage::OnFillInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.ToggleVideoFit();CompleteKeyboardAction(args);}
     void PlayerPage::OnEscapeInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.HandleEscape();CompleteKeyboardAction(args);}
 
     void PlayerPage::OnOverlayPreviewKeyDown(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&args)
     {
         using winrt::Windows::System::VirtualKey;if(!m_viewModel)return;
-        switch(args.Key()){case VirtualKey::Space:m_viewModel.TogglePause();break;case VirtualKey::Left:m_viewModel.SeekRelative(-10.0);break;case VirtualKey::Right:m_viewModel.SeekRelative(10.0);break;case VirtualKey::Up:m_viewModel.ChangeVolume(5.0);break;case VirtualKey::Down:m_viewModel.ChangeVolume(-5.0);break;case VirtualKey::F:m_viewModel.ToggleFullscreen();break;case VirtualKey::Escape:m_viewModel.HandleEscape();break;default:return;}
+        switch(args.Key()){case VirtualKey::Space:m_viewModel.TogglePause();break;case VirtualKey::Left:m_viewModel.SeekRelative(-10.0);break;case VirtualKey::Right:m_viewModel.SeekRelative(10.0);break;case VirtualKey::Up:m_viewModel.ChangeVolume(5.0);break;case VirtualKey::Down:m_viewModel.ChangeVolume(-5.0);break;case VirtualKey::F:m_viewModel.ToggleFullscreen();break;case VirtualKey::Z:m_viewModel.ToggleVideoFit();break;case VirtualKey::Escape:m_viewModel.HandleEscape();break;default:return;}
         m_viewModel.NotifyUserActivity();args.Handled(true);
     }
     void PlayerPage::CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){if(m_viewModel)m_viewModel.NotifyUserActivity();args.Handled(true);}

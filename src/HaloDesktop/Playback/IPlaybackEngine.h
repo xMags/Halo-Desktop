@@ -67,6 +67,16 @@ namespace HaloDesktop::Playback
         bool operator==(VideoFormat const&) const = default;
     };
 
+    // How the frame is placed in the window. Fit shows the whole frame and lets
+    // bars appear wherever the video and window aspects disagree; Fill scales the
+    // frame up until it covers the window and crops the overflow. Fill preserves
+    // the aspect ratio, so it never stretches the picture to reach the edges.
+    enum class VideoFitMode
+    {
+        Fit,
+        Fill,
+    };
+
     struct PlaybackState final
     {
         double PositionSeconds{};
@@ -89,6 +99,7 @@ namespace HaloDesktop::Playback
         std::uint64_t AudioSelectionSerial{};
         std::uint64_t SubtitleSelectionSerial{};
         PlaybackEndReason EndReason{ PlaybackEndReason::None };
+        VideoFitMode VideoFit{ VideoFitMode::Fit };
         // Empty until the engine reports the first decoded video frame of the open
         // file, and for files that carry no video at all.
         std::optional<VideoFormat> Video;
@@ -129,6 +140,7 @@ namespace HaloDesktop::Playback
             std::wstring const& language) = 0;
         virtual void RemoveTrack(std::int64_t id) = 0;
         virtual void ApplySubtitleStyle(SubtitleStyle const& style) = 0;
+        virtual void SetVideoFit(VideoFitMode mode) = 0;
         [[nodiscard]] virtual PlaybackState State() const = 0;
         [[nodiscard]] virtual double DurationNow() const noexcept = 0;
         virtual PlaybackChangedToken AddChangedHandler(PlaybackChangedHandler handler) = 0;

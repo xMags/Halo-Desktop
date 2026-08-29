@@ -17,6 +17,7 @@
     <KeyboardAccelerator Key="Up" Invoked="OnUpInvoked" />
     <KeyboardAccelerator Key="Down" Invoked="OnDownInvoked" />
     <KeyboardAccelerator Key="F" Invoked="OnFullscreenInvoked" />
+    <KeyboardAccelerator Key="Z" Invoked="OnFillInvoked" />
     <KeyboardAccelerator Key="Escape" Invoked="OnEscapeInvoked" />
   </Page.KeyboardAccelerators>
   <Grid

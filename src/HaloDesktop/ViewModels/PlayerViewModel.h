@@ -164,6 +164,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double BufferingRingSize() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EnterFullscreenIconVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExitFullscreenIconVisibility() const noexcept;
+        [[nodiscard]] bool IsVideoFilled() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FitIconVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FillIconVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AudioPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitlePanelVisibility() const noexcept;
@@ -210,6 +213,7 @@ namespace winrt::HaloDesktop::implementation
         void CancelUpNext();
         void PlayNext();
         void ToggleFullscreen();
+        void ToggleVideoFit();
         void HandleEscape();
         void ClosePlayer();
         void NotifyUserActivity();

@@ -218,6 +218,11 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.ToggleFullscreen();
     }
+    void PlayerOsd::OnVideoFitClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                    [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.ToggleVideoFit();
+    }
     void PlayerOsd::OnAudioPanelClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                       [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

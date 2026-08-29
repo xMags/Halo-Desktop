@@ -122,6 +122,9 @@ namespace HaloDesktop
         Double BufferingRingSize { get; };
         Microsoft.UI.Xaml.Visibility EnterFullscreenIconVisibility { get; };
         Microsoft.UI.Xaml.Visibility ExitFullscreenIconVisibility { get; };
+        Boolean IsVideoFilled { get; };
+        Microsoft.UI.Xaml.Visibility FitIconVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FillIconVisibility { get; };
         Microsoft.UI.Xaml.Visibility PanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility AudioPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility SubtitlePanelVisibility { get; };
@@ -153,6 +156,7 @@ namespace HaloDesktop
         void CancelUpNext();
         void PlayNext();
         void ToggleFullscreen();
+        void ToggleVideoFit();
         void HandleEscape();
         void ClosePlayer();
         void NotifyUserActivity();

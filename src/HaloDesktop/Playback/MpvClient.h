@@ -69,6 +69,7 @@ namespace HaloDesktop::Playback
             std::wstring const& language);
         void RemoveTrack(std::int64_t id);
         void ApplySubtitleStyle(SubtitleStyle const& style);
+        void SetVideoFit(VideoFitMode mode);
         [[nodiscard]] double DurationSeconds() const noexcept;
         void Shutdown() noexcept;
 

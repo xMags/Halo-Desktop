@@ -38,6 +38,8 @@ namespace winrt::HaloDesktop::implementation
                                  Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFullscreenClick(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnVideoFitClick(winrt::Windows::Foundation::IInspectable const&,
+                             Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAudioPanelClick(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitlesPanelClick(winrt::Windows::Foundation::IInspectable const&,

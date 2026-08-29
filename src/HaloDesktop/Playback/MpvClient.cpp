@@ -448,6 +448,15 @@ namespace HaloDesktop::Playback
         SetStringProperty("sub-ass-override",style.KeepTrackStyling?L"scale":L"force");
     }
 
+    void MpvClient::SetVideoFit(VideoFitMode mode)
+    {
+        // panscan is a zoom factor toward full coverage rather than a flag: 0 leaves
+        // the bars alone, 1 covers the window and crops what no longer fits. libmpv
+        // derives the zoom from the video and window geometry itself, so this works
+        // before any frame has been decoded.
+        SetDoubleProperty("panscan", mode == VideoFitMode::Fill ? 1.0 : 0.0);
+    }
+
     void MpvClient::Shutdown() noexcept
     {
         if (!m_handle || m_stopping.exchange(true))

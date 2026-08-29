@@ -472,6 +472,43 @@ namespace
             throw;
         }
     }
+
+    // MpvClient::SetVideoFit writes panscan and nothing ever reads it back, so a
+    // renamed or mistyped property would surface only as a button that throws in
+    // the player. The two values here are the ones that client writes.
+    void VerifyPictureFillProperty()
+    {
+        auto*handle=mpv_create();Require(handle!=nullptr,"picture fill mpv_create returned null");
+        try
+        {
+            CheckMpv(mpv_set_option_string(handle,"vo","null"),"picture fill set vo");
+            CheckMpv(mpv_set_option_string(handle,"ao","null"),"picture fill set ao");
+            CheckMpv(mpv_set_option_string(handle,"idle","yes"),"picture fill set idle");
+            CheckMpv(mpv_set_option_string(handle,"terminal","no"),"picture fill disable terminal");
+            CheckMpv(mpv_initialize(handle),"picture fill mpv_initialize");
+
+            auto const readPanscan=[handle]
+            {
+                double value{-1.0};
+                CheckMpv(mpv_get_property(handle,"panscan",MPV_FORMAT_DOUBLE,&value),"read panscan");
+                return value;
+            };
+            Require(readPanscan()==0.0,"libmpv did not start with the picture fitted");
+
+            double fill{1.0};
+            CheckMpv(mpv_set_property(handle,"panscan",MPV_FORMAT_DOUBLE,&fill),"set panscan to fill");
+            Require(readPanscan()==1.0,"libmpv did not accept the fill value");
+
+            double fit{0.0};
+            CheckMpv(mpv_set_property(handle,"panscan",MPV_FORMAT_DOUBLE,&fit),"set panscan to fit");
+            Require(readPanscan()==0.0,"libmpv did not accept the fit value");
+        }
+        catch(...)
+        {
+            mpv_terminate_destroy(handle);throw;
+        }
+        mpv_terminate_destroy(handle);
+    }
 }
 
 int main()
@@ -508,7 +545,8 @@ int main()
         mpv_terminate_destroy(handle);
         VerifyStreamingShutdown(server);
         VerifyScrubPreviewDecoding();
-        std::cout<<"mpv protected playback, replay, streaming shutdown, and scrub preview tests passed.\n";
+        VerifyPictureFillProperty();
+        std::cout<<"mpv protected playback, replay, streaming shutdown, scrub preview, and picture fill tests passed.\n";
         return 0;
     }
     catch(std::exception const&error)

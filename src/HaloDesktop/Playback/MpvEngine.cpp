@@ -69,6 +69,7 @@ namespace HaloDesktop::Playback
             m_client->SetVolume(m_state.Volume);
             m_client->SetSpeed(m_state.Speed);
             m_client->ApplySubtitleStyle(m_subtitleStyle);
+            m_client->SetVideoFit(m_state.VideoFit);
             if (m_state.Paused)
             {
                 m_client->SetPaused(true);
@@ -141,8 +142,13 @@ namespace HaloDesktop::Playback
         // property change carries nothing to translate, so the previous file's
         // format has to be dropped here or it would describe the next one.
         m_state.Video.reset();
+        // Framing is a per-file choice. A crop chosen for one film must not follow
+        // the next file in, including the episode up-next opens without the player
+        // page ever reactivating.
+        m_state.VideoFit = VideoFitMode::Fit;
         if (m_client)
         {
+            m_client->SetVideoFit(m_state.VideoFit);
             m_client->Open(m_source);
         }
         NotifyChanged();
@@ -344,6 +350,20 @@ namespace HaloDesktop::Playback
     void MpvEngine::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){++m_state.SubtitleSelectionSerial;if(m_client)m_client->AddExternalSubtitle(path,identity,displayTitle,language);}
     void MpvEngine::RemoveTrack(std::int64_t id){if(m_client)m_client->RemoveTrack(id);}
     void MpvEngine::ApplySubtitleStyle(SubtitleStyle const&style){m_subtitleStyle=style;if(m_client)m_client->ApplySubtitleStyle(style);}
+
+    void MpvEngine::SetVideoFit(VideoFitMode mode)
+    {
+        if (m_state.VideoFit == mode)
+        {
+            return;
+        }
+        m_state.VideoFit = mode;
+        if (m_client)
+        {
+            m_client->SetVideoFit(mode);
+        }
+        NotifyChanged();
+    }
     double MpvEngine::DurationNow()const noexcept{return m_client?m_client->DurationSeconds():m_state.DurationSeconds;}
 
     PlaybackChangedToken MpvEngine::AddChangedHandler(PlaybackChangedHandler handler)
