@@ -6,6 +6,7 @@
 #include "Playback/TemporaryFileCollection.h"
 #include "Security/ProtectedHttpHeaders.h"
 #include "Services/AddonSelectionPolicy.h"
+#include "Services/DownloadSourceMatch.h"
 #include "Shell/WindowPresentationPolicy.h"
 
 #include <chrono>
@@ -458,6 +459,36 @@ namespace
         Require(files.Size()==0,"temporary subtitle ownership remained after cleanup");
         Require(!std::filesystem::exists(first)&&!std::filesystem::exists(second),"temporary subtitle files remained after cleanup");
     }
+
+    void TestReleaseFileMatching()
+    {
+        using HaloDesktop::Services::ReleaseLeafName;
+        using HaloDesktop::Services::SameReleaseFile;
+
+        // Addons disagree about casing on the same release, so a case difference
+        // must not make a saved file look like a different one.
+        Require(SameReleaseFile(L"Show.S01E02.1080p.mkv",L"Show.S01E02.1080p.mkv"),"an identical name is the same file");
+        Require(SameReleaseFile(L"Show.S01E02.1080p.mkv",L"show.s01e02.1080p.MKV"),"casing alone is not a different file");
+        Require(!SameReleaseFile(L"Show.S01E02.1080p.mkv",L"Show.S01E03.1080p.mkv"),"a different episode is a different file");
+        Require(!SameReleaseFile(L"Show.S01E02.1080p.mkv",L"Show.S01E02.1080p.mkv.part"),"a longer name is a different file");
+
+        // Some addons name the file inside its release folder. The leaf is what
+        // both sides agree on, and either separator can appear.
+        Require(SameReleaseFile(L"Show.S01E02.1080p.mkv",L"Show.S01E02.1080p/Show.S01E02.1080p.mkv"),"a folder prefix is not part of the name");
+        Require(SameReleaseFile(L"Show.S01E02.1080p.mkv",LR"(Release\Show.S01E02.1080p.mkv)"),"a backslash prefix is not part of the name");
+        Require(SameReleaseFile(L"  Show.S01E02.1080p.mkv ",L"Show.S01E02.1080p.mkv"),"surrounding whitespace is not part of the name");
+
+        // An addon that named nothing must not match the one download that also
+        // named nothing, or a single saved file would claim every unnamed source.
+        Require(!SameReleaseFile(L"",L""),"two unnamed sources are not the same file");
+        Require(!SameReleaseFile(L"Show.S01E02.1080p.mkv",L""),"an unnamed source matches nothing");
+        Require(!SameReleaseFile(L"   ",L"Show.S01E02.1080p.mkv"),"a whitespace name matches nothing");
+        Require(!SameReleaseFile(L"Show.S01E02.1080p.mkv",L"Release/"),"a name that is only a folder matches nothing");
+
+        Require(ReleaseLeafName(L"a/b/c.mkv")==L"c.mkv","the leaf is the part after the last separator");
+        Require(ReleaseLeafName(L" c.mkv ")==L"c.mkv","the leaf is trimmed");
+        Require(ReleaseLeafName(L"").empty(),"an empty name has no leaf");
+    }
 }
 
 int main()
@@ -481,6 +512,7 @@ int main()
         TestScrubPreviewPlacement();
         TestScrubPreviewCoalescing();
         TestPlaybackTimeFormatting();
+        TestReleaseFileMatching();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }

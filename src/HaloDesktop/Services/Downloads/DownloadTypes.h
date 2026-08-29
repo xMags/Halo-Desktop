@@ -116,6 +116,18 @@ namespace HaloDesktop::Services::Downloads
         std::optional<std::filesystem::path> SubtitlePath;
     };
 
+    // What a finished download tells the sources sheet about itself. The local
+    // path is deliberately absent: playback goes through BuildPlaybackRequest so
+    // the engine can re-check the file still exists and belongs to this account.
+    struct CompletedDownloadSource final
+    {
+        std::wstring JobId;
+        // The release name the addon used when the download started, falling back
+        // to the sanitized on-disk name, which is never empty.
+        std::wstring ReleaseName;
+        std::uint64_t SizeBytes{};
+    };
+
     struct ContentRange final
     {
         std::uint64_t Start{};

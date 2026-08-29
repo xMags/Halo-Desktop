@@ -10,6 +10,7 @@
 #include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
+#include <vector>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -98,6 +99,11 @@ namespace HaloDesktop::Services
             bool replaceExisting) = 0;
         [[nodiscard]] virtual winrt::hstring ResolveSummary() const = 0;
         [[nodiscard]] virtual std::int32_t Count(winrt::hstring const& filter) const noexcept = 0;
+        // The files already on this device for the resolve just loaded. Kept apart
+        // from Groups() because a download is not a provider: it answered nothing,
+        // and counting it as one would make the failure banner misreport how many
+        // providers were reached.
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> LocalSources() const = 0;
         virtual void RefreshDownloadStates() = 0;
     };
 
@@ -133,6 +139,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual bool HasCompletedFile(
             winrt::hstring const& videoId,
             winrt::hstring const& fileName) const noexcept = 0;
+        // Every finished download of this video, so the sources sheet can offer a
+        // local copy without depending on an addon returning the same release again.
+        [[nodiscard]] virtual std::vector<Downloads::CompletedDownloadSource> CompletedFor(
+            winrt::hstring const& videoId) const = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
         [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
         [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;

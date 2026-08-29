@@ -420,7 +420,7 @@
                         <TextBlock VerticalAlignment="Center" Text="Play" />
                       </StackPanel>
                     </Button>
-                    <Button Height="36" Padding="16,0" Click="OnDownloadPickClick">
+                    <Button Height="36" Padding="16,0" Click="OnDownloadPickClick" Visibility="{x:Bind ViewModel.PickSaveVisibility, Mode=OneWay}">
                       <StackPanel Orientation="Horizontal" Spacing="8">
                         <FontIcon VerticalAlignment="Center" FontSize="13" Glyph="&#xE896;" />
                         <TextBlock VerticalAlignment="Center" Text="Save for offline" />
@@ -545,7 +545,7 @@
                             <StackPanel>
                               <ItemsControl ItemsSource="{x:Bind Specs}" ItemTemplate="{StaticResource SourceSpecTemplate}" />
                               <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
-                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnDownloadSourceClick" Tag="{x:Bind Key}">
+                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" Visibility="{x:Bind SaveVisibility}">
                                   <StackPanel Orientation="Horizontal" Spacing="8">
                                     <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE896;" />
                                     <TextBlock VerticalAlignment="Center" FontSize="12.5" Text="Save for offline" />

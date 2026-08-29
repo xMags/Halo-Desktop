@@ -3,6 +3,7 @@
 
 #include "Models/Models.h"
 #include "Services/DevicePreferencesStore.h"
+#include "Services/DownloadSourceMatch.h"
 #include "Services/StreamInfo.h"
 
 #include <algorithm>
@@ -526,17 +527,10 @@ namespace HaloDesktop::Services
             return record.Status == DownloadStatus::Done && record.Media.VideoId == videoId.c_str();
         });
     }
-    // Filename rather than the source URL: a debrid link is minted per resolve, so
-    // its hash stops matching the moment the link is re-issued, while the release
-    // filename is the same thing the viewer recognises on both sides.
     bool DownloadService::HasCompletedFile(
         winrt::hstring const& videoId,
         winrt::hstring const& fileName) const noexcept
     {
-        if (fileName.empty())
-        {
-            return false;
-        }
         std::wstring_view const wanted{ fileName.c_str(), fileName.size() };
         return std::any_of(m_records.begin(), m_records.end(), [&](auto const& record)
         {
@@ -546,16 +540,35 @@ namespace HaloDesktop::Services
             {
                 return false;
             }
-            auto const& saved = *record.Media.FileName;
-            if (saved.size() != wanted.size())
-            {
-                return false;
-            }
-            return std::equal(saved.begin(), saved.end(), wanted.begin(), [](wchar_t left, wchar_t right)
-            {
-                return std::towlower(left) == std::towlower(right);
-            });
+            return SameReleaseFile(*record.Media.FileName, wanted);
         });
+    }
+
+    std::vector<Downloads::CompletedDownloadSource> DownloadService::CompletedFor(
+        winrt::hstring const& videoId) const
+    {
+        std::vector<Downloads::CompletedDownloadSource> result;
+        if (videoId.empty())
+        {
+            return result;
+        }
+        for (auto const& record : m_records)
+        {
+            if (record.Status != DownloadStatus::Done
+                || record.PendingDeletion
+                || record.Media.VideoId != videoId.c_str())
+            {
+                continue;
+            }
+            // TotalBytes is the size the transfer agreed with the server and is the
+            // one worth showing; a record that never learned it falls back to what
+            // actually landed on disk.
+            result.push_back(Downloads::CompletedDownloadSource{
+                .JobId = record.JobId,
+                .ReleaseName = record.Media.FileName.value_or(record.FileName),
+                .SizeBytes = record.TotalBytes > 0 ? record.TotalBytes : record.DownloadedBytes });
+        }
+        return result;
     }
 
     std::int32_t DownloadService::ActiveCount() const noexcept

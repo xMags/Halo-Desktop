@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <Filter Include="Api"><UniqueIdentifier>{c4ff6948-3ba7-4a13-bfd4-90d0f39de021}</UniqueIdentifier></Filter>
@@ -138,6 +138,7 @@
     <ClCompile Include="Services\SettingsSyncService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SettingsSyncPolicy.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\SourceService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\DownloadSourceMatch.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\StreamInfo.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\WatchStateService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
@@ -248,6 +249,7 @@
     <ClInclude Include="Services\SettingsSyncService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SettingsSyncPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\SourceService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\DownloadSourceMatch.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\StreamInfo.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\WatchStateService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>

@@ -121,6 +121,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring LanguageLine() const;
         [[nodiscard]] winrt::hstring Warning() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility WarningVisibility() const noexcept;
+        // Hidden on a file already saved: offering to save it again is an action
+        // with nothing behind it.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SaveVisibility() const noexcept;
         [[nodiscard]] winrt::hstring FileName() const;
         [[nodiscard]] winrt::hstring Reason() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Specs() const;
@@ -215,6 +218,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PickWatchNote() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickWatchNoteVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSelectionVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSaveVisibility() const noexcept;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoExpandGlyphVisibility() const noexcept;
@@ -290,6 +294,9 @@ namespace winrt::HaloDesktop::implementation
         std::vector<::HaloDesktop::Sources::SourceEntry> m_pool;
         ::HaloDesktop::Sources::DeviceContext m_device;
         std::uint64_t m_smallestBytes{};
+        // How many entries at the head of m_pool are files on this device. They are
+        // pushed first and rank first, so the count doubles as their extent.
+        std::size_t m_localCount{};
         std::int32_t m_answeredProviders{};
         std::int32_t m_failedProviders{};
         winrt::hstring m_firstFailure;

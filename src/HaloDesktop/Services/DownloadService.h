@@ -60,6 +60,8 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool HasCompletedFile(
             winrt::hstring const& videoId,
             winrt::hstring const& fileName) const noexcept override;
+        [[nodiscard]] std::vector<Downloads::CompletedDownloadSource> CompletedFor(
+            winrt::hstring const& videoId) const override;
         [[nodiscard]] std::int32_t ActiveCount() const noexcept override;
         [[nodiscard]] double AggregateRate() const noexcept override;
         [[nodiscard]] winrt::hstring QueueLine() const override;

@@ -63,6 +63,7 @@ namespace HaloDesktop
         String LanguageLine { get; };
         String Warning { get; };
         Microsoft.UI.Xaml.Visibility WarningVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SaveVisibility { get; };
         String FileName { get; };
         String Reason { get; };
         Object Specs { get; };
@@ -125,6 +126,7 @@ namespace HaloDesktop
         String PickWatchNote { get; };
         Microsoft.UI.Xaml.Visibility PickWatchNoteVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickSelectionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickSaveVisibility { get; };
 
         Microsoft.UI.Xaml.Visibility InfoVisibility { get; };
         Microsoft.UI.Xaml.Visibility InfoExpandGlyphVisibility { get; };

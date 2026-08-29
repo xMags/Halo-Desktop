@@ -49,6 +49,15 @@ namespace
     constexpr std::int32_t SortFastestStart = 3;
     constexpr std::int32_t SortCount = 4;
 
+    // Named the same way in the list heading and in the footer's provider column,
+    // where it sits beside the addons that answered even though it is not one.
+    constexpr wchar_t const* LocalProviderName = L"On this device";
+
+    bool IsOnDisk(Sources::SourceEntry const& entry) noexcept
+    {
+        return entry.Source && entry.Source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk;
+    }
+
     // 700 px at the shipped window size, 880 px once the content area is wide
     // enough that the sheet would otherwise leave the list looking stranded.
     constexpr double NarrowSheetWidth = 700.0;
@@ -220,6 +229,11 @@ namespace winrt::HaloDesktop::implementation
                 || status == winrt::HaloDesktop::StreamStatus::Unknown
             ? Visible
             : Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::SaveVisibility() const noexcept
+    {
+        return OnDiskVisibility() == Visible ? Collapsed : Visible;
     }
 
     winrt::hstring SourceDisplayItemViewModel::SoundAndSize() const { return m_soundAndSize; }
@@ -402,7 +416,8 @@ namespace winrt::HaloDesktop::implementation
     {
         if (m_error)
         {
-            return L"Halo could not reach any provider. Files you have already downloaded still play from Downloads.";
+            return L"Halo could not reach any provider, and nothing for this is saved on this device. "
+                   L"Anything you download appears here and plays without a connection.";
         }
         if (m_pool.empty())
         {
@@ -448,7 +463,9 @@ namespace winrt::HaloDesktop::implementation
 
     bool SourcesViewModel::HasPick() const noexcept
     {
-        if (m_loading || m_error || m_pool.empty() || m_sortIndex != SortRecommended) return false;
+        // The error case is not excluded: when every provider failed, a file already
+        // on the device is still a real pick, and it is the only one left to make.
+        if (m_loading || m_pool.empty() || m_sortIndex != SortRecommended) return false;
         return Matches(m_pool.front(), m_filterIndex);
     }
 
@@ -482,6 +499,11 @@ namespace winrt::HaloDesktop::implementation
                 || status == winrt::HaloDesktop::StreamStatus::Unknown
             ? Visible
             : Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickSaveVisibility() const noexcept
+    {
+        return PickOnDiskVisibility() == Visible ? Collapsed : Visible;
     }
 
     winrt::hstring SourcesViewModel::PickWhy() const
@@ -729,17 +751,17 @@ namespace winrt::HaloDesktop::implementation
         m_failedProviders = 0;
         m_firstFailure = L"";
         m_smallestBytes = 0;
+        m_localCount = 0;
         m_pool.clear();
 
         // A throw leaves the service holding whatever it resolved last, which may
-        // belong to a different title entirely. Nothing of it may be shown here.
-        if (m_error)
-        {
-            m_sourceGroups = winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView();
-            m_device = {};
-            return;
-        }
-        m_sourceGroups = m_sources->Groups();
+        // belong to a different title entirely. Nothing of its groups may be shown
+        // here. Local sources are the exception: the service rebuilds those for the
+        // parameters of this load before it reports the failure, so they belong to
+        // this title and are exactly what is still playable.
+        m_sourceGroups = m_error
+            ? winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView()
+            : m_sources->Groups();
 
         m_device = {};
         try { m_device.PreferredSubtitleLanguage = m_settings->PreferredSubtitleLanguage(); }
@@ -768,6 +790,12 @@ namespace winrt::HaloDesktop::implementation
                 }
             }
         }
+
+        for (auto const& source : m_sources->LocalSources())
+        {
+            m_pool.push_back(Sources::MakeEntry(source, LocalProviderName, m_device.DurationSeconds));
+        }
+        m_localCount = m_pool.size();
 
         for (auto const& group : m_sourceGroups)
         {
@@ -869,6 +897,23 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
+        // Files on the device get their own heading rather than being folded into
+        // "Also ready now", which describes a stream that happens to be cached and
+        // says nothing about a file that needs no connection at all.
+        std::vector<Sources::SourceEntry> local;
+        for (auto const& entry : listed)
+        {
+            if (IsOnDisk(entry)) local.push_back(entry);
+        }
+        if (!local.empty())
+        {
+            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                winrt::hstring{ LocalProviderName },
+                winrt::hstring{ L"Saved here, so they play without a connection" },
+                Sources::CountLabel(local.size(), L"file", L"files")));
+            for (auto const& entry : local) m_items.Append(RowFor(entry, pick));
+        }
+
         for (auto const speed : {
                  Sources::StartSpeed::Immediate,
                  Sources::StartSpeed::ShortWait,
@@ -877,7 +922,7 @@ namespace winrt::HaloDesktop::implementation
             std::vector<Sources::SourceEntry> group;
             for (auto const& entry : listed)
             {
-                if (entry.Speed == speed) group.push_back(entry);
+                if (entry.Speed == speed && !IsOnDisk(entry)) group.push_back(entry);
             }
             if (group.empty()) continue;
 
@@ -908,6 +953,13 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::RebuildFooter()
     {
         m_providerItems.Clear();
+        if (m_localCount != 0)
+        {
+            m_providerItems.Append(winrt::make<SourceProviderItemViewModel>(
+                winrt::hstring{ LocalProviderName },
+                Sources::CountLabel(m_localCount, L"file", L"files"),
+                true));
+        }
         for (auto const& group : m_sourceGroups)
         {
             auto const value = group.Answered()
@@ -995,7 +1047,7 @@ namespace winrt::HaloDesktop::implementation
                  L"PickVisibility", L"PickQualityBadgeTier", L"PickQualityBadgeDetail", L"PickQualityTone", L"PickStatusLabel",
                  L"PickInstantVisibility", L"PickOnDiskVisibility", L"PickCachingVisibility", L"PickColdVisibility",
                  L"PickWhy", L"PickLine", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
-                 L"PickSelectionVisibility", L"SelectedIndex" })
+                 L"PickSelectionVisibility", L"PickSaveVisibility", L"SelectedIndex" })
         {
             Raise(property);
         }

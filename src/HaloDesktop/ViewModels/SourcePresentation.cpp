@@ -368,6 +368,12 @@ namespace HaloDesktop::Sources
 
     winrt::hstring PickHeadline(SourceEntry const& entry, bool alone)
     {
+        // Checked before the alone case, which would otherwise credit a provider for
+        // a file that is on the device precisely because nobody had to answer.
+        if (entry.Source && entry.Source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk)
+        {
+            return L"Already saved here, so it starts with no connection at all.";
+        }
         if (alone) return L"The only source that answered for this.";
         if (entry.Speed == StartSpeed::Immediate)
         {
