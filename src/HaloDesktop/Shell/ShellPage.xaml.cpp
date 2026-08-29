@@ -87,6 +87,16 @@ namespace winrt::HaloDesktop::implementation
                     self->UpdateDownloadBadge();
                 }
             });
+        // The sidebar reads the same collection the Home shelf does, so it needs
+        // the same notice when a next-episode lookup lands after the first paint.
+        m_continueChangedToken = App::Services().Catalog->AddContinueChangedHandler(
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->RefreshJumpBackIn();
+                }
+            });
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
@@ -101,6 +111,11 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().Downloads->RemoveChangedHandler(m_downloadChangedToken);
             m_downloadChangedToken = 0;
+        }
+        if (m_continueChangedToken != 0)
+        {
+            App::Services().Catalog->RemoveContinueChangedHandler(m_continueChangedToken);
+            m_continueChangedToken = 0;
         }
         if (m_gettingFocusToken)
         {

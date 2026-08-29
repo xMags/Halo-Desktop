@@ -90,6 +90,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token m_gettingFocusToken{};
         std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
+        ::HaloDesktop::Services::CatalogChangedToken m_continueChangedToken{};
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };
 }

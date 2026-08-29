@@ -35,6 +35,9 @@ namespace HaloDesktop::Services
         Failed,
     };
 
+    using CatalogChangedToken = std::uint64_t;
+    using CatalogChangedHandler = std::function<void()>;
+
     class ICatalogService
     {
     public:
@@ -71,6 +74,12 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const = 0;
         virtual void RecordRecent(winrt::hstring term) = 0;
+        // Raised when the continue row changes on its own, which happens when a
+        // next-episode lookup lands after the snapshot was already shown. Without
+        // it a promoted card would not appear until Home was navigated to again.
+        [[nodiscard]] virtual CatalogChangedToken AddContinueChangedHandler(
+            CatalogChangedHandler handler) = 0;
+        virtual void RemoveContinueChangedHandler(CatalogChangedToken token) noexcept = 0;
     };
 
     class IMetadataService

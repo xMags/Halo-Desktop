@@ -6,6 +6,7 @@
 #include "Services/AddonService.h"
 #include "Services/AddonSelectionPolicy.h"
 #include "Services/ContinueArtworkService.h"
+#include "Services/ContinueNextEpisodeService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/LibraryService.h"
 #include "Services/WatchStateService.h"
@@ -66,19 +67,11 @@ namespace
         return type;
     }
 
-    winrt::hstring MetaIdFromItemId(winrt::hstring const& itemId)
-    {
-        std::wstring value{ itemId };
-        auto const separator = value.find(L':');
-        return separator == std::wstring::npos ? itemId : winrt::hstring{ value.substr(separator + 1) };
-    }
-
-    winrt::hstring TypeFromItemId(winrt::hstring const& itemId)
-    {
-        std::wstring value{ itemId };
-        auto const separator = value.find(L':');
-        return separator == std::wstring::npos ? L"movie" : winrt::hstring{ value.substr(0, separator) };
-    }
+    // The most cards the shelf shows, and the most lookups one fill will start.
+    // A fill cannot usefully exceed the cards, since nothing beyond them can be
+    // drawn however many series are waiting behind.
+    constexpr std::size_t MaximumContinueCards = 8;
+    constexpr std::size_t MaximumContinueRequests = MaximumContinueCards;
 
     winrt::hstring EpisodeTag(winrt::hstring const& videoId, winrt::hstring const& metaId)
     {
@@ -154,15 +147,18 @@ namespace HaloDesktop::Services
         std::shared_ptr<LibraryService> library,
         std::shared_ptr<WatchStateService> watchState,
         std::shared_ptr<DevicePreferencesStore> preferences,
-        std::shared_ptr<ContinueArtworkService> artwork)
+        std::shared_ptr<ContinueArtworkService> artwork,
+        std::shared_ptr<ContinueNextEpisodeService> nextEpisodes)
         : m_apiClient(std::move(apiClient)),
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_watchState(std::move(watchState)),
           m_preferences(std::move(preferences)),
-          m_artwork(std::move(artwork))
+          m_artwork(std::move(artwork)),
+          m_nextEpisodes(std::move(nextEpisodes))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences || !m_artwork)
+        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences || !m_artwork ||
+            !m_nextEpisodes)
         {
             throw std::invalid_argument{ "CatalogService requires all dependencies." };
         }
@@ -344,17 +340,17 @@ namespace HaloDesktop::Services
                 BuildLibraryItems()).GetView();
             auto const shelves = winrt::single_threaded_vector(
                 BuildShelves(catalogShelves, libraryItems)).GetView();
-            auto const continued = winrt::single_threaded_vector(
-                BuildContinueItems()).GetView();
+            auto continueSnapshot = BuildContinueSnapshot();
 
             // There are no awaits after this point. Views observing the service
             // cannot see a mixture of the old and candidate snapshots.
             m_catalogShelves = catalogShelves;
             m_libraryItems = libraryItems;
             m_shelves = shelves;
-            m_continue = continued;
+            m_continue = continueSnapshot.Items;
             ++m_snapshotVersion;
             BeginContinueArtworkFill();
+            BeginContinueNextFill(std::move(continueSnapshot.Requests));
             m_refreshState.CompleteRefresh(*ticket, true);
         }
         catch (...)
@@ -474,12 +470,13 @@ namespace HaloDesktop::Services
         auto const libraryItems = winrt::single_threaded_vector(BuildLibraryItems()).GetView();
         auto const shelves = winrt::single_threaded_vector(
             BuildShelves(m_catalogShelves, libraryItems)).GetView();
-        auto const continued = winrt::single_threaded_vector(BuildContinueItems()).GetView();
+        auto continueSnapshot = BuildContinueSnapshot();
         m_libraryItems = libraryItems;
         m_shelves = shelves;
-        m_continue = continued;
+        m_continue = continueSnapshot.Items;
         ++m_snapshotVersion;
         BeginContinueArtworkFill();
+        BeginContinueNextFill(std::move(continueSnapshot.Requests));
     }
 
     std::vector<winrt::HaloDesktop::MediaSummary> CatalogService::BuildLibraryItems() const
@@ -498,7 +495,7 @@ namespace HaloDesktop::Services
         for (auto const& row : libraryRows)
         {
             if (row.RemovedAt) continue;
-            auto const metaId = MetaIdFromItemId(row.Id);
+            auto const metaId = winrt::hstring{ MetaIdFromItemId(std::wstring_view{ row.Id }) };
             libraryItems.push_back(winrt::make<winrt::HaloDesktop::implementation::MediaSummary>(
                 metaId, row.Name, L"", Kind(row.Type), row.Type, row.Poster.value_or(L""), L"", L"", L"", L"", row.AddedAt,
                 lastWatched[std::wstring{ row.Id }]));
@@ -531,8 +528,18 @@ namespace HaloDesktop::Services
 
     void CatalogService::BuildContinue()
     {
-        m_continue = winrt::single_threaded_vector(BuildContinueItems()).GetView();
+        ApplyContinueSnapshot(true);
+    }
+
+    void CatalogService::ApplyContinueSnapshot(bool startFill)
+    {
+        auto snapshot = BuildContinueSnapshot();
+        m_continue = snapshot.Items;
         BeginContinueArtworkFill();
+        if (startFill)
+        {
+            BeginContinueNextFill(std::move(snapshot.Requests));
+        }
     }
 
     void CatalogService::BeginContinueArtworkFill()
@@ -564,7 +571,7 @@ namespace HaloDesktop::Services
         });
     }
 
-    std::vector<winrt::HaloDesktop::ContinueItem> CatalogService::BuildContinueItems() const
+    CatalogService::ContinueSnapshot CatalogService::BuildContinueSnapshot() const
     {
         std::unordered_map<std::wstring, ::HaloDesktop::Api::Dto::LibraryRow> liveLibrary;
         for (auto const& row : m_library->Rows())
@@ -573,26 +580,137 @@ namespace HaloDesktop::Services
             liveLibrary.emplace(std::wstring{ row.Id }, row);
         }
 
-        auto watch = m_watchState->Rows();
-        std::sort(watch.begin(), watch.end(), [](auto const& a, auto const& b) { return a.UpdatedAt > b.UpdatedAt; });
-        std::set<std::wstring> seen;
-        std::vector<winrt::HaloDesktop::ContinueItem> continued;
+        // The library fills the gaps before the rule runs, so the shelf policy has
+        // only to decide what to show rather than also where the name came from.
+        std::vector<ContinueWatchRow> rows;
+        auto const watch = m_watchState->Rows();
+        rows.reserve(watch.size());
         for (auto const& row : watch)
         {
-            if (continued.size() == 8 || row.DurationSec <= 0 || row.Watched) continue;
-            auto const fraction = row.PositionSec / row.DurationSec;
-            if (fraction <= 0.02 || fraction >= 0.95 || !seen.insert(std::wstring{ row.ItemId }).second) continue;
             auto const library = liveLibrary.find(std::wstring{ row.ItemId });
-            auto const name = row.Name.value_or(library != liveLibrary.end() ? library->second.Name : winrt::hstring{});
-            if (name.empty()) continue;
-            auto const poster = row.Poster.value_or(library != liveLibrary.end() ? library->second.Poster.value_or(L"") : winrt::hstring{});
-            auto const type = TypeFromItemId(row.ItemId);
-            auto const metaId = MetaIdFromItemId(row.ItemId);
-            continued.push_back(winrt::make<winrt::HaloDesktop::implementation::ContinueItem>(
-                name, EpisodeTag(row.VideoId, metaId), EpisodeTag(row.VideoId, metaId), TimeLeft(row.DurationSec, row.PositionSec), fraction,
-                type, metaId, row.VideoId, row.ItemId, poster));
+            auto const name = row.Name.value_or(
+                library != liveLibrary.end() ? library->second.Name : winrt::hstring{});
+            auto const poster = row.Poster.value_or(
+                library != liveLibrary.end() ? library->second.Poster.value_or(L"") : winrt::hstring{});
+            rows.push_back({
+                std::wstring{ row.ItemId },
+                std::wstring{ row.VideoId },
+                std::wstring{ name },
+                std::wstring{ poster },
+                row.PositionSec,
+                row.DurationSec,
+                row.Watched,
+                row.UpdatedAt,
+            });
         }
-        return continued;
+
+        auto shelf = BuildContinueShelf(
+            std::move(rows),
+            [this](std::wstring const& finishedVideoId) { return m_nextEpisodes->Lookup(finishedVideoId); },
+            MaximumContinueCards,
+            MaximumContinueRequests);
+
+        std::vector<winrt::HaloDesktop::ContinueItem> items;
+        items.reserve(shelf.Cards.size());
+        for (auto const& card : shelf.Cards)
+        {
+            auto const itemId = winrt::hstring{ card.ItemId };
+            auto const videoId = winrt::hstring{ card.VideoId };
+            auto const metaId = winrt::hstring{ MetaIdFromItemId(std::wstring_view{ itemId }) };
+            auto const tag = EpisodeTag(videoId, metaId);
+            // A promoted episode has never been started, so there is no position to
+            // count down from and nothing to fill the card's bar with.
+            auto const promoted = card.Kind == ContinueCardKind::NextEpisode;
+            auto const timeLeft = promoted
+                ? winrt::hstring{ L"UP NEXT" }
+                : TimeLeft(card.DurationSec, card.PositionSec);
+            auto const progress = promoted || card.DurationSec <= 0.0
+                ? 0.0
+                : card.PositionSec / card.DurationSec;
+            items.push_back(winrt::make<winrt::HaloDesktop::implementation::ContinueItem>(
+                winrt::hstring{ card.Name }, tag, tag, timeLeft, progress,
+                winrt::hstring{ TypeFromItemId(std::wstring_view{ itemId }) },
+                metaId, videoId, itemId, winrt::hstring{ card.Poster }));
+        }
+        return { winrt::single_threaded_vector(std::move(items)).GetView(), std::move(shelf.Requests) };
+    }
+
+    void CatalogService::BeginContinueNextFill(std::vector<ContinueNextRequest> requests)
+    {
+        if (requests.empty())
+        {
+            return;
+        }
+        auto const generation = m_nextEpisodes->BeginGeneration();
+        auto const weak = weak_from_this();
+        // Not awaited: the shelf above is already committed, and the promoted cards
+        // join it when the lookups land. The stamp retires this fill as soon as a
+        // newer snapshot starts one, and the continuation exists only so a failed
+        // lookup cannot surface as an unobserved task exception.
+        m_nextEpisodes->ResolveAsync(
+            std::move(requests),
+            generation,
+            [weak]()
+            {
+                auto const self = weak.lock();
+                if (!self)
+                {
+                    return;
+                }
+                // Already on the dispatcher thread: the service only calls back
+                // there. No new fill is started, so the series whose lookups
+                // failed wait for the next visit instead of being retried at once.
+                self->ApplyContinueSnapshot(false);
+                ++self->m_snapshotVersion;
+                self->NotifyContinueChanged();
+            }).then([](concurrency::task<void> completed)
+            {
+                try
+                {
+                    completed.get();
+                }
+                catch (...)
+                {
+                }
+            });
+    }
+
+    void CatalogService::NotifyContinueChanged()
+    {
+        // Copied first: a handler is free to unsubscribe from inside itself, which
+        // would otherwise invalidate the iterator running it.
+        std::vector<CatalogChangedHandler> handlers;
+        handlers.reserve(m_continueHandlers.size());
+        for (auto const& entry : m_continueHandlers)
+        {
+            handlers.push_back(entry.second);
+        }
+        for (auto const& handler : handlers)
+        {
+            try
+            {
+                handler();
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+
+    CatalogChangedToken CatalogService::AddContinueChangedHandler(CatalogChangedHandler handler)
+    {
+        if (!handler)
+        {
+            return 0;
+        }
+        auto const token = m_nextContinueToken++;
+        m_continueHandlers.emplace(token, std::move(handler));
+        return token;
+    }
+
+    void CatalogService::RemoveContinueChangedHandler(CatalogChangedToken token) noexcept
+    {
+        m_continueHandlers.erase(token);
     }
 
     void CatalogService::LoadRecentTerms()
@@ -672,5 +790,6 @@ namespace HaloDesktop::Services
         m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
         ++m_snapshotVersion;
         m_artwork->OnAccountChanged();
+        m_nextEpisodes->OnAccountChanged();
     }
 }

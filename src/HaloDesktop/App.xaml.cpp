@@ -13,6 +13,7 @@
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
 #include "Services/ContinueArtworkService.h"
+#include "Services/ContinueNextEpisodeService.h"
 #include "Services/DownloadService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/TransferEngine.h"
@@ -119,13 +120,17 @@ namespace winrt::HaloDesktop::implementation
         auto continueArtworkService = std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(
             m_apiClient,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        auto continueNextEpisodeService = std::make_shared<::HaloDesktop::Services::ContinueNextEpisodeService>(
+            m_apiClient,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
             m_apiClient,
             addonService,
             m_services.Library,
             m_services.WatchState,
             m_devicePreferences,
-            continueArtworkService);
+            continueArtworkService,
+            continueNextEpisodeService);
         m_services.Catalog = catalogService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState());

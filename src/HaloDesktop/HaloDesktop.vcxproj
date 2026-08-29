@@ -203,6 +203,8 @@
     <ClInclude Include="Services\DownloadSourceMatch.h" />
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\CatalogRefreshPolicy.h" />
+    <ClInclude Include="Services\ContinueShelfPolicy.h" />
+    <ClInclude Include="Services\ContinueNextEpisodeService.h" />
     <ClInclude Include="Services\ContinueArtworkService.h" />
     <ClInclude Include="Services\DevicePreferencesStore.h" />
     <ClInclude Include="Services\LibraryService.h" />
@@ -407,6 +409,10 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\ContinueArtworkService.cpp" />
+    <ClCompile Include="Services\ContinueNextEpisodeService.cpp" />
+    <ClCompile Include="Services\ContinueShelfPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Services\DevicePreferencesStore.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />

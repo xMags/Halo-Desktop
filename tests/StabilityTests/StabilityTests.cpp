@@ -10,6 +10,7 @@
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/Auth/LoopbackListener.h"
 #include "Services/StreamInfo.h"
+#include "Services/ContinueShelfPolicy.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
 #include "StorageTests.h"
@@ -480,6 +481,125 @@ namespace
         Require(!ParseEpisodePosition(L"S01E123456"), "an implausibly long number parsed");
     }
 
+    HaloDesktop::Services::ContinueWatchRow WatchRow(
+        wchar_t const* itemId,
+        wchar_t const* videoId,
+        wchar_t const* name,
+        double position,
+        double duration,
+        bool watched,
+        std::int64_t updatedAt)
+    {
+        return { itemId, videoId, name, L"poster.jpg", position, duration, watched, updatedAt };
+    }
+
+    void TestContinueShelf()
+    {
+        using HaloDesktop::Services::BuildContinueShelf;
+        using HaloDesktop::Services::ContinueCardKind;
+        using HaloDesktop::Services::ContinueWatchRow;
+        using HaloDesktop::Services::IsFinishedWatchRow;
+        using HaloDesktop::Services::MetaIdFromItemId;
+        using HaloDesktop::Services::NextEpisodeLookup;
+        using HaloDesktop::Services::NextEpisodeState;
+        using HaloDesktop::Services::TypeFromItemId;
+
+        Require(TypeFromItemId(L"series:tt5651844") == L"series", "a series item id did not report its type");
+        Require(TypeFromItemId(L"tt10872600") == L"movie", "a bare item id was not treated as a film");
+        Require(MetaIdFromItemId(L"series:tt5651844") == L"tt5651844", "the meta id was not taken from the item id");
+        Require(MetaIdFromItemId(L"tt10872600") == L"tt10872600", "a bare item id lost its meta id");
+
+        // The reporter sets the flag past ninety percent, and the fraction covers a
+        // row written by something that did not set it.
+        Require(IsFinishedWatchRow(WatchRow(L"series:ttD", L"ttD:1:1", L"D", 960.0, 1000.0, false, 1)),
+                "a row past the finished mark was not treated as finished");
+        Require(!IsFinishedWatchRow(WatchRow(L"series:ttD", L"ttD:1:1", L"D", 940.0, 1000.0, false, 1)),
+                "a row short of the finished mark was treated as finished");
+
+        auto const unresolved = [](std::wstring const&) { return NextEpisodeLookup{}; };
+
+        // The shape that reported this: a series watched through in order with its
+        // newest episode finished, a stray mis-click on an older one, one film seen
+        // to the end, and one thing genuinely left partway through.
+        std::vector<ContinueWatchRow> const rows{
+            WatchRow(L"series:tt5651844", L"tt5651844:3:3", L"Travelers", 2735.0, 2860.0, true, 1000),
+            WatchRow(L"movie:tt10872600", L"tt10872600", L"Spider-Man", 9415.0, 9415.0, true, 950),
+            WatchRow(L"series:tt5651844", L"tt5651844:2:7", L"Travelers", 49.0, 2683.0, false, 900),
+            WatchRow(L"series:tt14688458", L"tt14688458:1:1", L"Silo", 332.0, 3563.0, false, 800),
+        };
+
+        auto const cold = BuildContinueShelf(rows, unresolved, 8, 8);
+        Require(cold.Cards.size() == 1, "the shelf showed something before the lookup answered");
+        Require(cold.Cards[0].Name == L"Silo", "the in-progress row was lost");
+        Require(cold.Requests.size() == 1, "the finished series did not produce exactly one request");
+        Require(cold.Requests[0].Type == L"series", "the request carried the wrong type");
+        Require(cold.Requests[0].MetaId == L"tt5651844", "the request carried the wrong meta id");
+        Require(cold.Requests[0].VideoId == L"tt5651844:3:3",
+                "the request did not step past the newest finished episode");
+
+        auto const warm = BuildContinueShelf(
+            rows,
+            [](std::wstring const& key)
+            {
+                return key == L"tt5651844:3:3"
+                    ? NextEpisodeLookup{ NextEpisodeState::Resolved, L"tt5651844:3:4" }
+                    : NextEpisodeLookup{};
+            },
+            8,
+            8);
+        Require(warm.Cards.size() == 2, "the resolved shelf did not gain the promoted card");
+        Require(warm.Cards[0].Name == L"Travelers", "the promoted card did not sort by its finished row");
+        Require(warm.Cards[0].Kind == ContinueCardKind::NextEpisode, "the promoted card was not marked as one");
+        Require(warm.Cards[0].VideoId == L"tt5651844:3:4", "the promoted card did not point at the next episode");
+        Require(warm.Cards[0].PositionSec == 0.0 && warm.Cards[0].DurationSec == 0.0,
+                "an episode that was never started carried progress");
+        Require(warm.Cards[1].Name == L"Silo" && warm.Cards[1].Kind == ContinueCardKind::Resume,
+                "the resume card did not survive promotion happening above it");
+        Require(warm.Requests.empty(), "a series that was already resolved was asked about again");
+
+        // The finished episode answers for its show whether or not it draws
+        // anything, so the older mis-click cannot speak in its place.
+        auto const finale = BuildContinueShelf(
+            rows,
+            [](std::wstring const&) { return NextEpisodeLookup{ NextEpisodeState::None, L"" }; },
+            8,
+            8);
+        Require(finale.Cards.size() == 1 && finale.Cards[0].Name == L"Silo",
+                "a series stayed on the shelf after its last episode");
+        Require(finale.Requests.empty(), "a series known to have ended was asked about again");
+
+        // A row that cannot be drawn, one with no duration, and one barely opened.
+        // None of them may produce a card or a lookup.
+        std::vector<ContinueWatchRow> const unusable{
+            WatchRow(L"series:ttA", L"ttA:1:1", L"", 100.0, 1000.0, false, 50),
+            WatchRow(L"movie:ttB", L"ttB", L"No duration", 100.0, 0.0, false, 40),
+            WatchRow(L"movie:ttC", L"ttC", L"Barely opened", 10.0, 1000.0, false, 30),
+        };
+        auto const skipped = BuildContinueShelf(unusable, unresolved, 8, 8);
+        Require(skipped.Cards.empty(), "an unusable row produced a card");
+        Require(skipped.Requests.empty(), "an unusable row produced a lookup");
+
+        // A full shelf still leads with the promoted card, because the walk is in
+        // newest-first order and the cap only trims the tail.
+        std::vector<ContinueWatchRow> many{
+            WatchRow(L"series:tt9000000", L"tt9000000:1:1", L"Newest", 600.0, 610.0, true, 100),
+        };
+        for (int index = 0; index < 10; ++index)
+        {
+            auto const suffix = std::to_wstring(index);
+            many.push_back({ L"movie:tt" + suffix, L"tt" + suffix, L"Film " + suffix, L"", 100.0, 1000.0, false, 90 - index });
+        }
+        auto const capped = BuildContinueShelf(
+            many,
+            [](std::wstring const&) { return NextEpisodeLookup{ NextEpisodeState::Resolved, L"tt9000000:1:2" }; },
+            8,
+            8);
+        Require(capped.Cards.size() == 8, "the shelf exceeded its cap");
+        Require(capped.Cards[0].Kind == ContinueCardKind::NextEpisode,
+                "the promoted card lost the front of a full shelf");
+        Require(capped.Cards[7].Name == L"Film 6", "the cap trimmed from the wrong end");
+    }
+
 } // namespace
 
 int main()
@@ -495,6 +615,7 @@ int main()
         TestFilteredFeaturedSelection();
         TestSelectFeaturedItems();
         TestOptionalSubtitleFallback();
+        TestContinueShelf();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

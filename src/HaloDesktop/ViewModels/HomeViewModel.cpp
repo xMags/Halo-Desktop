@@ -35,10 +35,19 @@ namespace winrt::HaloDesktop::implementation
         // the destructor below always removes the handler, and the service only
         // ever calls back synchronously on the same thread that owns this.
         m_metricsToken = m_layout->AddChangedHandler([this]() { RaiseLayoutMetrics(); });
+        // Same reasoning, and the same removal in the destructor. The catalog
+        // raises this when a next-episode lookup lands after the shelf was already
+        // shown, which is the only way a promoted card reaches a Home already on
+        // screen.
+        if (m_catalog)
+        {
+            m_continueToken = m_catalog->AddContinueChangedHandler([this]() { ApplyContinue(); });
+        }
     }
     HomeViewModel::~HomeViewModel()
     {
         if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
+        if (m_catalog && m_continueToken != 0) m_catalog->RemoveContinueChangedHandler(m_continueToken);
         if (m_featuredTimer)
         {
             m_featuredTimer.Stop();
