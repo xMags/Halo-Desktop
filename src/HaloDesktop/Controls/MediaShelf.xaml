@@ -34,7 +34,8 @@
       HorizontalScrollBarVisibility="Hidden"
       HorizontalScrollMode="Disabled"
       VerticalScrollMode="Disabled"
-      ZoomMode="Disabled">
+      ZoomMode="Disabled"
+      PointerWheelChanged="OnStripPointerWheelChanged">
       <ItemsRepeater x:Name="ShelfItems">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Horizontal" Spacing="14" />

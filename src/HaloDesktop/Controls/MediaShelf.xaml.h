@@ -28,6 +28,11 @@ namespace winrt::HaloDesktop::implementation
         void OnSeeAllClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollLeft(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnScrollRight(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        // The strips scroll by their own arrows only. A tilt wheel or a shift
+        // wheel over one would otherwise pan it, which no other list here does.
+        void OnStripPointerWheelChanged(
+            winrt::Windows::Foundation::IInspectable const&,
+            Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
 
     private:
         void ScrollBy(double direction);

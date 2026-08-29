@@ -6,6 +6,8 @@
 
 #include "Controls/PosterCard.xaml.h"
 #include <winrt/HaloDesktop.h>
+#include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Windows.System.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -49,6 +51,22 @@ namespace winrt::HaloDesktop::implementation
     }
     void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1.0); }
     void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1.0); }
+
+    // Only sideways intent is swallowed. A plain wheel still reaches the page
+    // scroller above, so pointing at a strip does not trap the page.
+    void MediaShelf::OnStripPointerWheelChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        auto const point = args.GetCurrentPoint(nullptr);
+        auto const shifted =
+            (args.KeyModifiers() & winrt::Windows::System::VirtualKeyModifiers::Shift) !=
+            winrt::Windows::System::VirtualKeyModifiers::None;
+        if (point && (point.Properties().IsHorizontalMouseWheel() || shifted))
+        {
+            args.Handled(true);
+        }
+    }
 
     void MediaShelf::ScrollBy(double direction)
     {
