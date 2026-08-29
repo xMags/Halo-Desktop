@@ -150,9 +150,15 @@
             <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>
-        <ScrollViewer x:Name="ContinueScroller" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" PointerWheelChanged="OnStripPointerWheelChanged">
-          <!-- The last list on this page that realised everything it was given. -->
-          <ItemsRepeater x:Name="ContinueList">
+        <ScrollViewer x:Name="ContinueScroller" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled">
+          <!-- The wheel handler belongs on the content, not on the scroller. A
+               ScrollViewer class-handles the wheel before any handler attached to
+               the scroller itself, and marks it handled, so one attached there is
+               never called. The transparent background makes the gaps between
+               cards hit-testable too, so the strip answers everywhere. -->
+          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
+            <!-- The last list on this page that realised everything it was given. -->
+            <ItemsRepeater x:Name="ContinueList">
             <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
             <ItemsRepeater.ItemTemplate>
               <DataTemplate x:DataType="local:ContinueItem">
@@ -167,7 +173,8 @@
                   Click="OnContinueItemClick" />
               </DataTemplate>
             </ItemsRepeater.ItemTemplate>
-          </ItemsRepeater>
+            </ItemsRepeater>
+          </Grid>
         </ScrollViewer>
       </StackPanel>
       <!--
