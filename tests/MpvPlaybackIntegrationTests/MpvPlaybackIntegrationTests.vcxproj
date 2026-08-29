@@ -52,6 +52,7 @@ copy /Y "$(RepositoryRoot)external\vulkan\bin\vulkan-1.dll" "$(OutDir)vulkan-1.d
     <ClCompile Include="MpvPlaybackIntegrationTests.cpp" />
     <ClCompile Include="..\..\src\HaloDesktop\Playback\MpvCommand.cpp"><Link>MpvCommand.cpp</Link></ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Playback\PlaybackPolicy.cpp"><Link>PlaybackPolicy.cpp</Link></ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Playback\ScrubPreviewPolicy.cpp"><Link>ScrubPreviewPolicy.cpp</Link></ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp"><Link>ProtectedHttpHeaders.cpp</Link></ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

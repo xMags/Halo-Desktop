@@ -1,6 +1,7 @@
 #include "Api/OpenSubtitlesHashPolicy.h"
 #include "Api/ResponseSizePolicy.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Playback/ScrubPreviewPolicy.h"
 #include "Playback/ScopedReentrancyGuard.h"
 #include "Playback/TemporaryFileCollection.h"
 #include "Security/ProtectedHttpHeaders.h"
@@ -23,6 +24,76 @@ namespace
     void Require(bool condition,char const* message)
     {
         if(!condition)throw std::runtime_error(message);
+    }
+
+    void TestScrubPreviewMapping()
+    {
+        using HaloDesktop::Playback::ScrubPreviewTimeFromPointer;
+
+        // The thumb centre travels between half a thumb width from each end, so the two
+        // extremes of that travel must reach exactly the start and the end of the file.
+        auto const start=ScrubPreviewTimeFromPointer(8.0,608.0,16.0,600.0);
+        Require(start.Valid,"the left end of the thumb travel should map");
+        Require(start.Seconds==0.0,"the left end of the thumb travel is the start of the file");
+        auto const end=ScrubPreviewTimeFromPointer(600.0,608.0,16.0,600.0);
+        Require(end.Valid,"the right end of the thumb travel should map");
+        Require(end.Seconds==600.0,"the right end of the thumb travel is the end of the file");
+        auto const middle=ScrubPreviewTimeFromPointer(304.0,608.0,16.0,600.0);
+        Require(middle.Valid&&middle.Seconds==300.0,"the centre of the track is the middle of the file");
+
+        // Pointer positions inside the thumb's own half-widths, and beyond the control
+        // entirely, are clamped rather than producing a negative or overlong time.
+        Require(ScrubPreviewTimeFromPointer(0.0,608.0,16.0,600.0).Seconds==0.0,"before the travel clamps to zero");
+        Require(ScrubPreviewTimeFromPointer(-40.0,608.0,16.0,600.0).Seconds==0.0,"left of the control clamps to zero");
+        Require(ScrubPreviewTimeFromPointer(608.0,608.0,16.0,600.0).Seconds==600.0,"after the travel clamps to the duration");
+        Require(ScrubPreviewTimeFromPointer(5000.0,608.0,16.0,600.0).Seconds==600.0,"right of the control clamps to the duration");
+
+        // Nothing to preview: a live stream with no duration, a bar that has not been
+        // measured yet, and a track no wider than the thumb it carries.
+        Require(!ScrubPreviewTimeFromPointer(100.0,608.0,16.0,0.0).Valid,"a file with no duration has no preview");
+        Require(!ScrubPreviewTimeFromPointer(100.0,608.0,16.0,-1.0).Valid,"a negative duration has no preview");
+        Require(!ScrubPreviewTimeFromPointer(100.0,0.0,16.0,600.0).Valid,"an unmeasured bar has no preview");
+        Require(!ScrubPreviewTimeFromPointer(100.0,16.0,16.0,600.0).Valid,"a track the width of the thumb has no preview");
+        Require(!ScrubPreviewTimeFromPointer(
+            std::numeric_limits<double>::quiet_NaN(),608.0,16.0,600.0).Valid,"a pointer with no position has no preview");
+    }
+
+    void TestScrubPreviewPlacement()
+    {
+        using HaloDesktop::Playback::ClampScrubPreviewOffset;
+
+        Require(ClampScrubPreviewOffset(400.0,200.0,800.0)==300.0,"the card centres on the pointer");
+        Require(ClampScrubPreviewOffset(10.0,200.0,800.0)==0.0,"the card cannot overhang the left edge");
+        Require(ClampScrubPreviewOffset(790.0,200.0,800.0)==600.0,"the card cannot overhang the right edge");
+        Require(ClampScrubPreviewOffset(400.0,200.0,150.0)==0.0,"a card wider than its host pins to the left");
+        Require(ClampScrubPreviewOffset(400.0,0.0,800.0)==0.0,"a card with no width has no offset");
+    }
+
+    void TestScrubPreviewCoalescing()
+    {
+        using HaloDesktop::Playback::ShouldIssueScrubPreview;
+        using HaloDesktop::Playback::ScrubPreviewMinimumDeltaSeconds;
+
+        Require(ShouldIssueScrubPreview(10.0,0.0,false),"the first request is always issued");
+        Require(!ShouldIssueScrubPreview(10.0,10.0,true),"the same position is not decoded twice");
+        Require(!ShouldIssueScrubPreview(10.1,10.0,true),"a movement inside one keyframe is folded away");
+        Require(ShouldIssueScrubPreview(10.0+ScrubPreviewMinimumDeltaSeconds,10.0,true),"the threshold itself is issued");
+        Require(ShouldIssueScrubPreview(9.0,10.0,true),"a backwards movement is issued");
+        Require(!ShouldIssueScrubPreview(-1.0,10.0,true),"a negative position is never issued");
+        Require(!ShouldIssueScrubPreview(
+            std::numeric_limits<double>::quiet_NaN(),10.0,true),"a position with no value is never issued");
+    }
+
+    void TestPlaybackTimeFormatting()
+    {
+        using HaloDesktop::Playback::FormatPlaybackTime;
+
+        Require(FormatPlaybackTime(0.0,false)==L"0:00","a fresh position reads as zero");
+        Require(FormatPlaybackTime(65.4,false)==L"1:05","seconds are truncated, not rounded");
+        Require(FormatPlaybackTime(3599.0,false)==L"59:59","minutes run past sixty when hours are off");
+        Require(FormatPlaybackTime(3661.0,true)==L"1:01:01","hours are padded to two-digit minutes");
+        Require(FormatPlaybackTime(59.0,true)==L"0:00:59","an hours-shaped file keeps its shape early on");
+        Require(FormatPlaybackTime(-5.0,false)==L"0:00","a position before the start reads as zero");
     }
 
     void TestScopedReentrancyGuard()
@@ -406,6 +477,10 @@ int main()
         TestVideoQualityBadges();
         TestAddonSelection();
         TestTemporaryFileCleanup();
+        TestScrubPreviewMapping();
+        TestScrubPreviewPlacement();
+        TestScrubPreviewCoalescing();
+        TestPlaybackTimeFormatting();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }

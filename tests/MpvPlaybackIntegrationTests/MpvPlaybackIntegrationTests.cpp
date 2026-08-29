@@ -1,5 +1,6 @@
 #include "Playback/MpvCommand.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Playback/ScrubPreviewPolicy.h"
 
 #include <mpv/client.h>
 
@@ -12,6 +13,8 @@
 #include <chrono>
 #include <climits>
 #include <cstdint>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -233,6 +236,186 @@ namespace
         throw std::runtime_error("mpv playback timed out.");
     }
 
+    // A YUV4MPEG2 clip written byte by byte. Raw video needs no encoder, so the shipped
+    // library can be asked for a real decoded frame without depending on which encoders
+    // this custom ffmpeg build happens to carry. The first half is black and the second
+    // half is white, which makes the luminance of a grabbed frame prove where the seek
+    // landed rather than merely that a frame came back.
+    constexpr std::int32_t PreviewClipWidth=64;
+    constexpr std::int32_t PreviewClipHeight=48;
+    constexpr std::int32_t PreviewClipFrames=50;
+    constexpr std::int32_t PreviewClipRate=25;
+    constexpr std::int32_t PreviewClipWhiteFrom=25;
+
+    std::filesystem::path WritePreviewClip()
+    {
+        auto const path=std::filesystem::temp_directory_path()
+            /("halo-scrub-preview-"+std::to_string(GetCurrentProcessId())+".y4m");
+        std::ofstream file(path,std::ios::binary|std::ios::trunc);
+        Require(file.is_open(),"the preview clip could not be created");
+        file<<"YUV4MPEG2 W"<<PreviewClipWidth<<" H"<<PreviewClipHeight
+            <<" F"<<PreviewClipRate<<":1 Ip A1:1 C420\n";
+        std::vector<char> const chroma(
+            static_cast<std::size_t>(PreviewClipWidth/2)*static_cast<std::size_t>(PreviewClipHeight/2),
+            static_cast<char>(128));
+        for(std::int32_t index=0;index<PreviewClipFrames;++index)
+        {
+            auto const luma=index<PreviewClipWhiteFrom?static_cast<char>(16):static_cast<char>(235);
+            std::vector<char> const plane(
+                static_cast<std::size_t>(PreviewClipWidth)*static_cast<std::size_t>(PreviewClipHeight),
+                luma);
+            file<<"FRAME\n";
+            file.write(plane.data(),static_cast<std::streamsize>(plane.size()));
+            file.write(chroma.data(),static_cast<std::streamsize>(chroma.size()));
+            file.write(chroma.data(),static_cast<std::streamsize>(chroma.size()));
+        }
+        file.close();
+        Require(!file.fail(),"the preview clip could not be written");
+        return path;
+    }
+
+    mpv_node const*FindPreviewValue(mpv_node const&map,std::string_view key)
+    {
+        if(map.format!=MPV_FORMAT_NODE_MAP||!map.u.list)return nullptr;
+        for(int index=0;index<map.u.list->num;++index)
+        {
+            if(map.u.list->keys[index]&&key==map.u.list->keys[index])return &map.u.list->values[index];
+        }
+        return nullptr;
+    }
+
+    std::int64_t PreviewInteger(mpv_node const&map,char const*key)
+    {
+        auto const value=FindPreviewValue(map,key);
+        Require(value!=nullptr&&value->format==MPV_FORMAT_INT64,"the screenshot lacked an expected integer");
+        return value->u.int64;
+    }
+
+    void SeekPreview(mpv_handle*handle,double seconds)
+    {
+        // Drain first. Every load and every previous seek emits its own restart, and a
+        // leftover one would end this seek's wait before its frame exists, which shows
+        // up as an intermittently stale thumbnail rather than an obvious failure.
+        while(auto const pending=mpv_wait_event(handle,0.0))
+        {
+            if(pending->event_id==MPV_EVENT_NONE)break;
+        }
+        HaloDesktop::Playback::RunMpvCommand(handle,{"seek",std::to_string(seconds),"absolute+keyframes"});
+        auto const deadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);
+        while(std::chrono::steady_clock::now()<deadline)
+        {
+            auto const event=mpv_wait_event(handle,0.05);
+            if(!event)continue;
+            if(event->event_id==MPV_EVENT_PLAYBACK_RESTART)return;
+        }
+        throw std::runtime_error("the preview seek never completed.");
+    }
+
+    // Returns the mean blue channel of the middle row, which for a grey frame is its
+    // brightness. The channel choice does not matter for black and white.
+    std::uint32_t GrabPreviewBrightness(mpv_handle*handle,std::int64_t expectedWidth)
+    {
+        mpv_node result{};
+        char const*arguments[]={"screenshot-raw","video",nullptr};
+        auto const code=mpv_command_ret(handle,arguments,&result);
+        if(code<0)
+        {
+            mpv_free_node_contents(&result);
+            CheckMpv(code,"screenshot-raw");
+        }
+
+        std::uint32_t brightness{};
+        try
+        {
+            auto const width=PreviewInteger(result,"w");
+            auto const height=PreviewInteger(result,"h");
+            auto const stride=PreviewInteger(result,"stride");
+            Require(width==expectedWidth,"the preview scale filter did not resize the frame");
+            Require(height>0,"the preview frame had no height");
+            Require(stride>=width*4,"the preview stride was smaller than one row");
+
+            auto const format=FindPreviewValue(result,"format");
+            Require(format!=nullptr&&format->format==MPV_FORMAT_STRING&&format->u.string,"the screenshot lacked a format");
+            std::string_view const formatName{format->u.string};
+            Require(formatName=="bgr0"||formatName=="bgra","the screenshot format was not one the player accepts");
+
+            auto const data=FindPreviewValue(result,"data");
+            Require(data!=nullptr&&data->format==MPV_FORMAT_BYTE_ARRAY&&data->u.ba&&data->u.ba->data,"the screenshot carried no pixels");
+            Require(data->u.ba->size>=static_cast<std::size_t>(stride)*static_cast<std::size_t>(height),"the screenshot buffer was short");
+
+            auto const*pixels=static_cast<std::uint8_t const*>(data->u.ba->data)+stride*(height/2);
+            std::uint64_t total{};
+            for(std::int64_t x=0;x<width;++x)total+=pixels[x*4];
+            brightness=static_cast<std::uint32_t>(total/static_cast<std::uint64_t>(width));
+        }
+        catch(...)
+        {
+            mpv_free_node_contents(&result);throw;
+        }
+        mpv_free_node_contents(&result);
+        return brightness;
+    }
+
+    // Exercises the exact configuration MpvScrubPreviewSource runs under: the shared
+    // option table, the scale filter, keyframe seeking, and screenshot-raw. Everything
+    // here is the real shipped library; only the delivery hop onto the UI thread, which
+    // needs a DispatcherQueue, is left to the app.
+    void VerifyScrubPreviewDecoding()
+    {
+        auto const clip=WritePreviewClip();
+        auto*handle=mpv_create();Require(handle!=nullptr,"preview mpv_create returned null");
+        try
+        {
+            for(auto const&option:HaloDesktop::Playback::ScrubPreviewMpvOptions())
+            {
+                CheckMpv(mpv_set_option_string(handle,option.Name,option.Value),option.Name);
+            }
+
+            auto applied=false;
+            for(auto const*filter:HaloDesktop::Playback::ScrubPreviewScaleFilters())
+            {
+                if(mpv_set_option_string(handle,"vf",filter)>=0){applied=true;break;}
+            }
+            Require(applied,"no scrub preview scale filter was accepted by libmpv");
+            CheckMpv(mpv_initialize(handle),"preview mpv_initialize");
+
+            HaloDesktop::Playback::LoadMpvSource(handle,{clip.wstring(),{}});
+            auto const deadline=std::chrono::steady_clock::now()+std::chrono::seconds(10);
+            auto ready=false;
+            while(!ready&&std::chrono::steady_clock::now()<deadline)
+            {
+                auto const event=mpv_wait_event(handle,0.05);
+                if(event&&event->event_id==MPV_EVENT_PLAYBACK_RESTART)ready=true;
+            }
+            Require(ready,"the preview clip never produced its first frame");
+
+            // The filter turns the 64 pixel wide clip into a 320 pixel wide frame, so a
+            // width of 320 proves the filter string this build accepts really applied.
+            SeekPreview(handle,0.2);
+            auto const dark=GrabPreviewBrightness(handle,320);
+            SeekPreview(handle,1.8);
+            auto const bright=GrabPreviewBrightness(handle,320);
+            // Back into the dark half. A grab that consumed a stale restart event would
+            // still be holding the bright frame here, so this is the assertion that
+            // actually notices the one-frame-behind failure rather than tolerating it.
+            SeekPreview(handle,0.4);
+            auto const darkAgain=GrabPreviewBrightness(handle,320);
+            Require(dark<64,"the first half of the preview clip should decode dark");
+            Require(bright>192,"the second half of the preview clip should decode bright");
+            Require(darkAgain<64,"seeking back into the first half kept a stale frame");
+            Require(bright>dark,"the preview seek did not move between the halves of the clip");
+        }
+        catch(...)
+        {
+            mpv_terminate_destroy(handle);
+            std::error_code ignored;
+            std::filesystem::remove(clip,ignored);
+            throw;
+        }
+        mpv_terminate_destroy(handle);
+        std::error_code ignored;
+        std::filesystem::remove(clip,ignored);
+    }
     void VerifyStreamingShutdown(ProtectedHttpServer&server)
     {
         auto*handle=mpv_create();Require(handle!=nullptr,"shutdown probe mpv_create returned null");
@@ -324,7 +507,8 @@ int main()
         }
         mpv_terminate_destroy(handle);
         VerifyStreamingShutdown(server);
-        std::cout<<"mpv protected playback, replay, and streaming shutdown tests passed.\n";
+        VerifyScrubPreviewDecoding();
+        std::cout<<"mpv protected playback, replay, streaming shutdown, and scrub preview tests passed.\n";
         return 0;
     }
     catch(std::exception const&error)

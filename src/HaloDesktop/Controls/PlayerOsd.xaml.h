@@ -34,6 +34,8 @@ namespace winrt::HaloDesktop::implementation
                                    Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnSeekPointerTerminated(winrt::Windows::Foundation::IInspectable const&,
                                      Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnSeekPointerExited(winrt::Windows::Foundation::IInspectable const&,
+                                 Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFullscreenClick(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAudioPanelClick(winrt::Windows::Foundation::IInspectable const&,
@@ -105,6 +107,12 @@ namespace winrt::HaloDesktop::implementation
                              Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
+        // Points the preview card at wherever the pointer is over the seek bar. The
+        // slider is the measured element because that is what the pointer events report
+        // against, and what the card's own transform is laid out inside.
+        void UpdateScrubPreview(Microsoft::UI::Xaml::Controls::Slider const& slider,
+                                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
         std::optional<winrt::Windows::Foundation::Point> m_lastPointerPosition;
         std::uint32_t m_lastPointerId{};

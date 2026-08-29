@@ -6,6 +6,8 @@
 #include <cmath>
 #include <cwctype>
 #include <limits>
+#include <iomanip>
+#include <sstream>
 #include <stdexcept>
 #include <string_view>
 #include <unordered_map>
@@ -370,5 +372,21 @@ namespace HaloDesktop::Playback
             AppendEscapedListValue(result, header.Name + L": " + header.Value);
         }
         return result;
+    }
+    std::wstring FormatPlaybackTime(double seconds, bool withHours)
+    {
+        auto const totalSeconds = static_cast<std::int32_t>((std::max)(0.0, seconds));
+        std::wostringstream value;
+        if (withHours)
+        {
+            value << totalSeconds / 3600 << L":" << std::setw(2) << std::setfill(L'0')
+                  << totalSeconds % 3600 / 60;
+        }
+        else
+        {
+            value << totalSeconds / 60;
+        }
+        value << L":" << std::setw(2) << std::setfill(L'0') << totalSeconds % 60;
+        return value.str();
     }
 }

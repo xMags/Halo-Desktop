@@ -2,6 +2,7 @@
 
 #include "Api/Dto.h"
 #include "Playback/IPlaybackEngine.h"
+#include "Playback/IScrubPreviewSource.h"
 
 #include <chrono>
 #include <functional>
@@ -32,7 +33,8 @@ namespace HaloDesktop::Playback
             std::shared_ptr<IPlaybackEngine> engine,
             std::shared_ptr<Services::WatchStateService> watchState,
             std::shared_ptr<Services::SettingsSyncService> settings,
-            std::shared_ptr<Services::PlaybackPreferences> preferences);
+            std::shared_ptr<Services::PlaybackPreferences> preferences,
+            std::shared_ptr<IScrubPreviewSource> scrubPreview);
         ~PlaybackSessionController();
         [[nodiscard]] concurrency::task<void> StartAsync(winrt::HaloDesktop::PlaybackRequest request);
         [[nodiscard]] concurrency::task<void> CloseAsync();
@@ -54,6 +56,9 @@ namespace HaloDesktop::Playback
         std::shared_ptr<Services::WatchStateService>m_watchState;
         std::shared_ptr<Services::SettingsSyncService>m_settings;
         std::shared_ptr<Services::PlaybackPreferences>m_preferences;
+        // Handed the same source as the engine so the seek bar can decode preview
+        // frames without the URL travelling a second path through the UI.
+        std::shared_ptr<IScrubPreviewSource>m_scrubPreview;
         std::shared_ptr<WatchReporter>m_reporter;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};
         std::optional<Api::Dto::WatchEntry>m_prior;

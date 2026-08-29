@@ -52,6 +52,21 @@ namespace HaloDesktop
         void Refresh();
     }
 
+    runtimeclass ScrubPreviewViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        Microsoft.UI.Xaml.Visibility PreviewVisibility { get; };
+        Microsoft.UI.Xaml.Media.Imaging.WriteableBitmap Image { get; };
+        Microsoft.UI.Xaml.Visibility ImageVisibility { get; };
+        String TimeText { get; };
+        Double OffsetX { get; };
+        Double CardWidth { get; };
+        Double CardHeight { get; };
+        Boolean IsOpen { get; };
+        void Hover(Double pointerX, Double trackWidth, Double durationSeconds);
+        void Hide();
+        void Reset();
+    }
+
     runtimeclass PlayerViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Double Position { get; };
@@ -113,6 +128,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SubtitleTracksVisibility { get; };
         Microsoft.UI.Xaml.Visibility SubtitleAppearanceVisibility { get; };
         SubtitleAppearanceViewModel SubtitleAppearance { get; };
+        ScrubPreviewViewModel ScrubPreview { get; };
         Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextAvailableVisibility { get; };

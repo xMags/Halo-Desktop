@@ -54,6 +54,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Playback\PlaybackPolicy.cpp">
       <Link>PlaybackPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Playback\ScrubPreviewPolicy.cpp">
+      <Link>ScrubPreviewPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Api\OpenSubtitlesHashPolicy.cpp">
       <Link>OpenSubtitlesHashPolicy.cpp</Link>
     </ClCompile>

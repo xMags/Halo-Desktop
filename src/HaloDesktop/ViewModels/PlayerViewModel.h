@@ -5,6 +5,7 @@
 #include "Playback/SubtitleController.h"
 #include "PlaybackTrackViewModel.g.h"
 #include "AddonSubtitleViewModel.g.h"
+#include "ScrubPreviewViewModel.g.h"
 #include "SubtitleAppearanceViewModel.g.h"
 #include "PlayerViewModel.g.h"
 #include "Services/AppServices.h"
@@ -169,6 +170,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitleTracksVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitleAppearanceVisibility() const noexcept;
         [[nodiscard]] winrt::HaloDesktop::SubtitleAppearanceViewModel SubtitleAppearance() const;
+        [[nodiscard]] winrt::HaloDesktop::ScrubPreviewViewModel ScrubPreview() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SpeedPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
@@ -272,7 +274,6 @@ namespace winrt::HaloDesktop::implementation
         std::function<winrt::hstring()> m_addonSelectionProvider;
         double m_osdOpacity{ 1.0 };
         double m_scrubPosition{};
-        std::chrono::steady_clock::time_point m_lastScrubSeek{};
         bool m_scrubbing{};
         bool m_stalled{};
         bool m_bufferingVisible{};
@@ -281,6 +282,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_upNextClaimed{};
         bool m_active{};
         winrt::HaloDesktop::SubtitleAppearanceViewModel m_subtitleAppearance{ nullptr };
+        winrt::HaloDesktop::ScrubPreviewViewModel m_scrubPreview{ nullptr };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 } // namespace winrt::HaloDesktop::implementation

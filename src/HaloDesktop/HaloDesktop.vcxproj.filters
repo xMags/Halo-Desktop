@@ -101,6 +101,9 @@
     <ClCompile Include="Controls\TagChip.xaml.cpp"><Filter>Controls</Filter></ClCompile>
     <ClCompile Include="Models\Models.cpp"><Filter>Models</Filter></ClCompile>
     <ClCompile Include="Playback\NullEngine.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\NullScrubPreviewSource.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\MpvScrubPreviewSource.cpp"><Filter>Playback</Filter></ClCompile>
+    <ClCompile Include="Playback\ScrubPreviewPolicy.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\MpvClient.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\PlaybackSessionController.cpp"><Filter>Playback</Filter></ClCompile>
     <ClCompile Include="Playback\SubtitleController.cpp"><Filter>Playback</Filter></ClCompile>
@@ -158,6 +161,7 @@
     <ClCompile Include="ViewModels\LibraryViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\LoginViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\PlayerViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
+    <ClCompile Include="ViewModels\ScrubPreviewViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SearchViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SettingsViewModel.cpp"><Filter>ViewModels</Filter></ClCompile>
     <ClCompile Include="ViewModels\SourcePresentation.cpp"><Filter>ViewModels</Filter></ClCompile>
@@ -201,6 +205,10 @@
     <ClInclude Include="Config\ServerConfig.example.h"><Filter>Config</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Playback\IPlaybackEngine.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\IScrubPreviewSource.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\MpvScrubPreviewSource.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\NullScrubPreviewSource.h"><Filter>Playback</Filter></ClInclude>
+    <ClInclude Include="Playback\ScrubPreviewPolicy.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\MpvClient.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\PlaybackSessionController.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\SubtitleController.h"><Filter>Playback</Filter></ClInclude>
@@ -263,6 +271,7 @@
     <ClInclude Include="ViewModels\LibraryViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\LoginViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\PlayerViewModel.h"><Filter>ViewModels</Filter></ClInclude>
+    <ClInclude Include="ViewModels\ScrubPreviewViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\ObservableHelper.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SettingsViewModel.h"><Filter>ViewModels</Filter></ClInclude>
     <ClInclude Include="ViewModels\SearchViewModel.h"><Filter>ViewModels</Filter></ClInclude>

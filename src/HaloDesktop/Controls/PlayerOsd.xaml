@@ -340,6 +340,42 @@
                 <SolidColorBrush x:Key="SliderOuterThumbBackground" Color="#FFFFFFFF" />
               </Slider.Resources>
             </Slider>
+            <!-- Floats above the seek bar, following the pointer. It lives inside the
+                 seek Grid so its X axis is the slider's own, and is lifted clear with a
+                 negative margin because that Grid is only as tall as the bar. Hit
+                 testing stays off so the card can never intercept a scrub. -->
+            <Border
+              x:Name="ScrubPreviewCard"
+              Width="{x:Bind ViewModel.ScrubPreview.CardWidth}"
+              Margin="0,-152,0,0"
+              Padding="4"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Top"
+              Background="#F2101014"
+              BorderBrush="#24FFFFFF"
+              BorderThickness="1"
+              CornerRadius="8"
+              IsHitTestVisible="False"
+              Visibility="{x:Bind ViewModel.ScrubPreview.PreviewVisibility, Mode=OneWay}">
+              <Border.RenderTransform>
+                <TranslateTransform X="{x:Bind ViewModel.ScrubPreview.OffsetX, Mode=OneWay}" />
+              </Border.RenderTransform>
+              <StackPanel>
+                <Grid Height="{x:Bind ViewModel.ScrubPreview.CardHeight}" Background="#FF060608" CornerRadius="4">
+                  <Image
+                    Source="{x:Bind ViewModel.ScrubPreview.Image, Mode=OneWay}"
+                    Stretch="Uniform"
+                    Visibility="{x:Bind ViewModel.ScrubPreview.ImageVisibility, Mode=OneWay}" />
+                </Grid>
+                <TextBlock
+                  Margin="0,4,0,2"
+                  HorizontalAlignment="Center"
+                  FontFamily="{StaticResource HaloMonoFont}"
+                  FontSize="11.5"
+                  Foreground="White"
+                  Text="{x:Bind ViewModel.ScrubPreview.TimeText, Mode=OneWay}" />
+              </StackPanel>
+            </Border>
           </Grid>
           <Grid Margin="0,2,0,0">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="96" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>

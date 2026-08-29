@@ -15,8 +15,8 @@
 
 namespace HaloDesktop::Playback
 {
-    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings,std::shared_ptr<Services::PlaybackPreferences>preferences):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings)),m_preferences(std::move(preferences))
-    {if(!m_engine||!m_watchState||!m_settings||!m_preferences)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
+    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings,std::shared_ptr<Services::PlaybackPreferences>preferences,std::shared_ptr<IScrubPreviewSource>scrubPreview):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings)),m_preferences(std::move(preferences)),m_scrubPreview(std::move(scrubPreview))
+    {if(!m_engine||!m_watchState||!m_settings||!m_preferences||!m_scrubPreview)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
     PlaybackSessionController::~PlaybackSessionController(){Stop();}
 
     concurrency::task<void> PlaybackSessionController::StartAsync(winrt::HaloDesktop::PlaybackRequest request)
@@ -33,7 +33,7 @@ namespace HaloDesktop::Playback
         auto const implementation=winrt::get_self<winrt::HaloDesktop::implementation::PlaybackRequest>(request);
         source.Headers.reserve(implementation->RequestHeaders().size());
         for(auto const&[name,value]:implementation->RequestHeaders())source.Headers.push_back({std::wstring(name.c_str()),std::wstring(value.c_str())});
-        try{m_engine->Open(std::move(source));m_engine->SetPaused(false);}
+        try{m_scrubPreview->Open(source);m_engine->Open(std::move(source));m_engine->SetPaused(false);}
         catch(...){Stop();throw;}
         LoadWatchStateAsync(version).then([](concurrency::task<void>task){try{task.get();}catch(...){}});
         co_return;
@@ -52,6 +52,7 @@ namespace HaloDesktop::Playback
         m_reportTickRevoker.revoke();m_reportTimer=nullptr;
         if(m_engineToken){m_engine->RemoveChangedHandler(m_engineToken);m_engineToken=0;}
         m_reporter.reset();m_prior.reset();m_fileReady=false;
+        m_scrubPreview->Close();
     }
 
     void PlaybackSessionController::SetErrorHandler(std::function<void()>handler){m_errorHandler=std::move(handler);}

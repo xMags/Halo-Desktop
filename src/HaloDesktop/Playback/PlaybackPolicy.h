@@ -119,4 +119,8 @@ namespace HaloDesktop::Playback
         SubtitleIntentKind intent,
         bool exactVideo) noexcept;
     [[nodiscard]] std::wstring SerializePlaybackHeaders(std::vector<PlaybackHeader> const& headers);
+    // Clock face for a playback position. Hours are opt-in rather than inferred from the
+    // value so that every timestamp for one file has the same shape, whether or not the
+    // particular position has passed the hour mark.
+    [[nodiscard]] std::wstring FormatPlaybackTime(double seconds, bool withHours);
 }

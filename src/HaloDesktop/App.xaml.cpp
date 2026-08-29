@@ -5,7 +5,9 @@
 #include "Config/ServerConfig.h"
 #include "Models/Models.h"
 #include "Playback/MpvEngine.h"
+#include "Playback/MpvScrubPreviewSource.h"
 #include "Playback/NullEngine.h"
+#include "Playback/NullScrubPreviewSource.h"
 #include "Playback/SubtitleController.h"
 #include "Playback/UpNextResolver.h"
 #include "Services/AddonService.h"
@@ -187,8 +189,10 @@ namespace winrt::HaloDesktop::implementation
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>(m_devicePreferences);
 #if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>(m_playbackPreferences);
+        m_services.ScrubPreview = std::make_shared<::HaloDesktop::Playback::MpvScrubPreviewSource>();
 #else
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
+        m_services.ScrubPreview = std::make_shared<::HaloDesktop::Playback::NullScrubPreviewSource>();
 #endif
         m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
         m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_apiClient,m_services.SettingsSync,m_services.Downloads);

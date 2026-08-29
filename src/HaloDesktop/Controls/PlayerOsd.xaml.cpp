@@ -60,6 +60,11 @@ namespace winrt::HaloDesktop::implementation
         });
         slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerCaptureLostEvent(), terminationHandler, true);
         slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerCanceledEvent(), terminationHandler, true);
+        slider.AddHandler(Microsoft::UI::Xaml::UIElement::PointerExitedEvent(),
+                          winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
+                              this, &PlayerOsd::OnSeekPointerExited
+                          }),
+                          true);
         m_seekHandlersRegistered = true;
     }
     void PlayerOsd::OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
@@ -106,10 +111,24 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.SeekRelative(10.0);
     }
-    void PlayerOsd::OnSeekPointerPressed(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    void PlayerOsd::UpdateScrubPreview(
+        Microsoft::UI::Xaml::Controls::Slider const& slider,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
+        auto const preview = m_viewModel.ScrubPreview();
+        if (!preview)
+        {
+            return;
+        }
+
+        auto const position = args.GetCurrentPoint(slider).Position();
+        preview.Hover(position.X, slider.ActualWidth(), slider.Maximum());
+    }
+    void PlayerOsd::OnSeekPointerPressed(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        UpdateScrubPreview(sender.as<Microsoft::UI::Xaml::Controls::Slider>(), args);
         if (m_seekPointerActive)
         {
             return;
@@ -128,14 +147,20 @@ namespace winrt::HaloDesktop::implementation
             m_seekPointerActive = true;
             m_viewModel.BeginScrub();
         }
+        UpdateScrubPreview(slider, args);
         if (m_seekPointerActive)
         {
             m_viewModel.ScrubTo(slider.Value());
+            return;
         }
+        // A hovering pointer never reaches the OSD's own move handler, because the
+        // slider template consumes the event. Without this the bar would fade out from
+        // under the preview the moment the pointer settled.
+        m_viewModel.NotifyUserActivity();
     }
     void PlayerOsd::OnSeekPointerReleased(
         winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
         if (!m_seekPointerActive)
@@ -144,6 +169,33 @@ namespace winrt::HaloDesktop::implementation
         }
         m_seekPointerActive = false;
         m_viewModel.EndScrub(slider.Value());
+        // Releasing away from the bar produces no later exit event, so the card would
+        // otherwise be left hanging over a pointer that has gone.
+        auto const position = args.GetCurrentPoint(slider).Position();
+        auto const inside = position.X >= 0.0 && position.Y >= 0.0
+            && position.X <= slider.ActualWidth() && position.Y <= slider.ActualHeight();
+        if (!inside)
+        {
+            if (auto const preview = m_viewModel.ScrubPreview())
+            {
+                preview.Hide();
+            }
+        }
+    }
+    void PlayerOsd::OnSeekPointerExited(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        // A drag that wanders off the bar keeps its preview: the scrub is still live and
+        // the pointer still owns the thumb.
+        if (m_seekPointerActive)
+        {
+            return;
+        }
+        if (auto const preview = m_viewModel.ScrubPreview())
+        {
+            preview.Hide();
+        }
     }
     void PlayerOsd::OnSeekPointerTerminated(
         winrt::Windows::Foundation::IInspectable const& sender,
@@ -156,6 +208,10 @@ namespace winrt::HaloDesktop::implementation
 
         m_seekPointerActive = false;
         m_viewModel.EndScrub(sender.as<Microsoft::UI::Xaml::Controls::Slider>().Value());
+        if (auto const preview = m_viewModel.ScrubPreview())
+        {
+            preview.Hide();
+        }
     }
     void PlayerOsd::OnFullscreenClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                       [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)

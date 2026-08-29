@@ -17,6 +17,7 @@
 #include "Playback/PlaybackPolicy.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/ScrubPreviewViewModel.h"
 #include "ViewModels/SubtitlePreviewMetrics.h"
 
 #include <algorithm>
@@ -32,9 +33,6 @@ namespace
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
-    // Preview seeks are frequent enough to feel continuous without flooding
-    // libmpv with one command for every raw pointer update.
-    constexpr std::chrono::milliseconds ScrubPreviewInterval{ 120 };
 } // namespace
 
 namespace winrt::HaloDesktop::implementation
@@ -217,7 +215,8 @@ namespace winrt::HaloDesktop::implementation
           m_windowPresentation(services.WindowPresentation), m_state(services.Playback->State()),
           m_audioTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_addonSubtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_subtitleAppearance(winrt::make<SubtitleAppearanceViewModel>(services.SettingsSync, services.Subtitles))
+          m_subtitleAppearance(winrt::make<SubtitleAppearanceViewModel>(services.SettingsSync, services.Subtitles)),
+          m_scrubPreview(winrt::make<ScrubPreviewViewModel>(services.ScrubPreview))
     {
         RebuildTracks();
     }
@@ -295,6 +294,10 @@ namespace winrt::HaloDesktop::implementation
             }
         });
         m_active = true;
+        if (m_scrubPreview)
+        {
+            winrt::get_self<ScrubPreviewViewModel>(m_scrubPreview)->Activate();
+        }
         try
         {
             m_engine->SetSpeed(1.0);
@@ -333,6 +336,10 @@ namespace winrt::HaloDesktop::implementation
         }
         catch (...)
         {
+        }
+        if (m_scrubPreview)
+        {
+            winrt::get_self<ScrubPreviewViewModel>(m_scrubPreview)->Deactivate();
         }
         m_hideTickRevoker.revoke();
         m_upNextTickRevoker.revoke();
@@ -599,6 +606,10 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_subtitleAppearance;
     }
+    winrt::HaloDesktop::ScrubPreviewViewModel PlayerViewModel::ScrubPreview() const
+    {
+        return m_scrubPreview;
+    }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::UpNextVisibility() const noexcept
     {
         return m_upNextOpen && HasUpNext() ? Visible : Collapsed;
@@ -668,7 +679,6 @@ namespace winrt::HaloDesktop::implementation
 
         m_scrubbing = true;
         m_scrubPosition = m_state.PositionSeconds;
-        m_lastScrubSeek = std::chrono::steady_clock::now() - ScrubPreviewInterval;
         ApplyBufferingState();
         NotifyUserActivity();
     }
@@ -679,14 +689,12 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
+        // Deliberately does not move the engine. The scrub preview shows where the
+        // drag is going, and the file is seeked once, on release: seeking the live
+        // player per pointer update costs a range request and a cache flush each time
+        // on a remote source.
         m_scrubPosition = ScrubTarget(seconds);
         Raise(L"PositionText");
-        auto const now = std::chrono::steady_clock::now();
-        if (now - m_lastScrubSeek >= ScrubPreviewInterval)
-        {
-            m_lastScrubSeek = now;
-            m_engine->SeekAbsolute(m_scrubPosition);
-        }
         NotifyUserActivity();
     }
     void PlayerViewModel::EndScrub(double seconds)
@@ -913,7 +921,12 @@ namespace winrt::HaloDesktop::implementation
         auto nextState = m_engine->State();
         auto const tracksChanged = nextState.Tracks != m_state.Tracks;
         auto const videoChanged = nextState.Video != m_state.Video;
+        auto const fileChanged = nextState.FileSerial != m_state.FileSerial;
         m_state = std::move(nextState);
+        if (fileChanged && m_scrubPreview)
+        {
+            m_scrubPreview.Reset();
+        }
         if (tracksChanged)
         {
             RebuildTracks();
@@ -1037,9 +1050,9 @@ namespace winrt::HaloDesktop::implementation
     // is still black and there is nothing to flicker against.
     void PlayerViewModel::ApplyBufferingState()
     {
-        // A scrub issues a throttled preview seek every few frames. Reporting each one
-        // would park the ring on top of the very frame the drag exists to preview, so
-        // the indicator waits for the release and the final seek behind it.
+        // A drag leaves the engine where it was, so any stall reported during one
+        // belongs to the position the viewer has already left. The indicator waits for
+        // the release and the single seek that follows it.
         auto const stalled = !m_scrubbing
             && ::HaloDesktop::Playback::IsPlaybackStalled(
                 m_state.Buffering,
@@ -1118,7 +1131,10 @@ namespace winrt::HaloDesktop::implementation
     }
     bool PlayerViewModel::KeepsOsdVisible() const noexcept
     {
-        return m_state.Paused || m_panelIndex >= 0 || m_upNextOpen || m_scrubbing;
+        // Reached through the implementation rather than the projection: this function
+        // is noexcept, and a projected call is a boundary that is allowed to throw.
+        return m_state.Paused || m_panelIndex >= 0 || m_upNextOpen || m_scrubbing
+            || (m_scrubPreview && winrt::get_self<ScrubPreviewViewModel>(m_scrubPreview)->IsOpen());
     }
     bool PlayerViewModel::HasUpNext() const noexcept
     {
@@ -1132,19 +1148,7 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring PlayerViewModel::FormatTime(double seconds, bool withHours)
     {
-        auto const totalSeconds = static_cast<std::int32_t>((std::max)(0.0, seconds));
-        std::wostringstream value;
-        if (withHours)
-        {
-            value << totalSeconds / 3600 << L":" << std::setw(2) << std::setfill(L'0')
-                  << totalSeconds % 3600 / 60;
-        }
-        else
-        {
-            value << totalSeconds / 60;
-        }
-        value << L":" << std::setw(2) << std::setfill(L'0') << totalSeconds % 60;
-        return winrt::hstring(value.str());
+        return winrt::hstring(::HaloDesktop::Playback::FormatPlaybackTime(seconds, withHours));
     }
     void PlayerViewModel::Raise(wchar_t const* propertyName)
     {
