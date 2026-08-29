@@ -174,8 +174,14 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget MainWindow::FinishOrderedPlayerClose()
     {
         auto lifetime=get_strong();
-        try{if(auto page=OverlayFrameControl().Content().try_as<winrt::HaloDesktop::PlayerPage>())co_await winrt::get_self<PlayerPage>(page)->PrepareForWindowCloseAsync();}catch(...){}
-        m_windowCloseApproved=true;m_playerClosePending=false;Close();
+        try
+        {
+            try{if(auto page=OverlayFrameControl().Content().try_as<winrt::HaloDesktop::PlayerPage>())co_await winrt::get_self<PlayerPage>(page)->PrepareForWindowCloseAsync();}catch(...){}
+            m_windowCloseApproved=true;m_playerClosePending=false;Close();
+        }
+        catch(...)
+        {
+        }
     }
 
     void MainWindow::UpdateCaptionButtonColors()

@@ -124,31 +124,31 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget SettingsPage::OpenReleasesPageAsync()
     {
         auto lifetime = get_strong();
-        bool launched{};
         try
         {
-            launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
-                winrt::Windows::Foundation::Uri{ kReleasesUrl });
-        }
-        catch (...)
-        {
-        }
-        if (launched)
-        {
-            co_return;
-        }
-        auto const xamlRoot = XamlRoot();
-        if (!xamlRoot)
-        {
-            co_return;
-        }
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(xamlRoot);
-        dialog.Title(winrt::box_value(L"Could not open the releases page"));
-        dialog.Content(winrt::box_value(L"Check your default browser settings and try again."));
-        dialog.CloseButtonText(L"Close");
-        try
-        {
+            bool launched{};
+            try
+            {
+                launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
+                    winrt::Windows::Foundation::Uri{ kReleasesUrl });
+            }
+            catch (...)
+            {
+            }
+            if (launched)
+            {
+                co_return;
+            }
+            auto const xamlRoot = XamlRoot();
+            if (!xamlRoot)
+            {
+                co_return;
+            }
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(xamlRoot);
+            dialog.Title(winrt::box_value(L"Could not open the releases page"));
+            dialog.Content(winrt::box_value(L"Check your default browser settings and try again."));
+            dialog.CloseButtonText(L"Close");
             co_await dialog.ShowAsync();
         }
         catch (...)
@@ -208,18 +208,24 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget SettingsPage::ShowDeleteAddonDialog(winrt::hstring id)
     {
         auto lifetime = get_strong();
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Remove addon?"));
-        auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
-        dialog.Content(winrt::box_value(viewModel->IsGlobalAddon(id)
-            ? L"This removes the addon for every user on this server."
-            : L"This removes the addon from your account."));
-        dialog.PrimaryButtonText(L"Remove");
-        dialog.CloseButtonText(L"Cancel");
-        if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        try
         {
-            m_viewModel.RemoveAddon(id);
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(XamlRoot());
+            dialog.Title(winrt::box_value(L"Remove addon?"));
+            auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
+            dialog.Content(winrt::box_value(viewModel->IsGlobalAddon(id)
+                ? L"This removes the addon for every user on this server."
+                : L"This removes the addon from your account."));
+            dialog.PrimaryButtonText(L"Remove");
+            dialog.CloseButtonText(L"Cancel");
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.RemoveAddon(id);
+            }
+        }
+        catch (...)
+        {
         }
     }
 }

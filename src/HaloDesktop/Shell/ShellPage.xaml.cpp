@@ -556,19 +556,18 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget ShellPage::RefreshJumpBackInAsync()
     {
         auto lifetime = get_strong();
-        auto const uiContext = winrt::apartment_context{};
         try
         {
+            auto const uiContext = winrt::apartment_context{};
             co_await App::Services().Catalog->LoadAsync();
+            co_await uiContext;
+            if (m_attached)
+            {
+                RefreshJumpBackIn();
+            }
         }
         catch (...)
         {
-            co_return;
-        }
-        co_await uiContext;
-        if (m_attached)
-        {
-            RefreshJumpBackIn();
         }
     }
 

@@ -62,44 +62,62 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget DownloadsPage::ShowPauseAllDialog()
     {
         auto lifetime = get_strong();
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Pause all transfers?"));
-        dialog.Content(winrt::box_value(L"Every active and queued transfer will stay paused until you resume all."));
-        dialog.PrimaryButtonText(L"Pause all");
-        dialog.CloseButtonText(L"Cancel");
-        dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Primary);
-        if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        try
         {
-            m_viewModel.PauseAll();
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(XamlRoot());
+            dialog.Title(winrt::box_value(L"Pause all transfers?"));
+            dialog.Content(winrt::box_value(L"Every active and queued transfer will stay paused until you resume all."));
+            dialog.PrimaryButtonText(L"Pause all");
+            dialog.CloseButtonText(L"Cancel");
+            dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Primary);
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.PauseAll();
+            }
+        }
+        catch (...)
+        {
         }
     }
     winrt::fire_and_forget DownloadsPage::ShowCancelDialog()
     {
         auto lifetime = get_strong();
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Cancel transfer?"));
-        dialog.Content(winrt::box_value(L"The partial file and protected request will be removed from this device."));
-        dialog.PrimaryButtonText(L"Cancel transfer");
-        dialog.CloseButtonText(L"Keep transfer");
-        if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        try
         {
-            m_viewModel.CancelSelected();
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(XamlRoot());
+            dialog.Title(winrt::box_value(L"Cancel transfer?"));
+            dialog.Content(winrt::box_value(L"The partial file and protected request will be removed from this device."));
+            dialog.PrimaryButtonText(L"Cancel transfer");
+            dialog.CloseButtonText(L"Keep transfer");
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.CancelSelected();
+            }
+        }
+        catch (...)
+        {
         }
     }
     winrt::fire_and_forget DownloadsPage::ShowDeleteDialog()
     {
         auto lifetime = get_strong();
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Delete from device?"));
-        dialog.Content(winrt::box_value(L"This permanently removes the video and its subtitle sidecar from this device."));
-        dialog.PrimaryButtonText(L"Delete");
-        dialog.CloseButtonText(L"Cancel");
-        if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+        try
         {
-            m_viewModel.DeleteSelected();
+            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+            dialog.XamlRoot(XamlRoot());
+            dialog.Title(winrt::box_value(L"Delete from device?"));
+            dialog.Content(winrt::box_value(L"This permanently removes the video and its subtitle sidecar from this device."));
+            dialog.PrimaryButtonText(L"Delete");
+            dialog.CloseButtonText(L"Cancel");
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.DeleteSelected();
+            }
+        }
+        catch (...)
+        {
         }
     }
 
@@ -127,12 +145,18 @@ namespace winrt::HaloDesktop::implementation
         }
         if (failed)
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Folder could not be changed"));
-            dialog.Content(winrt::box_value(L"Choose an available local folder and try again."));
-            dialog.CloseButtonText(L"Close");
-            co_await dialog.ShowAsync();
+            try
+            {
+                Microsoft::UI::Xaml::Controls::ContentDialog dialog;
+                dialog.XamlRoot(XamlRoot());
+                dialog.Title(winrt::box_value(L"Folder could not be changed"));
+                dialog.Content(winrt::box_value(L"Choose an available local folder and try again."));
+                dialog.CloseButtonText(L"Close");
+                co_await dialog.ShowAsync();
+            }
+            catch (...)
+            {
+            }
         }
     }
 }

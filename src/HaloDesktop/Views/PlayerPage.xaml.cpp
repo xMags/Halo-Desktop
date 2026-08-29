@@ -62,8 +62,15 @@ namespace winrt::HaloDesktop::implementation
     winrt::fire_and_forget PlayerPage::InitializePlaybackAsync()
     {
         auto lifetime=get_strong();
-        if(!m_request){ShowMediaPrompt(L"This source is no longer available. Return to Sources and choose it again.");co_return;}
-        co_await StartRequestAsync(m_request);
+        try
+        {
+            if(!m_request){ShowMediaPrompt(L"This source is no longer available. Return to Sources and choose it again.");co_return;}
+            co_await StartRequestAsync(m_request);
+        }
+        catch(...)
+        {
+            try{ShowMediaPrompt(L"The player could not start this source. Return to Sources and try another one.");}catch(...){}
+        }
     }
 
     winrt::Windows::Foundation::IAsyncAction PlayerPage::StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request)
@@ -92,49 +99,77 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::fire_and_forget PlayerPage::RefreshPlaybackSettingsAsync(std::uint64_t generation)
     {
-        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};
-        try{co_await App::Services().SettingsSync->LoadAsync();}catch(...){}
-        co_await uiContext;
-        if(!m_loaded||m_closing||generation!=m_playbackGeneration)co_return;
-        if(m_session)m_session->RefreshPreferences();
-        App::Services().Subtitles->RefreshPreferences();
+        auto lifetime=get_strong();
+        try
+        {
+            auto const uiContext=winrt::apartment_context{};
+            try{co_await App::Services().SettingsSync->LoadAsync();}catch(...){}
+            co_await uiContext;
+            if(!m_loaded||m_closing||generation!=m_playbackGeneration)co_return;
+            if(m_session)m_session->RefreshPreferences();
+            App::Services().Subtitles->RefreshPreferences();
+        }
+        catch(...)
+        {
+        }
     }
 
     winrt::fire_and_forget PlayerPage::PrefetchUpNextAsync(winrt::HaloDesktop::PlaybackRequest request,std::uint64_t generation)
     {
-        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto result=co_await App::Services().UpNext->ResolveAsync(request);co_await uiContext;
-        if(!m_loaded||m_closing||generation!=m_playbackGeneration||!result)co_return;
-        m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster,m_upNext->Still);
-        if(App::Services().Playback->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)viewModel->BeginUpNextCountdown();
+        auto lifetime=get_strong();
+        try
+        {
+            auto const uiContext=winrt::apartment_context{};auto result=co_await App::Services().UpNext->ResolveAsync(request);co_await uiContext;
+            if(!m_loaded||m_closing||generation!=m_playbackGeneration||!result)co_return;
+            m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster,m_upNext->Still);
+            if(App::Services().Playback->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)viewModel->BeginUpNextCountdown();
+        }
+        catch(...)
+        {
+        }
     }
 
     winrt::fire_and_forget PlayerPage::AdvanceUpNextAsync()
     {
-        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};if(m_advancing||m_closing||!m_upNext)co_return;m_advancing=true;auto next=*m_upNext;auto currentSession=m_session;
-        if(currentSession)co_await currentSession->CloseAsync();
-        co_await uiContext;
-        if(!m_loaded||m_closing)co_return;
-        App::Services().Subtitles->Stop();
-        if(next.Playback){co_await StartRequestAsync(next.Playback);co_return;}
-        co_await PrepareForWindowCloseAsync();
-        auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,next.Sources);
+        auto lifetime=get_strong();
+        try
+        {
+            auto const uiContext=winrt::apartment_context{};if(m_advancing||m_closing||!m_upNext)co_return;m_advancing=true;auto next=*m_upNext;auto currentSession=m_session;
+            if(currentSession)co_await currentSession->CloseAsync();
+            co_await uiContext;
+            if(!m_loaded||m_closing)co_return;
+            App::Services().Subtitles->Stop();
+            if(next.Playback){co_await StartRequestAsync(next.Playback);co_return;}
+            co_await PrepareForWindowCloseAsync();
+            auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,next.Sources);
+        }
+        catch(...)
+        {
+            m_advancing=false;
+        }
     }
 
     winrt::fire_and_forget PlayerPage::BeginClose()
     {
         auto lifetime = get_strong();
-        auto const uiContext = winrt::apartment_context{};
-        if (m_closing) co_return;
         try
         {
-            co_await PrepareForWindowCloseAsync();
+            auto const uiContext = winrt::apartment_context{};
+            if (m_closing) co_return;
+            try
+            {
+                co_await PrepareForWindowCloseAsync();
+            }
+            catch (...)
+            {
+                // A reporting or teardown failure must never strand the modal player.
+            }
+            co_await uiContext;
+            if (m_loaded) App::Services().Navigation->CloseOverlay();
         }
         catch (...)
         {
-            // A reporting or teardown failure must never strand the modal player.
         }
-        co_await uiContext;
-        if (m_loaded) App::Services().Navigation->CloseOverlay();
     }
 
     winrt::Windows::Foundation::IAsyncAction PlayerPage::PrepareForWindowCloseAsync()
