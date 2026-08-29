@@ -53,7 +53,7 @@ namespace HaloDesktop::Services::Auth
         }
     }
 
-    concurrency::task<void> SessionController::SignInLocalAsync(
+    concurrency::task<std::uint64_t> SessionController::SignInLocalAsync(
         winrt::hstring username,
         winrt::hstring password)
     {
@@ -64,7 +64,7 @@ namespace HaloDesktop::Services::Auth
             std::move(password)));
         std::scoped_lock const lock{ m_mutex };
         m_kind = SessionKind::Local;
-        ++m_generation;
+        co_return ++m_generation;
     }
 
     concurrency::task<std::uint64_t> SessionController::SignInOidcAsync(StoredOidcSession session)

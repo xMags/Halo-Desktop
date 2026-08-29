@@ -337,7 +337,7 @@ namespace winrt::HaloDesktop::implementation
         bool failed{};
         try
         {
-            co_await m_library->SetMembershipAsync(
+            auto const applied = co_await m_library->SetMembershipAsync(
                 media.Type(),
                 media.Id(),
                 media.Title(),
@@ -345,6 +345,7 @@ namespace winrt::HaloDesktop::implementation
                     ? std::nullopt
                     : std::optional<winrt::hstring>{ media.Poster() },
                 nextMembership);
+            failed = !applied;
         }
         catch (...)
         {

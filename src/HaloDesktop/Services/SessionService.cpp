@@ -131,11 +131,14 @@ namespace HaloDesktop::Services
             co_return winrt::HaloDesktop::SignInOutcome::InvalidCredentials;
         }
 
+        std::uint64_t establishedGeneration{};
         try
         {
             ClearIdentity();
             co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
-            co_await m_controller->SignInLocalAsync(normalizedUserName, std::move(password));
+            establishedGeneration = co_await m_controller->SignInLocalAsync(
+                normalizedUserName,
+                std::move(password));
         }
         catch (winrt::hresult_error const& error)
         {
@@ -156,16 +159,19 @@ namespace HaloDesktop::Services
         }
 
         co_await uiContext;
-        m_userName = normalizedUserName;
-        m_isAdmin = false;
-        try
+        if (!co_await RefreshIdentityAsync())
         {
-            co_await RefreshIdentityAsync();
+            try
+            {
+                co_await m_controller->RejectSessionAsync(establishedGeneration);
+            }
+            catch (...)
+            {
+            }
+            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
         }
-        catch (...)
-        {
-        }
-        co_return m_controller->IsSignedIn()
+        co_await uiContext;
+        co_return m_controller->IsSignedIn() && !m_userId.empty()
             ? winrt::HaloDesktop::SignInOutcome::Succeeded
             : winrt::HaloDesktop::SignInOutcome::Expired;
     }
@@ -214,7 +220,7 @@ namespace HaloDesktop::Services
             co_await m_controller->RejectSessionAsync(establishedGeneration);
             co_return winrt::HaloDesktop::SignInOutcome::Declined;
         }
-        co_await RefreshIdentityAsync();
+        auto const identityLoaded = co_await RefreshIdentityAsync();
         co_await uiContext;
         if (version != m_browserSignInVersion)
         {
@@ -224,14 +230,23 @@ namespace HaloDesktop::Services
             co_await m_controller->RejectSessionAsync(establishedGeneration);
             co_return winrt::HaloDesktop::SignInOutcome::Declined;
         }
-        if (m_controller->IsSignedIn())
+        if (identityLoaded && m_controller->IsSignedIn() && !m_userId.empty())
         {
             co_return winrt::HaloDesktop::SignInOutcome::Succeeded;
         }
         auto expectedGeneration = establishedGeneration;
         static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
             expectedGeneration, 0));
-        co_return winrt::HaloDesktop::SignInOutcome::Expired;
+        try
+        {
+            co_await m_controller->RejectSessionAsync(establishedGeneration);
+        }
+        catch (...)
+        {
+        }
+        co_return identityLoaded
+            ? winrt::HaloDesktop::SignInOutcome::Expired
+            : winrt::HaloDesktop::SignInOutcome::Unreachable;
     }
 
     void SessionService::AcknowledgeBrowserSignIn() noexcept
@@ -288,7 +303,7 @@ namespace HaloDesktop::Services
         m_navigation->ShowOverlay(Page::Login);
     }
 
-    concurrency::task<void> SessionService::RefreshIdentityAsync()
+    concurrency::task<bool> SessionService::RefreshIdentityAsync()
     {
         auto const uiContext = winrt::apartment_context{};
         auto const generation = m_controller->SessionGeneration();
@@ -299,12 +314,12 @@ namespace HaloDesktop::Services
         }
         catch (...)
         {
-            co_return;
+            co_return false;
         }
         co_await uiContext;
         if (generation != m_controller->SessionGeneration() || !m_controller->IsSignedIn())
         {
-            co_return;
+            co_return false;
         }
         auto const accountChanged = m_userId != me.Id;
         m_userName = me.Username;
@@ -325,6 +340,9 @@ namespace HaloDesktop::Services
         {
         }
         co_await uiContext;
+        co_return generation == m_controller->SessionGeneration()
+            && m_controller->IsSignedIn()
+            && !m_userId.empty();
     }
 
     void SessionService::HandleSessionRejected()

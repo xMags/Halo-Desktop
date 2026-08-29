@@ -42,7 +42,7 @@ namespace HaloDesktop::Services::Auth
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         [[nodiscard]] concurrency::task<void> RestoreAsync();
-        [[nodiscard]] concurrency::task<void> SignInLocalAsync(
+        [[nodiscard]] concurrency::task<std::uint64_t> SignInLocalAsync(
             winrt::hstring username,
             winrt::hstring password);
         [[nodiscard]] concurrency::task<std::uint64_t> SignInOidcAsync(StoredOidcSession session);

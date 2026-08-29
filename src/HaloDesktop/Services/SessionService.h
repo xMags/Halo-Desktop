@@ -57,7 +57,9 @@ namespace HaloDesktop::Services
             ProbeHealthAsync() override;
         [[nodiscard]] concurrency::task<void> SignOutAsync() override;
 
-        [[nodiscard]] concurrency::task<void> RefreshIdentityAsync();
+        // True only when /auth/me hydrated the current signed-in generation.
+        // Token establishment alone is not a usable account session.
+        [[nodiscard]] concurrency::task<bool> RefreshIdentityAsync();
         void HandleSessionRejected();
         void SetIdentityChangedHandler(std::function<void()> handler);
 
