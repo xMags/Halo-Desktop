@@ -182,6 +182,8 @@ namespace HaloDesktop::Services
             SignInLocalAsync(winrt::hstring username, winrt::hstring password) = 0;
         [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() = 0;
+        virtual void AcknowledgeBrowserSignIn() noexcept = 0;
+        virtual void CancelBrowserSignIn() noexcept = 0;
         [[nodiscard]] virtual concurrency::task<std::optional<std::chrono::milliseconds>>
             ProbeHealthAsync() = 0;
         [[nodiscard]] virtual concurrency::task<void> SignOutAsync() = 0;

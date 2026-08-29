@@ -4,6 +4,7 @@
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <mutex>
 #include <stdexcept>
 #include <stop_token>
 #include <string>
@@ -53,6 +54,26 @@ namespace
             return "/";
         }
         return std::string{ firstLine.substr(firstSpace + 1, secondSpace - firstSpace - 1) };
+    }
+
+    void WakeListener() noexcept
+    {
+        auto const client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        if (client == INVALID_SOCKET)
+        {
+            return;
+        }
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_port = htons(CallbackPort);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        if (connect(client, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != SOCKET_ERROR)
+        {
+            constexpr std::string_view cancel =
+                "GET /cancel HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+            static_cast<void>(send(client, cancel.data(), static_cast<int>(cancel.size()), 0));
+        }
+        closesocket(client);
     }
 }
 
@@ -120,16 +141,7 @@ namespace HaloDesktop::Services::Auth
 
         ~State()
         {
-            worker.request_stop();
-            if (listener != INVALID_SOCKET)
-            {
-                closesocket(listener);
-                listener = INVALID_SOCKET;
-            }
-            if (worker.joinable())
-            {
-                worker.join();
-            }
+            Cancel();
             if (winsockStarted)
             {
                 WSACleanup();
@@ -150,6 +162,46 @@ namespace HaloDesktop::Services::Auth
             {
                 completion.set_exception(std::make_exception_ptr(std::runtime_error{ message }));
             }
+        }
+
+        void Cancel() noexcept
+        {
+            std::scoped_lock const lock{ cancelMutex };
+            Fail("Halo sign-in was cancelled.");
+            worker.request_stop();
+            InterruptActiveClient();
+            WakeListener();
+            if (worker.joinable() && worker.get_id() != std::this_thread::get_id())
+            {
+                worker.join();
+            }
+            if (listener != INVALID_SOCKET)
+            {
+                closesocket(listener);
+                listener = INVALID_SOCKET;
+            }
+        }
+
+        void InterruptActiveClient() noexcept
+        {
+            std::scoped_lock const lock{ clientMutex };
+            if (activeClient != INVALID_SOCKET)
+            {
+                shutdown(activeClient, SD_BOTH);
+            }
+        }
+
+        void CloseClient(SOCKET client) noexcept
+        {
+            {
+                std::scoped_lock const lock{ clientMutex };
+                if (activeClient == client)
+                {
+                    activeClient = INVALID_SOCKET;
+                }
+            }
+            shutdown(client, SD_BOTH);
+            closesocket(client);
         }
 
         void Run(std::stop_token stopToken)
@@ -188,6 +240,15 @@ namespace HaloDesktop::Services::Auth
                 {
                     continue;
                 }
+                {
+                    std::scoped_lock const lock{ clientMutex };
+                    activeClient = client;
+                }
+                if (stopToken.stop_requested())
+                {
+                    CloseClient(client);
+                    return;
+                }
 
                 DWORD receiveTimeout = 5000;
                 setsockopt(
@@ -206,7 +267,7 @@ namespace HaloDesktop::Services::Auth
                 if (isCancel)
                 {
                     SendResponse(client, "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
-                    closesocket(client);
+                    CloseClient(client);
                     Fail("Halo sign-in was cancelled.");
                     return;
                 }
@@ -214,7 +275,7 @@ namespace HaloDesktop::Services::Auth
                 if (!isCallback)
                 {
                     SendResponse(client, "HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
-                    closesocket(client);
+                    CloseClient(client);
                     continue;
                 }
 
@@ -223,16 +284,19 @@ namespace HaloDesktop::Services::Auth
                     + "\r\nconnection: close\r\n\r\n"
                     + std::string{ SuccessPage };
                 SendResponse(client, response);
-                closesocket(client);
+                CloseClient(client);
                 Complete(winrt::to_hstring(path));
                 return;
             }
         }
 
         std::chrono::seconds timeout;
+        std::mutex cancelMutex;
+        std::mutex clientMutex;
         concurrency::task_completion_event<winrt::hstring> completion;
         std::atomic_bool completed{};
         SOCKET listener{ INVALID_SOCKET };
+        SOCKET activeClient{ INVALID_SOCKET };
         std::jthread worker;
         bool winsockStarted{};
     };
@@ -251,20 +315,6 @@ namespace HaloDesktop::Services::Auth
 
     void LoopbackListener::Cancel() noexcept
     {
-        auto const client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (client == INVALID_SOCKET)
-        {
-            return;
-        }
-        sockaddr_in address{};
-        address.sin_family = AF_INET;
-        address.sin_port = htons(CallbackPort);
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        if (connect(client, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != SOCKET_ERROR)
-        {
-            constexpr std::string_view cancel = "GET /cancel HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
-            send(client, cancel.data(), static_cast<int>(cancel.size()), 0);
-        }
-        closesocket(client);
+        m_state->Cancel();
     }
 }

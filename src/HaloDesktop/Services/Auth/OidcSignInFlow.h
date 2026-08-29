@@ -4,7 +4,9 @@
 #include "Services/Auth/SessionStore.h"
 
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <stop_token>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/HaloDesktop.h>
@@ -31,8 +33,13 @@ namespace HaloDesktop::Services::Auth
 
         [[nodiscard]] concurrency::task<OidcSignInResult> SignInAsync(
             ::HaloDesktop::Api::Dto::AuthConfig config);
+        void Cancel() noexcept;
 
     private:
+        [[nodiscard]] std::stop_token BeginAttempt();
+
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> m_executor;
+        std::mutex m_cancellationMutex;
+        std::stop_source m_cancellation;
     };
 }

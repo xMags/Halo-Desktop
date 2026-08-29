@@ -45,7 +45,7 @@ namespace HaloDesktop::Services::Auth
         [[nodiscard]] concurrency::task<void> SignInLocalAsync(
             winrt::hstring username,
             winrt::hstring password);
-        [[nodiscard]] concurrency::task<void> SignInOidcAsync(StoredOidcSession session);
+        [[nodiscard]] concurrency::task<std::uint64_t> SignInOidcAsync(StoredOidcSession session);
         [[nodiscard]] concurrency::task<void> SignOutAsync();
 
         [[nodiscard]] bool IsSignedIn() const noexcept;

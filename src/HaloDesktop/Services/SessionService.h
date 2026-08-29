@@ -4,6 +4,7 @@
 #include "Services/ServiceInterfaces.h"
 
 #include <chrono>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <optional>
@@ -50,6 +51,8 @@ namespace HaloDesktop::Services
             SignInLocalAsync(winrt::hstring username, winrt::hstring password) override;
         [[nodiscard]] concurrency::task<winrt::HaloDesktop::SignInOutcome>
             RequestBrowserSignInAsync() override;
+        void AcknowledgeBrowserSignIn() noexcept override;
+        void CancelBrowserSignIn() noexcept override;
         [[nodiscard]] concurrency::task<std::optional<std::chrono::milliseconds>>
             ProbeHealthAsync() override;
         [[nodiscard]] concurrency::task<void> SignOutAsync() override;
@@ -72,6 +75,8 @@ namespace HaloDesktop::Services
         winrt::hstring m_userName;
         std::function<void()> m_identityChanged;
         AuthenticationMode m_mode{ AuthenticationMode::Unknown };
+        std::atomic_uint64_t m_browserSignInVersion{};
+        std::atomic_uint64_t m_pendingBrowserSessionGeneration{};
         bool m_isAdmin{};
     };
 }

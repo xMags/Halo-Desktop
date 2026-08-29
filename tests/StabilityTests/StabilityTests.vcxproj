@@ -58,6 +58,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogRefreshPolicy.cpp">
       <Link>CatalogRefreshPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LoopbackListener.cpp">
+      <Link>LoopbackListener.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\Dpapi.cpp">
       <Link>Dpapi.cpp</Link>
     </ClCompile>

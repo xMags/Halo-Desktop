@@ -173,30 +173,84 @@ namespace HaloDesktop::Services
     concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::RequestBrowserSignInAsync()
     {
         auto const uiContext = winrt::apartment_context{};
+        auto const version = ++m_browserSignInVersion;
         if (!m_oidcConfig)
         {
             co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
         }
         auto result = co_await m_oidcSignInFlow->SignInAsync(*m_oidcConfig);
+        co_await uiContext;
+        if (version != m_browserSignInVersion)
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::Declined;
+        }
         if (result.Outcome != winrt::HaloDesktop::SignInOutcome::Succeeded || !result.Session)
         {
             co_return result.Outcome;
         }
+        std::uint64_t establishedGeneration{};
         try
         {
             ClearIdentity();
             co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
-            co_await m_controller->SignInOidcAsync(std::move(*result.Session));
+            co_await uiContext;
+            if (version != m_browserSignInVersion)
+            {
+                co_return winrt::HaloDesktop::SignInOutcome::Declined;
+            }
+            establishedGeneration = co_await m_controller->SignInOidcAsync(std::move(*result.Session));
+            m_pendingBrowserSessionGeneration.store(establishedGeneration);
         }
         catch (...)
         {
             co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
         }
         co_await uiContext;
+        if (version != m_browserSignInVersion)
+        {
+            auto expectedGeneration = establishedGeneration;
+            static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
+                expectedGeneration, 0));
+            co_await m_controller->RejectSessionAsync(establishedGeneration);
+            co_return winrt::HaloDesktop::SignInOutcome::Declined;
+        }
         co_await RefreshIdentityAsync();
-        co_return m_controller->IsSignedIn()
-            ? winrt::HaloDesktop::SignInOutcome::Succeeded
-            : winrt::HaloDesktop::SignInOutcome::Expired;
+        co_await uiContext;
+        if (version != m_browserSignInVersion)
+        {
+            auto expectedGeneration = establishedGeneration;
+            static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
+                expectedGeneration, 0));
+            co_await m_controller->RejectSessionAsync(establishedGeneration);
+            co_return winrt::HaloDesktop::SignInOutcome::Declined;
+        }
+        if (m_controller->IsSignedIn())
+        {
+            co_return winrt::HaloDesktop::SignInOutcome::Succeeded;
+        }
+        auto expectedGeneration = establishedGeneration;
+        static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
+            expectedGeneration, 0));
+        co_return winrt::HaloDesktop::SignInOutcome::Expired;
+    }
+
+    void SessionService::AcknowledgeBrowserSignIn() noexcept
+    {
+        m_pendingBrowserSessionGeneration.store(0);
+    }
+
+    void SessionService::CancelBrowserSignIn() noexcept
+    {
+        ++m_browserSignInVersion;
+        m_oidcSignInFlow->Cancel();
+        auto const establishedGeneration = m_pendingBrowserSessionGeneration.exchange(0);
+        if (establishedGeneration != 0)
+        {
+            m_controller->RejectSessionAsync(establishedGeneration).then([](concurrency::task<void> rejected)
+            {
+                try { rejected.get(); } catch (...) {}
+            });
+        }
     }
 
     concurrency::task<std::optional<std::chrono::milliseconds>> SessionService::ProbeHealthAsync()

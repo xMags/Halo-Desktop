@@ -67,14 +67,14 @@ namespace HaloDesktop::Services::Auth
         ++m_generation;
     }
 
-    concurrency::task<void> SessionController::SignInOidcAsync(StoredOidcSession session)
+    concurrency::task<std::uint64_t> SessionController::SignInOidcAsync(StoredOidcSession session)
     {
         co_await winrt::resume_background();
         co_await m_localSession->ClearAsync();
         co_await m_oidcSession->EstablishAsync(std::move(session));
         std::scoped_lock const lock{ m_mutex };
         m_kind = SessionKind::Oidc;
-        ++m_generation;
+        co_return ++m_generation;
     }
 
     concurrency::task<void> SessionController::SignOutAsync()

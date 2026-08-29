@@ -144,6 +144,7 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
         ++m_requestVersion;
+        m_session->CancelBrowserSignIn();
         SetStep(Step::Oidc);
     }
 
@@ -240,6 +241,7 @@ namespace winrt::HaloDesktop::implementation
         switch (outcome)
         {
         case winrt::HaloDesktop::SignInOutcome::Succeeded:
+            m_session->AcknowledgeBrowserSignIn();
             Raise(L"DisplayName");
             SetStep(Step::SignedIn);
             static_cast<void>(FinishAsync(version));

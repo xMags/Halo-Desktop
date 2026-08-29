@@ -313,9 +313,34 @@ namespace HaloDesktop::Services::Auth
         }
     }
 
+    std::stop_token OidcSignInFlow::BeginAttempt()
+    {
+        std::stop_source previous;
+        std::stop_token current;
+        {
+            std::scoped_lock const lock{ m_cancellationMutex };
+            previous = m_cancellation;
+            m_cancellation = std::stop_source{};
+            current = m_cancellation.get_token();
+        }
+        static_cast<void>(previous.request_stop());
+        return current;
+    }
+
+    void OidcSignInFlow::Cancel() noexcept
+    {
+        std::stop_source cancellation;
+        {
+            std::scoped_lock const lock{ m_cancellationMutex };
+            cancellation = m_cancellation;
+        }
+        static_cast<void>(cancellation.request_stop());
+    }
+
     concurrency::task<OidcSignInResult> OidcSignInFlow::SignInAsync(
         ::HaloDesktop::Api::Dto::AuthConfig config)
     {
+        auto const cancellation = BeginAttempt();
         co_await winrt::resume_background();
         if (config.Mode != ::HaloDesktop::Api::Dto::AuthMode::Oidc
             || config.Issuer.empty() || config.ClientId.empty())
@@ -325,6 +350,10 @@ namespace HaloDesktop::Services::Auth
 
         try
         {
+            if (cancellation.stop_requested())
+            {
+                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+            }
             RequireSecureEndpoint(config.Issuer);
             auto discoveryUrl = std::wstring{ config.Issuer };
             if (discoveryUrl.back() != L'/')
@@ -336,6 +365,10 @@ namespace HaloDesktop::Services::Auth
                 winrt::Windows::Web::Http::HttpMethod::Get(),
                 winrt::Windows::Foundation::Uri{ discoveryUrl });
             auto const discovery = ParseDiscovery(discoveryValue);
+            if (cancellation.stop_requested())
+            {
+                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+            }
 
             auto const state = RandomToken();
             auto const verifier = RandomToken();
@@ -363,6 +396,10 @@ namespace HaloDesktop::Services::Auth
             auto const authorizationUrl = discovery.AuthorizationEndpoint + separator + query;
 
             LoopbackListener listener;
+            std::stop_callback const cancelListener{ cancellation, [&listener]() noexcept
+            {
+                listener.Cancel();
+            } };
             auto callbackTask = listener.WaitAsync();
             auto const launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
                 winrt::Windows::Foundation::Uri{ authorizationUrl });
@@ -378,7 +415,23 @@ namespace HaloDesktop::Services::Auth
                 }
                 co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Unreachable };
             }
+            if (cancellation.stop_requested())
+            {
+                listener.Cancel();
+                try
+                {
+                    static_cast<void>(co_await callbackTask);
+                }
+                catch (...)
+                {
+                }
+                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+            }
             auto const callbackPath = co_await callbackTask;
+            if (cancellation.stop_requested())
+            {
+                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+            }
             if (CallbackValue(callbackPath, L"error"))
             {
                 co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
@@ -401,6 +454,10 @@ namespace HaloDesktop::Services::Auth
                 winrt::Windows::Foundation::Uri{ discovery.TokenEndpoint },
                 form);
             auto const tokenBody = co_await Api::ReadBoundedJsonTextAsync(tokenResponse.Content());
+            if (cancellation.stop_requested())
+            {
+                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+            }
             auto const tokens = ParseTokenResponse(tokenResponse, tokenBody);
             co_return OidcSignInResult{
                 .Outcome = winrt::HaloDesktop::SignInOutcome::Succeeded,
@@ -418,7 +475,10 @@ namespace HaloDesktop::Services::Auth
         }
         catch (...)
         {
-            co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Unreachable };
+            co_return OidcSignInResult{
+                cancellation.stop_requested()
+                    ? winrt::HaloDesktop::SignInOutcome::Declined
+                    : winrt::HaloDesktop::SignInOutcome::Unreachable };
         }
     }
 }

@@ -1,6 +1,10 @@
+#include <winsock2.h>
+#include <ws2tcpip.h>
+
 #include "Services/CatalogRefreshPolicy.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadPreparation.h"
+#include "Services/Auth/LoopbackListener.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
 #include "StorageTests.h"
@@ -8,6 +12,7 @@
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <optional>
@@ -282,6 +287,58 @@ namespace
             }
         }
     }
+
+    void TestBrowserSignInListenerCancellation()
+    {
+        auto cancelAndAwait = []()
+        {
+            HaloDesktop::Services::Auth::LoopbackListener listener{ std::chrono::seconds{ 2 } };
+            auto pending = listener.WaitAsync();
+            listener.Cancel();
+            auto cancelled = false;
+            try
+            {
+                static_cast<void>(pending.get());
+            }
+            catch (std::runtime_error const&)
+            {
+                cancelled = true;
+            }
+            Require(cancelled, "browser sign-in cancellation did not complete its listener");
+        };
+
+        cancelAndAwait();
+        cancelAndAwait();
+
+        HaloDesktop::Services::Auth::LoopbackListener listener{ std::chrono::seconds{ 5 } };
+        auto pending = listener.WaitAsync();
+        auto const stalledClient = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        Require(stalledClient != INVALID_SOCKET,
+            "the cancellation test could not create a stalled loopback client");
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_port = htons(17871);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        Require(connect(stalledClient, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != SOCKET_ERROR,
+            "the cancellation test could not occupy the loopback listener");
+        auto const started = std::chrono::steady_clock::now();
+        listener.Cancel();
+        auto const elapsed = std::chrono::steady_clock::now() - started;
+        closesocket(stalledClient);
+        Require(elapsed < std::chrono::seconds{ 2 },
+            "browser sign-in cancellation waited for a stalled loopback client");
+        auto stalledCancelled = false;
+        try
+        {
+            static_cast<void>(pending.get());
+        }
+        catch (std::runtime_error const&)
+        {
+            stalledCancelled = true;
+        }
+        Require(stalledCancelled,
+            "a stalled browser sign-in listener completed successfully after cancellation");
+    }
 } // namespace
 
 int main()
@@ -296,14 +353,27 @@ int main()
         TestOptionalSubtitleFallback();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();
+        TestBrowserSignInListenerCancellation();
         RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();
         std::cout << "StabilityTests passed\n";
         return 0;
     }
+    catch (winrt::hresult_error const& error)
+    {
+        std::wcerr << L"StabilityTests failed with HRESULT 0x"
+                   << std::hex << static_cast<std::uint32_t>(error.code().value)
+                   << L": " << error.message().c_str() << L'\n';
+        return 1;
+    }
     catch (std::exception const& error)
     {
         std::cerr << "StabilityTests failed: " << error.what() << '\n';
+        return 1;
+    }
+    catch (...)
+    {
+        std::cerr << "StabilityTests failed with an unknown exception.\n";
         return 1;
     }
 }
