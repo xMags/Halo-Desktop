@@ -7,7 +7,6 @@
 #include "Services/StreamInfo.h"
 
 #include <algorithm>
-#include <cwctype>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -130,28 +129,6 @@ namespace
             requiresNewSource);
     }
 
-    std::optional<std::pair<int, int>> EpisodePosition(std::optional<std::wstring> const& label)
-    {
-        if (!label || label->size() != 6 || (*label)[0] != L'S' || (*label)[3] != L'E')
-        {
-            return std::nullopt;
-        }
-        auto parse = [](wchar_t first, wchar_t second) -> std::optional<int>
-        {
-            if (first < L'0' || first > L'9' || second < L'0' || second > L'9')
-            {
-                return std::nullopt;
-            }
-            return (first - L'0') * 10 + (second - L'0');
-        };
-        auto const season = parse((*label)[1], (*label)[2]);
-        auto const episode = parse((*label)[4], (*label)[5]);
-        if (!season || !episode)
-        {
-            return std::nullopt;
-        }
-        return std::pair{ *season, *episode };
-    }
 }
 
 namespace HaloDesktop::Services
@@ -477,7 +454,7 @@ namespace HaloDesktop::Services
         {
             return std::nullopt;
         }
-        auto const position = EpisodePosition(current->Media.EpisodeLabel);
+        auto const position = Downloads::ParseEpisodePosition(current->Media.EpisodeLabel);
         if (!position)
         {
             return std::nullopt;
@@ -491,7 +468,7 @@ namespace HaloDesktop::Services
             {
                 continue;
             }
-            auto const candidatePosition = EpisodePosition(candidate.Media.EpisodeLabel);
+            auto const candidatePosition = Downloads::ParseEpisodePosition(candidate.Media.EpisodeLabel);
             if (candidatePosition && *candidatePosition > *position && *candidatePosition < nextPosition)
             {
                 next = &candidate;
@@ -525,22 +502,6 @@ namespace HaloDesktop::Services
         return std::any_of(m_records.begin(), m_records.end(), [&videoId](auto const& record)
         {
             return record.Status == DownloadStatus::Done && record.Media.VideoId == videoId.c_str();
-        });
-    }
-    bool DownloadService::HasCompletedFile(
-        winrt::hstring const& videoId,
-        winrt::hstring const& fileName) const noexcept
-    {
-        std::wstring_view const wanted{ fileName.c_str(), fileName.size() };
-        return std::any_of(m_records.begin(), m_records.end(), [&](auto const& record)
-        {
-            if (record.Status != DownloadStatus::Done
-                || record.Media.VideoId != videoId.c_str()
-                || !record.Media.FileName)
-            {
-                return false;
-            }
-            return SameReleaseFile(*record.Media.FileName, wanted);
         });
     }
 

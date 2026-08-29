@@ -6,6 +6,7 @@
 #include "Api/JsonNumberPolicy.h"
 #include "Services/SettingsSyncPolicy.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
+#include "Services/Downloads/DownloadTypes.h"
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/Auth/LoopbackListener.h"
 #include "Services/StreamInfo.h"
@@ -441,6 +442,44 @@ namespace
         Require(stalledCancelled,
             "a stalled browser sign-in listener completed successfully after cancellation");
     }
+    void TestEpisodePositionParsing()
+    {
+        using HaloDesktop::Services::Downloads::ParseEpisodePosition;
+
+        auto const at = [](int season, int episode) { return std::optional{ std::pair{ season, episode } }; };
+
+        Require(ParseEpisodePosition(L"S01E05") == at(1, 5), "the label form we write did not parse");
+        Require(ParseEpisodePosition(L"S10E05") == at(10, 5), "a two digit season did not parse");
+
+        // The label is written with a minimum width, not a fixed one, so a show
+        // past its hundredth episode writes more digits than the season does.
+        Require(ParseEpisodePosition(L"S01E100") == at(1, 100), "a three digit episode did not parse");
+        Require(ParseEpisodePosition(L"S01E1085") == at(1, 1085), "a four digit episode did not parse");
+        Require(ParseEpisodePosition(L"S100E01") == at(100, 1), "a three digit season did not parse");
+
+        // Ordering is what selects the next episode, so it has to hold across a
+        // change in digit count rather than comparing the labels as text.
+        Require(ParseEpisodePosition(L"S01E99") < ParseEpisodePosition(L"S01E100"), "episode 100 did not sort after episode 99");
+        Require(ParseEpisodePosition(L"S01E100") < ParseEpisodePosition(L"S02E01"), "the next season did not sort after this one");
+
+        Require(ParseEpisodePosition(L"s01e05") == at(1, 5), "a lowercase label did not parse");
+        Require(ParseEpisodePosition(L"S1E5") == at(1, 5), "an unpadded label did not parse");
+        Require(ParseEpisodePosition(L"S01 E05") == at(1, 5), "a spaced label did not parse");
+        Require(ParseEpisodePosition(L" S01E05 ") == at(1, 5), "a padded label did not parse");
+        Require(ParseEpisodePosition(L"S00E01") == at(0, 1), "a specials season did not parse");
+
+        Require(!ParseEpisodePosition(std::nullopt), "a missing label parsed");
+        Require(!ParseEpisodePosition(L""), "an empty label parsed");
+        Require(!ParseEpisodePosition(L"S01"), "a season without an episode parsed");
+        Require(!ParseEpisodePosition(L"E05"), "an episode without a season parsed");
+        Require(!ParseEpisodePosition(L"SE"), "a label with no numbers parsed");
+        Require(!ParseEpisodePosition(L"S01E05x"), "trailing text was ignored");
+        Require(!ParseEpisodePosition(L"Season 1"), "free text parsed");
+        // Refused rather than truncated: a run this long is not an episode number,
+        // and accepting it would be accepting an overflow.
+        Require(!ParseEpisodePosition(L"S01E123456"), "an implausibly long number parsed");
+    }
+
 } // namespace
 
 int main()
@@ -456,6 +495,7 @@ int main()
         TestFilteredFeaturedSelection();
         TestSelectFeaturedItems();
         TestOptionalSubtitleFallback();
+        TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();
         TestBrowserSignInListenerCancellation();

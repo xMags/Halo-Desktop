@@ -46,14 +46,11 @@ namespace HaloDesktop::Services
 
         [[nodiscard]] concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const override;
-        [[nodiscard]] winrt::HaloDesktop::StreamSource BestSource() const override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const override;
         [[nodiscard]] concurrency::task<DownloadStartOutcome> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting) override;
         [[nodiscard]] winrt::hstring ResolveSummary() const override;
-        [[nodiscard]] std::int32_t Count(winrt::hstring const& filter) const noexcept override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> LocalSources() const override;
         void RefreshDownloadStates() override;
 
@@ -61,7 +58,6 @@ namespace HaloDesktop::Services
         void OnAccountChanged();
 
     private:
-        [[nodiscard]] bool Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept;
         // Projects the retained resolve plus whatever is currently on disk into the
         // records, groups, local sources and ranking the sheet reads. Split out of
         // LoadAsync because a download finishing or being deleted has to reproduce
@@ -92,7 +88,6 @@ namespace HaloDesktop::Services
         std::vector<winrt::hstring> m_orderedKeys;
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_groups{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> m_localSources{ nullptr };
-        winrt::HaloDesktop::StreamSource m_best{ nullptr };
         winrt::hstring m_summary;
         std::uint64_t m_requestVersion{};
     };

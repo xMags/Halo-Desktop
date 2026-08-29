@@ -125,6 +125,64 @@ namespace HaloDesktop::Services::Downloads
         return result;
     }
 
+    namespace
+    {
+        // At most five digits per field. A label longer than that is not a season
+        // or an episode number, and refusing it keeps the accumulation below any
+        // width where it could overflow.
+        constexpr int MaximumPositionDigits = 5;
+
+        bool ReadPositionNumber(std::wstring_view& text, int& value) noexcept
+        {
+            int digits{};
+            value = 0;
+            while (!text.empty() && text.front() >= L'0' && text.front() <= L'9')
+            {
+                if (++digits > MaximumPositionDigits) return false;
+                value = value * 10 + (text.front() - L'0');
+                text.remove_prefix(1);
+            }
+            return digits != 0;
+        }
+
+        bool ReadPositionMarker(std::wstring_view& text, wchar_t marker) noexcept
+        {
+            if (text.empty()) return false;
+            auto const value = text.front();
+            if (value != marker && value != marker + (L'a' - L'A')) return false;
+            text.remove_prefix(1);
+            return true;
+        }
+    }
+
+    std::optional<std::pair<int, int>> ParseEpisodePosition(
+        std::optional<std::wstring> const& label) noexcept
+    {
+        if (!label) return std::nullopt;
+
+        std::wstring_view text{ *label };
+        auto const trim = [&text]()
+        {
+            while (!text.empty() && (text.front() == L' ' || text.front() == L'\t')) text.remove_prefix(1);
+            while (!text.empty() && (text.back() == L' ' || text.back() == L'\t')) text.remove_suffix(1);
+        };
+        trim();
+
+        int season{};
+        int episode{};
+        if (!ReadPositionMarker(text, L'S') || !ReadPositionNumber(text, season)) return std::nullopt;
+        // Addons and our own formatter disagree about whether the two halves are
+        // run together, so a single separator between them is accepted.
+        if (!text.empty() && (text.front() == L' ' || text.front() == L'.' || text.front() == L'-' || text.front() == L'_'))
+        {
+            text.remove_prefix(1);
+        }
+        if (!ReadPositionMarker(text, L'E') || !ReadPositionNumber(text, episode)) return std::nullopt;
+        if (!text.empty()) return std::nullopt;
+
+        return std::pair{ season, episode };
+    }
+
     bool IsActive(DownloadStatus status) noexcept
     {
         return status == DownloadStatus::Queued || status == DownloadStatus::Downloading;

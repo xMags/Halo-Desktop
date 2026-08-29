@@ -91,14 +91,11 @@ namespace HaloDesktop::Services
         virtual ~ISourceService() = default;
         [[nodiscard]] virtual concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> Filter(winrt::hstring const& quality) const = 0;
-        [[nodiscard]] virtual winrt::HaloDesktop::StreamSource BestSource() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const = 0;
         [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting) = 0;
         [[nodiscard]] virtual winrt::hstring ResolveSummary() const = 0;
-        [[nodiscard]] virtual std::int32_t Count(winrt::hstring const& filter) const noexcept = 0;
         // The files already on this device for the resolve just loaded. Kept apart
         // from Groups() because a download is not a provider: it answered nothing,
         // and counting it as one would make the failure banner misreport how many
@@ -132,13 +129,6 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual bool IsRunning() const noexcept = 0;
         [[nodiscard]] virtual bool IsPausedAll() const noexcept = 0;
         [[nodiscard]] virtual bool HasCompleted(winrt::hstring const& videoId) const noexcept = 0;
-        // Whether a finished download of this video is this exact file. Distinct
-        // from HasCompleted, which answers "is any copy of this video saved" and
-        // is what an episode row wants; a source row has to answer for itself, or
-        // every source for a downloaded video claims to be the one on disk.
-        [[nodiscard]] virtual bool HasCompletedFile(
-            winrt::hstring const& videoId,
-            winrt::hstring const& fileName) const noexcept = 0;
         // Every finished download of this video, so the sources sheet can offer a
         // local copy without depending on an addon returning the same release again.
         [[nodiscard]] virtual std::vector<Downloads::CompletedDownloadSource> CompletedFor(

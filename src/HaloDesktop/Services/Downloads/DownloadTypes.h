@@ -5,6 +5,7 @@
 #include <map>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace HaloDesktop::Services::Downloads
@@ -134,6 +135,16 @@ namespace HaloDesktop::Services::Downloads
         std::uint64_t End{};
         std::uint64_t Total{};
     };
+
+    // Season and episode read back out of a label such as "S01E05". Ordering is
+    // lexicographic on the pair, which is what puts the next episode next.
+    //
+    // Labels are written as S%02dE%02d, so the digit runs are at least two long
+    // but not capped: a show past its hundredth episode writes "S01E100", and a
+    // parser that assumed a fixed width would stop finding the next episode for
+    // exactly the long-running shows people download whole seasons of.
+    [[nodiscard]] std::optional<std::pair<int, int>> ParseEpisodePosition(
+        std::optional<std::wstring> const& label) noexcept;
 
     [[nodiscard]] bool IsActive(DownloadStatus status) noexcept;
     [[nodiscard]] bool RequiresNewSource(DownloadFailureCode failure) noexcept;

@@ -200,6 +200,10 @@ namespace
         return winrt::hstring{ result.substr(begin, end - begin + 1) };
     }
 
+    // Shared by the fallback and by HasIdentifyingFilename so the two cannot drift
+    // into disagreeing about which names mean "no name".
+    constexpr wchar_t const* UnnamedFilename = L"Unnamed source";
+
     int QualityRank(std::optional<winrt::hstring> const& quality) noexcept
     {
         static std::array<wchar_t const*, 6> const order{ L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" };
@@ -223,6 +227,11 @@ namespace HaloDesktop::Services
         return result.empty() ? winrt::hstring{ L"Source" } : winrt::hstring{ result };
     }
 
+    bool HasIdentifyingFilename(ParsedStreamInfo const& info) noexcept
+    {
+        return !info.Filename.empty() && info.Filename != UnnamedFilename;
+    }
+
     ParsedStreamInfo ParseStreamInfo(Api::Dto::StreamRecord const& stream)
     {
         auto const text = SearchText(stream);
@@ -230,7 +239,7 @@ namespace HaloDesktop::Services
         if (filename.empty()) filename = FirstLine(stream.Title);
         if (filename.empty()) filename = FirstLine(stream.Description);
         if (filename.empty()) filename = FirstLine(stream.Name);
-        if (filename.empty()) filename = L"Unnamed source";
+        if (filename.empty()) filename = UnnamedFilename;
 
         ParsedStreamInfo result;
         result.Filename = filename;

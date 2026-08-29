@@ -57,9 +57,6 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool IsRunning() const noexcept override;
         [[nodiscard]] bool IsPausedAll() const noexcept override;
         [[nodiscard]] bool HasCompleted(winrt::hstring const& videoId) const noexcept override;
-        [[nodiscard]] bool HasCompletedFile(
-            winrt::hstring const& videoId,
-            winrt::hstring const& fileName) const noexcept override;
         [[nodiscard]] std::vector<Downloads::CompletedDownloadSource> CompletedFor(
             winrt::hstring const& videoId) const override;
         [[nodiscard]] std::int32_t ActiveCount() const noexcept override;

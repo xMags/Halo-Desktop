@@ -266,16 +266,23 @@ namespace HaloDesktop::Services
                 auto const& stream = payloadGroup.Streams[streamIndex];
                 auto info = ParseStreamInfo(stream);
 
-                auto const local = std::find_if(
-                    localKeys.begin(),
-                    localKeys.end(),
-                    [&records, &info](winrt::hstring const& localKey)
-                    {
-                        auto const& saved = records.at(std::wstring{ localKey.c_str() }).Info.Filename;
-                        return SameReleaseFile(
-                            std::wstring_view{ saved.c_str(), saved.size() },
-                            std::wstring_view{ info.Filename.c_str(), info.Filename.size() });
-                    });
+                // A stream that carried no name at all parses to a placeholder shared
+                // by every other nameless stream. Folding one of those into a saved
+                // file would claim the two are the same release when all they share
+                // is the video, and would quietly play something else.
+                auto const local = HasIdentifyingFilename(info)
+                    ? std::find_if(
+                        localKeys.begin(),
+                        localKeys.end(),
+                        [&records, &info](winrt::hstring const& localKey)
+                        {
+                            auto const& saved = records.at(std::wstring{ localKey.c_str() }).Info;
+                            if (!HasIdentifyingFilename(saved)) return false;
+                            return SameReleaseFile(
+                                std::wstring_view{ saved.Filename.c_str(), saved.Filename.size() },
+                                std::wstring_view{ info.Filename.c_str(), info.Filename.size() });
+                        })
+                    : localKeys.end();
                 if (local != localKeys.end())
                 {
                     // The copy on disk supersedes a stream of the same release. The
@@ -373,12 +380,6 @@ namespace HaloDesktop::Services
         m_orderedKeys = std::move(orderedKeys);
         m_groups = winrt::single_threaded_vector(std::move(groups)).GetView();
         m_localSources = winrt::single_threaded_vector(std::move(localSources)).GetView();
-        m_best = nullptr;
-        if (!rankedKeys.empty())
-        {
-            auto const& best = m_records.at(std::wstring{ rankedKeys.front().c_str() });
-            m_best = MakeDisplaySource(best, best.DownloadJobId.has_value());
-        }
         m_summary = BuildResolveSummary(
             sourceCount,
             m_payload.Results.size(),
@@ -392,17 +393,6 @@ namespace HaloDesktop::Services
         return m_groups;
     }
 
-    winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> SourceService::Filter(winrt::hstring const& quality) const
-    {
-        std::vector<winrt::HaloDesktop::StreamSource> result;
-        for (auto const& group : m_groups)
-        {
-            for (auto const& source : group.Sources()) if (Matches(source, quality)) result.push_back(source);
-        }
-        return winrt::single_threaded_vector(std::move(result)).GetView();
-    }
-
-    winrt::HaloDesktop::StreamSource SourceService::BestSource() const { return m_best; }
 
     winrt::HaloDesktop::PlaybackRequest SourceService::BuildPlaybackRequest(winrt::hstring const& key) const
     {
@@ -624,16 +614,6 @@ namespace HaloDesktop::Services
 
     winrt::hstring SourceService::ResolveSummary() const { return m_summary; }
 
-    std::int32_t SourceService::Count(winrt::hstring const& filter) const noexcept
-    {
-        std::int32_t count{};
-        for (auto const& group : m_groups)
-        {
-            for (auto const& source : group.Sources()) if (Matches(source, filter)) ++count;
-        }
-        return count;
-    }
-
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> SourceService::LocalSources() const
     {
         return m_localSources;
@@ -669,15 +649,7 @@ namespace HaloDesktop::Services
         m_orderedKeys.clear();
         m_groups = winrt::single_threaded_vector<winrt::HaloDesktop::SourceGroup>().GetView();
         m_localSources = winrt::single_threaded_vector<winrt::HaloDesktop::StreamSource>().GetView();
-        m_best = nullptr;
         m_summary.clear();
-    }
-
-    bool SourceService::Matches(winrt::HaloDesktop::StreamSource const& source, winrt::hstring const& filter) const noexcept
-    {
-        if (filter.empty() || filter == L"All") return true;
-        if (filter == L"Instant") return source.Status() == winrt::HaloDesktop::StreamStatus::Instant || source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk;
-        return source.Quality() == filter;
     }
 
     winrt::hstring SanitizeAddonName(std::optional<winrt::hstring> const& name)
