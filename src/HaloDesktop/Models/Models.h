@@ -387,6 +387,7 @@ namespace winrt::HaloDesktop::implementation
 
         // Not projected: only the view model driving the save mutates these, and
         // it does so on the UI thread after the library call has completed.
+        void SetMedia(HaloDesktop::MediaSummary media);
         void SetInLibrary(bool value);
         void SetLibraryBusy(bool value);
         void SetLibraryError(hstring value);

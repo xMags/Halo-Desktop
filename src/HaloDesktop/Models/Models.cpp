@@ -45,6 +45,7 @@
 #endif
 
 #include <algorithm>
+#include <stdexcept>
 #include <utility>
 
 namespace winrt::HaloDesktop::implementation
@@ -478,6 +479,43 @@ namespace winrt::HaloDesktop::implementation
     void FeaturedItem::PropertyChanged(winrt::event_token const& token) noexcept
     {
         m_propertyChanged.remove(token);
+    }
+
+    void FeaturedItem::SetMedia(HaloDesktop::MediaSummary media)
+    {
+        if (!media)
+        {
+            throw std::invalid_argument{ "A featured card requires media." };
+        }
+        if (m_media == media)
+        {
+            return;
+        }
+
+        auto const titleChanged = !m_media || m_media.Title() != media.Title();
+        auto const ratingChanged = !m_media || m_media.Rating() != media.Rating();
+        auto const metaChanged = !m_media || m_media.ReleaseInfo() != media.ReleaseInfo();
+        auto const synopsisChanged = !m_media || m_media.Description() != media.Description();
+        auto const backgroundChanged = !m_media
+            || m_media.Background() != media.Background()
+            || m_media.Poster() != media.Poster();
+        auto const actionChanged = !m_media || m_media.Kind() != media.Kind();
+        m_media = std::move(media);
+
+        m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"Media" });
+        for (auto const& [changed, name] : {
+                 std::pair{ titleChanged, L"Title" },
+                 std::pair{ ratingChanged, L"Rating" },
+                 std::pair{ metaChanged, L"Meta" },
+                 std::pair{ synopsisChanged, L"Synopsis" },
+                 std::pair{ backgroundChanged, L"Background" },
+                 std::pair{ actionChanged, L"ActionLabel" } })
+        {
+            if (changed)
+            {
+                m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ name });
+            }
+        }
     }
 
     void FeaturedItem::SetInLibrary(bool value)

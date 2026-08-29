@@ -441,6 +441,13 @@ namespace winrt::HaloDesktop::implementation
         }
         else
         {
+            for (std::uint32_t index = 0; index < rebuilt.size(); ++index)
+            {
+                auto const current = m_featured.GetAt(index).as<winrt::HaloDesktop::FeaturedItem>();
+                auto const next = rebuilt[index].as<winrt::HaloDesktop::FeaturedItem>();
+                winrt::get_self<winrt::HaloDesktop::implementation::FeaturedItem>(current)
+                    ->SetMedia(next.Media());
+            }
             // New cards carried the fresh membership; the kept ones may hold a
             // flag set before a save went through, so re-derive it for all.
             SynchronizeFeaturedLibraryState();
