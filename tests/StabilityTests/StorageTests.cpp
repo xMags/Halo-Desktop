@@ -432,6 +432,49 @@ namespace
                 && !finalized.front().Replacement,
             "replacement recovery did not persist its terminal state");
     }
+
+    void TestMissingCompletedDownloadRecovery()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        DownloadIndexStore store{ dataRoot };
+        auto record = Record(std::wstring(64, L'd'), L"movie:missing");
+        record.AccountKey = HaloDesktop::Services::Downloads::MakeAccountKey(
+            L"https://example.test", L"user-a");
+        record.RootPath = temporary.Path() / L"downloads";
+        record.FileName = L"missing.mkv";
+        record.Status = DownloadStatus::Done;
+        record.ExplicitPause = false;
+        store.Apply({ record });
+
+        {
+            TransferEngine engine{ dataRoot };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            auto const records = engine.List();
+            Require(records.size() == 1
+                    && records.front().Status == DownloadStatus::Failed
+                    && records.front().Failure
+                    && *records.front().Failure == HaloDesktop::Services::Downloads::DownloadFailureCode::MissingFile,
+                "a missing completed file was not reconciled as MissingFile");
+            auto playbackRejected = false;
+            try
+            {
+                static_cast<void>(engine.FilesForPlayback(record.JobId));
+            }
+            catch (...)
+            {
+                playbackRejected = true;
+            }
+            Require(playbackRejected, "playback accepted a missing completed file");
+        }
+
+        auto const persisted = store.Load(false);
+        Require(persisted.size() == 1
+                && persisted.front().Status == DownloadStatus::Failed
+                && persisted.front().Failure
+                && *persisted.front().Failure == HaloDesktop::Services::Downloads::DownloadFailureCode::MissingFile,
+            "the MissingFile reconciliation was not persisted");
+    }
 }
 
 void RunStandaloneStorageTests()
@@ -443,4 +486,5 @@ void RunStandaloneStorageTests()
     TestDownloadLeasesAndAtomicIndexMerge();
     TestCorruptDownloadIndexRecovery();
     TestPendingDownloadDeletionRecovery();
+    TestMissingCompletedDownloadRecovery();
 }

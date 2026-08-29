@@ -223,6 +223,7 @@
     <ClInclude Include="Services\ServiceInterfaces.h" />
     <ClInclude Include="Services\SessionService.h" />
     <ClInclude Include="Services\SettingsSyncService.h" />
+    <ClInclude Include="Services\SettingsSyncPolicy.h" />
     <ClInclude Include="Services\SourceService.h" />
     <ClInclude Include="Services\StreamInfo.h" />
     <ClInclude Include="Services\WatchStateService.h" />
@@ -412,6 +413,7 @@
     <ClCompile Include="Services\ThemeService.cpp" />
     <ClCompile Include="Services\SessionService.cpp" />
     <ClCompile Include="Services\SettingsSyncService.cpp" />
+    <ClCompile Include="Services\SettingsSyncPolicy.cpp" />
     <ClCompile Include="Services\SourceService.cpp" />
     <ClCompile Include="Services\StreamInfo.cpp" />
     <ClCompile Include="Services\WatchStateService.cpp" />

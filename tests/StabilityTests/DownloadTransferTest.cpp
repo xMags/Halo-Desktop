@@ -27,12 +27,16 @@
 
 namespace
 {
-    using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadFailureCode;
+    using HaloDesktop::Services::Downloads::DownloadIndexStore;
+    using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStartRequest;
     using HaloDesktop::Services::Downloads::DownloadStatus;
+    using HaloDesktop::Services::Downloads::RequestVault;
     using HaloDesktop::Services::Downloads::SubtitleRequest;
     using HaloDesktop::Services::Downloads::TransferEngine;
+    using HaloDesktop::Services::Downloads::MakeAccountKey;
+    using HaloDesktop::Services::Downloads::Sha256Hex;
 
     constexpr auto TransferTimeout = std::chrono::seconds{ 10 };
 
@@ -134,8 +138,10 @@ namespace
     class DownloadHttpServer final
     {
     public:
-        explicit DownloadHttpServer(std::optional<std::wstring> redirectTarget = std::nullopt)
-            : m_firstBody(384u * 1024u, static_cast<std::uint8_t>(0x31)),
+        explicit DownloadHttpServer(
+            std::optional<std::wstring> redirectTarget = std::nullopt,
+            std::uint8_t firstFill = static_cast<std::uint8_t>(0x31))
+            : m_firstBody(384u * 1024u, firstFill),
               m_replacementBody(448u * 1024u, static_cast<std::uint8_t>(0x52)),
               m_redirectTarget(std::move(redirectTarget))
         {
@@ -278,6 +284,11 @@ namespace
             return m_redirectTargetRequests.load();
         }
 
+        [[nodiscard]] int RedirectTargetRangeRequests() const noexcept
+        {
+            return m_redirectTargetRangeRequests.load();
+        }
+
     private:
         [[nodiscard]] std::wstring BaseUrl() const
         {
@@ -394,7 +405,16 @@ namespace
             if (redirectTarget && !hasVideoHeader && !hasRefreshedHeader)
             {
                 ++m_redirectTargetRequests;
-                SendBody(client, m_firstBody, "application/octet-stream");
+                auto const range = ParseRange(request);
+                if (range)
+                {
+                    ++m_redirectTargetRangeRequests;
+                    SendPartialBody(client, m_firstBody, *range, "application/octet-stream");
+                }
+                else
+                {
+                    SendBody(client, m_firstBody, "application/octet-stream");
+                }
                 return;
             }
             if (redirectLoop && hasVideoHeader)
@@ -442,6 +462,64 @@ namespace
             }
         }
 
+        static std::optional<std::uint64_t> ParseRange(std::string const& request)
+        {
+            constexpr std::string_view prefix = "\r\nRange: bytes=";
+            auto const start = request.find(prefix);
+            if (start == std::string::npos)
+            {
+                return std::nullopt;
+            }
+            auto const valueStart = start + prefix.size();
+            auto const dash = request.find('-', valueStart);
+            if (dash == std::string::npos || dash == valueStart)
+            {
+                return std::nullopt;
+            }
+            std::uint64_t value{};
+            for (auto index = valueStart; index < dash; ++index)
+            {
+                if (request[index] < '0' || request[index] > '9')
+                {
+                    return std::nullopt;
+                }
+                auto const digit = static_cast<std::uint64_t>(request[index] - '0');
+                if (value > ((std::numeric_limits<std::uint64_t>::max)() - digit) / 10)
+                {
+                    return std::nullopt;
+                }
+                value = value * 10 + digit;
+            }
+            return value;
+        }
+
+        void SendPartialBody(
+            SOCKET client,
+            std::vector<std::uint8_t> const& body,
+            std::uint64_t start,
+            std::string_view contentType)
+        {
+            if (start >= body.size())
+            {
+                static constexpr std::string_view response =
+                    "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n";
+                SendAll(client, response.data(), response.size());
+                return;
+            }
+            auto const length = body.size() - static_cast<std::size_t>(start);
+            auto const header =
+                "HTTP/1.1 206 Partial Content\r\nContent-Type: " + std::string{ contentType }
+                + "\r\nContent-Length: " + std::to_string(length)
+                + "\r\nContent-Range: bytes " + std::to_string(start) + "-"
+                + std::to_string(body.size() - 1) + "/" + std::to_string(body.size())
+                + "\r\nConnection: close\r\n\r\n";
+            SendAll(client, header.data(), header.size());
+            SendAll(
+                client,
+                reinterpret_cast<char const*>(body.data() + static_cast<std::size_t>(start)),
+                length);
+        }
+
         void SendRedirect(SOCKET client, std::string const& location)
         {
             auto const response = "HTTP/1.1 302 Found\r\nLocation: " + location
@@ -457,6 +535,7 @@ namespace
         std::atomic_int m_rejectedRequests{};
         std::atomic_int m_crossOriginRedirectRequests{};
         std::atomic_int m_redirectTargetRequests{};
+        std::atomic_int m_redirectTargetRangeRequests{};
         std::vector<std::uint8_t> m_firstBody;
         std::vector<std::uint8_t> m_replacementBody;
         std::vector<std::uint8_t> m_cancelBody = std::vector<std::uint8_t>(
@@ -509,7 +588,7 @@ namespace
     }
 
     [[nodiscard]] DownloadRecord WaitForStatus(
-        TransferEngine const& engine,
+        TransferEngine& engine,
         std::wstring const& jobId,
         DownloadStatus status)
     {
@@ -543,6 +622,22 @@ namespace
         };
     }
 
+    void WriteBytes(std::filesystem::path const& path, std::vector<std::uint8_t> const& bytes)
+    {
+        std::ofstream output(path, std::ios::binary | std::ios::trunc);
+        if (!output)
+        {
+            throw std::runtime_error{ "The transfer test could not create a partial file." };
+        }
+        output.write(
+            reinterpret_cast<char const*>(bytes.data()),
+            static_cast<std::streamsize>(bytes.size()));
+        if (!output)
+        {
+            throw std::runtime_error{ "The transfer test could not write a partial file." };
+        }
+    }
+
     [[nodiscard]] std::string ReadText(std::filesystem::path const& path)
     {
         std::ifstream input(path, std::ios::binary);
@@ -561,7 +656,7 @@ void RunDownloadTransferStabilityTest()
 {
     Apartment apartment;
     TemporaryDirectory temporary;
-    DownloadHttpServer redirectTarget;
+    DownloadHttpServer redirectTarget{ std::nullopt, static_cast<std::uint8_t>(0x52) };
     DownloadHttpServer server{ redirectTarget.RedirectTargetUrl() };
     std::mutex statusMutex;
     std::vector<DownloadStatus> statuses;
@@ -723,6 +818,62 @@ void RunDownloadTransferStabilityTest()
         server.CrossOriginRedirectRequests() == 1
             && redirectTarget.RedirectTargetRequests() == 1,
         "a protected source header leaked to a cross-origin redirect target");
+
+    {
+        TemporaryDirectory resumeTemporary;
+        DownloadHttpServer resumeTarget{ std::nullopt, static_cast<std::uint8_t>(0x62) };
+        DownloadHttpServer resumeServer{ resumeTarget.RedirectTargetUrl() };
+        DownloadIndexStore seed{ resumeTemporary.Path() };
+        auto resumed = MakeRequest(
+            resumeServer.CrossOriginRedirectUrl(),
+            L"cross-origin-resume.mkv",
+            resumeTarget.FirstBody().size(),
+            false,
+            std::nullopt,
+            L"movie:cross-origin-resume");
+        DownloadRecord record{
+            .JobId = L"0123456789abcdef0123456789abcdef",
+            .AccountKey = MakeAccountKey(L"https://account.invalid", L"user-a"),
+            .Media = {
+                .VideoId = L"movie:cross-origin-resume",
+                .ItemId = L"movie:cross-origin-resume",
+                .MediaType = L"movie",
+                .Title = L"Cross-origin resume",
+                .VideoSize = resumeTarget.FirstBody().size(),
+            },
+            .FileName = L"cross-origin-resume.mkv",
+            .RootPath = resumeTemporary.Path() / L"downloads",
+            .Status = DownloadStatus::Paused,
+            .TotalBytes = resumeTarget.FirstBody().size(),
+            .DownloadedBytes = 32u * 1024u,
+            .Validator = L"\"halo-stability\"",
+            .SourceFingerprint = Sha256Hex(resumed.Request.Url),
+            .ExplicitPause = true,
+            .CreatedAt = 1,
+            .UpdatedAt = 1,
+        };
+        std::filesystem::create_directories(record.RootPath);
+        WriteBytes(
+            record.PartialPath(),
+            std::vector<std::uint8_t>(
+                resumeServer.FirstBody().begin(),
+                resumeServer.FirstBody().begin() + static_cast<std::ptrdiff_t>(record.DownloadedBytes)));
+        seed.Apply({ record });
+        RequestVault vault{ resumeTemporary.Path() / L"download-requests" };
+        vault.Write(record.JobId, std::move(resumed.Request));
+
+        TransferEngine resumedEngine{ resumeTemporary.Path() };
+        resumedEngine.SetAccount(L"https://account.invalid", L"user-a");
+        resumedEngine.Resume(record.JobId);
+        auto const completed = WaitForStatus(resumedEngine, record.JobId, DownloadStatus::Done);
+        Require(
+            ReadBytes(resumedEngine.FilesForPlayback(completed.JobId).VideoPath) == resumeTarget.FirstBody(),
+            "a cross-origin resumed transfer appended redirected bytes to the old prefix");
+        Require(
+            resumeTarget.RedirectTargetRangeRequests() == 1
+                && resumeTarget.RedirectTargetRequests() == 2,
+            "a cross-origin resume did not retry after the redirected ranged response");
+    }
 
     auto const redirectLoop = engine.Start(MakeRequest(
         server.RedirectLoopUrl(),

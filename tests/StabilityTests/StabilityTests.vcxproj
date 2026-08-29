@@ -67,6 +67,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\StreamInfo.cpp">
       <Link>StreamInfo.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SettingsSyncPolicy.cpp">
+      <Link>SettingsSyncPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LoopbackListener.cpp">
       <Link>LoopbackListener.cpp</Link>
     </ClCompile>

@@ -40,14 +40,14 @@ namespace HaloDesktop::Services::Downloads
 
         void SetAccount(std::wstring serverUrl, std::wstring userId);
         void ClearAccount();
-        [[nodiscard]] std::vector<DownloadRecord> List() const;
+        [[nodiscard]] std::vector<DownloadRecord> List();
 
         [[nodiscard]] DownloadRecord Start(DownloadStartRequest request);
         void Pause(std::wstring const& jobId);
         void Resume(std::wstring const& jobId);
         void Remove(std::wstring const& jobId);
 
-        [[nodiscard]] PlaybackFiles FilesForPlayback(std::wstring const& jobId) const;
+        [[nodiscard]] PlaybackFiles FilesForPlayback(std::wstring const& jobId);
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
         void SetDownloadDirectory(std::filesystem::path directory);
         [[nodiscard]] std::optional<std::uint64_t> FreeBytes() const noexcept;
@@ -98,6 +98,7 @@ namespace HaloDesktop::Services::Downloads
         static void Notify(
             std::vector<DownloadChangedHandler> const& handlers,
             DownloadRecord const& record) noexcept;
+        void ReconcileMissingFiles();
 
         DownloadIndexStore m_store;
         RequestVault m_vault;

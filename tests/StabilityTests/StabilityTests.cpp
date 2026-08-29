@@ -4,6 +4,7 @@
 #include "Services/CatalogRefreshPolicy.h"
 #include "Api/Dto.h"
 #include "Api/JsonNumberPolicy.h"
+#include "Services/SettingsSyncPolicy.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/Auth/LoopbackListener.h"
@@ -133,6 +134,19 @@ namespace
         stream.Title = L"9999999999999999999 GB";
         Require(!HaloDesktop::Services::ParseStreamInfo(stream).SizeBytes,
             "an out-of-range textual source size was converted to uint64");
+    }
+
+    void TestSettingsLoadPolicy()
+    {
+        using HaloDesktop::Services::ShouldApplyLoadedSettings;
+        Require(!ShouldApplyLoadedSettings(99, 100, 1, 1),
+            "an older settings payload replaced a local document");
+        Require(!ShouldApplyLoadedSettings(101, 100, 1, 2),
+            "a settings payload from before a local write was applied");
+        Require(!ShouldApplyLoadedSettings(100, 100, 1, 1),
+            "an equal-timestamp settings payload replaced the local document");
+        Require(ShouldApplyLoadedSettings(101, 100, 0, 0),
+            "a newer remote settings payload was rejected");
     }
 
     void TestCatalogDirtySingleFlight()
@@ -436,6 +450,7 @@ int main()
         TestCatalogCommitDecisions();
         TestStreamVideoSizeValidation();
         TestNumericBoundaryValidation();
+        TestSettingsLoadPolicy();
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();

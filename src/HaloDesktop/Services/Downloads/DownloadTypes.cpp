@@ -134,7 +134,8 @@ namespace HaloDesktop::Services::Downloads
     {
         return failure == DownloadFailureCode::SourceExpired
             || failure == DownloadFailureCode::InvalidRange
-            || failure == DownloadFailureCode::ProtectedRequestCorrupt;
+            || failure == DownloadFailureCode::ProtectedRequestCorrupt
+            || failure == DownloadFailureCode::MissingFile;
     }
 
     DownloadStatus RecoverStatus(DownloadStatus status, bool explicitPause) noexcept

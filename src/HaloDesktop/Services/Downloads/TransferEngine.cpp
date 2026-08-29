@@ -52,6 +52,7 @@ namespace
         std::optional<std::wstring> Location;
         std::optional<std::wstring> ContentRange;
         std::optional<std::uint64_t> ContentLength;
+        bool CrossedOrigin{};
     };
 
     std::uint64_t NowMilliseconds() noexcept
@@ -327,11 +328,12 @@ namespace
         std::wstring const& url,
         std::map<std::wstring, std::wstring, std::less<>> const& headers,
         std::optional<std::uint64_t> partial,
-        std::optional<std::wstring> const& validator)
+        std::optional<std::wstring> validator)
     {
         auto currentUrl = url;
         std::map<std::wstring, std::wstring, std::less<>> const emptyHeaders;
         bool forwardProtectedHeaders = true;
+        bool crossedOrigin{};
         for (int redirectCount = 0;; ++redirectCount)
         {
             auto response = OpenGetOnce(
@@ -341,6 +343,7 @@ namespace
                 validator);
             if (!IsRedirectStatus(response.Status))
             {
+                response.CrossedOrigin = crossedOrigin;
                 return response;
             }
             if (redirectCount >= MaximumRedirects || !response.Location
@@ -366,6 +369,7 @@ namespace
                 if (!SameOrigin(current, next))
                 {
                     forwardProtectedHeaders = false;
+                    crossedOrigin = true;
                 }
                 currentUrl = next.AbsoluteUri();
             }
@@ -746,8 +750,9 @@ namespace HaloDesktop::Services::Downloads
         }
     }
 
-    std::vector<DownloadRecord> TransferEngine::List() const
+    std::vector<DownloadRecord> TransferEngine::List()
     {
+        ReconcileMissingFiles();
         std::scoped_lock const lock{ m_mutex };
         if (!m_activeAccount)
         {
@@ -1205,8 +1210,9 @@ namespace HaloDesktop::Services::Downloads
         }
     }
 
-    PlaybackFiles TransferEngine::FilesForPlayback(std::wstring const& jobId) const
+    PlaybackFiles TransferEngine::FilesForPlayback(std::wstring const& jobId)
     {
+        ReconcileMissingFiles();
         std::scoped_lock const lock{ m_mutex };
         auto const found = m_records.find(jobId);
         if (found == m_records.end()
@@ -1566,71 +1572,103 @@ namespace HaloDesktop::Services::Downloads
                 .Failure = DownloadFailureCode::Network,
             };
         }
-        if (response.Status == 401 || response.Status == 403)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::SourceExpired,
-            };
-        }
-        if (response.Status == 416)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::InvalidRange,
-            };
-        }
-        if (response.Status == 408 || response.Status == 425 || response.Status == 429
-            || (response.Status >= 500 && response.Status <= 599))
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Retryable,
-                .Failure = DownloadFailureCode::ServerUnavailable,
-            };
-        }
-        if (response.Status != 200 && response.Status != 206)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::SourceRejected,
-            };
-        }
-        if (partial > 0 && response.Status == 200)
-        {
-            partial = 0;
-        }
-        if (partial > 0 && response.Status != 206)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::InvalidRange,
-            };
-        }
-
         std::optional<ContentRange> contentRange;
-        if (response.Status == 206)
+        std::optional<std::wstring> responseValidator;
+        for (;;)
         {
-            contentRange = response.ContentRange ? ParseContentRange(*response.ContentRange) : std::nullopt;
-            if (!contentRange
-                || contentRange->Start != partial
-                || (record.TotalBytes > 0 && contentRange->Total != record.TotalBytes)
-                || (response.ContentLength
-                    && *response.ContentLength != contentRange->End - contentRange->Start + 1))
+            if (response.Status == 401 || response.Status == 403)
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::SourceExpired,
+                };
+            }
+            if (response.Status == 416)
             {
                 throw TransferError{
                     .Type = TransferError::Kind::Permanent,
                     .Failure = DownloadFailureCode::InvalidRange,
                 };
             }
-        }
-        auto const responseValidator = response.ETag ? response.ETag : response.LastModified;
-        if (partial > 0 && record.Validator && responseValidator
-            && *record.Validator != *responseValidator)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::InvalidRange,
-            };
+            if (response.Status == 408 || response.Status == 425 || response.Status == 429
+                || (response.Status >= 500 && response.Status <= 599))
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Retryable,
+                    .Failure = DownloadFailureCode::ServerUnavailable,
+                };
+            }
+            if (response.Status != 200 && response.Status != 206)
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::SourceRejected,
+                };
+            }
+            if (partial > 0 && response.Status == 200)
+            {
+                partial = 0;
+            }
+            if (partial > 0 && response.Status != 206)
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::InvalidRange,
+                };
+            }
+
+            contentRange.reset();
+            if (response.Status == 206)
+            {
+                contentRange = response.ContentRange ? ParseContentRange(*response.ContentRange) : std::nullopt;
+                if (!contentRange
+                    || contentRange->Start != partial
+                    || (record.TotalBytes > 0 && contentRange->Total != record.TotalBytes)
+                    || (response.ContentLength
+                        && *response.ContentLength != contentRange->End - contentRange->Start + 1))
+                {
+                    throw TransferError{
+                        .Type = TransferError::Kind::Permanent,
+                        .Failure = DownloadFailureCode::InvalidRange,
+                    };
+                }
+            }
+            responseValidator = response.ETag ? response.ETag : response.LastModified;
+            if (partial > 0 && record.Validator && responseValidator
+                && *record.Validator != *responseValidator)
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::InvalidRange,
+                };
+            }
+            if (partial > 0 && response.Status == 206 && response.CrossedOrigin)
+            {
+                // A valid ranged response from another origin may describe a
+                // different object. Retry the complete object from the original
+                // URL, allowing the redirect rules to strip protected headers.
+                try
+                {
+                    response = OpenGet(request.Url, request.Headers, std::nullopt, std::nullopt);
+                }
+                catch (RedirectError const&)
+                {
+                    throw TransferError{
+                        .Type = TransferError::Kind::Permanent,
+                        .Failure = DownloadFailureCode::SourceRejected,
+                    };
+                }
+                catch (...)
+                {
+                    throw TransferError{
+                        .Type = TransferError::Kind::Retryable,
+                        .Failure = DownloadFailureCode::Network,
+                    };
+                }
+                partial = 0;
+                continue;
+            }
+            break;
         }
         auto const total = contentRange
             ? contentRange->Total
@@ -2155,11 +2193,76 @@ namespace HaloDesktop::Services::Downloads
         }
     }
 
+    void TransferEngine::ReconcileMissingFiles()
+    {
+        std::vector<std::wstring> candidates;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            for (auto& [jobId, record] : m_records)
+            {
+                if (record.Status == DownloadStatus::Done)
+                {
+                    candidates.push_back(jobId);
+                }
+            }
+        }
+        for (auto const& jobId : candidates)
+        {
+            std::unique_ptr<::HaloDesktop::Storage::FileMutationLock> jobLease;
+            try
+            {
+                jobLease = std::make_unique<::HaloDesktop::Storage::FileMutationLock>(
+                    m_store.Paths().DataRoot / (L"download-job-" + jobId),
+                    std::chrono::milliseconds{ 0 });
+            }
+            catch (...)
+            {
+                continue;
+            }
+
+            DownloadRecord changed;
+            DownloadRecord previous;
+            std::vector<DownloadChangedHandler> handlers;
+            {
+                std::scoped_lock const lock{ m_mutex };
+                auto const found = m_records.find(jobId);
+                if (found == m_records.end() || found->second.Status != DownloadStatus::Done)
+                {
+                    continue;
+                }
+                std::error_code error;
+                if (std::filesystem::is_regular_file(found->second.TargetPath(), error) && !error)
+                {
+                    continue;
+                }
+                previous = found->second;
+                found->second.Status = DownloadStatus::Failed;
+                found->second.Failure = DownloadFailureCode::MissingFile;
+                found->second.BytesPerSecond = 0;
+                found->second.UpdatedAt = NowMilliseconds();
+                changed = found->second;
+                handlers = HandlersLocked();
+            }
+            try
+            {
+                m_store.Apply({ changed });
+            }
+            catch (...)
+            {
+                std::scoped_lock const lock{ m_mutex };
+                m_records.insert_or_assign(previous.JobId, previous);
+                continue;
+            }
+            Notify(handlers, changed);
+        }
+    }
+
     void RunDownloadEngineUnitChecks()
     {
         if (!RequiresNewSource(DownloadFailureCode::SourceExpired)
             || !RequiresNewSource(DownloadFailureCode::InvalidRange)
             || !RequiresNewSource(DownloadFailureCode::ProtectedRequestCorrupt)
+            || !RequiresNewSource(DownloadFailureCode::MissingFile)
             || RequiresNewSource(DownloadFailureCode::Network))
         {
             throw std::runtime_error{ "The download failure retry policy is invalid." };

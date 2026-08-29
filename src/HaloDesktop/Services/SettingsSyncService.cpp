@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Services/SettingsSyncService.h"
+#include "Services/SettingsSyncPolicy.h"
 
 #include "Api/ApiClient.h"
 #include "Api/Dto.h"
@@ -74,6 +75,8 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         auto const accountVersion = m_accountVersion;
+        auto const requestWriteVersion = m_writeVersion;
+        auto const localUpdatedAt = m_updatedAt;
         auto const requestId = m_queryCache->Issue(SettingsCacheKey);
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> payload;
         try
@@ -96,6 +99,11 @@ namespace HaloDesktop::Services
         }
         co_await uiContext;
         if (accountVersion == m_accountVersion
+            && ShouldApplyLoadedSettings(
+                payload->UpdatedAt,
+                localUpdatedAt,
+                requestWriteVersion,
+                m_writeVersion)
             && m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
         {
             Apply(*payload);
@@ -259,7 +267,10 @@ namespace HaloDesktop::Services
         std::int64_t updatedAt)
     {
         auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_writeVersion;
+        // Touch advances the generation at the point of the local mutation,
+        // including edits waiting for the debounce timer. Saving captures that
+        // generation so a load already in flight cannot replace the edit.
+        auto const version = m_writeVersion;
         auto const accountVersion = m_accountVersion;
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> echo;
         try
@@ -324,6 +335,7 @@ namespace HaloDesktop::Services
 
     void SettingsSyncService::Touch(bool debounce)
     {
+        ++m_writeVersion;
         m_updatedAt = NextTimestamp();
         static_cast<void>(WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload{
             .Value = Snapshot(),
