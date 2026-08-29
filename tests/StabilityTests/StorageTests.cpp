@@ -23,6 +23,7 @@
 #include <utility>
 #include <vector>
 #include <winrt/Windows.Data.Json.h>
+#include <winrt/Windows.Foundation.Collections.h>
 
 namespace
 {
@@ -31,6 +32,7 @@ namespace
     using HaloDesktop::Services::Downloads::DownloadMedia;
     using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStatus;
+    using HaloDesktop::Services::Downloads::ReplacementBackup;
     using HaloDesktop::Services::Downloads::TransferEngine;
     using HaloDesktop::Storage::AppStoragePaths;
     using HaloDesktop::Storage::LegacyPackageData;
@@ -300,6 +302,63 @@ namespace
             "a record-level download index update was not atomic");
     }
 
+    std::vector<std::filesystem::path> QuarantinedIndexes(std::filesystem::path const& dataRoot)
+    {
+        std::vector<std::filesystem::path> result;
+        for (auto const& entry : std::filesystem::directory_iterator{ dataRoot })
+        {
+            auto const name = entry.path().filename().wstring();
+            if (entry.is_regular_file() && name.starts_with(L"downloads-index.corrupt-")
+                && name.ends_with(L".json"))
+            {
+                result.push_back(entry.path());
+            }
+        }
+        return result;
+    }
+
+    void TestCorruptDownloadIndexRecovery()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        DownloadIndexStore store{ dataRoot };
+        store.Save({ Record(L"job-a", L"movie:a"), Record(L"job-b", L"movie:b") }, 1);
+
+        auto const indexPath = dataRoot / L"downloads-index.json";
+        auto root = winrt::Windows::Data::Json::JsonObject::Parse(
+            winrt::to_hstring(HaloDesktop::Storage::ReadUtf8File(indexPath, 32u * 1024u * 1024u)));
+        auto const entries = root.GetNamedArray(L"entries");
+        entries.GetObjectAt(1).Insert(
+            L"status",
+            winrt::Windows::Data::Json::JsonValue::CreateStringValue(L"corrupt"));
+        auto const corrupt = winrt::to_string(root.Stringify());
+        HaloDesktop::Storage::WriteUtf8FileAtomic(indexPath, corrupt);
+
+        DownloadIndexStore recoveredStore{ dataRoot };
+        auto const recovered = recoveredStore.Load(false);
+        Require(recovered.size() == 1 && recovered.front().JobId == L"job-a",
+            "a corrupt download entry prevented valid entries from being salvaged");
+        auto quarantined = QuarantinedIndexes(dataRoot);
+        Require(quarantined.size() == 1,
+            "a corrupt download index was not preserved exactly once");
+        Require(HaloDesktop::Storage::ReadUtf8File(quarantined.front(), 32u * 1024u * 1024u) == corrupt,
+            "the quarantined download index did not preserve the corrupt input");
+        Require(recoveredStore.Load(false).size() == 1 && QuarantinedIndexes(dataRoot).size() == 1,
+            "the recovered download index was not stable on its next load");
+
+        auto const malformedRoot = temporary.Path() / L"malformed";
+        DownloadIndexStore malformedStore{ malformedRoot };
+        auto const malformedPath = malformedRoot / L"downloads-index.json";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(malformedPath, "not-json");
+        Require(malformedStore.Load(false).empty(),
+            "a wholly malformed download index did not recover to an empty snapshot");
+        auto const malformedQuarantine = QuarantinedIndexes(malformedRoot);
+        Require(malformedQuarantine.size() == 1
+                && HaloDesktop::Storage::ReadUtf8File(
+                    malformedQuarantine.front(), 32u * 1024u * 1024u) == "not-json",
+            "a wholly malformed download index was not quarantined");
+    }
+
     void TestPendingDownloadDeletionRecovery()
     {
         TemporaryDirectory temporary;
@@ -331,6 +390,47 @@ namespace
             "pending download files were not removed after restart");
         DownloadIndexStore verify{ dataRoot };
         Require(verify.Load(false).empty(), "a completed deletion tombstone remained in the index");
+
+        auto old = Record(std::wstring(64, L'b'), L"movie:replacement-recovery");
+        old.AccountKey = HaloDesktop::Services::Downloads::MakeAccountKey(
+            L"https://example.test", L"user-a");
+        old.RootPath = downloadRoot;
+        old.FileName = L"old.mkv";
+        old.PendingDeletion = true;
+        auto replacement = Record(std::wstring(64, L'c'), L"movie:replacement-recovery");
+        replacement.AccountKey = old.AccountKey;
+        replacement.RootPath = downloadRoot;
+        replacement.FileName = L"replacement.mkv";
+        replacement.Status = DownloadStatus::Downloading;
+        replacement.ExplicitPause = false;
+        replacement.TotalBytes = 3;
+        replacement.DownloadedBytes = 3;
+        replacement.Replacement = ReplacementBackup{
+            .JobId = old.JobId,
+            .RootPath = old.RootPath,
+            .FileName = old.FileName,
+        };
+        WriteBytes(old.TargetPath(), { 1, 2, 3 });
+        WriteBytes(replacement.TargetPath(), { 4, 5, 6 });
+        verify.Apply({ old, replacement });
+        {
+            TransferEngine engine{ dataRoot };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            auto const records = engine.List();
+            Require(records.size() == 1
+                    && records.front().JobId == replacement.JobId
+                    && records.front().Status == DownloadStatus::Done,
+                "an interrupted replacement finalization was not recovered as complete");
+        }
+        Require(!std::filesystem::exists(old.TargetPath())
+                && std::filesystem::is_regular_file(replacement.TargetPath()),
+            "replacement recovery removed the wrong video file");
+        auto const finalized = verify.Load(false);
+        Require(finalized.size() == 1
+                && finalized.front().JobId == replacement.JobId
+                && finalized.front().Status == DownloadStatus::Done
+                && !finalized.front().Replacement,
+            "replacement recovery did not persist its terminal state");
     }
 }
 
@@ -341,5 +441,6 @@ void RunStandaloneStorageTests()
     TestMigrationSuccessRetryAndIdempotency();
     TestMigrationProtectsExistingTarget();
     TestDownloadLeasesAndAtomicIndexMerge();
+    TestCorruptDownloadIndexRecovery();
     TestPendingDownloadDeletionRecovery();
 }

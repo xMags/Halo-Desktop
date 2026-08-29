@@ -567,7 +567,16 @@ namespace HaloDesktop::Services::Downloads
                 auto updatedOwner = owner == m_records.end()
                     ? std::optional<DownloadRecord>{}
                     : std::optional<DownloadRecord>{ owner->second };
-                if (updatedOwner) updatedOwner->Replacement.reset();
+                if (updatedOwner)
+                {
+                    // A pending backup is written only after the replacement file
+                    // has completed. Recover that finalization without downloading
+                    // the already-finished replacement a second time.
+                    updatedOwner->Status = DownloadStatus::Done;
+                    updatedOwner->ExplicitPause = false;
+                    updatedOwner->BytesPerSecond = 0;
+                    updatedOwner->Replacement.reset();
+                }
                 RemoveRecordFiles(pending, updatedOwner ? &*updatedOwner : nullptr);
                 m_vault.Remove(jobId);
                 m_store.Apply(updatedOwner ? std::vector<DownloadRecord>{ *updatedOwner }
@@ -1920,6 +1929,13 @@ namespace HaloDesktop::Services::Downloads
                     record.BytesPerSecond = 0;
                 }
                 record.UpdatedAt = NowMilliseconds();
+                if (result && replaced)
+                {
+                    // Keep both the live and durable projections non-terminal until
+                    // the old files have either been removed or deliberately retained
+                    // behind their tombstone.
+                    record.Status = DownloadStatus::Downloading;
+                }
                 changed = record;
                 hasChanged = true;
             }
@@ -1964,6 +1980,7 @@ namespace HaloDesktop::Services::Downloads
                 RemoveRecordFiles(*replaced, hasChanged ? &changed : nullptr);
                 m_vault.Remove(replaced->JobId);
                 auto completed = changed;
+                completed.Status = DownloadStatus::Done;
                 completed.Replacement.reset();
                 m_store.Apply({ completed }, { replaced->JobId });
                 std::scoped_lock const lock{ m_mutex };
@@ -1974,6 +1991,12 @@ namespace HaloDesktop::Services::Downloads
             catch (...)
             {
                 OutputDebugStringW(L"Halo retained a replacement cleanup tombstone for retry.\n");
+                auto completed = changed;
+                completed.Status = DownloadStatus::Done;
+                try { m_store.Apply({ completed }); } catch (...) {}
+                std::scoped_lock const lock{ m_mutex };
+                m_records.insert_or_assign(completed.JobId, completed);
+                changed = std::move(completed);
             }
         }
         if (hasChanged)

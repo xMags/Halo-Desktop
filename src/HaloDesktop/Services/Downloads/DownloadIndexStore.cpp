@@ -5,6 +5,7 @@
 
 #include <array>
 #include <charconv>
+#include <chrono>
 #include <fstream>
 #include <limits>
 #include <stdexcept>
@@ -349,6 +350,64 @@ namespace
         return records;
     }
 
+    std::vector<HaloDesktop::Services::Downloads::DownloadRecord> SalvageRecords(
+        std::string const& raw,
+        bool recoverInterrupted)
+    {
+        using HaloDesktop::Services::Downloads::DownloadRecord;
+        using HaloDesktop::Services::Downloads::DownloadStatus;
+        using HaloDesktop::Services::Downloads::RecoverStatus;
+
+        std::vector<DownloadRecord> records;
+        try
+        {
+            auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
+            if (RequiredUnsigned(root, L"version") != IndexVersion)
+            {
+                return records;
+            }
+            auto const entries = root.GetNamedArray(L"entries");
+            records.reserve(entries.Size());
+            for (auto const& value : entries)
+            {
+                try
+                {
+                    auto record = ParseRecord(value.GetObject());
+                    if (recoverInterrupted)
+                    {
+                        record.Status = RecoverStatus(record.Status, record.ExplicitPause);
+                    }
+                    if (record.Status != DownloadStatus::Downloading)
+                    {
+                        record.BytesPerSecond = 0;
+                    }
+                    records.push_back(std::move(record));
+                }
+                catch (...)
+                {
+                }
+            }
+        }
+        catch (...)
+        {
+        }
+        return records;
+    }
+
+    std::string SerializeRecords(
+        std::vector<HaloDesktop::Services::Downloads::DownloadRecord> const& records)
+    {
+        winrt::Windows::Data::Json::JsonArray entries;
+        for (auto const& record : records)
+        {
+            entries.Append(SerializeRecord(record));
+        }
+        winrt::Windows::Data::Json::JsonObject root;
+        InsertUnsigned(root, L"version", IndexVersion);
+        root.Insert(L"entries", entries);
+        return winrt::to_string(root.Stringify());
+    }
+
     std::string ReadFile(std::filesystem::path const& path)
     {
         std::error_code error;
@@ -424,6 +483,83 @@ namespace
         cleanup.release();
     }
 
+    std::filesystem::path QuarantinePath(std::filesystem::path const& target)
+    {
+        GUID id{};
+        winrt::check_hresult(CoCreateGuid(&id));
+        std::array<wchar_t, 40> identifier{};
+        if (StringFromGUID2(id, identifier.data(), static_cast<int>(identifier.size())) == 0)
+        {
+            throw std::runtime_error{ "A corrupt download index name could not be created." };
+        }
+        auto compactId = std::wstring{};
+        compactId.reserve(32);
+        for (auto const character : identifier)
+        {
+            if ((character >= L'0' && character <= L'9')
+                || (character >= L'a' && character <= L'f')
+                || (character >= L'A' && character <= L'F'))
+            {
+                compactId.push_back(character);
+            }
+        }
+        auto const timestamp = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        return target.parent_path()
+            / (target.stem().wstring() + L".corrupt-" + std::to_wstring(timestamp)
+                + L"-" + compactId + target.extension().wstring());
+    }
+
+    std::vector<HaloDesktop::Services::Downloads::DownloadRecord> RecoverCorruptIndex(
+        std::filesystem::path const& target,
+        std::string const& raw,
+        bool recoverInterrupted)
+    {
+        auto const recovered = SalvageRecords(raw, recoverInterrupted);
+        auto const quarantine = QuarantinePath(target);
+        if (!CopyFileW(target.c_str(), quarantine.c_str(), TRUE))
+        {
+            throw std::system_error{
+                static_cast<int>(GetLastError()),
+                std::system_category(),
+                "Could not preserve the corrupt download index" };
+        }
+        try
+        {
+            WriteAtomic(target, SerializeRecords(recovered));
+        }
+        catch (...)
+        {
+            DeleteFileW(quarantine.c_str());
+            throw;
+        }
+        OutputDebugStringW(L"Halo quarantined and recovered a corrupt download index.\n");
+        return recovered;
+    }
+
+    std::vector<HaloDesktop::Services::Downloads::DownloadRecord> LoadRecovering(
+        std::filesystem::path const& target,
+        bool recoverInterrupted)
+    {
+        std::string raw;
+        try
+        {
+            raw = ReadFile(target);
+        }
+        catch (std::length_error const&)
+        {
+            return RecoverCorruptIndex(target, {}, recoverInterrupted);
+        }
+        try
+        {
+            return ParseRecords(raw, recoverInterrupted);
+        }
+        catch (...)
+        {
+            return RecoverCorruptIndex(target, raw, recoverInterrupted);
+        }
+    }
+
     std::filesystem::path CanonicalDirectory(std::filesystem::path directory)
     {
         if (directory.empty())
@@ -479,7 +615,7 @@ namespace HaloDesktop::Services::Downloads
     {
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto records = ParseRecords(ReadFile(m_paths.IndexFile), recoverInterrupted);
+        auto records = LoadRecovering(m_paths.IndexFile, recoverInterrupted);
         m_observedJobIds.clear();
         for (auto const& record : records)
         {
@@ -498,7 +634,7 @@ namespace HaloDesktop::Services::Downloads
             return;
         }
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto const persistedRecords = ParseRecords(ReadFile(m_paths.IndexFile), false);
+        auto const persistedRecords = LoadRecovering(m_paths.IndexFile, false);
         std::set<std::wstring, std::less<>> persistedIds;
         for (auto const& persisted : persistedRecords)
         {
@@ -529,15 +665,7 @@ namespace HaloDesktop::Services::Downloads
                 merged.push_back(std::move(persisted));
             }
         }
-        winrt::Windows::Data::Json::JsonArray entries;
-        for (auto const& record : merged)
-        {
-            entries.Append(SerializeRecord(record));
-        }
-        winrt::Windows::Data::Json::JsonObject root;
-        InsertUnsigned(root, L"version", IndexVersion);
-        root.Insert(L"entries", entries);
-        WriteAtomic(m_paths.IndexFile, winrt::to_string(root.Stringify()));
+        WriteAtomic(m_paths.IndexFile, SerializeRecords(merged));
         m_observedJobIds = std::move(incomingIds);
         m_savedGeneration = generation;
     }
@@ -548,7 +676,7 @@ namespace HaloDesktop::Services::Downloads
     {
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto records = ParseRecords(ReadFile(m_paths.IndexFile), false);
+        auto records = LoadRecovering(m_paths.IndexFile, false);
         for (auto const& jobId : removals)
         {
             std::erase_if(records, [&jobId](DownloadRecord const& record)
@@ -571,15 +699,7 @@ namespace HaloDesktop::Services::Downloads
                 *found = replacement;
             }
         }
-        winrt::Windows::Data::Json::JsonArray entries;
-        for (auto const& record : records)
-        {
-            entries.Append(SerializeRecord(record));
-        }
-        winrt::Windows::Data::Json::JsonObject root;
-        InsertUnsigned(root, L"version", IndexVersion);
-        root.Insert(L"entries", entries);
-        WriteAtomic(m_paths.IndexFile, winrt::to_string(root.Stringify()));
+        WriteAtomic(m_paths.IndexFile, SerializeRecords(records));
         m_observedJobIds.clear();
         for (auto const& record : records)
         {
