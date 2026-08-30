@@ -134,12 +134,24 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime=get_strong();
         try
         {
-            auto const uiContext=winrt::apartment_context{};if(m_advancing||m_closing||!m_upNext)co_return;m_advancing=true;auto next=*m_upNext;auto currentSession=m_session;
+            auto const uiContext=winrt::apartment_context{};if(m_advancing||m_closing||!m_upNext)co_return;m_advancing=true;auto next=*m_upNext;auto currentSession=m_session;auto const finished=m_request;
             if(currentSession)co_await currentSession->CloseAsync();
             co_await uiContext;
             if(!m_loaded||m_closing)co_return;
             App::Services().Subtitles->Stop();
-            if(next.Playback){co_await StartRequestAsync(next.Playback);co_return;}
+            // A downloaded continuation is ready to play. An addon one is not:
+            // the URL fetched when this episode started may have expired, so the
+            // stream is resolved again here and the source sheet takes over if
+            // that lookup comes back empty.
+            auto playback=next.Playback;
+            if(!playback&&finished)
+            {
+                try{playback=co_await App::Services().UpNext->ResolveNextPlaybackAsync(finished);}
+                catch(...){playback=nullptr;}
+                co_await uiContext;
+                if(!m_loaded||m_closing)co_return;
+            }
+            if(playback){co_await StartRequestAsync(playback);co_return;}
             co_await PrepareForWindowCloseAsync();
             auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,next.Sources);
         }
