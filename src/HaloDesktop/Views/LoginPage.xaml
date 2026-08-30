@@ -7,7 +7,7 @@
   <Page.Resources>
     <Style x:Key="LoginTitle" TargetType="TextBlock">
       <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontMonoBig}" />
       <Setter Property="FontWeight" Value="SemiBold" />
       <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
       <Setter Property="HorizontalAlignment" Value="Center" />
@@ -18,14 +18,14 @@
 
     <Style x:Key="LoginHost" TargetType="TextBlock">
       <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
-      <Setter Property="FontSize" Value="10.5" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontCaption}" />
       <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
       <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="Margin" Value="0,10,0,0" />
     </Style>
 
     <Style x:Key="LoginBody" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
       <Setter Property="Foreground" Value="{ThemeResource HaloText2Brush}" />
       <Setter Property="TextAlignment" Value="Center" />
       <Setter Property="TextWrapping" Value="Wrap" />
@@ -35,7 +35,7 @@
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="BorderThickness" Value="0" />
       <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
-      <Setter Property="FontSize" Value="12.5" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
       <Setter Property="Padding" Value="8,4" />
       <Setter Property="HorizontalAlignment" Value="Center" />
     </Style>
@@ -57,7 +57,7 @@
         <TextBlock
           HorizontalAlignment="Center"
           CharacterSpacing="140"
-          FontSize="15"
+          FontSize="{StaticResource HaloFontEmphasis}"
           FontWeight="SemiBold"
           Foreground="{ThemeResource HaloText1Brush}"
           Text="HALO" />
@@ -137,7 +137,7 @@
             HorizontalAlignment="Center"
             Orientation="Horizontal"
             Spacing="9">
-            <FontIcon VerticalAlignment="Center" FontSize="13" Glyph="&#xE8A7;" />
+            <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Glyph="&#xE8A7;" />
             <TextBlock VerticalAlignment="Center" Text="Continue in browser" />
           </StackPanel>
         </Button>
@@ -213,7 +213,7 @@
           </Border>
           <StackPanel VerticalAlignment="Center" Spacing="3">
             <TextBlock
-              FontSize="15"
+              FontSize="{StaticResource HaloFontEmphasis}"
               FontWeight="SemiBold"
               Foreground="{ThemeResource HaloText1Brush}"
               Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" />
@@ -281,7 +281,7 @@
         <TextBlock
           Margin="0,16,0,0"
           HorizontalAlignment="Center"
-          FontSize="12.5"
+          FontSize="{StaticResource HaloFontLabel}"
           Foreground="{ThemeResource HaloText3Brush}">
           <Run Text="Need to set up a server? " />
           <Run Foreground="{ThemeResource HaloAccentBrush}" Text="Read the setup guide" />
@@ -297,7 +297,7 @@
             Spacing="7">
             <FontIcon
               VerticalAlignment="Center"
-              FontSize="11"
+              FontSize="{StaticResource HaloFontSmall}"
               Foreground="{ThemeResource HaloText3Brush}"
               Glyph="{x:Bind ViewModel.DetailsGlyph, Mode=OneWay}" />
             <TextBlock
@@ -318,7 +318,7 @@
             <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
             <TextBlock
               FontFamily="{StaticResource HaloMonoFont}"
-              FontSize="10.5"
+              FontSize="{StaticResource HaloFontCaption}"
               Foreground="{ThemeResource HaloCriticalBrush}"
               Text="NO RESPONSE · CONNECTION REFUSED" />
           </StackPanel>

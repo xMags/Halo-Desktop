@@ -100,8 +100,16 @@
       <Color x:Key="HaloCtrlHoverColor">#0A000000</Color>
       <Color x:Key="HaloSubtleColor">#0A000000</Color>
       <Color x:Key="HaloText1Color">#E4000000</Color>
-      <Color x:Key="HaloText2Color">#9B000000</Color>
-      <Color x:Key="HaloText3Color">#8B000000</Color>
+      <!--
+        Lifted from #9B and #8B. Against this theme's page surface those
+        computed to 5.9:1 and 4.7:1, and Text3 is what every mono data label is
+        set in, so the palette's faintest colour was carrying its smallest type.
+        The dark theme reaches 5.4:1 with the same alpha because it is resolving
+        towards white rather than away from it. Both move so the step between
+        them survives.
+      -->
+      <Color x:Key="HaloText2Color">#B0000000</Color>
+      <Color x:Key="HaloText3Color">#95000000</Color>
       <Color x:Key="HaloText4Color">#5C000000</Color>
       <Color x:Key="HaloAccentColor">#FF005FB8</Color>
       <Color x:Key="HaloAccentAltColor">#FF0067C0</Color>

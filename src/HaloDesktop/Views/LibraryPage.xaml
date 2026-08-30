@@ -20,11 +20,11 @@
               <RadioButton GroupName="LibraryFilter" Click="OnSeriesFilterClick" Content="{x:Bind ViewModel.SeriesLabel, Mode=OneWay}" Style="{StaticResource HaloSegmentedRadioStyle}" />
             </StackPanel>
           </Border>
-      <TextBlock Grid.Column="1" Margin="0,0,14,0" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
-      <Button x:Name="SortButton" Grid.Column="2" Height="32" Padding="11,0" VerticalAlignment="Center" AutomationProperties.Name="Sort by" HorizontalContentAlignment="Left" FontSize="13">
+      <TextBlock Grid.Column="1" Margin="0,0,14,0" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="Sort by" />
+      <Button x:Name="SortButton" Grid.Column="2" Height="32" Padding="11,0" VerticalAlignment="Center" AutomationProperties.Name="Sort by" HorizontalContentAlignment="Left" FontSize="{StaticResource HaloFontBody}">
             <StackPanel Orientation="Horizontal" Spacing="10">
               <TextBlock x:Name="SortLabel" VerticalAlignment="Center" Text="Recently added" />
-              <FontIcon VerticalAlignment="Center" FontSize="11" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" />
+              <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" />
             </StackPanel>
             <Button.Flyout>
               <MenuFlyout>

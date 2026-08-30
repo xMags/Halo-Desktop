@@ -72,7 +72,7 @@
         x:Name="TitleText"
         Grid.Row="1"
         Margin="1,8,1,0"
-        FontSize="13"
+        FontSize="{StaticResource HaloFontBody}"
         Foreground="{ThemeResource HaloText1Brush}"
         TextTrimming="CharacterEllipsis" />
       <TextBlock

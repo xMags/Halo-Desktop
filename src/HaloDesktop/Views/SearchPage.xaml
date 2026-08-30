@@ -17,7 +17,7 @@
           Width="480"
           Height="36"
           HorizontalAlignment="Left"
-          FontSize="14"
+          FontSize="{StaticResource HaloFontEmphasis}"
           PlaceholderText="Search movies and series"
           QueryIcon="Find"
           QuerySubmitted="OnQuerySubmitted"
@@ -41,7 +41,7 @@
                   <local:ArtworkImage SourceUrl="{x:Bind ViewModel.TopMatchPoster, Mode=OneWay}" />
                 </Grid>
                 <StackPanel Grid.Column="1" Margin="16,2,0,0" Spacing="7">
-                  <TextBlock FontSize="19" FontWeight="SemiBold" Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}" />
+                  <TextBlock FontSize="{StaticResource HaloFontShelf}" FontWeight="SemiBold" Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}" />
                   <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TopMatchMeta, Mode=OneWay}" />
                   <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.TopMatchSynopsis, Mode=OneWay}" />
                 </StackPanel>
@@ -57,9 +57,9 @@
                     <Button Padding="12,9" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" CornerRadius="0" Click="OnRecentClick" Tag="{x:Bind Term}">
                       <Grid>
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <FontIcon VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
-                        <TextBlock Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Age}" />
+                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
+                        <TextBlock Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Age}" />
                       </Grid>
                     </Button>
                   </DataTemplate>

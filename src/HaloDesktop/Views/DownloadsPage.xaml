@@ -29,11 +29,11 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" Spacing="12">
                   <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoBig}" Text="{x:Bind ViewModel.RateText, Mode=OneWay}" />
-                  <TextBlock Margin="0,0,0,3" VerticalAlignment="Bottom" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.QueueLine, Mode=OneWay}" />
+                  <TextBlock Margin="0,0,0,3" VerticalAlignment="Bottom" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.QueueLine, Mode=OneWay}" />
                 </StackPanel>
-                <Button Grid.Column="2" Height="32" Padding="14,0" VerticalAlignment="Bottom" AutomationProperties.Name="Pause all" Click="OnPauseAllClick" FontSize="13">
+                <Button Grid.Column="2" Height="32" Padding="14,0" VerticalAlignment="Bottom" AutomationProperties.Name="Pause all" Click="OnPauseAllClick" FontSize="{StaticResource HaloFontBody}">
                   <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon VerticalAlignment="Center" FontSize="11" Glyph="&#xE769;" />
+                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE769;" />
                     <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.PauseAllLabel, Mode=OneWay}" />
                   </StackPanel>
                 </Button>
@@ -53,15 +53,15 @@
                 </ItemsControl>
               </Viewbox>
               <Grid Margin="0,10,0,0">
-                <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="{ThemeResource HaloText4Brush}" Text="THROUGHPUT · RECENT 30 SAMPLES" />
-                <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PeakText, Mode=OneWay}" />
+                <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="THROUGHPUT · RECENT 30 SAMPLES" />
+                <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PeakText, Mode=OneWay}" />
               </Grid>
             </StackPanel>
           </Border>
 
           <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
-              <Grid><TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.StorageLine, Mode=OneWay}" /><TextBlock HorizontalAlignment="Right" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.FreeLine, Mode=OneWay}" /></Grid>
+              <Grid><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.StorageLine, Mode=OneWay}" /><TextBlock HorizontalAlignment="Right" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.FreeLine, Mode=OneWay}" /></Grid>
               <ProgressBar Height="8" Maximum="1" Value="{x:Bind ViewModel.StorageFraction, Mode=OneWay}" />
               <!--
                 The action sits on the card's right edge, under the free-space figure in
@@ -73,15 +73,15 @@
               <Grid>
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Spacing="18">
-                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
+                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
                 </StackPanel>
                 <Button Grid.Column="1" Margin="12,0,0,0" Padding="12,3" VerticalAlignment="Center" Click="OnManageFolderClick" Content="Manage folder" />
               </Grid>
             </StackPanel>
           </Border>
 
-          <StackPanel HorizontalAlignment="Center" Margin="0,20,0,4" Spacing="7" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="Nothing downloaded yet" /><TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="Choose a source from a title to keep it on this device." /></StackPanel>
+          <StackPanel HorizontalAlignment="Center" Margin="0,20,0,4" Spacing="7" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="Nothing downloaded yet" /><TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="Choose a source from a title to keep it on this device." /></StackPanel>
 
           <Grid Margin="0,8,0,0" Visibility="{x:Bind ViewModel.TransferSectionVisibility, Mode=OneWay}"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBlock Style="{StaticResource HaloMonoKicker}" Text="IN PROGRESS" /><Rectangle Grid.Column="1" Height="1" Margin="12,0" Fill="{ThemeResource HaloDividerBrush}" /><TextBlock Grid.Column="2" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TransferCountLabel, Mode=OneWay}" /></Grid>
           <ListView x:Name="TransferList" ScrollViewer.VerticalScrollBarVisibility="Hidden" IsItemClickEnabled="True" ItemClick="OnTransferItemClick" ItemContainerStyle="{StaticResource HaloCardListItemStyle}" SelectionMode="Single" Visibility="{x:Bind ViewModel.TransferSectionVisibility, Mode=OneWay}">
@@ -92,16 +92,16 @@
                   <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /><Image Source="{x:Bind Poster, Mode=OneWay}" Stretch="UniformToFill" /></Grid>
                   <StackPanel Grid.Column="1" Spacing="6">
                     <StackPanel Orientation="Horizontal" Spacing="9">
-                      <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag, Mode=OneWay}" />
+                      <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag, Mode=OneWay}" />
                       <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}" />
-                      <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Sub, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
-                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="3" Visibility="{x:Bind DownloadingVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="{ThemeResource HaloAccentBrush}" Text="DOWNLOADING" /></Border>
-                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind QueuedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="{ThemeResource HaloText3Brush}" Text="QUEUED" /></Border>
-                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind PausedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="{ThemeResource HaloCautionBrush}" Text="PAUSED" /></Border>
-                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloCriticalTintBrush}" CornerRadius="3" Visibility="{x:Bind FailedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="{ThemeResource HaloCriticalBrush}" Text="FAILED" /></Border>
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Sub, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="3" Visibility="{x:Bind DownloadingVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" Text="DOWNLOADING" /></Border>
+                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind QueuedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="QUEUED" /></Border>
+                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind PausedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloCautionBrush}" Text="PAUSED" /></Border>
+                      <Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloCriticalTintBrush}" CornerRadius="3" Visibility="{x:Bind FailedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloCriticalBrush}" Text="FAILED" /></Border>
                     </StackPanel>
                     <ProgressBar Height="4" Maximum="1" Value="{x:Bind Progress, Mode=OneWay}" />
-                    <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Detail, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Detail, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -117,13 +117,13 @@
                   <Grid Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><local:PlaceholderArt /><Image Source="{x:Bind Poster, Mode=OneWay}" Stretch="UniformToFill" /><ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress, Mode=OneWay}" /></Grid>
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="5">
                     <StackPanel Orientation="Horizontal" Spacing="9">
-                      <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag, Mode=OneWay}" />
+                      <TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Tag, Mode=OneWay}" />
                       <TextBlock VerticalAlignment="Center" FontWeight="SemiBold" Text="{x:Bind Name, Mode=OneWay}" />
-                      <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Sub, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Sub, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
-                    <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Detail, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                    <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Detail, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                   </StackPanel>
-                  <FontIcon Grid.Column="2" Margin="8,0,4,0" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE768;" />
+                  <FontIcon Grid.Column="2" Margin="8,0,4,0" VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE768;" />
                 </Grid>
               </DataTemplate>
             </ListView.ItemTemplate>
@@ -132,22 +132,22 @@
 
         <StackPanel Grid.Column="1" Spacing="12" Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}">
           <Button Height="164" Padding="0" Click="OnPlaySelectedClick" Visibility="{x:Bind ViewModel.SelectedReadyVisibility, Mode=OneWay}">
-            <Grid><local:PlaceholderArt /><local:ArtworkImage SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" /><Border Width="46" Height="46" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#C0000000" CornerRadius="23"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="18" Foreground="White" Text="&#xE768;" /></Border></Grid>
+            <Grid><local:PlaceholderArt /><local:ArtworkImage SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" /><Border Width="46" Height="46" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#C0000000" CornerRadius="23"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="Segoe Fluent Icons" FontSize="{StaticResource HaloFontShelf}" Foreground="White" Text="&#xE768;" /></Border></Grid>
           </Button>
           <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.SelectedTag, Mode=OneWay}" />
-          <TextBlock FontSize="18" FontWeight="SemiBold" Text="{x:Bind ViewModel.SelectedTitle, Mode=OneWay}" />
+          <TextBlock FontSize="{StaticResource HaloFontShelf}" FontWeight="SemiBold" Text="{x:Bind ViewModel.SelectedTitle, Mode=OneWay}" />
           <TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.SelectedSub, Mode=OneWay}" />
           <StackPanel Visibility="{x:Bind ViewModel.SelectedTransferVisibility, Mode=OneWay}" Spacing="8">
             <ProgressBar Height="5" Maximum="1" Value="{x:Bind ViewModel.SelectedProgress, Mode=OneWay}" />
             <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.SelectedDetail, Mode=OneWay}" TextWrapping="Wrap" />
-            <StackPanel Orientation="Horizontal" Spacing="6"><Button Click="OnPauseSelectedClick" Content="Pause transfer" Visibility="{x:Bind ViewModel.PauseVisibility, Mode=OneWay}" /><Button Click="OnResumeSelectedClick" Content="Resume transfer" Visibility="{x:Bind ViewModel.ResumeVisibility, Mode=OneWay}" /><Button Click="OnChooseSourceClick" Content="Choose source again" Visibility="{x:Bind ViewModel.ChooseSourceVisibility, Mode=OneWay}" /><Button Width="34" Height="34" MinWidth="0" Padding="0" AutomationProperties.Name="Cancel transfer" Click="OnCancelSelectedClick" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="10" Glyph="&#xE711;" /></Button></StackPanel>
+            <StackPanel Orientation="Horizontal" Spacing="6"><Button Click="OnPauseSelectedClick" Content="Pause transfer" Visibility="{x:Bind ViewModel.PauseVisibility, Mode=OneWay}" /><Button Click="OnResumeSelectedClick" Content="Resume transfer" Visibility="{x:Bind ViewModel.ResumeVisibility, Mode=OneWay}" /><Button Click="OnChooseSourceClick" Content="Choose source again" Visibility="{x:Bind ViewModel.ChooseSourceVisibility, Mode=OneWay}" /><Button Width="34" Height="34" MinWidth="0" Padding="0" AutomationProperties.Name="Cancel transfer" Click="OnCancelSelectedClick" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="{StaticResource HaloFontCaption}" Glyph="&#xE711;" /></Button></StackPanel>
           </StackPanel>
           <Button Click="OnPlaySelectedClick" Content="{x:Bind ViewModel.ReadyActionLabel, Mode=OneWay}" Style="{StaticResource HaloAccentButtonStyle}" Visibility="{x:Bind ViewModel.SelectedReadyVisibility, Mode=OneWay}" />
           <Border BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="6">
             <StackPanel>
-              <Grid Padding="12,10" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1"><TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="Quality" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11.5" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedQualityLine, Mode=OneWay}" /></Grid>
-              <Grid Padding="12,10" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1"><TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="File size" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11.5" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedSize, Mode=OneWay}" /></Grid>
-              <Grid Padding="12,10"><TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="Subtitle" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11.5" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedSubs, Mode=OneWay}" /></Grid>
+              <Grid Padding="12,10" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1"><TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="Quality" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedQualityLine, Mode=OneWay}" /></Grid>
+              <Grid Padding="12,10" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1"><TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="File size" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedSize, Mode=OneWay}" /></Grid>
+              <Grid Padding="12,10"><TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="Subtitle" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SelectedSubs, Mode=OneWay}" /></Grid>
             </StackPanel>
           </Border>
           <Button BorderBrush="{ThemeResource HaloCriticalBrush}" Click="OnDeleteSelectedClick" Foreground="{ThemeResource HaloCriticalBrush}" Content="Delete from device" Visibility="{x:Bind ViewModel.SelectedReadyVisibility, Mode=OneWay}" />

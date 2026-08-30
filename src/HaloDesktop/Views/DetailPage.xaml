@@ -51,13 +51,13 @@
           <StackPanel Margin="0,8,0,0" Orientation="Horizontal" Spacing="10">
             <Button Height="36" Padding="18,0" AutomationProperties.Name="{x:Bind ViewModel.PrimaryActionLabel, Mode=OneWay}" Click="OnResumeClick" Style="{StaticResource HaloAccentButtonStyle}">
               <StackPanel Orientation="Horizontal" Spacing="9">
-                <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
                 <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.PrimaryActionLabel, Mode=OneWay}" />
               </StackPanel>
             </Button>
             <Button Height="36" Padding="16,0" Background="{ThemeResource HaloAccentTintBrush}" BorderBrush="{ThemeResource HaloAccentBrush}" Foreground="{ThemeResource HaloAccentBrush}" Content="{x:Bind ViewModel.LibraryLabel, Mode=OneWay}" Click="OnLibraryClick" />
             <Button AutomationProperties.Name="Choose a download source" Click="OnDownloadsClick" Style="{StaticResource HaloIconButtonStyle}" ToolTipService.ToolTip="Choose a download source">
-              <FontIcon FontSize="14" Glyph="&#xE896;" />
+              <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Glyph="&#xE896;" />
             </Button>
           </StackPanel>
         </StackPanel>
@@ -85,12 +85,12 @@
                         <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind InProgressVisibility}" />
                         <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Tag}" Visibility="{x:Bind IdleVisibility}" />
                         <FontIcon Foreground="{ThemeResource HaloSuccessBrush}" Glyph="&#xE73E;" Visibility="{x:Bind WatchedVisibility}" />
-                        <TextBlock FontSize="14" FontWeight="SemiBold" Text="{x:Bind Title}" />
+                        <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Text="{x:Bind Title}" />
                         <Border Padding="6,2" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="3" Visibility="{x:Bind SavedVisibility}">
-                          <TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="SAVED" />
+                          <TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloSuccessBrush}" Text="SAVED" />
                         </Border>
                       </StackPanel>
-                      <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="12.5" Text="{x:Bind Blurb}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock Foreground="{ThemeResource HaloText3Brush}" FontSize="{StaticResource HaloFontLabel}" Text="{x:Bind Blurb}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                     <StackPanel Grid.Column="2" VerticalAlignment="Center" Spacing="4">
                       <TextBlock HorizontalAlignment="Right" Style="{StaticResource HaloMonoData}" Text="{x:Bind Runtime}" />

@@ -99,7 +99,7 @@
           </Grid.ColumnDefinitions>
           <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster1" DecodeWidth="48" /></Grid>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle1" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpTitle1" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="JumpMeta1" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
@@ -112,7 +112,7 @@
           </Grid.ColumnDefinitions>
           <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster2" DecodeWidth="48" /></Grid>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle2" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpTitle2" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="JumpMeta2" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
@@ -125,7 +125,7 @@
           </Grid.ColumnDefinitions>
           <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster3" DecodeWidth="48" /></Grid>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle3" FontSize="13" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="JumpTitle3" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="JumpMeta3" Style="{StaticResource HaloMonoData}" />
           </StackPanel>
         </Grid>
@@ -148,8 +148,8 @@
               Stretch="UniformToFill" />
           </Border>
           <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
-            <TextBlock x:Name="AccountName" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="{ThemeResource HaloAccentBrush}" />
+            <TextBlock x:Name="AccountName" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
+            <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" />
           </StackPanel>
         </Grid>
       </Button>

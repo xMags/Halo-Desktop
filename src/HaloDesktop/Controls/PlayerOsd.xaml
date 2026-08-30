@@ -97,7 +97,7 @@
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="Margin" Value="0,0,0,3" />
       <Setter Property="Padding" Value="12,10" />
-      <Setter Property="FontSize" Value="13.5" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="Background" Value="Transparent" />
@@ -264,7 +264,7 @@
       <Setter Property="MinWidth" Value="0" />
       <Setter Property="MinHeight" Value="0" />
       <Setter Property="Padding" Value="0" />
-      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontEmphasis}" />
       <Setter Property="Foreground" Value="White" />
       <Setter Property="Background" Value="#0FFFFFFF" />
       <Setter Property="BorderThickness" Value="0" />
@@ -289,11 +289,11 @@
       </Rectangle>
       <Grid Margin="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" VerticalAlignment="Top">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <Button Width="34" Height="34" Padding="0" AutomationProperties.Name="Back" Background="#80141418" BorderBrush="#1FFFFFFF" BorderThickness="1" Click="OnBackClick" CornerRadius="4"><FontIcon FontSize="15" Foreground="White" Glyph="&#xE72B;" /></Button>
-        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock x:Name="TitleText" FontSize="{x:Bind ViewModel.TitleFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="White" Text="Halo" /><TextBlock x:Name="SourceLabelText" Margin="0,2,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="10.5" Foreground="#94FFFFFF" Text="SOURCE" /></StackPanel>
+        <Button Width="34" Height="34" Padding="0" AutomationProperties.Name="Back" Background="#80141418" BorderBrush="#1FFFFFFF" BorderThickness="1" Click="OnBackClick" CornerRadius="4"><FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="White" Glyph="&#xE72B;" /></Button>
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock x:Name="TitleText" FontSize="{x:Bind ViewModel.TitleFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="White" Text="Halo" /><TextBlock x:Name="SourceLabelText" Margin="0,2,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#94FFFFFF" Text="SOURCE" /></StackPanel>
       </Grid>
 
-      <Border Padding="26,14" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#9E141418" BorderBrush="#24FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}"><TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Paused" /></Border>
+      <Border Padding="26,14" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#9E141418" BorderBrush="#24FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}"><TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Paused" /></Border>
 
       <Grid VerticalAlignment="Bottom">
         <Rectangle Height="240" VerticalAlignment="Bottom"><Rectangle.Fill><LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1"><GradientStop Offset="0" Color="#00000000" /><GradientStop Offset="1" Color="#E6040508" /></LinearGradientBrush></Rectangle.Fill></Rectangle>
@@ -301,12 +301,12 @@
           <Grid>
             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
             <StackPanel Orientation="Horizontal" Spacing="10">
-              <ToggleButton IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SUBTITLES" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
-              <ToggleButton IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="AUDIO" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.AudioSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
-              <ToggleButton IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="SPEED" /><TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.SpeedText, Mode=OneWay}" /></StackPanel></ToggleButton>
-              <ToggleButton IsChecked="{x:Bind ViewModel.UpNextOpen, Mode=OneWay}" Click="OnUpNextClick" Style="{StaticResource PlayerChipButtonStyle}" Visibility="{x:Bind ViewModel.UpNextAvailableVisibility, Mode=OneWay}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" CharacterSpacing="160" Text="UP NEXT" /><TextBlock MaxWidth="210" Margin="0,4,0,0" FontSize="12.5" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel></ToggleButton>
+              <ToggleButton IsChecked="{x:Bind ViewModel.SubtitleTabSelected, Mode=OneWay}" Click="OnSubtitlesPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="160" Text="SUBTITLES" /><TextBlock Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="White" Text="{x:Bind ViewModel.SubtitleSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
+              <ToggleButton IsChecked="{x:Bind ViewModel.AudioTabSelected, Mode=OneWay}" Click="OnAudioPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="160" Text="AUDIO" /><TextBlock Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="White" Text="{x:Bind ViewModel.AudioSummary, Mode=OneWay}" /></StackPanel></ToggleButton>
+              <ToggleButton IsChecked="{x:Bind ViewModel.SpeedTabSelected, Mode=OneWay}" Click="OnSpeedPanelClick" Style="{StaticResource PlayerChipButtonStyle}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="160" Text="SPEED" /><TextBlock Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="White" Text="{x:Bind ViewModel.SpeedText, Mode=OneWay}" /></StackPanel></ToggleButton>
+              <ToggleButton IsChecked="{x:Bind ViewModel.UpNextOpen, Mode=OneWay}" Click="OnUpNextClick" Style="{StaticResource PlayerChipButtonStyle}" Visibility="{x:Bind ViewModel.UpNextAvailableVisibility, Mode=OneWay}"><StackPanel><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="160" Text="UP NEXT" /><TextBlock MaxWidth="210" Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel></ToggleButton>
             </StackPanel>
-            <TextBlock Grid.Column="1" Padding="0,0,0,8" VerticalAlignment="Bottom" FontFamily="{StaticResource HaloMonoFont}" FontSize="10" Foreground="#70FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · Z FILL · ESC EXIT" />
+            <TextBlock Grid.Column="1" Padding="0,0,0,8" VerticalAlignment="Bottom" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#70FFFFFF" Text="SPACE PLAY · ←/→ 10 S · F FULL SCREEN · Z FILL · ESC EXIT" />
           </Grid>
           <Grid Height="32" Margin="0,4,0,0">
             <Border Height="6" Margin="8,0" VerticalAlignment="Center" Background="#29FFFFFF" CornerRadius="3" IsHitTestVisible="False" />
@@ -371,7 +371,7 @@
                   Margin="0,4,0,2"
                   HorizontalAlignment="Center"
                   FontFamily="{StaticResource HaloMonoFont}"
-                  FontSize="11.5"
+                  FontSize="{StaticResource HaloFontSmall}"
                   Foreground="White"
                   Text="{x:Bind ViewModel.ScrubPreview.TimeText, Mode=OneWay}" />
               </StackPanel>
@@ -400,9 +400,9 @@
               </Viewbox>
             </Button>
             <StackPanel Grid.Column="3" Margin="14,0,0,0" VerticalAlignment="Center" Orientation="Horizontal">
-              <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#D1FFFFFF" Text="{x:Bind ViewModel.PositionText, Mode=OneWay}" />
-              <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#66FFFFFF" Text="/" />
-              <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="#66FFFFFF" Text="{x:Bind ViewModel.DurationText, Mode=OneWay}" />
+              <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontLabel}" Foreground="#D1FFFFFF" Text="{x:Bind ViewModel.PositionText, Mode=OneWay}" />
+              <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontLabel}" Foreground="#66FFFFFF" Text="/" />
+              <TextBlock Margin="7,0,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontLabel}" Foreground="#66FFFFFF" Text="{x:Bind ViewModel.DurationText, Mode=OneWay}" />
             </StackPanel>
             <Viewbox Grid.Column="5" Width="16" Height="16" VerticalAlignment="Center">
               <Canvas Width="16" Height="16"><Path Data="M 3,6 H 5.4 L 9,3 V 13 L 5.4,10 H 3 Z M 11.4,5.6 A 3.4,3.4 0 0 1 11.4,10.4" Opacity="0.8" Stroke="White" StrokeThickness="1.2" /></Canvas>
@@ -461,10 +461,10 @@
             <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
             <Grid>
               <StackPanel>
-                <TextBlock FontSize="18" FontWeight="SemiBold" Foreground="White" Text="Playback" />
-                <TextBlock Margin="0,3,0,0" FontSize="12.5" Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" />
+                <TextBlock FontSize="{StaticResource HaloFontShelf}" FontWeight="SemiBold" Foreground="White" Text="Playback" />
+                <TextBlock Margin="0,3,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="#8FFFFFFF" Text="Applies live: nothing reloads" />
               </StackPanel>
-              <Button Width="30" Height="30" MinWidth="0" MinHeight="0" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Close panel" Click="OnClosePanelClick"><FontIcon FontSize="11" Foreground="White" Glyph="&#xE711;" /></Button>
+              <Button Width="30" Height="30" MinWidth="0" MinHeight="0" Padding="0" HorizontalAlignment="Right" VerticalAlignment="Top" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Close panel" Click="OnClosePanelClick"><FontIcon FontSize="{StaticResource HaloFontSmall}" Foreground="White" Glyph="&#xE711;" /></Button>
             </Grid>
             <!-- The shared tray hugs its content, which suits an inline filter. Here the three tabs span the panel as equal thirds. -->
             <Border Grid.Row="1" Margin="0,16,0,18" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
@@ -490,7 +490,7 @@
                 <StackPanel Visibility="{x:Bind ViewModel.SubtitleTracksVisibility, Mode=OneWay}">
                   <TextBlock Margin="0,0,0,10" Foreground="#80FFFFFF" Style="{StaticResource HaloMonoKicker}" Text="IN THIS FILE" />
                   <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind ViewModel.SubtitlesOffSelected, Mode=OneWay}" Click="OnSubtitlesOffClick" Style="{StaticResource PlayerTrackRadioStyle}">
-                    <StackPanel><TextBlock Text="Off" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="No subtitles" /></StackPanel>
+                    <StackPanel><TextBlock Text="Off" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="No subtitles" /></StackPanel>
                   </RadioButton>
                   <ItemsControl x:Name="SubtitleTrackList">
                     <ItemsControl.ItemTemplate>
@@ -498,8 +498,8 @@
                         <RadioButton GroupName="SubtitleTrack" IsChecked="{x:Bind IsSelected, Mode=OneTime}" Click="OnSubtitleTrackClick" Style="{StaticResource PlayerTrackRadioStyle}">
                           <Grid ColumnSpacing="11">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
-                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
+                            <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
                           </Grid>
                         </RadioButton>
                       </DataTemplate>
@@ -513,9 +513,9 @@
                           <Grid ColumnSpacing="11">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="8" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                             <Ellipse Width="8" Height="8" VerticalAlignment="Center" Fill="#FF60CDFF" Visibility="{x:Bind SelectedVisibility}" />
-                            <StackPanel Grid.Column="1"><TextBlock FontSize="13.5" Foreground="#E6FFFFFF" Text="{x:Bind Language}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel>
-                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="#FF6CCB5F" Text="HASH MATCH" Visibility="{x:Bind HashMatchVisibility}" />
-                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" Foreground="#8CFFFFFF" Text="NAME MATCH" Visibility="{x:Bind NameMatchVisibility}" />
+                            <StackPanel Grid.Column="1"><TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="#E6FFFFFF" Text="{x:Bind Language}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="#80FFFFFF" TextTrimming="CharacterEllipsis"><Run Text="{x:Bind Addon}" /><Run Text=" · " /><Run Text="{x:Bind Variant}" /></TextBlock></StackPanel>
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#FF6CCB5F" Text="HASH MATCH" Visibility="{x:Bind HashMatchVisibility}" />
+                            <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#8CFFFFFF" Text="NAME MATCH" Visibility="{x:Bind NameMatchVisibility}" />
                           </Grid>
                         </Button>
                       </DataTemplate>
@@ -530,15 +530,15 @@
                   <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
                     <StackPanel>
                       <Grid>
-                        <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Size" />
-                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="12" Foreground="White" Text="{x:Bind ViewModel.SubtitleAppearance.SizeLabel, Mode=OneWay}" />
+                        <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Size" />
+                        <TextBlock HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontLabel}" Foreground="White" Text="{x:Bind ViewModel.SubtitleAppearance.SizeLabel, Mode=OneWay}" />
                       </Grid>
-                      <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="mpv sub-scale, live" />
+                      <TextBlock Margin="0,3,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="#80FFFFFF" Text="mpv sub-scale, live" />
                       <Slider Margin="0,8,0,0" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.SubtitleAppearance.Size, Mode=TwoWay}" AutomationProperties.Name="Subtitle size" />
                       <Grid Margin="0,-4,0,0">
-                        <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="50" />
-                        <TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="100" />
-                        <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="9.5" Foreground="#5CFFFFFF" Text="200" />
+                        <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#5CFFFFFF" Text="50" />
+                        <TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#5CFFFFFF" Text="100" />
+                        <TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#5CFFFFFF" Text="200" />
                       </Grid>
                     </StackPanel>
                   </Border>
@@ -546,13 +546,13 @@
                     <Grid ColumnSpacing="12">
                       <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                       <StackPanel VerticalAlignment="Center">
-                        <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Delay" />
-                        <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="Shifts the track against the picture" TextWrapping="Wrap" />
+                        <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Delay" />
+                        <TextBlock Margin="0,3,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="#80FFFFFF" Text="Shifts the track against the picture" TextWrapping="Wrap" />
                       </StackPanel>
                       <Border Grid.Column="1" VerticalAlignment="Center" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
                         <StackPanel Orientation="Horizontal">
                           <Button AutomationProperties.Name="Decrease subtitle delay" Click="OnSubtitleDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
-                          <TextBlock Width="66" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" />
+                          <TextBlock Width="66" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="White" Text="{x:Bind ViewModel.SubtitleDelayText, Mode=OneWay}" />
                           <Button AutomationProperties.Name="Increase subtitle delay" Click="OnSubtitleDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
                         </StackPanel>
                       </Border>
@@ -560,16 +560,16 @@
                   </Border>
                   <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
                     <StackPanel>
-                      <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Outline" />
+                      <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Outline" />
                       <!-- Label above the tray rather than beside it: four chips plus a label
                            do not fit across the panel at its narrowest. -->
                       <Border Margin="0,8,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
                         <Grid>
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                          <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNoOutline, Mode=OneWay}" Click="OnSubtitleNoOutlineClick" Content="None" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThinOutline, Mode=OneWay}" Click="OnSubtitleThinOutlineClick" Content="Thin" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNormalOutline, Mode=OneWay}" Click="OnSubtitleNormalOutlineClick" Content="Normal" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNoOutline, Mode=OneWay}" Click="OnSubtitleNoOutlineClick" Content="None" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThinOutline, Mode=OneWay}" Click="OnSubtitleThinOutlineClick" Content="Thin" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsNormalOutline, Mode=OneWay}" Click="OnSubtitleNormalOutlineClick" Content="Normal" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleOutlineChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsThickOutline, Mode=OneWay}" Click="OnSubtitleThickOutlineClick" Content="Thick" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
                         </Grid>
                       </Border>
                       <!--
@@ -580,7 +580,7 @@
                         switch up with the trays above and below it.
                       -->
                       <Grid Margin="0,14,0,0">
-                        <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Shadow" />
+                        <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Shadow" />
                         <ToggleSwitch HorizontalAlignment="Right" Margin="0,0,-12,0" MinWidth="0" Width="52" IsOn="{x:Bind ViewModel.SubtitleAppearance.Shadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
                       </Grid>
                     </StackPanel>
@@ -588,19 +588,19 @@
                   <Border Padding="14" Background="#0DFFFFFF" BorderBrush="#14FFFFFF" BorderThickness="1" CornerRadius="10">
                     <StackPanel>
                       <Grid>
-                        <TextBlock VerticalAlignment="Center" FontSize="14" FontWeight="SemiBold" Foreground="White" Text="Track styling" />
+                        <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Track styling" />
                         <ToggleSwitch HorizontalAlignment="Right" Margin="0,0,-12,0" MinWidth="0" Width="52" IsOn="{x:Bind ViewModel.SubtitleAppearance.TrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
                       </Grid>
                       <!-- Static rather than reading the live track: the rule holds for every
                            track, and stating it beats a label that changes under the reader. -->
-                      <TextBlock Margin="0,3,0,0" FontSize="11.5" Foreground="#80FFFFFF" Text="On, a styled track keeps its own look. A plain text track always follows the settings here." TextWrapping="Wrap" />
+                      <TextBlock Margin="0,3,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="#80FFFFFF" Text="On, a styled track keeps its own look. A plain text track always follows the settings here." TextWrapping="Wrap" />
                       <Border Margin="0,12,0,0" HorizontalAlignment="Stretch" Style="{StaticResource HaloSegmentedTrayStyle}">
                         <Grid>
                           <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                          <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsDefaultFont, Mode=OneWay}" Click="OnSubtitleDefaultFontClick" Content="Default" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSystemFont, Mode=OneWay}" Click="OnSubtitleSystemFontClick" Content="System" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSerifFont, Mode=OneWay}" Click="OnSubtitleSerifFontClick" Content="Serif" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsMonoFont, Mode=OneWay}" Click="OnSubtitleMonoFontClick" Content="Mono" FontSize="12.5" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsDefaultFont, Mode=OneWay}" Click="OnSubtitleDefaultFontClick" Content="Default" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="1" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSystemFont, Mode=OneWay}" Click="OnSubtitleSystemFontClick" Content="System" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="2" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsSerifFont, Mode=OneWay}" Click="OnSubtitleSerifFontClick" Content="Serif" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                          <RadioButton HorizontalAlignment="Stretch" Grid.Column="3" GroupName="SubtitleFontChoice" IsChecked="{x:Bind ViewModel.SubtitleAppearance.IsMonoFont, Mode=OneWay}" Click="OnSubtitleMonoFontClick" Content="Mono" FontSize="{StaticResource HaloFontLabel}" Padding="4,5" Style="{StaticResource HaloSegmentedRadioStyle}" />
                         </Grid>
                       </Border>
                     </StackPanel>
@@ -639,8 +639,8 @@
                         <RadioButton GroupName="AudioTrack" IsChecked="{x:Bind IsSelected, Mode=OneTime}" Click="OnAudioTrackClick" Style="{StaticResource PlayerTrackRadioStyle}">
                           <Grid ColumnSpacing="11">
                             <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                            <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="11.5" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
-                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
+                            <StackPanel><TextBlock Text="{x:Bind Title}" TextTrimming="CharacterEllipsis" /><TextBlock Margin="0,2,0,0" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="{x:Bind Note}" TextTrimming="CharacterEllipsis" /></StackPanel>
+                            <TextBlock Grid.Column="1" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" FontWeight="Bold" Foreground="#8CFFFFFF" Text="{x:Bind Codec}" />
                           </Grid>
                         </RadioButton>
                       </DataTemplate>
@@ -651,14 +651,14 @@
                   <Grid ColumnSpacing="8" RowSpacing="8">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <RadioButton GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedThreeQuarter, Mode=OneWay}" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="0.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% slower" /></StackPanel></RadioButton>
-                    <RadioButton Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedNormal, Mode=OneWay}" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="Normal" /></StackPanel></RadioButton>
-                    <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneQuarter, Mode=OneWay}" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.25×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% faster" /></StackPanel></RadioButton>
-                    <RadioButton Grid.Row="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneHalf, Mode=OneWay}" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.5×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="50% faster" /></StackPanel></RadioButton>
-                    <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneThreeQuarter, Mode=OneWay}" Click="OnSpeedOneThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="1.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="75% faster" /></StackPanel></RadioButton>
-                    <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedDouble, Mode=OneWay}" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="16" FontWeight="SemiBold" Text="2×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="11" FontWeight="Normal" Foreground="#80FFFFFF" Text="Double" /></StackPanel></RadioButton>
+                    <RadioButton GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedThreeQuarter, Mode=OneWay}" Click="OnSpeedThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="0.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% slower" /></StackPanel></RadioButton>
+                    <RadioButton Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedNormal, Mode=OneWay}" Click="OnSpeedNormalClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="1×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="Normal" /></StackPanel></RadioButton>
+                    <RadioButton Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneQuarter, Mode=OneWay}" Click="OnSpeedOneQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="1.25×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="25% faster" /></StackPanel></RadioButton>
+                    <RadioButton Grid.Row="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneHalf, Mode=OneWay}" Click="OnSpeedOneHalfClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="1.5×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="50% faster" /></StackPanel></RadioButton>
+                    <RadioButton Grid.Row="1" Grid.Column="1" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedOneThreeQuarter, Mode=OneWay}" Click="OnSpeedOneThreeQuarterClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="1.75×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="75% faster" /></StackPanel></RadioButton>
+                    <RadioButton Grid.Row="1" Grid.Column="2" GroupName="SpeedChoice" IsChecked="{x:Bind ViewModel.IsSpeedDouble, Mode=OneWay}" Click="OnSpeedDoubleClick" Style="{StaticResource PlayerSpeedRadioStyle}"><StackPanel><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="2×" /><TextBlock Margin="0,3,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" FontWeight="Normal" Foreground="#80FFFFFF" Text="Double" /></StackPanel></RadioButton>
                   </Grid>
-                  <TextBlock FontSize="12" Foreground="#80FFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
+                  <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="#80FFFFFF" Text="Pitch is corrected up to 2×. Beyond that mpv drops the audio filter." TextWrapping="Wrap" />
                 </StackPanel>
               </Grid>
             </ScrollViewer>
@@ -667,11 +667,11 @@
                 <Border Height="1" Margin="0,16,0,0" Background="#17FFFFFF" />
                 <Grid Margin="0,16,0,0" ColumnSpacing="14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="White" Text="Audio delay" />
+                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="White" Text="Audio delay" />
                   <Border Grid.Column="1" BorderBrush="#1FFFFFFF" BorderThickness="1" CornerRadius="6">
                     <StackPanel Orientation="Horizontal">
                       <Button AutomationProperties.Name="Decrease audio delay" Click="OnAudioDelayDownClick" Content="&#x2212;" CornerRadius="5,0,0,5" Style="{StaticResource PlayerStepperButtonStyle}" />
-                      <TextBlock Width="72" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="11.5" Foreground="White" Text="{x:Bind ViewModel.AudioDelayText, Mode=OneWay}" />
+                      <TextBlock Width="72" VerticalAlignment="Center" TextAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="White" Text="{x:Bind ViewModel.AudioDelayText, Mode=OneWay}" />
                       <Button AutomationProperties.Name="Increase audio delay" Click="OnAudioDelayUpClick" Content="+" CornerRadius="0,5,5,0" Style="{StaticResource PlayerStepperButtonStyle}" />
                     </StackPanel>
                   </Border>
@@ -686,12 +686,12 @@
         <StackPanel>
           <Grid>
             <TextBlock VerticalAlignment="Center" Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.UpNextKicker, Mode=OneWay}" />
-            <Button MinWidth="0" MinHeight="0" Padding="4" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Click="OnCancelUpNextClick" FontSize="12" Foreground="#99FFFFFF" Content="Cancel" />
+            <Button MinWidth="0" MinHeight="0" Padding="4" HorizontalAlignment="Right" Background="Transparent" BorderThickness="0" Click="OnCancelUpNextClick" FontSize="{StaticResource HaloFontLabel}" Foreground="#99FFFFFF" Content="Cancel" />
           </Grid>
           <Grid Margin="0,10,0,0" ColumnSpacing="11">
             <Grid.ColumnDefinitions><ColumnDefinition Width="84" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
             <Grid Width="84" Height="48"><local:PlaceholderArt /><local:ArtworkImage SourceUrl="{x:Bind ViewModel.UpNextArt, Mode=OneWay}" /></Grid>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="10" Foreground="#99FFFFFF" Text="{x:Bind ViewModel.UpNextEpisodeLabel, Mode=OneWay}" /><TextBlock MaxWidth="205" Margin="0,4,0,0" FontSize="13.5" FontWeight="SemiBold" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#99FFFFFF" Text="{x:Bind ViewModel.UpNextEpisodeLabel, Mode=OneWay}" /><TextBlock MaxWidth="205" Margin="0,4,0,0" FontSize="{StaticResource HaloFontBody}" FontWeight="SemiBold" Foreground="White" Text="{x:Bind ViewModel.UpNextTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" /></StackPanel>
           </Grid>
           <ProgressBar Height="3" Margin="0,11,0,0" Maximum="100" Value="{x:Bind ViewModel.UpNextProgress, Mode=OneWay}" />
           <Button Height="30" Margin="0,11,0,0" Click="OnPlayNextClick" Content="Play now" Style="{StaticResource HaloAccentButtonStyle}" />
@@ -718,7 +718,7 @@
         HorizontalAlignment="Center"
         CharacterSpacing="160"
         FontFamily="{StaticResource HaloMonoBoldFont}"
-        FontSize="10.5"
+        FontSize="{StaticResource HaloFontCaption}"
         Foreground="#B8FFFFFF"
         Text="LOADING VIDEO"
         Visibility="{x:Bind ViewModel.BufferingLabelVisibility, Mode=OneWay}" />

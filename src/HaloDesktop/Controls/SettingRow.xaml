@@ -6,8 +6,8 @@
   <Grid MinHeight="36" Padding="14" ColumnSpacing="16">
     <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
     <StackPanel VerticalAlignment="Center" Spacing="2">
-      <TextBlock x:Name="LabelText" FontSize="13.5" Foreground="{ThemeResource HaloText1Brush}" />
-      <TextBlock x:Name="HintText" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" TextWrapping="Wrap" />
+      <TextBlock x:Name="LabelText" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" />
+      <TextBlock x:Name="HintText" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" TextWrapping="Wrap" />
     </StackPanel>
     <ContentPresenter x:Name="SettingContentHost" Grid.Column="1" VerticalAlignment="Center" />
   </Grid>

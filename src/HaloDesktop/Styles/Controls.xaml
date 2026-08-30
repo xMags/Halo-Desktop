@@ -42,7 +42,7 @@
     <Setter Property="BorderBrush" Value="{ThemeResource HaloCtrlStrokeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="12" />
-    <Setter Property="FontSize" Value="12" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
   </Style>
 
   <Style x:Key="HaloSegmentedButtonStyle" TargetType="Button">
@@ -51,7 +51,7 @@
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="CornerRadius" Value="3" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
   </Style>
 
   <!-- Square icon-only button, 36x36, matching the design's secondary action squares. -->
@@ -104,7 +104,7 @@
             CharacterSpacing="160"
             Content="{TemplateBinding Content}"
             FontFamily="{StaticResource HaloMonoBoldFont}"
-            FontSize="10"
+            FontSize="{StaticResource HaloFontCaption}"
             FontWeight="Bold"
             Foreground="{ThemeResource HaloText3Brush}" />
         </ControlTemplate>
@@ -121,7 +121,7 @@
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Padding" Value="16,5" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
     <Setter Property="Background" Value="Transparent" />
     <!-- Centred by default, but honoured rather than hard-coded: a caller asking for Stretch used to be silently ignored. -->
     <Setter Property="HorizontalContentAlignment" Value="Center" />
@@ -186,7 +186,7 @@
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Padding" Value="14,5" />
-    <Setter Property="FontSize" Value="12.5" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
     <Setter Property="Template">
@@ -409,7 +409,7 @@
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="Height" Value="30" />
     <Setter Property="Padding" Value="13,0" />
-    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
     <Setter Property="Template">

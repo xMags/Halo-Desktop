@@ -20,12 +20,12 @@
       </Grid.ColumnDefinitions>
       <TextBlock x:Name="TitleText" Style="{StaticResource HaloShelfTitle}" />
       <TextBlock x:Name="SourceText" Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" />
-      <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="13" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all shelf items" Click="OnSeeAllClick" />
+      <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all shelf items" Click="OnSeeAllClick" />
       <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll left" Click="OnScrollLeft" ToolTipService.ToolTip="Scroll left">
-        <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
+        <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
       </Button>
       <Button Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll right" Click="OnScrollRight" ToolTipService.ToolTip="Scroll right">
-        <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
+        <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
       </Button>
     </Grid>
     <ScrollViewer

@@ -21,7 +21,7 @@
               Width="300"
               Height="32"
               VerticalAlignment="Center"
-              FontSize="13"
+              FontSize="{StaticResource HaloFontBody}"
               PlaceholderText="Search movies and series"
               QueryIcon="Find"
               QuerySubmitted="OnSearchSubmitted" />
@@ -96,9 +96,9 @@
                   <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
                   <TextBlock FontSize="{x:Bind TitleSize, Mode=OneWay}" Style="{StaticResource HaloHeroTitle}" Text="{x:Bind Title}" />
                   <StackPanel Orientation="Horizontal" Spacing="10">
-                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Rating, Mode=OneWay}" />
-                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
-                    <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Meta, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Rating, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
+                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Meta, Mode=OneWay}" />
                   </StackPanel>
                   <!-- Clamped because the hero is a fixed height and the synopsis is
                        the addon's description verbatim: an overview that runs long
@@ -107,7 +107,7 @@
                   <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
                     <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Tag="{x:Bind}" Click="OnFeaturedActionClick" Style="{StaticResource HaloAccentButtonStyle}">
                       <StackPanel Orientation="Horizontal" Spacing="9">
-                        <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
                         <TextBlock VerticalAlignment="Center" Text="{x:Bind ActionLabel, Mode=OneWay}" />
                       </StackPanel>
                     </Button>
@@ -125,8 +125,8 @@
                       Click="OnFeaturedLibraryClick"
                       IsEnabled="{x:Bind LibraryEnabled, Mode=OneWay}">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="14" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE735;" Visibility="{x:Bind InLibraryVisibility, Mode=OneWay}" />
-                        <FontIcon FontSize="14" Glyph="&#xE734;" Visibility="{x:Bind NotInLibraryVisibility, Mode=OneWay}" />
+                        <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE735;" Visibility="{x:Bind InLibraryVisibility, Mode=OneWay}" />
+                        <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Glyph="&#xE734;" Visibility="{x:Bind NotInLibraryVisibility, Mode=OneWay}" />
                         <TextBlock VerticalAlignment="Center" Text="{x:Bind LibraryLabel, Mode=OneWay}" />
                       </StackPanel>
                     </Button>
@@ -159,12 +159,12 @@
           </Grid.ColumnDefinitions>
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />
           <TextBlock Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
-          <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="13" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all in progress titles" Click="OnContinueSeeAllClick" />
+          <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all in progress titles" Click="OnContinueSeeAllClick" />
           <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
-            <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
+            <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
           </Button>
           <Button Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
-            <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
+            <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>
         <ScrollViewer x:Name="ContinueScroller" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled">

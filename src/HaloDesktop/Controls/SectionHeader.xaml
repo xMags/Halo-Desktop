@@ -29,7 +29,7 @@
       CornerRadius="4"
       ToolTipService.ToolTip="Back"
       Visibility="Collapsed">
-      <FontIcon FontSize="15" Glyph="&#xE72B;" />
+      <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Glyph="&#xE72B;" />
     </Button>
     <TextBlock
       x:Name="TitleText"

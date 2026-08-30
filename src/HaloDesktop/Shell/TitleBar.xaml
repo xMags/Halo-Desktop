@@ -18,7 +18,7 @@
         Source="ms-appx:///Assets/halo-mark.png" />
       <TextBlock
         VerticalAlignment="Center"
-        FontSize="12"
+        FontSize="{StaticResource HaloFontLabel}"
         Foreground="{ThemeResource HaloText2Brush}"
         Text="Halo" />
     </StackPanel>

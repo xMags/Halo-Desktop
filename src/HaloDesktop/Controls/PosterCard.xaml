@@ -41,13 +41,13 @@
         Background="#B0000000"
         CornerRadius="3"
         Visibility="Collapsed">
-        <TextBlock x:Name="KindText" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="9.5" Foreground="White" />
+        <TextBlock x:Name="KindText" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="White" />
       </Border>
       <TextBlock
         x:Name="TitleText"
         Grid.Row="1"
         Margin="1,8,1,0"
-        FontSize="13"
+        FontSize="{StaticResource HaloFontBody}"
         Foreground="{ThemeResource HaloText1Brush}"
         TextTrimming="CharacterEllipsis" />
       <TextBlock

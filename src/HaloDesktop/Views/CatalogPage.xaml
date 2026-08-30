@@ -60,7 +60,7 @@
       VerticalAlignment="Center"
       Spacing="8"
       Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}">
-      <TextBlock FontSize="17" FontWeight="SemiBold" Text="Nothing to show" />
+      <TextBlock FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="Nothing to show" />
       <TextBlock Foreground="{ThemeResource HaloText3Brush}" Text="No titles are available in this catalog." />
     </StackPanel>
   </Grid>

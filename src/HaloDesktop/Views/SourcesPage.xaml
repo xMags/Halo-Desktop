@@ -75,8 +75,8 @@
     <DataTemplate x:Key="SourceSpecTemplate" x:DataType="local:SourceSpecItemViewModel">
       <Grid Margin="0,0,0,10" ColumnSpacing="12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="116" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-        <TextBlock FontSize="12" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Key}" TextWrapping="Wrap" />
-        <TextBlock Grid.Column="1" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Value}" TextWrapping="Wrap" />
+        <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Key}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="1" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Value}" TextWrapping="Wrap" />
       </Grid>
     </DataTemplate>
 
@@ -85,29 +85,29 @@
         <Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloSuccessBrush}" Visibility="{x:Bind AnsweredVisibility}" />
         <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloCriticalBrush}" Visibility="{x:Bind FailedVisibility}" />
-        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
-        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Value}" />
+        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Value}" />
       </Grid>
     </DataTemplate>
 
     <DataTemplate x:Key="SourceQualityTemplate" x:DataType="local:SourceQualityItemViewModel">
       <Grid Margin="0,0,0,9" ColumnSpacing="10">
         <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-        <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Label}" />
+        <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Label}" />
         <Grid Grid.Column="1" Height="3" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="2">
           <ProgressBar Height="3" Maximum="1" Value="{x:Bind Share}" Background="Transparent" Foreground="{ThemeResource HaloAccentBrush}" Visibility="{x:Bind TopTierVisibility}" />
           <ProgressBar Height="3" Maximum="1" Value="{x:Bind Share}" Background="Transparent" Foreground="{ThemeResource HaloChartDimBrush}" Visibility="{x:Bind MidTierVisibility}" />
           <ProgressBar Height="3" Maximum="1" Value="{x:Bind Share}" Background="Transparent" Foreground="{ThemeResource HaloText4Brush}" Visibility="{x:Bind LowTierVisibility}" />
         </Grid>
-        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Count}" />
+        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Count}" />
       </Grid>
     </DataTemplate>
 
     <DataTemplate x:Key="SourcePickerRuleTemplate" x:DataType="local:SourcePickerRuleViewModel">
       <Grid Margin="0,0,0,7" ColumnSpacing="12">
         <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-        <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextWrapping="Wrap" />
-        <TextBlock Grid.Column="1" FontSize="12.5" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Value}" />
+        <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="1" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Value}" />
       </Grid>
     </DataTemplate>
   </Page.Resources>
@@ -138,7 +138,7 @@
               <StackPanel>
                 <TextBlock
                   CharacterSpacing="60"
-                  FontSize="12"
+                  FontSize="{StaticResource HaloFontLabel}"
                   Foreground="{ThemeResource HaloText3Brush}"
                   Text="{x:Bind ViewModel.Kicker, Mode=OneWay}"
                   TextTrimming="CharacterEllipsis"
@@ -147,12 +147,12 @@
                   Margin="0,6,0,0"
                   CharacterSpacing="-10"
                   FontFamily="Segoe UI Variable Display"
-                  FontSize="24"
+                  FontSize="{StaticResource HaloFontDisplay}"
                   FontWeight="SemiBold"
                   Foreground="{ThemeResource HaloText1Brush}"
                   Text="{x:Bind ViewModel.Heading, Mode=OneWay}"
                   TextTrimming="CharacterEllipsis" />
-                <TextBlock Margin="0,6,0,0" FontSize="13" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.CountLine, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                <TextBlock Margin="0,6,0,0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.CountLine, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
               </StackPanel>
               <Button
                 Grid.Column="1"
@@ -166,7 +166,7 @@
                 BorderThickness="0"
                 Click="OnCloseClick"
                 ToolTipService.ToolTip="Close">
-                <FontIcon FontSize="10" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE711;" />
+                <FontIcon FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE711;" />
               </Button>
             </Grid>
 
@@ -176,25 +176,25 @@
                 <RadioButton x:Name="AllFilter" GroupName="SourceSheetFilter" IsChecked="True" Click="OnAllFilterClick" Style="{StaticResource HaloFilterPillStyle}">
                   <StackPanel Orientation="Horizontal" Spacing="7">
                     <TextBlock Text="All" />
-                    <TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.AllFilterCount, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.AllFilterCount, Mode=OneWay}" />
                   </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="PlaysNowFilter" GroupName="SourceSheetFilter" Click="OnPlaysNowFilterClick" Style="{StaticResource HaloFilterPillStyle}">
                   <StackPanel Orientation="Horizontal" Spacing="7">
                     <TextBlock Text="Plays now" />
-                    <TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PlaysNowFilterCount, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PlaysNowFilterCount, Mode=OneWay}" />
                   </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="UltraHdFilter" GroupName="SourceSheetFilter" Click="OnUltraHdFilterClick" Style="{StaticResource HaloFilterPillStyle}">
                   <StackPanel Orientation="Horizontal" Spacing="7">
                     <TextBlock Text="4K" />
-                    <TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.UltraHdFilterCount, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.UltraHdFilterCount, Mode=OneWay}" />
                   </StackPanel>
                 </RadioButton>
                 <RadioButton x:Name="FullHdFilter" GroupName="SourceSheetFilter" Click="OnFullHdFilterClick" Style="{StaticResource HaloFilterPillStyle}">
                   <StackPanel Orientation="Horizontal" Spacing="7">
                     <TextBlock Text="Full HD" />
-                    <TextBlock FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.FullHdFilterCount, Mode=OneWay}" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.FullHdFilterCount, Mode=OneWay}" />
                   </StackPanel>
                 </RadioButton>
               </StackPanel>
@@ -210,7 +210,7 @@
                 BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
                 BorderThickness="1"
                 CornerRadius="4"
-                FontSize="12.5"
+                FontSize="{StaticResource HaloFontLabel}"
                 Foreground="{ThemeResource HaloText2Brush}"
                 Content="{x:Bind ViewModel.SortLabel, Mode=OneWay}">
                 <DropDownButton.Flyout>
@@ -236,8 +236,8 @@
                 <Ellipse Fill="{ThemeResource HaloAccentBrush}" Visibility="{x:Bind ViewModel.BannerInfoVisibility, Mode=OneWay}" />
               </Grid>
               <StackPanel Grid.Column="1">
-                <TextBlock FontSize="13.5" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.BannerTitle, Mode=OneWay}" TextWrapping="Wrap" />
-                <TextBlock Margin="0,3,0,0" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.BannerBody, Mode=OneWay}" TextWrapping="Wrap" />
+                <TextBlock FontSize="{StaticResource HaloFontBody}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.BannerTitle, Mode=OneWay}" TextWrapping="Wrap" />
+                <TextBlock Margin="0,3,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.BannerBody, Mode=OneWay}" TextWrapping="Wrap" />
               </StackPanel>
               <Button
                 Grid.Column="2"
@@ -248,14 +248,14 @@
                 BorderThickness="0"
                 Click="OnRetryClick"
                 Content="{x:Bind ViewModel.BannerAction, Mode=OneWay}"
-                FontSize="12.5"
+                FontSize="{StaticResource HaloFontLabel}"
                 Foreground="{ThemeResource HaloAccentBrush}" />
             </Grid>
           </Grid>
 
           <!-- Resolving -->
           <StackPanel Grid.Row="2" Padding="32,0,32,26" Visibility="{x:Bind ViewModel.ResolvingVisibility, Mode=OneWay}">
-            <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="Halo is asking every stream addon you have installed." TextWrapping="Wrap" />
+            <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="Halo is asking every stream addon you have installed." TextWrapping="Wrap" />
             <StackPanel Margin="0,22,0,0" Spacing="8">
               <Border Height="86" Padding="18,15" Opacity="1" Style="{StaticResource HaloSourceCardStyle}">
                 <Grid ColumnSpacing="18">
@@ -327,11 +327,11 @@
                 BorderBrush="{ThemeResource HaloCardStrokeBrush}"
                 BorderThickness="1"
                 CornerRadius="22">
-                <FontIcon FontSize="18" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE721;" />
+                <FontIcon FontSize="{StaticResource HaloFontShelf}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE721;" />
               </Border>
               <TextBlock
                 Margin="0,16,0,0"
-                FontSize="17"
+                FontSize="{StaticResource HaloFontSubtitle}"
                 FontWeight="SemiBold"
                 Foreground="{ThemeResource HaloText1Brush}"
                 Text="{x:Bind ViewModel.EmptyTitle, Mode=OneWay}"
@@ -339,7 +339,7 @@
                 TextWrapping="Wrap" />
               <TextBlock
                 Margin="0,7,0,0"
-                FontSize="13.5"
+                FontSize="{StaticResource HaloFontBody}"
                 Foreground="{ThemeResource HaloText2Brush}"
                 Text="{x:Bind ViewModel.EmptyBody, Mode=OneWay}"
                 TextAlignment="Center"
@@ -388,13 +388,13 @@
                       <Ellipse Fill="{ThemeResource HaloText4Brush}" Visibility="{x:Bind ViewModel.PickColdVisibility, Mode=OneWay}" />
                     </Grid>
                     <Grid VerticalAlignment="Center">
-                      <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickInstantVisibility, Mode=OneWay}" />
-                      <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickOnDiskVisibility, Mode=OneWay}" />
-                      <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickCachingVisibility, Mode=OneWay}" />
-                      <TextBlock FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickColdVisibility, Mode=OneWay}" />
+                      <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickInstantVisibility, Mode=OneWay}" />
+                      <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickOnDiskVisibility, Mode=OneWay}" />
+                      <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickCachingVisibility, Mode=OneWay}" />
+                      <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.PickStatusLabel, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickColdVisibility, Mode=OneWay}" />
                     </Grid>
-                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" />
-                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="Halo picked this for you" />
+                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" />
+                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="Halo picked this for you" />
                   </StackPanel>
                   <!-- 104 rather than 78 so the widest badge, FULL HD beside HDR, still
                        fits the column the rows below share with it. -->
@@ -407,22 +407,22 @@
                       Tier="{x:Bind ViewModel.PickQualityBadgeTier, Mode=OneWay}"
                       Tone="{x:Bind ViewModel.PickQualityTone, Mode=OneWay}" />
                     <StackPanel Grid.Column="1">
-                      <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.PickWhy, Mode=OneWay}" TextWrapping="Wrap" />
-                      <TextBlock Margin="0,5,0,0" FontSize="13.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.PickLine, Mode=OneWay}" TextWrapping="Wrap" />
-                      <TextBlock Margin="0,6,0,0" FontSize="12" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind ViewModel.PickWatchNote, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickWatchNoteVisibility, Mode=OneWay}" />
-                      <TextBlock Margin="0,10,0,0" FontSize="11" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PickFileName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                      <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.PickWhy, Mode=OneWay}" TextWrapping="Wrap" />
+                      <TextBlock Margin="0,5,0,0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.PickLine, Mode=OneWay}" TextWrapping="Wrap" />
+                      <TextBlock Margin="0,6,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind ViewModel.PickWatchNote, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickWatchNoteVisibility, Mode=OneWay}" />
+                      <TextBlock Margin="0,10,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PickFileName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                   </Grid>
                   <StackPanel Margin="0,18,0,0" Orientation="Horizontal" Spacing="8">
                     <Button Height="36" Padding="22,0" Click="OnPlayPickClick" Style="{StaticResource HaloAccentButtonStyle}">
                       <StackPanel Orientation="Horizontal" Spacing="9">
-                        <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE768;" />
+                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
                         <TextBlock VerticalAlignment="Center" Text="Play" />
                       </StackPanel>
                     </Button>
                     <Button Height="36" Padding="16,0" Click="OnDownloadPickClick" Visibility="{x:Bind ViewModel.PickSaveVisibility, Mode=OneWay}">
                       <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon VerticalAlignment="Center" FontSize="13" Glyph="&#xE896;" />
+                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Glyph="&#xE896;" />
                         <TextBlock VerticalAlignment="Center" Text="Save for offline" />
                       </StackPanel>
                     </Button>
@@ -443,9 +443,9 @@
                       <!-- Group header -->
                       <Grid Margin="0,28,0,12" ColumnSpacing="10" Visibility="{x:Bind HeaderVisibility}">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <TextBlock VerticalAlignment="Bottom" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind GroupName}" />
-                        <TextBlock Grid.Column="1" VerticalAlignment="Bottom" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind GroupNote}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="3" VerticalAlignment="Bottom" FontSize="12" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind GroupCount}" />
+                        <TextBlock VerticalAlignment="Bottom" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind GroupName}" />
+                        <TextBlock Grid.Column="1" VerticalAlignment="Bottom" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind GroupNote}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Grid.Column="3" VerticalAlignment="Bottom" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind GroupCount}" />
                       </Grid>
 
                       <!-- Reveal row for the collapsed cold group -->
@@ -467,7 +467,7 @@
                             Stroke="{ThemeResource HaloCardStrokeBrush}"
                             StrokeDashArray="4,3"
                             StrokeThickness="1" />
-                          <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ShowMoreLabel}" />
+                          <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ShowMoreLabel}" />
                         </Grid>
                       </Button>
 
@@ -497,25 +497,25 @@
                                       <Ellipse Fill="{ThemeResource HaloText4Brush}" Visibility="{x:Bind ColdVisibility}" />
                                     </Grid>
                                     <Grid VerticalAlignment="Center">
-                                      <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind InstantVisibility}" />
-                                      <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind OnDiskVisibility}" />
-                                      <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind CachingVisibility}" />
-                                      <TextBlock FontSize="13.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind ColdVisibility}" />
+                                      <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind InstantVisibility}" />
+                                      <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind OnDiskVisibility}" />
+                                      <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind CachingVisibility}" />
+                                      <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind ColdVisibility}" />
                                     </Grid>
-                                    <TextBlock VerticalAlignment="Center" FontSize="13.5" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind SoundAndSize}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind SoundAndSize}" TextTrimming="CharacterEllipsis" />
                                   </StackPanel>
-                                  <TextBlock Margin="0,4,0,0" FontSize="12.5" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind LanguageLine}" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind LanguageLine}" TextTrimming="CharacterEllipsis" />
                                   <StackPanel Margin="0,5,0,0" Orientation="Horizontal" Spacing="7" Visibility="{x:Bind WarningVisibility}">
-                                    <FontIcon VerticalAlignment="Top" FontSize="11" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE7BA;" />
-                                    <TextBlock FontSize="12" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Warning}" TextWrapping="Wrap" />
+                                    <FontIcon VerticalAlignment="Top" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE7BA;" />
+                                    <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Warning}" TextWrapping="Wrap" />
                                   </StackPanel>
-                                  <TextBlock Margin="0,5,0,0" FontSize="10.5" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
+                                  <TextBlock Margin="0,5,0,0" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
                                 <TextBlock
                                   Grid.Column="2"
                                   MaxWidth="112"
                                   VerticalAlignment="Center"
-                                  FontSize="12"
+                                  FontSize="{StaticResource HaloFontLabel}"
                                   Foreground="{ThemeResource HaloText4Brush}"
                                   Text="{x:Bind Reason}"
                                   TextAlignment="Right"
@@ -525,13 +525,13 @@
                             <StackPanel Margin="0,0,18,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
                               <Button Height="32" MinWidth="0" Padding="16,0" Click="OnPlaySourceClick" Tag="{x:Bind Key}">
                                 <StackPanel Orientation="Horizontal" Spacing="8">
-                                  <FontIcon VerticalAlignment="Center" FontSize="10" Glyph="&#xE768;" />
-                                  <TextBlock VerticalAlignment="Center" FontSize="13" Text="Play" />
+                                  <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Glyph="&#xE768;" />
+                                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Play" />
                                 </StackPanel>
                               </Button>
                               <Grid Width="22">
-                                <FontIcon FontSize="11" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70D;" Visibility="{x:Bind ExpandGlyphVisibility, Mode=OneWay}" />
-                                <FontIcon FontSize="11" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70E;" Visibility="{x:Bind CollapseGlyphVisibility, Mode=OneWay}" />
+                                <FontIcon FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70D;" Visibility="{x:Bind ExpandGlyphVisibility, Mode=OneWay}" />
+                                <FontIcon FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70E;" Visibility="{x:Bind CollapseGlyphVisibility, Mode=OneWay}" />
                               </Grid>
                             </StackPanel>
                           </Grid>
@@ -547,11 +547,11 @@
                               <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
                                 <Button Height="30" MinWidth="0" Padding="14,0" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" Visibility="{x:Bind SaveVisibility}">
                                   <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="&#xE896;" />
-                                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Text="Save for offline" />
+                                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE896;" />
+                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Save for offline" />
                                   </StackPanel>
                                 </Button>
-                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnCopyFileNameClick" FontSize="12.5" Content="Copy file name" Tag="{x:Bind Key}" />
+                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnCopyFileNameClick" FontSize="{StaticResource HaloFontLabel}" Content="Copy file name" Tag="{x:Bind Key}" />
                               </StackPanel>
                             </StackPanel>
                           </Border>
@@ -589,33 +589,33 @@
                   <StackPanel Orientation="Horizontal" Spacing="10">
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <Border MinWidth="18" Height="18" Padding="5,0" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10.5" Foreground="{ThemeResource HaloText2Brush}" Text="&#x2191;&#x2193;" />
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Text="&#x2191;&#x2193;" />
                       </Border>
-                      <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="move" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="move" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <Border MinWidth="18" Height="18" Padding="5,0" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10.5" Foreground="{ThemeResource HaloText2Brush}" Text="Enter" />
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Text="Enter" />
                       </Border>
-                      <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="play" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="play" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <Border MinWidth="18" Height="18" Padding="5,0" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10.5" Foreground="{ThemeResource HaloText2Brush}" Text="&#x2192;" />
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Text="&#x2192;" />
                       </Border>
-                      <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="details" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="details" />
                     </StackPanel>
                     <StackPanel Orientation="Horizontal" Spacing="6">
                       <Border MinWidth="18" Height="18" Padding="5,0" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
-                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="10.5" Foreground="{ThemeResource HaloText2Brush}" Text="Esc" />
+                        <TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Text="Esc" />
                       </Border>
-                      <TextBlock VerticalAlignment="Center" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="close" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="close" />
                     </StackPanel>
                   </StackPanel>
-                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="12.5" Foreground="{ThemeResource HaloAccentBrush}" Text="How this list was built" />
+                  <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloAccentBrush}" Text="How this list was built" />
                   <Grid Grid.Column="3">
-                    <FontIcon FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70D;" Visibility="{x:Bind ViewModel.InfoExpandGlyphVisibility, Mode=OneWay}" />
-                    <FontIcon FontSize="10" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70E;" Visibility="{x:Bind ViewModel.InfoCollapseGlyphVisibility, Mode=OneWay}" />
+                    <FontIcon FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70D;" Visibility="{x:Bind ViewModel.InfoExpandGlyphVisibility, Mode=OneWay}" />
+                    <FontIcon FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70E;" Visibility="{x:Bind ViewModel.InfoCollapseGlyphVisibility, Mode=OneWay}" />
                   </Grid>
                 </Grid>
               </Button>
@@ -623,15 +623,15 @@
               <Grid Padding="32,4,32,22" ColumnSpacing="28" Visibility="{x:Bind ViewModel.InfoVisibility, Mode=OneWay}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                 <StackPanel>
-                  <TextBlock Margin="0,0,0,10" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="Providers" />
+                  <TextBlock Margin="0,0,0,10" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="Providers" />
                   <ItemsControl x:Name="ProviderList" ItemTemplate="{StaticResource SourceProviderTemplate}" />
                 </StackPanel>
                 <StackPanel Grid.Column="1">
-                  <TextBlock Margin="0,0,0,10" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="Quality mix" />
+                  <TextBlock Margin="0,0,0,10" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="Quality mix" />
                   <ItemsControl x:Name="QualityList" ItemTemplate="{StaticResource SourceQualityTemplate}" />
                 </StackPanel>
                 <StackPanel Grid.Column="2">
-                  <TextBlock Margin="0,0,0,10" FontSize="11.5" Foreground="{ThemeResource HaloText4Brush}" Text="How Halo chose" />
+                  <TextBlock Margin="0,0,0,10" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="How Halo chose" />
                   <ItemsControl x:Name="PickerRuleList" ItemTemplate="{StaticResource SourcePickerRuleTemplate}" />
                   <Button
                     Margin="0,6,0,0"
@@ -642,7 +642,7 @@
                     BorderThickness="0"
                     Click="OnEditPlaybackClick"
                     Content="Change these in Playback"
-                    FontSize="12.5"
+                    FontSize="{StaticResource HaloFontLabel}"
                     Foreground="{ThemeResource HaloAccentBrush}" />
                 </StackPanel>
               </Grid>

@@ -38,7 +38,7 @@
             x:Name="TierText"
             CharacterSpacing="60"
             FontFamily="{StaticResource HaloMonoBoldFont}"
-            FontSize="10.5"
+            FontSize="{StaticResource HaloFontCaption}"
             Foreground="{StaticResource HaloBadgeGoldTierBrush}" />
         </Border>
         <TextBlock
@@ -47,7 +47,7 @@
           VerticalAlignment="Center"
           CharacterSpacing="120"
           FontFamily="{StaticResource HaloMonoBoldFont}"
-          FontSize="10.5"
+          FontSize="{StaticResource HaloFontCaption}"
           Foreground="{StaticResource HaloBadgeGoldInkBrush}"
           Visibility="Collapsed" />
       </StackPanel>

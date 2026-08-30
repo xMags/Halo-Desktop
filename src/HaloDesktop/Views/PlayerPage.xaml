@@ -63,7 +63,7 @@
           <Border.Visibility>Collapsed</Border.Visibility>
           <StackPanel Spacing="12">
             <TextBlock
-              FontSize="20"
+              FontSize="{StaticResource HaloFontSection}"
               FontWeight="SemiBold"
               Foreground="White"
               Text="Playback unavailable" />
