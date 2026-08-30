@@ -908,7 +908,7 @@ namespace HaloDesktop::Services::Downloads
         }
 
         auto const jobId = NewJobId();
-        auto const fileName = MakeDownloadFileName(request.Media, fingerprint);
+        auto const fileName = MakeDownloadFileName(request.Media, fingerprint, account);
         if (!IsSafeFileName(fileName))
         {
             throw std::runtime_error{ "A safe download filename could not be created." };
@@ -2280,10 +2280,17 @@ namespace HaloDesktop::Services::Downloads
             throw std::runtime_error{ "The download content range parser is invalid." };
         }
         DownloadMedia media{ .VideoId = L"movie:1", .ItemId = L"movie:1", .MediaType = L"movie", .Title = L"Test", .FileName = L"../../bad name.exe" };
-        auto const name = MakeDownloadFileName(media, Sha256Hex(L"https://example.test/video"));
+        auto const fingerprint = Sha256Hex(L"https://example.test/video");
+        auto const firstAccount = MakeAccountKey(L"https://one.test", L"user");
+        auto const secondAccount = MakeAccountKey(L"https://two.test", L"user");
+        auto const name = MakeDownloadFileName(media, fingerprint, firstAccount);
         if (!IsSafeFileName(name) || !name.ends_with(L".mkv") || name.find(L"..") != std::wstring::npos)
         {
             throw std::runtime_error{ "The download filename policy is invalid." };
+        }
+        if (name == MakeDownloadFileName(media, fingerprint, secondAccount))
+        {
+            throw std::runtime_error{ "Two accounts resolved one download filename." };
         }
         ProtectedRequest denied{
             .Url = L"https://example.test/video",

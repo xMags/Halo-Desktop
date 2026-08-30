@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <array>
 #include <bcrypt.h>
+#include <cwchar>
 #include <cwctype>
 #include <limits>
 #include <stdexcept>
@@ -286,7 +287,8 @@ namespace HaloDesktop::Services::Downloads
 
     std::wstring MakeDownloadFileName(
         DownloadMedia const& media,
-        std::wstring const& sourceFingerprint)
+        std::wstring const& sourceFingerprint,
+        std::wstring const& accountKey)
     {
         auto raw = media.FileName.value_or(media.VideoId);
         auto const separator = raw.find_last_of(L"/\\");
@@ -338,7 +340,12 @@ namespace HaloDesktop::Services::Downloads
         {
             throw std::invalid_argument{ "A valid source fingerprint is required." };
         }
-        return stem + L"-" + sourceFingerprint.substr(0, 12) + L"." + Lower(extension);
+        if (accountKey.size() < 8)
+        {
+            throw std::invalid_argument{ "A valid account key is required." };
+        }
+        return stem + L"-" + sourceFingerprint.substr(0, 12) + L"-" + accountKey.substr(0, 8)
+            + L"." + Lower(extension);
     }
 
     bool IsSafeFileName(std::wstring const& value) noexcept

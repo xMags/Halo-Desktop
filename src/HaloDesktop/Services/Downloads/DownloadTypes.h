@@ -154,9 +154,15 @@ namespace HaloDesktop::Services::Downloads
     [[nodiscard]] std::wstring MakeAccountKey(
         std::wstring serverUrl,
         std::wstring const& userId);
+    // The download folder is shared by every account on the device, so the name
+    // carries both the source fingerprint and the account it belongs to. Without
+    // the account segment two accounts saving the same source URL resolve to one
+    // name, and the second one fails on the existing file it is not allowed to
+    // see. Names already in the index keep whatever they were written with.
     [[nodiscard]] std::wstring MakeDownloadFileName(
         DownloadMedia const& media,
-        std::wstring const& sourceFingerprint);
+        std::wstring const& sourceFingerprint,
+        std::wstring const& accountKey);
     [[nodiscard]] bool IsSafeFileName(std::wstring const& value) noexcept;
     [[nodiscard]] std::optional<ContentRange> ParseContentRange(std::wstring const& value) noexcept;
     [[nodiscard]] bool HasSufficientSpace(
