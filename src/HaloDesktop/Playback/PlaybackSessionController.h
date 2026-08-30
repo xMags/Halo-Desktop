@@ -46,7 +46,7 @@ namespace HaloDesktop::Playback
     private:
         void OnEngineChanged();
         void ReportNow()noexcept;
-        [[nodiscard]] concurrency::task<void> ReportWithTimeoutAsync();
+        [[nodiscard]] concurrency::task<void> ReportWithTimeoutAsync(bool sendNewReport = true);
         [[nodiscard]] concurrency::task<void> LoadWatchStateAsync(std::uint64_t version);
         [[nodiscard]] bool IsPlaying(PlaybackState const& state)const noexcept;
         void ApplyResume();
@@ -69,8 +69,9 @@ namespace HaloDesktop::Playback
         std::function<void()>m_errorHandler;
         std::function<void()>m_endOfFileHandler;
         std::optional<winrt::hstring>m_preferredAudio;
+        std::shared_ptr<concurrency::task<void>> m_reportTask;
         std::chrono::steady_clock::time_point m_resumeDeadline{};
-        std::uint64_t m_seenFileSerial{},m_seenEndSerial{},m_startVersion{},m_initialSeekSerial{},m_initialAudioSelectionSerial{},m_autoAudioSelectionSerial{},m_audioPreferenceRevision{},m_appliedAudioPreferenceRevision{},m_appliedAudioFileSerial{};
+        std::uint64_t m_seenFileSerial{},m_seenEndSerial{},m_reportedEndSerial{},m_startVersion{},m_initialSeekSerial{},m_initialAudioSelectionSerial{},m_autoAudioSelectionSerial{},m_audioPreferenceRevision{},m_appliedAudioPreferenceRevision{},m_appliedAudioFileSerial{};
         bool m_started{},m_closing{},m_fileReady{},m_watchLoadFinished{};
     };
 }

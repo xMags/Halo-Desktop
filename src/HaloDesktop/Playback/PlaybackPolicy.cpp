@@ -273,9 +273,17 @@ namespace HaloDesktop::Playback
         return BufferingIndicatorMinimumVisible-shownFor;
     }
 
-    bool ShouldReportPlaybackChange(bool endChanged,bool wasPlaying,bool isPlaying)noexcept
+    bool ShouldReportPlaybackChange(
+        bool endChanged,
+        bool wasPaused,
+        bool isPaused,
+        PlaybackEndReason endReason) noexcept
     {
-        return endChanged||(wasPlaying&&!isPlaying);
+        // Cache starvation is transient, not a viewer decision to stop. An end
+        // event owns its report, so a later pause property from the same terminal
+        // transition cannot send the same position again.
+        return endChanged
+            || (!wasPaused && isPaused && endReason == PlaybackEndReason::None);
     }
 
     bool ShouldExitMpvEventLoop(bool stopping,bool shutdownEvent)noexcept
@@ -373,6 +381,7 @@ namespace HaloDesktop::Playback
         }
         return result;
     }
+
     std::wstring FormatPlaybackTime(double seconds, bool withHours)
     {
         auto const totalSeconds = static_cast<std::int32_t>((std::max)(0.0, seconds));

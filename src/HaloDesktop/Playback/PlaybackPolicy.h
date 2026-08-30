@@ -99,8 +99,9 @@ namespace HaloDesktop::Playback
         std::chrono::milliseconds shownFor) noexcept;
     [[nodiscard]] bool ShouldReportPlaybackChange(
         bool endChanged,
-        bool wasPlaying,
-        bool isPlaying) noexcept;
+        bool wasPaused,
+        bool isPaused,
+        PlaybackEndReason endReason) noexcept;
     [[nodiscard]] bool ShouldExitMpvEventLoop(
         bool stopping,
         bool shutdownEvent) noexcept;

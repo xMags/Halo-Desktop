@@ -428,6 +428,12 @@ namespace HaloDesktop::Playback
         {
             m_state.Paused = *update.Paused;
         }
+        if (update.PlaybackReady.value_or(false))
+        {
+            // Playback restart is the decoder's authoritative recovery edge.
+            // Clear the cached pause marker before resolving the visible state.
+            m_pausedForCache = false;
+        }
         if(update.Buffering)
         {
             m_pausedForCache=*update.Buffering;
@@ -441,10 +447,6 @@ namespace HaloDesktop::Playback
         {
             m_state.FirstFrameReady = true;
         }
-        if (update.Ended && *update.Ended)
-        {
-            m_state.Paused = true;
-        }
         if (update.Video)
         {
             m_state.Video = *update.Video;
@@ -455,7 +457,14 @@ namespace HaloDesktop::Playback
             m_state.TracksReady = true;
         }
         if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
-        if(update.EndReason){m_state.EndReason=*update.EndReason;++m_state.EndSerial;m_state.SeekPending=false;if(*update.EndReason==PlaybackEndReason::Error)m_state.Buffering=false;}
+        if(update.EndReason)
+        {
+            m_state.EndReason=*update.EndReason;
+            ++m_state.EndSerial;
+            m_state.Paused=true;
+            m_state.Buffering=false;
+            m_state.SeekPending=false;
+        }
         SynchronizeAudioSession();
         NotifyChanged();
     }

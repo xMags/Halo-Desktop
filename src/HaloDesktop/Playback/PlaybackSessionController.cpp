@@ -26,7 +26,7 @@ namespace HaloDesktop::Playback
         auto const dispatcher=winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();if(!dispatcher)throw winrt::hresult_wrong_thread();
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
-        m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
+        m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
         m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;
         RefreshPreferences();
         PlaybackSource source{.Location=std::wstring(request.Url().c_str())};
@@ -42,7 +42,10 @@ namespace HaloDesktop::Playback
     concurrency::task<void> PlaybackSessionController::CloseAsync()
     {
         if(m_closing)co_return;m_closing=true;++m_startVersion;
-        co_await ReportWithTimeoutAsync();Stop();
+        auto const state=m_engine->State();
+        if(state.EndReason==PlaybackEndReason::None||state.EndSerial!=m_reportedEndSerial)co_await ReportWithTimeoutAsync();
+        else co_await ReportWithTimeoutAsync(false);
+        Stop();
     }
 
     void PlaybackSessionController::Stop()noexcept
@@ -51,7 +54,7 @@ namespace HaloDesktop::Playback
         try{if(m_reportTimer)m_reportTimer.Stop();}catch(...){}
         m_reportTickRevoker.revoke();m_reportTimer=nullptr;
         if(m_engineToken){m_engine->RemoveChangedHandler(m_engineToken);m_engineToken=0;}
-        m_reporter.reset();m_prior.reset();m_fileReady=false;
+        m_reporter.reset();m_reportTask.reset();m_prior.reset();m_fileReady=false;
         m_scrubPreview->Close();
     }
 
@@ -64,24 +67,63 @@ namespace HaloDesktop::Playback
         if(!m_started)return;auto state=m_engine->State();
         if(state.FileSerial!=m_seenFileSerial){m_seenFileSerial=state.FileSerial;m_fileReady=true;ApplyResume();state=m_engine->State();}
         auto const endChanged=state.EndSerial!=m_seenEndSerial;
-        if(endChanged){m_seenEndSerial=state.EndSerial;if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();else if(state.EndReason==PlaybackEndReason::Eof&&m_endOfFileHandler)m_endOfFileHandler();}
+        if(endChanged)
+        {
+            m_seenEndSerial=state.EndSerial;
+            // Mark the terminal transition before invoking the callback. EOF
+            // handlers may immediately close this session while advancing.
+            m_reportedEndSerial=state.EndSerial;
+            ReportNow();
+            if(state.EndReason==PlaybackEndReason::Error&&m_errorHandler)m_errorHandler();
+            else if(state.EndReason==PlaybackEndReason::Eof&&m_endOfFileHandler)m_endOfFileHandler();
+        }
         auto const wasPlaying=IsPlaying(m_lastState),playing=IsPlaying(state);
-        if(ShouldReportPlaybackChange(endChanged,wasPlaying,playing))ReportNow();
+        if(!endChanged&&ShouldReportPlaybackChange(false,m_lastState.Paused,state.Paused,state.EndReason))
+        {
+            ReportNow();
+        }
         if(playing&&!wasPlaying&&m_reportTimer)m_reportTimer.Start();else if(!playing&&wasPlaying&&m_reportTimer)m_reportTimer.Stop();
         ApplyAudioPreference();m_lastState=m_engine->State();
     }
 
     void PlaybackSessionController::ReportNow()noexcept
     {
-        if(!m_reporter)return;auto reporter=m_reporter;auto state=m_engine->State();
-        reporter->ReportAsync(state).then([](concurrency::task<void> task){try{task.get();}catch(...){}});
+        if(!m_reporter)return;
+        auto reporter=m_reporter;auto state=m_engine->State();
+        auto task=std::make_shared<concurrency::task<void>>(reporter->ReportAsync(state));
+        m_reportTask=task;
+        task->then([reporter](concurrency::task<void> completed)
+        {
+            static_cast<void>(reporter);
+            try{completed.get();}catch(...){ }
+        });
     }
 
-    concurrency::task<void> PlaybackSessionController::ReportWithTimeoutAsync()
+    concurrency::task<void> PlaybackSessionController::ReportWithTimeoutAsync(bool sendNewReport)
     {
         if(!m_reporter)co_return;
-        concurrency::task_completion_event<void>completion;auto reporter=m_reporter;auto state=m_engine->State();
-        reporter->ReportAsync(state).then([completion](concurrency::task<void>task)mutable{try{task.get();}catch(...){}completion.set();});
+        concurrency::task_completion_event<void>completion;
+        if (sendNewReport)
+        {
+            m_reportTask = std::make_shared<concurrency::task<void>>(
+                m_reporter->ReportAsync(m_engine->State()));
+        }
+        auto task = m_reportTask;
+        if (!task)
+        {
+            completion.set();
+        }
+        else
+        {
+            m_reportTask = task;
+            auto reporter = m_reporter;
+            task->then([completion, reporter](concurrency::task<void>completed)mutable
+            {
+                static_cast<void>(reporter);
+                try{completed.get();}catch(...){ }
+                completion.set();
+            });
+        }
         auto const dispatcher=winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();if(!dispatcher)co_return;
         auto timer=dispatcher.CreateTimer();timer.Interval(std::chrono::seconds(2));timer.IsRepeating(false);timer.Tick([completion](auto const&,auto const&)mutable{completion.set();});timer.Start();
         co_await concurrency::create_task(completion);timer.Stop();

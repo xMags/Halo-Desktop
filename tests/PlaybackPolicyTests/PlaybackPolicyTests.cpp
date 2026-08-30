@@ -208,9 +208,10 @@ namespace
         Require(BufferingIndicatorHoldRemaining(std::chrono::milliseconds{200})
                     ==BufferingIndicatorHoldRemaining(std::chrono::milliseconds::zero())-std::chrono::milliseconds{200},
                 "the remaining hold did not shrink with the time already shown");
-        Require(ShouldReportPlaybackChange(true,true,false),"combined EOF transition did not request a report");
-        Require(ShouldReportPlaybackChange(false,true,false),"playing-to-stopped transition did not request a report");
-        Require(!ShouldReportPlaybackChange(false,true,true),"unchanged playing state requested a report");
+        Require(ShouldReportPlaybackChange(true,false,true,PlaybackEndReason::Eof),"combined EOF transition did not request a report");
+        Require(ShouldReportPlaybackChange(false,false,true,PlaybackEndReason::None),"a user pause did not request a report");
+        Require(!ShouldReportPlaybackChange(false,false,false,PlaybackEndReason::None),"cache starvation requested a watch report");
+        Require(!ShouldReportPlaybackChange(false,true,true,PlaybackEndReason::Eof),"the terminal pause sent a duplicate watch report");
         Require(ShouldExitMpvEventLoop(true,false),"mpv event loop ignored a shutdown request while events remained queued");
         Require(ShouldExitMpvEventLoop(false,true),"mpv event loop ignored the shutdown event");
         Require(!ShouldExitMpvEventLoop(false,false),"mpv event loop stopped during normal playback");

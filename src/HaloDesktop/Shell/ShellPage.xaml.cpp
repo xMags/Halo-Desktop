@@ -590,9 +590,7 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const session = App::Services().Session;
         FindName(L"AccountName").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(session->UserName());
-        // Placeholder until the server reports a plan: every signed-in account reads as
-        // premium. The admin flag no longer shows here, but the settings account card
-        // still carries it.
-        FindName(L"AccountRole").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(L"PREMIUM");
+        FindName(L"AccountRole").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(
+            session->IsAdmin() ? L"ADMIN · HALO ACCOUNT" : L"HALO ACCOUNT");
     }
 }

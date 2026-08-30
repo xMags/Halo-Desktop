@@ -231,10 +231,6 @@ namespace
         {
             update.Buffering = *static_cast<int const*>(property->data) != 0;
         }
-        else if (name == "eof-reached" && property->format == MPV_FORMAT_FLAG)
-        {
-            update.Ended = *static_cast<int const*>(property->data) != 0;
-        }
         else if (name == "track-list" && property->format == MPV_FORMAT_NODE)
         {
             update.Tracks = ReadTracks(*static_cast<mpv_node const*>(property->data));
@@ -361,7 +357,6 @@ namespace HaloDesktop::Playback
             CheckMpv("observe speed", mpv_observe_property(handle, 0, "speed", MPV_FORMAT_DOUBLE));
             CheckMpv("observe track-list", mpv_observe_property(handle, 0, "track-list", MPV_FORMAT_NODE));
             CheckMpv("observe video-params", mpv_observe_property(handle, 0, "video-params", MPV_FORMAT_NODE));
-            CheckMpv("observe eof-reached", mpv_observe_property(handle, 0, "eof-reached", MPV_FORMAT_FLAG));
             CheckMpv("observe paused-for-cache", mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG));
             return handle;
         }

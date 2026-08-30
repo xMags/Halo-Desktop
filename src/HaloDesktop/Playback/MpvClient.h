@@ -24,7 +24,6 @@ namespace HaloDesktop::Playback
         std::optional<double> Speed;
         std::optional<bool> Paused;
         std::optional<bool> Buffering;
-        std::optional<bool> Ended;
         std::optional<bool> FileLoaded;
         std::optional<bool> PlaybackReady;
         std::optional<PlaybackEndReason> EndReason;
