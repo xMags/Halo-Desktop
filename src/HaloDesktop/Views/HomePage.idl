@@ -9,6 +9,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility FeaturedVisibility { get; };
         Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
         String ContinueCountLabel { get; };
+        Microsoft.UI.Xaml.Visibility ContinueVisibility { get; };
         Object ContinueItems { get; };
         Object Shelves { get; };
         Int32 FilterIndex { get; };
@@ -33,6 +34,7 @@ namespace HaloDesktop
         Double HeroHeight { get; };
         Double HeroTitleSize { get; };
         Microsoft.UI.Xaml.Thickness ContentPadding { get; };
+        Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
     }
 
     [default_interface]

@@ -13,6 +13,25 @@ namespace winrt::HaloDesktop::implementation
         return FindName(L"CaptionText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>();
     }
 
+    Microsoft::UI::Xaml::Controls::Border PlaceholderArt::ArtSurface() const
+    {
+        return FindName(L"ArtSurface").try_as<Microsoft::UI::Xaml::Controls::Border>();
+    }
+
+    Microsoft::UI::Xaml::CornerRadius PlaceholderArt::ArtCornerRadius() const noexcept
+    {
+        return m_artCornerRadius;
+    }
+
+    void PlaceholderArt::ArtCornerRadius(Microsoft::UI::Xaml::CornerRadius const& value)
+    {
+        m_artCornerRadius = value;
+        if (auto const surface = ArtSurface())
+        {
+            surface.CornerRadius(value);
+        }
+    }
+
     winrt::hstring PlaceholderArt::Caption() const
     {
         return m_caption;

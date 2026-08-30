@@ -5,5 +5,6 @@ namespace HaloDesktop
     {
         PlaceholderArt();
         String Caption;
+        Microsoft.UI.Xaml.CornerRadius ArtCornerRadius;
     }
 }

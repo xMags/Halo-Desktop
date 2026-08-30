@@ -61,9 +61,16 @@ namespace winrt::HaloDesktop::implementation
     double HomeViewModel::HeroTitleSize() const noexcept { return m_layout ? m_layout->Current().HeroTitleSize : 36.0; }
     Microsoft::UI::Xaml::Thickness HomeViewModel::ContentPadding() const noexcept
     {
-        auto const gutter = m_layout ? m_layout->Current().Gutter : 24.0;
-        return Microsoft::UI::Xaml::Thickness{ gutter, 0.0, gutter, 0.0 };
+        return Microsoft::UI::Xaml::Thickness{ Gutter(), 0.0, Gutter(), 0.0 };
     }
+    // The page title has to sit on the same line as the hero and the shelves
+    // below it, so it takes the same gutter rather than the constant the header
+    // control defaults to. Vertical padding is the header's own, not the page's.
+    Microsoft::UI::Xaml::Thickness HomeViewModel::HeaderPadding() const noexcept
+    {
+        return Microsoft::UI::Xaml::Thickness{ Gutter(), 12.0, Gutter(), 12.0 };
+    }
+    double HomeViewModel::Gutter() const noexcept { return m_layout ? m_layout->Current().Gutter : 24.0; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::FeaturedItems() const { return m_featured; }
     std::int32_t HomeViewModel::FeaturedCount() const noexcept { return static_cast<std::int32_t>(m_featured.Size()); }
     std::int32_t HomeViewModel::FeaturedIndex() const noexcept { return m_featuredIndex; }
@@ -101,6 +108,13 @@ namespace winrt::HaloDesktop::implementation
     }
     Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return m_refreshError && HasUsableContent() ? Visible : Collapsed; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
+    // Nothing in progress means no section at all. The header carries a count, a
+    // See all and two scroll buttons, none of which have anything to act on, and
+    // an account that has never played anything would meet all four on arrival.
+    Microsoft::UI::Xaml::Visibility HomeViewModel::ContinueVisibility() const noexcept
+    {
+        return m_continueItems.Size() > 0 ? Visible : Collapsed;
+    }
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::Shelves() const { return m_shelves; }
     std::int32_t HomeViewModel::FilterIndex() const noexcept { return m_filterIndex; }
@@ -176,7 +190,7 @@ namespace winrt::HaloDesktop::implementation
         std::vector<winrt::Windows::Foundation::IInspectable> continued;
         for (auto const& item : m_catalog->ContinueWatching()) continued.push_back(item);
         m_continueItems.ReplaceAll(continued);
-        for (auto const name : { L"ContinueItems", L"ContinueCountLabel", L"ContentVisibility", L"EmptyVisibility" }) Raise(name);
+        for (auto const name : { L"ContinueItems", L"ContinueCountLabel", L"ContinueVisibility", L"ContentVisibility", L"EmptyVisibility" }) Raise(name);
     }
     void HomeViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item) { if(item){auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));} }
     void HomeViewModel::OpenFeaturedDetail(winrt::Windows::Foundation::IInspectable const& item)
@@ -264,7 +278,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void HomeViewModel::RaiseLayoutMetrics()
     {
-        for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"ContentPadding" }) Raise(property);
+        for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"ContentPadding", L"HeaderPadding" }) Raise(property);
         // The carousel re-renders at the new step, so every realised card gets
         // the new title size too; the template cannot see this view model.
         auto const titleSize = m_layout ? m_layout->Current().HeroTitleSize : 36.0;
@@ -557,6 +571,7 @@ namespace winrt::HaloDesktop::implementation
                  L"RefreshErrorVisibility",
                  L"ContinueItems",
                  L"ContinueCountLabel",
+                 L"ContinueVisibility",
                  L"Shelves",
                  L"ContentVisibility",
                  L"LoadingVisibility",

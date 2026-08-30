@@ -13,7 +13,7 @@
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="No titles are available from your visible addon catalogs." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
   <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48" Spacing="28">
-      <local:SectionHeader Title="Home">
+      <local:SectionHeader ContentPadding="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" Title="Home">
         <local:SectionHeader.RightContent>
           <StackPanel Orientation="Horizontal" Spacing="16">
             <AutoSuggestBox
@@ -86,7 +86,10 @@
                     <TextBlock FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
                     <TextBlock FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Meta, Mode=OneWay}" />
                   </StackPanel>
-                  <TextBlock MaxWidth="520" Style="{StaticResource HaloBody}" Text="{x:Bind Synopsis, Mode=OneWay}" />
+                  <!-- Clamped because the hero is a fixed height and the synopsis is
+                       the addon's description verbatim: an overview that runs long
+                       used to push the action buttons out through the clip. -->
+                  <TextBlock MaxWidth="520" MaxLines="3" Style="{StaticResource HaloBody}" Text="{x:Bind Synopsis, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                   <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
                     <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Tag="{x:Bind}" Click="OnFeaturedActionClick" Style="{StaticResource HaloAccentButtonStyle}">
                       <StackPanel Orientation="Horizontal" Spacing="9">
@@ -130,7 +133,7 @@
           NumberOfPages="{x:Bind ViewModel.FeaturedCount, Mode=OneWay}"
           SelectedPageIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}" />
       </Grid>
-      <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
+      <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
         <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />

@@ -4,6 +4,7 @@ namespace HaloDesktop
     runtimeclass SectionHeader : Microsoft.UI.Xaml.Controls.UserControl
     {
         SectionHeader();
+        Microsoft.UI.Xaml.Thickness ContentPadding;
         String Title;
         Object RightContent;
         Boolean ShowBack;

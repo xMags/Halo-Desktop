@@ -13,6 +13,25 @@ namespace winrt::HaloDesktop::implementation
         return FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>();
     }
 
+    Microsoft::UI::Xaml::Controls::Grid SectionHeader::HeaderGrid() const
+    {
+        return FindName(L"HeaderGrid").try_as<Microsoft::UI::Xaml::Controls::Grid>();
+    }
+
+    Microsoft::UI::Xaml::Thickness SectionHeader::ContentPadding() const noexcept
+    {
+        return m_contentPadding;
+    }
+
+    void SectionHeader::ContentPadding(Microsoft::UI::Xaml::Thickness const& value)
+    {
+        m_contentPadding = value;
+        if (auto const grid = HeaderGrid())
+        {
+            grid.Padding(value);
+        }
+    }
+
     Microsoft::UI::Xaml::Controls::ContentPresenter SectionHeader::RightContentHost() const
     {
         return FindName(L"RightContentHost").try_as<Microsoft::UI::Xaml::Controls::ContentPresenter>();

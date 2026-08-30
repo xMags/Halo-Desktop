@@ -9,6 +9,10 @@
 #include "Controls/TagChip.xaml.h"
 #include "Shell/LayoutMetricsService.h"
 
+#include <algorithm>
+#include <cmath>
+#include <winrt/Windows.Foundation.Numerics.h>
+
 namespace winrt::HaloDesktop::implementation
 {
     // Sized before the first measure, for the reason spelled out in PosterCard.
@@ -57,10 +61,28 @@ namespace winrt::HaloDesktop::implementation
     }
 
     double ContinueCard::Progress() const noexcept { return m_progress; }
+    // Clamped here rather than left to the track. The fraction arrives from
+    // recorded playback position over runtime, so a stale or zero runtime can
+    // hand us a value outside 0..1 or a NaN, and star widths take whatever they
+    // are given: a negative one throws, and a NaN lays out as nothing at all.
     void ContinueCard::Progress(double value)
     {
-        m_progress = value;
-        if (auto bar = FindName(L"ProgressTrack").try_as<Microsoft::UI::Xaml::Controls::ProgressBar>()) bar.Value(value);
+        m_progress = std::isnan(value) ? 0.0 : std::clamp(value, 0.0, 1.0);
+        ApplyProgress();
+    }
+
+    // The generated accessors read the field the XAML loader already populated,
+    // where FindName walks the namescope on every call. This runs once per card
+    // realisation and the strip re-realises on every scroll.
+    void ContinueCard::ApplyProgress()
+    {
+        auto const filled = ProgressFilled();
+        auto const remaining = ProgressRemaining();
+        if (!filled || !remaining) return;
+        using Microsoft::UI::Xaml::GridLengthHelper;
+        using Microsoft::UI::Xaml::GridUnitType;
+        filled.Width(GridLengthHelper::FromValueAndType(m_progress, GridUnitType::Star));
+        remaining.Width(GridLengthHelper::FromValueAndType(1.0 - m_progress, GridUnitType::Star));
     }
 
     double ContinueCard::CardWidth() const noexcept { return m_cardWidth; }
@@ -108,5 +130,31 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         m_click(*this, args);
+    }
+
+    // Same 2px lift and accented frame as PosterCard: the two sit side by side on
+    // Home, and a strip where only half the cards answer the pointer reads as the
+    // other half being disabled.
+    void ContinueCard::OnCardPointerEntered(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
+    {
+        SetHovered(true);
+    }
+
+    void ContinueCard::OnCardPointerExited(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
+    {
+        SetHovered(false);
+    }
+
+    void ContinueCard::SetHovered(bool hovered)
+    {
+        Translation({ 0.0F, hovered ? -2.0F : 0.0F, 0.0F });
+        if (auto const ring = ArtHoverRing())
+        {
+            ring.Opacity(hovered ? 1.0 : 0.0);
+        }
     }
 }

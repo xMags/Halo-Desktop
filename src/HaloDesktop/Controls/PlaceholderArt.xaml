@@ -4,7 +4,17 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
+  <!--
+    The radius is settable because this fills the art slot of cards that clip at
+    a larger radius than the control's own default. A placeholder rounded tighter
+    than the frame around it leaves the frame's corners uncovered, which reads as
+    four transparent nicks on every card whose artwork has not arrived yet.
+    ArtCornerRadius rather than the inherited Control.CornerRadius: UserControl's
+    template ignores that one, so setting it would look like it worked and do
+    nothing.
+  -->
   <Border
+    x:Name="ArtSurface"
     Background="{ThemeResource HaloPhTint1Brush}"
     CornerRadius="{StaticResource HaloControlCornerRadius}">
     <Grid>

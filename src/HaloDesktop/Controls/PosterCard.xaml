@@ -26,9 +26,9 @@
         x:Name="ArtBorder"
         BorderBrush="{ThemeResource HaloCardStrokeBrush}"
         BorderThickness="1"
-        CornerRadius="8">
+        CornerRadius="{StaticResource HaloArtCornerRadius}">
         <Grid>
-          <local:PlaceholderArt x:Name="Placeholder" />
+          <local:PlaceholderArt x:Name="Placeholder" ArtCornerRadius="{StaticResource HaloArtCornerRadius}" />
           <Image x:Name="PosterImage" Opacity="0" Stretch="UniformToFill" ImageOpened="OnPosterOpened" ImageFailed="OnPosterFailed" />
         </Grid>
       </Border>

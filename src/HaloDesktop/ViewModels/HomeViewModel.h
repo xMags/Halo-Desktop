@@ -27,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FeaturedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RefreshErrorVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ContinueCountLabel() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ContinueVisibility() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ContinueItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Shelves() const;
         [[nodiscard]] auto ContinueItemsView() const { return m_continueItems; }
@@ -56,9 +57,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double HeroHeight() const noexcept;
         [[nodiscard]] double HeroTitleSize() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness ContentPadding() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:
+        // The layout-step gutter, shared by ContentPadding and HeaderPadding so
+        // the title and the content under it can never drift apart.
+        [[nodiscard]] double Gutter() const noexcept;
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
         winrt::Windows::Foundation::IAsyncAction ToggleFeaturedLibraryAsync(winrt::HaloDesktop::FeaturedItem item);
         void AdoptSnapshot();
