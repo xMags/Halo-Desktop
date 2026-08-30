@@ -50,6 +50,8 @@ namespace winrt::HaloDesktop::implementation
                            Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnClosePanelClick(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnPanelScrimTapped(winrt::Windows::Foundation::IInspectable const&,
+                                Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
         void OnAudioTabClick(winrt::Windows::Foundation::IInspectable const&,
                              Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSubtitlesTabClick(winrt::Windows::Foundation::IInspectable const&,

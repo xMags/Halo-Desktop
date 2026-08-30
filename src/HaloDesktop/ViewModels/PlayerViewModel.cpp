@@ -446,7 +446,13 @@ namespace winrt::HaloDesktop::implementation
     {
         // No tier means no video worth describing: an audio-only file, or a file
         // whose first frame has not been decoded yet.
-        return m_qualityBadge.Tier.empty() ? Collapsed : Visible;
+        //
+        // An open panel hides it too. The panel puts its close button in the same
+        // top-right corner the badge occupies, and the two landed on top of each
+        // other as one unreadable pile. The badge describes the stream the panel
+        // exists to change, and it will still be there once the panel is shut, so
+        // it is the one that gives way.
+        return (m_qualityBadge.Tier.empty() || m_panelIndex >= 0) ? Collapsed : Visible;
     }
     double PlayerViewModel::QualityBadgeFontSize() const noexcept
     {
@@ -996,6 +1002,7 @@ namespace winrt::HaloDesktop::implementation
     {
         for (auto const property :
              { L"PanelVisibility", L"AudioPanelVisibility", L"SubtitlePanelVisibility", L"SpeedPanelVisibility",
+               L"QualityBadgeVisibility",
                L"AudioTabSelected", L"SubtitleTabSelected", L"SpeedTabSelected", L"UpNextOpen", L"UpNextVisibility",
                L"UpNextAvailableVisibility", L"UpNextProgress", L"UpNextKicker", L"UpNextTitle", L"UpNextEpisodeLabel", L"UpNextArt" })
         {

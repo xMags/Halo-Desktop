@@ -449,7 +449,13 @@
       </Grid>
 
       <Grid Visibility="{x:Bind ViewModel.PanelVisibility, Mode=OneWay}">
-        <Border Background="#80040508" />
+        <!--
+          The scrim is the light dismiss. It already covered everything outside
+          the panel and swallowed the clicks that landed on it; now those clicks
+          shut the panel instead of going nowhere. The panel is drawn after it,
+          so a click inside the panel never reaches here.
+        -->
+        <Border Background="#80040508" Tapped="OnPanelScrimTapped" />
         <Border Width="400" HorizontalAlignment="Right" Background="#DB1C1C20" BorderBrush="#1AFFFFFF" BorderThickness="1,0,0,0" CornerRadius="22,0,0,22">
           <!--
             Header, tabs and the delay footer are fixed rows; only the track list

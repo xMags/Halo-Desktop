@@ -248,6 +248,15 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.ClosePanel();
     }
+    // Marked handled so the tap stops at the scrim. The OSD's own wake handler
+    // sits underneath, and a click meant to dismiss the panel should not also
+    // count as reaching for the controls the panel was covering.
+    void PlayerOsd::OnPanelScrimTapped([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+                                       Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const& args)
+    {
+        args.Handled(true);
+        m_viewModel.ClosePanel();
+    }
     void PlayerOsd::OnAudioTabClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                     [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
