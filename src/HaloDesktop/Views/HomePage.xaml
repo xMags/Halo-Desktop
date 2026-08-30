@@ -11,7 +11,7 @@
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Home could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="No titles are available from your visible addon catalogs." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
-  <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+  <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader ContentPadding="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" Title="Home">
         <local:SectionHeader.RightContent>
@@ -66,7 +66,11 @@
           SelectedIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}">
           <FlipView.ItemTemplate>
             <DataTemplate x:DataType="local:FeaturedItem">
-              <Grid>
+              <!-- The wheel is taken here, on the card itself, because FlipView
+                   handles PointerWheelChanged at control level: anything attached
+                   to the FlipView or above it only runs after the flip already
+                   happened. See OnHeroPointerWheelChanged. -->
+              <Grid Background="Transparent" PointerWheelChanged="OnHeroPointerWheelChanged">
                 <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
                 <local:ArtworkImage SourceUrl="{x:Bind Background, Mode=OneWay}" />
                 <Rectangle>

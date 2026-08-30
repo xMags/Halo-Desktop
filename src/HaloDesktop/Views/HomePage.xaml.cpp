@@ -17,28 +17,59 @@
 
 namespace
 {
-    // The FlipView flips cards by panning its internal ScrollViewer, and nothing
-    // on the public surface disables that gesture. Take the manipulation away
-    // from the template's scroll host: the auto-advance timer, the pips pager
-    // and the arrow keys all move the selection directly, so none of them need
-    // it. The host is named "ScrollingHost" in the WinUI 3.2.4.0 template; on a
-    // future SDK bump that reaches the scroll host differently, this scan just
-    // finds nothing and swiping silently comes back.
-    void DisableFlipViewSwipe(winrt::Microsoft::UI::Xaml::DependencyObject const& node)
+    // One wheel notch, in pixels. Matches what the page's own ScrollViewer moves
+    // for a notch, measured against it, so a scroll that begins over the hero and
+    // continues below it keeps one rate.
+    constexpr double HeroWheelStep = 150.0;
+
+    // A FlipView carries a horizontally scrollable region, and Windows redirects a
+    // plain vertical wheel into whichever axis a scroller can move. Over the hero
+    // that turned an ordinary scroll-down into a sideways flip through the
+    // featured cards, and the page below only began to move once the strip ran
+    // out of cards to flip. It also flips by panning that same scroller, which
+    // nothing on the public surface disables.
+    //
+    // So the scroll host is stripped of both: no manipulation, and no scrollable
+    // axis for the wheel to be redirected into. Selection is unaffected because
+    // nothing here moves it by scrolling. The auto-advance timer, the pips pager
+    // and the arrow keys all set SelectedIndex directly.
+    //
+    // The stock previous/next chevrons go at the same time. They are the same
+    // control surfacing the same sideways model, they are drawn in the system's
+    // acrylic rather than anything of Halo's, and the pips pager underneath
+    // already offers the position and the jumps.
+    //
+    // These are template part names from the WinUI 3.2.4.0 FlipView. On a future
+    // SDK bump that names them differently this scan simply finds nothing, and
+    // the stock behaviour quietly returns rather than anything breaking.
+    void TameFlipViewChrome(winrt::Microsoft::UI::Xaml::DependencyObject const& node)
     {
         if (auto const element = node.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>())
         {
-            if (element.Name() == L"ScrollingHost")
+            auto const name = element.Name();
+            if (name == L"ScrollingHost")
             {
-                element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>().ManipulationMode(
-                    winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
+                auto const host = element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>();
+                host.ManipulationMode(winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
+                host.HorizontalScrollMode(winrt::Microsoft::UI::Xaml::Controls::ScrollMode::Disabled);
+                host.VerticalScrollMode(winrt::Microsoft::UI::Xaml::Controls::ScrollMode::Disabled);
+                host.IsHorizontalScrollChainingEnabled(false);
+                host.IsVerticalScrollChainingEnabled(false);
+                // Not descended into: the cards below it are the page's whole
+                // featured list, and nothing under here needs touching.
+                return;
+            }
+            if (name == L"PreviousButtonHorizontal" || name == L"NextButtonHorizontal" ||
+                name == L"PreviousButtonVertical" || name == L"NextButtonVertical")
+            {
+                element.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
                 return;
             }
         }
         auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(node);
         for (auto index = 0; index < count; ++index)
         {
-            DisableFlipViewSwipe(winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(node, index));
+            TameFlipViewChrome(winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(node, index));
         }
     }
 
@@ -97,7 +128,7 @@ namespace winrt::HaloDesktop::implementation
                 .as<Microsoft::UI::Xaml::Controls::FlipView>()
                 .ItemsSource(viewModel->FeaturedItemsView());
         }
-        DisableFlipViewSwipe(
+        TameFlipViewChrome(
             FindName(L"FeaturedFlip")
                 .as<winrt::Microsoft::UI::Xaml::DependencyObject>());
         m_viewModel.EnsureLoaded();
@@ -265,6 +296,46 @@ namespace winrt::HaloDesktop::implementation
         {
             args.Handled(true);
         }
+    }
+
+    // FlipView treats a wheel notch as "flip to the next card", and it does that
+    // from its own control-level handler, so neither disabling its scroll host nor
+    // attaching anything at or above the FlipView prevents it. The card content is
+    // below the FlipView in the bubble order, so taking the event here is the only
+    // point that runs first.
+    //
+    // Having taken it, this has to move the page itself: the event is marked
+    // handled, so nothing above will. Horizontal intent is swallowed outright, the
+    // way the shelves treat it.
+    void HomePage::OnHeroPointerWheelChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        auto const point = args.GetCurrentPoint(nullptr);
+        if (!point)
+        {
+            return;
+        }
+
+        auto const properties = point.Properties();
+        args.Handled(true);
+        if (properties.IsHorizontalMouseWheel())
+        {
+            return;
+        }
+
+        auto const scroller = FindName(L"PageScroller")
+            .try_as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
+        if (!scroller)
+        {
+            return;
+        }
+
+        // Read the offset fresh each notch rather than accumulating, so a fast
+        // spin retargets from where the view actually is instead of from where
+        // the previous notch aimed.
+        auto const notches = static_cast<double>(properties.MouseWheelDelta()) / 120.0;
+        scroller.ChangeView(nullptr, scroller.VerticalOffset() - notches * HeroWheelStep, nullptr, false);
     }
 
     void HomePage::OnContinueSeeAllClick(
