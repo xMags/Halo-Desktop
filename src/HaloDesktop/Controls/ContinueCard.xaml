@@ -33,8 +33,8 @@
         BorderThickness="1"
         CornerRadius="{StaticResource HaloArtCornerRadius}">
         <Grid>
-          <local:PlaceholderArt ArtCornerRadius="{StaticResource HaloArtCornerRadius}" />
-          <local:ArtworkImage x:Name="Still" />
+          <local:PlaceholderArt x:Name="StillPlaceholder" ArtCornerRadius="{StaticResource HaloArtCornerRadius}" />
+          <local:ArtworkImage x:Name="Still" Placeholder="{x:Bind StillPlaceholder}" />
           <local:TagChip x:Name="EpisodeChip" Margin="8" HorizontalAlignment="Left" VerticalAlignment="Top" />
           <local:TagChip x:Name="TimeLeftChip" Margin="8" HorizontalAlignment="Right" VerticalAlignment="Bottom" />
           <!--

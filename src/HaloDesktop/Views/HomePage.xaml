@@ -70,7 +70,7 @@
                    handles PointerWheelChanged at control level: anything attached
                    to the FlipView or above it only runs after the flip already
                    happened. See OnHeroPointerWheelChanged. -->
-              <Grid Background="Transparent" PointerWheelChanged="OnHeroPointerWheelChanged">
+              <Grid Background="Transparent" Loaded="OnHeroCardLoaded" PointerWheelChanged="OnHeroPointerWheelChanged">
                 <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
                 <local:ArtworkImage SourceUrl="{x:Bind Background, Mode=OneWay}" />
                 <Rectangle>

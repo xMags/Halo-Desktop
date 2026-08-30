@@ -7,5 +7,6 @@ namespace HaloDesktop
         String SourceUrl;
         String FallbackUrl;
         Double DecodeWidth;
+        Microsoft.UI.Xaml.UIElement Placeholder;
     }
 }

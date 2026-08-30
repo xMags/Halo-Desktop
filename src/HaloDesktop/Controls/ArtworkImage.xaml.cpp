@@ -38,6 +38,24 @@ namespace winrt::HaloDesktop::implementation
     double ArtworkImage::DecodeWidth() const noexcept { return m_decodeWidth; }
     void ArtworkImage::DecodeWidth(double value) { m_decodeWidth = value; }
 
+    Microsoft::UI::Xaml::UIElement ArtworkImage::Placeholder() const { return m_placeholder; }
+    void ArtworkImage::Placeholder(Microsoft::UI::Xaml::UIElement const& value)
+    {
+        m_placeholder = value;
+        // A recycled control can be handed its placeholder after the artwork it
+        // already holds has opened, so adopt the current state rather than
+        // assuming this is a fresh load.
+        ShowPlaceholder(!m_opened);
+    }
+
+    void ArtworkImage::ShowPlaceholder(bool visible)
+    {
+        if (!m_placeholder) return;
+        m_placeholder.Visibility(visible
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed);
+    }
+
     // Only builds the bitmap when there is not already one for this url. Loaded
     // fires again every time a recycled item comes back into view, and refreshing
     // unconditionally made that a fresh decode each pass.
@@ -55,6 +73,8 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         sender.as<Microsoft::UI::Xaml::Controls::Image>().Opacity(1);
+        m_opened = true;
+        ShowPlaceholder(false);
     }
 
     void ArtworkImage::OnImageFailed(
@@ -69,6 +89,8 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
         image.Opacity(0);
+        m_opened = false;
+        ShowPlaceholder(true);
     }
 
     void ArtworkImage::Refresh()
@@ -80,6 +102,10 @@ namespace winrt::HaloDesktop::implementation
         }
         m_fallbackAttempted = false;
         image.Opacity(0);
+        // Back to the placeholder until the new artwork actually opens, or a
+        // recycled card would keep showing the previous item's picture.
+        m_opened = false;
+        ShowPlaceholder(true);
         SetImageSource(m_sourceUrl);
     }
 

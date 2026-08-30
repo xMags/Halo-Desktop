@@ -5,8 +5,10 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/ArtworkImage.xaml.h"
 #include "Controls/ContinueCard.xaml.h"
 #include "Controls/MediaShelf.xaml.h"
+#include "Controls/PlaceholderArt.xaml.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/HomeViewModel.h"
@@ -295,6 +297,46 @@ namespace winrt::HaloDesktop::implementation
         if (point && (point.Properties().IsHorizontalMouseWheel() || shifted))
         {
             args.Handled(true);
+        }
+    }
+
+    // Pairs the card's backdrop with the placeholder behind it, so the artwork
+    // can take it away once it is up. An opaque placeholder left under a loaded
+    // image means the hero draws its picture twice, full width, for as long as
+    // the card is on screen; PosterCard has always collapsed its own for that
+    // reason.
+    //
+    // Done here rather than by binding Placeholder in the template. x:Bind to an
+    // element named inside a DataTemplate compiles, and the generated setter is
+    // then never called, so the binding silently does nothing. The two elements
+    // are read out of the card's own Children rather than walked for, which
+    // keeps this indifferent to how they are ordered.
+    void HomePage::OnHeroCardLoaded(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        auto const card = sender.try_as<Microsoft::UI::Xaml::Controls::Grid>();
+        if (!card)
+        {
+            return;
+        }
+
+        winrt::HaloDesktop::PlaceholderArt placeholder{ nullptr };
+        winrt::HaloDesktop::ArtworkImage artwork{ nullptr };
+        for (auto const& child : card.Children())
+        {
+            if (auto const behind = child.try_as<winrt::HaloDesktop::PlaceholderArt>())
+            {
+                placeholder = behind;
+            }
+            else if (auto const front = child.try_as<winrt::HaloDesktop::ArtworkImage>())
+            {
+                artwork = front;
+            }
+        }
+        if (placeholder && artwork)
+        {
+            artwork.Placeholder(placeholder);
         }
     }
 

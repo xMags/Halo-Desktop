@@ -9,6 +9,10 @@ namespace winrt::HaloDesktop::implementation
 {
     // Converts validated URL text to BitmapImage in native code. A failed load
     // stays transparent so the caller's placeholder remains visible.
+    //
+    // Hand it that placeholder and it will also take it away once the artwork is
+    // up. The placeholder is opaque, so one left behind a loaded image means the
+    // card draws its art twice for as long as it is on screen.
     struct ArtworkImage : ArtworkImageT<ArtworkImage>
     {
         ArtworkImage();
@@ -21,6 +25,9 @@ namespace winrt::HaloDesktop::implementation
         // right for a full-bleed backdrop and wasteful for anything smaller.
         [[nodiscard]] double DecodeWidth() const noexcept;
         void DecodeWidth(double value);
+        // Optional. Shown while there is no artwork up, collapsed once there is.
+        [[nodiscard]] Microsoft::UI::Xaml::UIElement Placeholder() const;
+        void Placeholder(Microsoft::UI::Xaml::UIElement const& value);
 
         void OnLoaded(
             winrt::Windows::Foundation::IInspectable const& sender,
@@ -35,11 +42,14 @@ namespace winrt::HaloDesktop::implementation
     private:
         void Refresh();
         void SetImageSource(winrt::hstring const& value);
+        void ShowPlaceholder(bool visible);
 
         winrt::hstring m_sourceUrl;
         winrt::hstring m_fallbackUrl;
         double m_decodeWidth{};
         bool m_fallbackAttempted{};
+        bool m_opened{};
+        Microsoft::UI::Xaml::UIElement m_placeholder{ nullptr };
     };
 }
 

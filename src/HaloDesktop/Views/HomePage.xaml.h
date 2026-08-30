@@ -13,6 +13,7 @@ namespace winrt::HaloDesktop::implementation
         HomePage();
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnHeroPointerWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        void OnHeroCardLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         [[nodiscard]] winrt::HaloDesktop::HomeViewModel ViewModel() const;
         void OnSearchSubmitted(
