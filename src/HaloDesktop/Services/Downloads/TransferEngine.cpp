@@ -430,14 +430,135 @@ namespace
             && matchesPath(record.RootPath / *record.SubtitleFileName);
     }
 
+    // Raised instead of deleting when a record names a file outside every folder
+    // this device has used for downloads. The record is forgotten rather than
+    // acted on, so a corrupt or edited index cannot aim deletion at the rest of
+    // the disk, and a failed check does not come back on the next launch.
+    struct ContainmentError final
+    {
+    };
+
+    // The path Windows actually resolves to, with junctions and symbolic links
+    // followed. Returns nullopt when the object cannot be opened, which includes
+    // the ordinary case of a file that is not there.
+    std::optional<std::filesystem::path> RealPath(std::filesystem::path const& value) noexcept
+    {
+        try
+        {
+            wil::unique_hfile handle{ CreateFileW(
+                value.c_str(),
+                0,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                nullptr,
+                OPEN_EXISTING,
+                FILE_FLAG_BACKUP_SEMANTICS,
+                nullptr) };
+            if (!handle)
+            {
+                return std::nullopt;
+            }
+            std::wstring buffer(MAX_PATH, L'\0');
+            auto length = GetFinalPathNameByHandleW(
+                handle.get(),
+                buffer.data(),
+                static_cast<DWORD>(buffer.size()),
+                FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+            if (length == 0)
+            {
+                return std::nullopt;
+            }
+            if (length > buffer.size())
+            {
+                buffer.resize(length);
+                length = GetFinalPathNameByHandleW(
+                    handle.get(),
+                    buffer.data(),
+                    static_cast<DWORD>(buffer.size()),
+                    FILE_NAME_NORMALIZED | VOLUME_NAME_DOS);
+                if (length == 0 || length > buffer.size())
+                {
+                    return std::nullopt;
+                }
+            }
+            buffer.resize(length);
+            constexpr std::wstring_view uncPrefix = L"\\\\?\\UNC\\";
+            constexpr std::wstring_view longPrefix = L"\\\\?\\";
+            if (buffer.starts_with(uncPrefix))
+            {
+                buffer = L"\\\\" + buffer.substr(uncPrefix.size());
+            }
+            else if (buffer.starts_with(longPrefix))
+            {
+                buffer.erase(0, longPrefix.size());
+            }
+            return std::filesystem::path{ buffer };
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    std::vector<std::filesystem::path> ResolveRoots(
+        std::vector<std::filesystem::path> const& approvedRoots)
+    {
+        // A folder the user picked may itself be a junction. Keeping both the
+        // literal and the resolved form means such a choice still matches, while
+        // a link planted underneath a root resolves out of the set.
+        std::vector<std::filesystem::path> resolved;
+        resolved.reserve(approvedRoots.size() * 2);
+        for (auto const& root : approvedRoots)
+        {
+            resolved.push_back(root);
+            if (auto real = RealPath(root))
+            {
+                resolved.push_back(std::move(*real));
+            }
+        }
+        return resolved;
+    }
+
+    void EnsureWithinRoots(
+        std::filesystem::path const& path,
+        std::vector<std::filesystem::path> const& resolvedRoots)
+    {
+        using HaloDesktop::Services::Downloads::IsWithinApprovedRoot;
+        if (!IsWithinApprovedRoot(path, resolvedRoots))
+        {
+            throw ContainmentError{};
+        }
+        std::error_code error;
+        if (std::filesystem::is_symlink(path, error))
+        {
+            throw ContainmentError{};
+        }
+        auto effective = RealPath(path);
+        if (!effective)
+        {
+            // The file is usually already gone. Judge it by the folder that
+            // would hold it, so a linked parent is still caught.
+            if (auto const parent = RealPath(path.parent_path()))
+            {
+                effective = *parent / path.filename();
+            }
+        }
+        if (effective && !IsWithinApprovedRoot(*effective, resolvedRoots))
+        {
+            throw ContainmentError{};
+        }
+    }
+
     void RemoveRecordFiles(
         HaloDesktop::Services::Downloads::DownloadRecord const& record,
+        std::vector<std::filesystem::path> const& approvedRoots,
         HaloDesktop::Services::Downloads::DownloadRecord const* preservedOwner = nullptr)
     {
-        auto removeUnlessPreserved = [preservedOwner](std::filesystem::path const& path)
+        auto const resolvedRoots = ResolveRoots(approvedRoots);
+        auto removeUnlessPreserved = [preservedOwner, &resolvedRoots](std::filesystem::path const& path)
         {
             if (!preservedOwner || !RecordMayOwnPath(*preservedOwner, path))
             {
+                EnsureWithinRoots(path, resolvedRoots);
                 RemoveFileIfPresent(path);
             }
         };
@@ -525,6 +646,7 @@ namespace HaloDesktop::Services::Downloads
         {
             if (record.PendingDeletion) pendingDeletionIds.push_back(jobId);
         }
+        auto const approvedRoots = m_store.ApprovedRoots();
         for (auto const& jobId : pendingDeletionIds)
         {
             try
@@ -547,12 +669,23 @@ namespace HaloDesktop::Services::Downloads
                     updatedOwner->BytesPerSecond = 0;
                     updatedOwner->Replacement.reset();
                 }
-                RemoveRecordFiles(pending, updatedOwner ? &*updatedOwner : nullptr);
+                RemoveRecordFiles(pending, approvedRoots, updatedOwner ? &*updatedOwner : nullptr);
                 m_vault.Remove(jobId);
                 m_store.Apply(updatedOwner ? std::vector<DownloadRecord>{ *updatedOwner }
                                            : std::vector<DownloadRecord>{},
                     { jobId });
                 if (updatedOwner) owner->second = std::move(*updatedOwner);
+                m_records.erase(jobId);
+            }
+            catch (ContainmentError const&)
+            {
+                // Forget the record and leave its files alone. Retrying this on
+                // every launch would never succeed, and deleting is exactly what
+                // must not happen outside the download folders.
+                OutputDebugStringW(
+                    L"Halo forgot a deletion that pointed outside its download folders.\n");
+                try { m_vault.Remove(jobId); } catch (...) {}
+                try { m_store.Apply({}, { jobId }); } catch (...) {}
                 m_records.erase(jobId);
             }
             catch (...)
@@ -1165,20 +1298,27 @@ namespace HaloDesktop::Services::Downloads
         try
         {
             m_vault.Remove(jobId);
-            RemoveRecordFiles(removed);
+            RemoveRecordFiles(removed, m_store.ApprovedRoots());
             m_store.Apply({}, { jobId });
             std::scoped_lock const lock{ m_mutex };
             m_records.erase(jobId);
         }
-        catch (...)
+        catch (ContainmentError const&)
         {
-            throw;
+            try { m_store.Apply({}, { jobId }); } catch (...) {}
+            {
+                std::scoped_lock const lock{ m_mutex };
+                m_records.erase(jobId);
+            }
+            throw std::runtime_error{
+                "This download is saved outside Halo's download folders. It was removed from the list and its files were left in place." };
         }
     }
 
     PlaybackFiles TransferEngine::FilesForPlayback(std::wstring const& jobId)
     {
         ReconcileMissingFiles();
+        auto const resolvedRoots = ResolveRoots(m_store.ApprovedRoots());
         std::scoped_lock const lock{ m_mutex };
         auto const found = m_records.find(jobId);
         if (found == m_records.end()
@@ -1186,6 +1326,9 @@ namespace HaloDesktop::Services::Downloads
             || found->second.AccountKey != *m_activeAccount
             || found->second.Status != DownloadStatus::Done
             || found->second.PendingDeletion
+            // The index names the file to open, so the same containment rule
+            // that guards deletion has to decide what the player may load.
+            || !IsWithinApprovedRoot(found->second.TargetPath(), resolvedRoots)
             || !std::filesystem::is_regular_file(found->second.TargetPath()))
         {
             throw std::runtime_error{ "This download is no longer on the device." };
@@ -1194,7 +1337,8 @@ namespace HaloDesktop::Services::Downloads
         if (found->second.SubtitleFileName)
         {
             auto const subtitle = found->second.RootPath / *found->second.SubtitleFileName;
-            if (std::filesystem::is_regular_file(subtitle))
+            if (IsWithinApprovedRoot(subtitle, resolvedRoots)
+                && std::filesystem::is_regular_file(subtitle))
             {
                 result.SubtitlePath = subtitle;
             }
@@ -2014,7 +2158,7 @@ namespace HaloDesktop::Services::Downloads
         {
             try
             {
-                RemoveRecordFiles(*replaced, hasChanged ? &changed : nullptr);
+                RemoveRecordFiles(*replaced, m_store.ApprovedRoots(), hasChanged ? &changed : nullptr);
                 m_vault.Remove(replaced->JobId);
                 auto completed = changed;
                 completed.Status = DownloadStatus::Done;

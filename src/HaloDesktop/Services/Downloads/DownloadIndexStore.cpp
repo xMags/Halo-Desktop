@@ -3,11 +3,14 @@
 
 #include "Storage/FileStorage.h"
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <cwchar>
 #include <fstream>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
@@ -19,6 +22,34 @@ namespace
     constexpr std::uint64_t IndexVersion = 1;
     constexpr std::uint64_t MaximumIndexBytes = 32ull * 1024ull * 1024ull;
     constexpr std::size_t MaximumTextLength = 65536;
+    constexpr std::size_t MaximumApprovedRoots = 32;
+
+    // Records the folder as a place downloads may live. The newest choice stays
+    // at the front so the oldest folder is the one dropped at the cap.
+    void RememberRoot(
+        std::vector<std::filesystem::path>& roots,
+        std::filesystem::path const& candidate)
+    {
+        if (candidate.empty() || !candidate.is_absolute())
+        {
+            return;
+        }
+        auto normalized = candidate.lexically_normal();
+        auto const duplicate = std::find_if(roots.begin(), roots.end(),
+            [&normalized](std::filesystem::path const& root)
+            {
+                return _wcsicmp(root.c_str(), normalized.c_str()) == 0;
+            });
+        if (duplicate != roots.end())
+        {
+            roots.erase(duplicate);
+        }
+        roots.insert(roots.begin(), std::move(normalized));
+        if (roots.size() > MaximumApprovedRoots)
+        {
+            roots.resize(MaximumApprovedRoots);
+        }
+    }
 
     std::wstring StatusName(HaloDesktop::Services::Downloads::DownloadStatus status)
     {
@@ -593,21 +624,94 @@ namespace HaloDesktop::Services::Downloads
 
         ::HaloDesktop::Storage::FileMutationLock const configLock{ m_paths.ConfigFile };
         auto const config = ReadFile(m_paths.ConfigFile);
+        bool knowsRoots{};
         if (!config.empty())
         {
+            std::optional<winrt::Windows::Data::Json::JsonObject> parsed;
             try
             {
                 auto const object = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(config));
                 m_downloadDirectory = std::filesystem::path{ RequiredString(object, L"directory").c_str() };
+                parsed = object;
             }
             catch (...)
             {
                 m_downloadDirectory.clear();
             }
+            // The folder history is read separately: a history this build cannot
+            // make sense of is rebuilt below, but it must not cost the user the
+            // download folder they chose.
+            try
+            {
+                if (parsed && parsed->HasKey(L"roots"))
+                {
+                    auto const roots = parsed->GetNamedArray(L"roots");
+                    if (roots.Size() > MaximumApprovedRoots)
+                    {
+                        throw std::length_error{ "The download folder history is too long." };
+                    }
+                    // Read back to front: RememberRoot pushes to the front, so
+                    // this restores the order the list was written in.
+                    for (auto index = roots.Size(); index > 0; --index)
+                    {
+                        auto const value = roots.GetAt(index - 1);
+                        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String)
+                        {
+                            throw std::invalid_argument{ "The download folder history is invalid." };
+                        }
+                        auto const text = value.GetString();
+                        if (text.empty() || text.size() > MaximumTextLength)
+                        {
+                            throw std::invalid_argument{ "The download folder history is invalid." };
+                        }
+                        RememberRoot(m_approvedRoots, std::filesystem::path{ text.c_str() });
+                    }
+                    knowsRoots = true;
+                }
+            }
+            catch (...)
+            {
+                m_approvedRoots.clear();
+                knowsRoots = false;
+            }
         }
         if (m_downloadDirectory.empty())
         {
             m_downloadDirectory = CanonicalDirectory(m_paths.DefaultDownloadDirectory);
+        }
+        if (!knowsRoots)
+        {
+            // First run against a config that predates the folder history. The
+            // index on disk was written by this app before anything could rely
+            // on the history, so the folders it names are adopted once. After
+            // this, only picking a folder can add one.
+            try
+            {
+                ::HaloDesktop::Storage::FileMutationLock const indexLock{ m_paths.IndexFile };
+                for (auto const& record : SalvageRecords(ReadFile(m_paths.IndexFile), false))
+                {
+                    RememberRoot(m_approvedRoots, record.RootPath);
+                    if (record.Replacement)
+                    {
+                        RememberRoot(m_approvedRoots, record.Replacement->RootPath);
+                    }
+                }
+            }
+            catch (...)
+            {
+            }
+        }
+        RememberRoot(m_approvedRoots, m_paths.DefaultDownloadDirectory);
+        RememberRoot(m_approvedRoots, m_downloadDirectory);
+        if (!knowsRoots)
+        {
+            try
+            {
+                WriteConfigLocked();
+            }
+            catch (...)
+            {
+            }
         }
     }
 
@@ -716,12 +820,44 @@ namespace HaloDesktop::Services::Downloads
     void DownloadIndexStore::SetDownloadDirectory(std::filesystem::path directory)
     {
         auto canonical = CanonicalDirectory(std::move(directory));
-        winrt::Windows::Data::Json::JsonObject config;
-        InsertString(config, L"directory", canonical.wstring());
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.ConfigFile };
-        WriteAtomic(m_paths.ConfigFile, winrt::to_string(config.Stringify()));
+        auto const previousDirectory = m_downloadDirectory;
+        auto const previousRoots = m_approvedRoots;
         m_downloadDirectory = std::move(canonical);
+        RememberRoot(m_approvedRoots, m_downloadDirectory);
+        try
+        {
+            WriteConfigLocked();
+        }
+        catch (...)
+        {
+            // The folder is only in use once it is recorded; a half-applied
+            // change would let downloads land somewhere the next launch has
+            // never heard of.
+            m_downloadDirectory = previousDirectory;
+            m_approvedRoots = previousRoots;
+            throw;
+        }
+    }
+
+    std::vector<std::filesystem::path> DownloadIndexStore::ApprovedRoots() const
+    {
+        std::scoped_lock const lock{ m_mutex };
+        return m_approvedRoots;
+    }
+
+    void DownloadIndexStore::WriteConfigLocked() const
+    {
+        winrt::Windows::Data::Json::JsonObject config;
+        InsertString(config, L"directory", m_downloadDirectory.wstring());
+        winrt::Windows::Data::Json::JsonArray roots;
+        for (auto const& root : m_approvedRoots)
+        {
+            roots.Append(winrt::Windows::Data::Json::JsonValue::CreateStringValue(root.wstring()));
+        }
+        config.Insert(L"roots", roots);
+        WriteAtomic(m_paths.ConfigFile, winrt::to_string(config.Stringify()));
     }
 
     DownloadStoragePaths const& DownloadIndexStore::Paths() const noexcept

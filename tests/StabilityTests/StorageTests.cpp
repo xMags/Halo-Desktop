@@ -10,6 +10,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -378,6 +379,9 @@ namespace
         WriteBytes(record.RootPath / *record.SubtitleFileName, { 7, 8, 9 });
 
         DownloadIndexStore store{ dataRoot };
+        // Deletion is confined to folders this device has used for downloads, so
+        // the fixture has to choose the folder its records claim to live in.
+        store.SetDownloadDirectory(downloadRoot);
         store.Apply({ record });
         {
             TransferEngine engine{ dataRoot };
@@ -438,6 +442,7 @@ namespace
         TemporaryDirectory temporary;
         auto const dataRoot = temporary.Path() / L"state";
         DownloadIndexStore store{ dataRoot };
+        store.SetDownloadDirectory(temporary.Path() / L"downloads");
         auto record = Record(std::wstring(64, L'd'), L"movie:missing");
         record.AccountKey = HaloDesktop::Services::Downloads::MakeAccountKey(
             L"https://example.test", L"user-a");
@@ -475,6 +480,66 @@ namespace
                 && *persisted.front().Failure == HaloDesktop::Services::Downloads::DownloadFailureCode::MissingFile,
             "the MissingFile reconciliation was not persisted");
     }
+
+    // The index is plain JSON on disk. A record that names a folder this device
+    // never used for downloads must not be able to aim deletion or playback at
+    // it, whether it got there by corruption or by an edit.
+    void TestDownloadsOutsideApprovedRootsAreQuarantined()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        auto const downloadRoot = temporary.Path() / L"downloads";
+        auto const outsideRoot = temporary.Path() / L"elsewhere";
+        std::filesystem::create_directories(downloadRoot);
+        std::filesystem::create_directories(outsideRoot);
+
+        auto const account = HaloDesktop::Services::Downloads::MakeAccountKey(
+            L"https://example.test", L"user-a");
+        auto doomed = Record(std::wstring(64, L'e'), L"movie:outside-delete");
+        doomed.AccountKey = account;
+        doomed.RootPath = outsideRoot;
+        doomed.FileName = L"keep-me.mkv";
+        doomed.PendingDeletion = true;
+        WriteBytes(doomed.TargetPath(), { 1, 2, 3 });
+
+        auto playable = Record(std::wstring(64, L'f'), L"movie:outside-play");
+        playable.AccountKey = account;
+        playable.RootPath = outsideRoot;
+        playable.FileName = L"elsewhere.mkv";
+        playable.Status = DownloadStatus::Done;
+        playable.ExplicitPause = false;
+        playable.TotalBytes = 3;
+        playable.DownloadedBytes = 3;
+        WriteBytes(playable.TargetPath(), { 4, 5, 6 });
+
+        DownloadIndexStore store{ dataRoot };
+        store.SetDownloadDirectory(downloadRoot);
+        store.Apply({ doomed, playable });
+        {
+            TransferEngine engine{ dataRoot };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            auto playbackRejected = false;
+            try
+            {
+                static_cast<void>(engine.FilesForPlayback(playable.JobId));
+            }
+            catch (...)
+            {
+                playbackRejected = true;
+            }
+            Require(playbackRejected, "playback opened a file outside the approved download folders");
+        }
+        Require(std::filesystem::is_regular_file(doomed.TargetPath()),
+            "a deletion outside the approved download folders removed a file");
+        Require(std::filesystem::is_regular_file(playable.TargetPath()),
+            "a record outside the approved download folders lost its file");
+
+        DownloadIndexStore verify{ dataRoot };
+        auto const remaining = verify.Load(false);
+        Require(std::none_of(remaining.begin(), remaining.end(),
+                [&doomed](DownloadRecord const& record) { return record.JobId == doomed.JobId; }),
+            "an unsafe pending deletion stayed in the index to be retried forever");
+    }
 }
 
 void RunStandaloneStorageTests()
@@ -487,4 +552,5 @@ void RunStandaloneStorageTests()
     TestCorruptDownloadIndexRecovery();
     TestPendingDownloadDeletionRecovery();
     TestMissingCompletedDownloadRecovery();
+    TestDownloadsOutsideApprovedRootsAreQuarantined();
 }

@@ -360,6 +360,59 @@ namespace HaloDesktop::Services::Downloads
             && path.filename() == path;
     }
 
+    bool IsWithinApprovedRoot(
+        std::filesystem::path const& candidate,
+        std::vector<std::filesystem::path> const& approvedRoots) noexcept
+    {
+        auto components = [](std::filesystem::path const& value)
+        {
+            std::vector<std::wstring> parts;
+            for (auto const& part : value.lexically_normal())
+            {
+                auto text = part.wstring();
+                if (!text.empty())
+                {
+                    parts.push_back(std::move(text));
+                }
+            }
+            return parts;
+        };
+
+        try
+        {
+            if (candidate.empty() || !candidate.is_absolute())
+            {
+                return false;
+            }
+            auto const target = components(candidate);
+            for (auto const& root : approvedRoots)
+            {
+                if (root.empty() || !root.is_absolute())
+                {
+                    continue;
+                }
+                auto const prefix = components(root);
+                if (prefix.empty() || prefix.size() > target.size())
+                {
+                    continue;
+                }
+                if (std::equal(prefix.begin(), prefix.end(), target.begin(),
+                    [](std::wstring const& left, std::wstring const& right)
+                    {
+                        return _wcsicmp(left.c_str(), right.c_str()) == 0;
+                    }))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
     std::optional<ContentRange> ParseContentRange(std::wstring const& value) noexcept
     {
         constexpr std::wstring_view prefix = L"bytes ";

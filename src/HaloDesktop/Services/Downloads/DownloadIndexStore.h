@@ -36,12 +36,22 @@ namespace HaloDesktop::Services::Downloads
 
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
         void SetDownloadDirectory(std::filesystem::path directory);
+
+        // Every folder this device has used as a download root, newest first.
+        // The index itself is plain JSON that any corruption or edit can reach,
+        // so file deletion is confined to these folders instead of trusting the
+        // root path a record carries. The list is seeded once from the records
+        // present at upgrade time, then only grows when a folder is chosen.
+        [[nodiscard]] std::vector<std::filesystem::path> ApprovedRoots() const;
         [[nodiscard]] DownloadStoragePaths const& Paths() const noexcept;
 
     private:
+        void WriteConfigLocked() const;
+
         DownloadStoragePaths m_paths;
         mutable std::mutex m_mutex;
         std::filesystem::path m_downloadDirectory;
+        std::vector<std::filesystem::path> m_approvedRoots;
         std::set<std::wstring, std::less<>> m_observedJobIds;
         std::uint64_t m_savedGeneration{};
     };

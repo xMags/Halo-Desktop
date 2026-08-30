@@ -164,6 +164,14 @@ namespace HaloDesktop::Services::Downloads
         std::wstring const& sourceFingerprint,
         std::wstring const& accountKey);
     [[nodiscard]] bool IsSafeFileName(std::wstring const& value) noexcept;
+
+    // True when the path sits inside one of the approved download roots, compared
+    // component by component so a sibling folder with a shared prefix does not
+    // match. Purely lexical: callers that are about to delete must resolve
+    // reparse points first, or a junction inside a root escapes it.
+    [[nodiscard]] bool IsWithinApprovedRoot(
+        std::filesystem::path const& candidate,
+        std::vector<std::filesystem::path> const& approvedRoots) noexcept;
     [[nodiscard]] std::optional<ContentRange> ParseContentRange(std::wstring const& value) noexcept;
     [[nodiscard]] bool HasSufficientSpace(
         std::uint64_t availableBytes,
