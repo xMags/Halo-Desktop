@@ -13,6 +13,7 @@
 #include "Services/ContinueShelfPolicy.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
+#include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
 #include <cstddef>
@@ -622,6 +623,7 @@ int main()
         TestBrowserSignInListenerCancellation();
         RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();
+        RunPlaybackSourceResolverTest();
         std::cout << "StabilityTests passed\n";
         return 0;
     }

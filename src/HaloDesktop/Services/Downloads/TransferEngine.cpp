@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/Downloads/TransferEngine.h"
 
+#include "Security/ProtectedRedirect.h"
 #include "Storage/FileStorage.h"
 
 #include <algorithm>
@@ -23,7 +24,6 @@ namespace
     constexpr std::uint64_t MaximumSubtitleBytes = 32ull * 1024ull * 1024ull;
     constexpr auto ProgressInterval = std::chrono::milliseconds{ 250 };
     constexpr int TransferAttempts = 3;
-    constexpr int MaximumRedirects = 5;
 
     struct RedirectError final
     {
@@ -309,21 +309,6 @@ namespace
         return response;
     }
 
-    bool IsRedirectStatus(std::uint32_t status) noexcept
-    {
-        return status == 301 || status == 302 || status == 303
-            || status == 307 || status == 308;
-    }
-
-    bool SameOrigin(
-        winrt::Windows::Foundation::Uri const& left,
-        winrt::Windows::Foundation::Uri const& right) noexcept
-    {
-        return _wcsicmp(left.SchemeName().c_str(), right.SchemeName().c_str()) == 0
-            && _wcsicmp(left.Host().c_str(), right.Host().c_str()) == 0
-            && left.Port() == right.Port();
-    }
-
     HttpResponse OpenGet(
         std::wstring const& url,
         std::map<std::wstring, std::wstring, std::less<>> const& headers,
@@ -341,46 +326,27 @@ namespace
                 forwardProtectedHeaders ? headers : emptyHeaders,
                 partial,
                 validator);
-            if (!IsRedirectStatus(response.Status))
+            if (!HaloDesktop::Security::IsRedirectStatus(response.Status))
             {
                 response.CrossedOrigin = crossedOrigin;
                 return response;
             }
-            if (redirectCount >= MaximumRedirects || !response.Location
-                || response.Location->empty() || response.Location->size() > 32768
-                || response.Location->find(L'\0') != std::wstring::npos)
+            if (!response.Location)
             {
                 throw RedirectError{};
             }
-
-            try
-            {
-                winrt::Windows::Foundation::Uri const current{ currentUrl };
-                auto const next = current.CombineUri(*response.Location);
-                auto const nextScheme = next.SchemeName();
-                if (next.Host().empty()
-                    || (_wcsicmp(nextScheme.c_str(), L"http") != 0
-                        && _wcsicmp(nextScheme.c_str(), L"https") != 0)
-                    || (_wcsicmp(current.SchemeName().c_str(), L"https") == 0
-                        && _wcsicmp(nextScheme.c_str(), L"https") != 0))
-                {
-                    throw RedirectError{};
-                }
-                if (!SameOrigin(current, next))
-                {
-                    forwardProtectedHeaders = false;
-                    crossedOrigin = true;
-                }
-                currentUrl = next.AbsoluteUri();
-            }
-            catch (RedirectError const&)
-            {
-                throw;
-            }
-            catch (...)
+            auto const target = HaloDesktop::Security::NextRedirectTarget(
+                currentUrl, *response.Location, redirectCount);
+            if (!target)
             {
                 throw RedirectError{};
             }
+            if (!target->SameOrigin)
+            {
+                forwardProtectedHeaders = false;
+                crossedOrigin = true;
+            }
+            currentUrl = target->Url;
         }
     }
 

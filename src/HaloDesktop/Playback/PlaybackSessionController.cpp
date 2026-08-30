@@ -3,6 +3,7 @@
 
 #include "Models/Models.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Playback/PlaybackSourceResolver.h"
 #include "Playback/WatchReporter.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
@@ -22,17 +23,31 @@ namespace HaloDesktop::Playback
     concurrency::task<void> PlaybackSessionController::StartAsync(winrt::HaloDesktop::PlaybackRequest request)
     {
         if(!request||request.Url().empty())throw std::invalid_argument("A playback request with a source is required.");
-        auto const version=++m_startVersion;m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);
         auto const dispatcher=winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();if(!dispatcher)throw winrt::hresult_wrong_thread();
+        auto const uiContext=winrt::apartment_context{};
+        auto const version=++m_startVersion;
+        PlaybackSource source{.Location=std::wstring(request.Url().c_str())};
+        auto const implementation=winrt::get_self<winrt::HaloDesktop::implementation::PlaybackRequest>(request);
+        source.Headers.reserve(implementation->RequestHeaders().size());
+        for(auto const&[name,value]:implementation->RequestHeaders())source.Headers.push_back({std::wstring(name.c_str()),std::wstring(value.c_str())});
+        if(!source.Headers.empty())
+        {
+            // Settle the redirect chain before the engine sees it, so credentials
+            // meant for this source cannot follow it to another origin. Sources
+            // without headers skip this and start as immediately as before.
+            co_await winrt::resume_background();
+            source=ResolvePlaybackSource(std::move(source));
+            co_await uiContext;
+            // Stop() and every later start bump the version, so a mismatch means
+            // this start was abandoned while the source was being settled.
+            if(version!=m_startVersion)co_return;
+        }
+        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
         m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
         m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;
         RefreshPreferences();
-        PlaybackSource source{.Location=std::wstring(request.Url().c_str())};
-        auto const implementation=winrt::get_self<winrt::HaloDesktop::implementation::PlaybackRequest>(request);
-        source.Headers.reserve(implementation->RequestHeaders().size());
-        for(auto const&[name,value]:implementation->RequestHeaders())source.Headers.push_back({std::wstring(name.c_str()),std::wstring(value.c_str())});
         try{m_scrubPreview->Open(source);m_engine->Open(std::move(source));m_engine->SetPaused(false);}
         catch(...){Stop();throw;}
         LoadWatchStateAsync(version).then([](concurrency::task<void>task){try{task.get();}catch(...){}});

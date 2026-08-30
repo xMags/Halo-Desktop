@@ -181,6 +181,7 @@
     <ClInclude Include="Config\ServerConfig.example.h" />
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Security\ProtectedHttpHeaders.h" />
+    <ClInclude Include="Security\ProtectedRedirect.h" />
     <ClInclude Include="Playback\IPlaybackEngine.h" />
     <ClInclude Include="Playback\IScrubPreviewSource.h" />
     <ClInclude Include="Playback\MpvScrubPreviewSource.h" />
@@ -190,6 +191,7 @@
     <ClInclude Include="Playback\MpvClient.h" />
     <ClInclude Include="Playback\MpvCommand.h" />
     <ClInclude Include="Playback\PlaybackSessionController.h" />
+    <ClInclude Include="Playback\PlaybackSourceResolver.h" />
     <ClInclude Include="Playback\SubtitleController.h" />
     <ClInclude Include="Playback\TemporaryFileCollection.h" />
     <ClInclude Include="Playback\UpNextResolver.h" />
@@ -365,6 +367,9 @@
     <ClCompile Include="Security\ProtectedHttpHeaders.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Security\ProtectedRedirect.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Playback\NullEngine.cpp" />
     <ClCompile Include="Playback\NullScrubPreviewSource.cpp" />
     <ClCompile Include="Playback\ScrubPreviewPolicy.cpp">
@@ -381,6 +386,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Playback\PlaybackSessionController.cpp" />
+    <ClCompile Include="Playback\PlaybackSourceResolver.cpp" />
     <ClCompile Include="Playback\PlaybackPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
