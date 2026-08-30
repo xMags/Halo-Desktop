@@ -74,6 +74,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring TransferCountLabel() const;
         [[nodiscard]] winrt::hstring ReadyCountLabel() const;
         [[nodiscard]] winrt::hstring PauseAllLabel() const;
+        [[nodiscard]] winrt::hstring PauseAllGlyph() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PauseAllVisibility() const noexcept;
         [[nodiscard]] bool IsPausedAll() const noexcept;
         [[nodiscard]] winrt::hstring SelectedTag() const;
         [[nodiscard]] winrt::hstring SelectedTitle() const;

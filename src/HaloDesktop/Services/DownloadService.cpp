@@ -206,7 +206,6 @@ namespace HaloDesktop::Services
         m_snapshotFloor.store(version);
         m_records.clear();
         m_pauseAllIds.clear();
-        m_pausedAll = false;
         m_freeBytes.reset();
         m_directory.clear();
         m_actionError.clear();
@@ -264,24 +263,34 @@ namespace HaloDesktop::Services
         });
     }
 
+    // The tracked IDs preserve the distinction between transfers paused by the
+    // bulk action and transfers the user paused individually. Still-paused IDs
+    // survive a new transfer appearing while the bulk action is in effect.
     void DownloadService::PauseAll()
     {
-        if (m_pausedAll)
-        {
-            return;
-        }
-        m_pauseAllIds.clear();
+        std::set<std::wstring, std::less<>> retained;
+        std::vector<std::wstring> ids;
         for (auto const& record : m_records)
         {
             if (Downloads::IsActive(record.Status))
             {
-                m_pauseAllIds.insert(record.JobId);
+                ids.push_back(record.JobId);
+                retained.insert(record.JobId);
+            }
+            else if (record.Status == Downloads::DownloadStatus::Paused
+                && m_pauseAllIds.contains(record.JobId))
+            {
+                retained.insert(record.JobId);
             }
         }
-        m_pausedAll = true;
-        auto ids = m_pauseAllIds;
+        m_pauseAllIds = std::move(retained);
+        if (ids.empty())
+        {
+            return;
+        }
         RunEngineAction([engine = m_engine, ids = std::move(ids)]()
         {
+            // Attempt every transfer, then surface the first failure.
             std::exception_ptr failure;
             for (auto const& id : ids)
             {
@@ -294,13 +303,20 @@ namespace HaloDesktop::Services
 
     void DownloadService::ResumeAll()
     {
-        if (!m_pausedAll)
+        if (!IsPausedAll())
         {
             return;
         }
-        auto ids = std::move(m_pauseAllIds);
+        std::vector<std::wstring> ids;
+        for (auto const& record : m_records)
+        {
+            if (record.Status == Downloads::DownloadStatus::Paused
+                && m_pauseAllIds.contains(record.JobId))
+            {
+                ids.push_back(record.JobId);
+            }
+        }
         m_pauseAllIds.clear();
-        m_pausedAll = false;
         RunEngineAction([engine = m_engine, ids = std::move(ids)]()
         {
             std::exception_ptr failure;
@@ -496,7 +512,32 @@ namespace HaloDesktop::Services
     }
 
     bool DownloadService::IsRunning() const noexcept { return m_running; }
-    bool DownloadService::IsPausedAll() const noexcept { return m_pausedAll; }
+    // Paused as a page means nothing is moving and something is waiting to be
+    // told to move again. Queued counts as moving: it starts on its own.
+    bool DownloadService::IsPausedAll() const noexcept
+    {
+        if (m_pauseAllIds.empty())
+        {
+            return false;
+        }
+        auto trackedRecordFound = false;
+        for (auto const& record : m_records)
+        {
+            if (Downloads::IsActive(record.Status))
+            {
+                return false;
+            }
+            if (m_pauseAllIds.contains(record.JobId))
+            {
+                trackedRecordFound = true;
+                if (record.Status != Downloads::DownloadStatus::Paused)
+                {
+                    return false;
+                }
+            }
+        }
+        return trackedRecordFound;
+    }
     bool DownloadService::HasCompleted(winrt::hstring const& videoId) const noexcept
     {
         return std::any_of(m_records.begin(), m_records.end(), [&videoId](auto const& record)

@@ -120,7 +120,6 @@ namespace HaloDesktop::Services
         std::filesystem::path m_directory;
         double m_aggregateRate{};
         bool m_running{};
-        bool m_pausedAll{};
         winrt::hstring m_actionError;
     };
 }

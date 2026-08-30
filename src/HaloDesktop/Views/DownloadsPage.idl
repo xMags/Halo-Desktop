@@ -41,6 +41,8 @@ namespace HaloDesktop
         String TransferCountLabel { get; };
         String ReadyCountLabel { get; };
         String PauseAllLabel { get; };
+        String PauseAllGlyph { get; };
+        Microsoft.UI.Xaml.Visibility PauseAllVisibility { get; };
         Boolean IsPausedAll { get; };
         String SelectedTag { get; };
         String SelectedTitle { get; };

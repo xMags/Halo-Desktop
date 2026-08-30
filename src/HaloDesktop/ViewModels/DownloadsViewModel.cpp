@@ -60,10 +60,38 @@ namespace winrt::HaloDesktop::implementation
         : m_item(std::move(item))
     {
     }
+    // A row is handed a rebuilt item on every progress sample, roughly once a
+    // second per transfer. Raising every property each time re-runs every
+    // binding on the row, and the poster binding turns a string into a fresh
+    // BitmapImage each pass: the artwork blinks out and decodes again while the
+    // progress bar moves. Only what actually changed is announced.
     void DownloadRowViewModel::Update(winrt::HaloDesktop::DownloadItem item)
     {
-        m_item = std::move(item);
-        RaiseState();
+        auto const previous = std::exchange(m_item, std::move(item));
+        if (!previous)
+        {
+            RaiseState();
+            return;
+        }
+        auto const raise = [this](wchar_t const* property)
+        {
+            ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
+        };
+        if (previous.Tag() != m_item.Tag()) raise(L"Tag");
+        if (previous.Name() != m_item.Name()) raise(L"Name");
+        if (previous.Sub() != m_item.Sub()) raise(L"Sub");
+        if (previous.Progress() != m_item.Progress()) raise(L"Progress");
+        if (previous.Detail() != m_item.Detail()) raise(L"Detail");
+        if (previous.Quality() != m_item.Quality() || previous.Codec() != m_item.Codec()) raise(L"QualityLine");
+        if (previous.Size() != m_item.Size()) raise(L"Size");
+        if (previous.Subs() != m_item.Subs()) raise(L"Subs");
+        if (previous.Poster() != m_item.Poster()) raise(L"Poster");
+        if (previous.State() != m_item.State())
+        {
+            // The badges are four views of the one field, so they move together.
+            for (auto const property : { L"StateLabel", L"DownloadingVisibility", L"QueuedVisibility", L"PausedVisibility", L"FailedVisibility" })
+                raise(property);
+        }
     }
     winrt::HaloDesktop::DownloadItem DownloadRowViewModel::Item() const { return m_item; }
     winrt::hstring DownloadRowViewModel::Id() const { return m_item.Id(); }
@@ -165,6 +193,11 @@ namespace winrt::HaloDesktop::implementation
         return winrt::hstring(value.str());
     }
     winrt::hstring DownloadsViewModel::PauseAllLabel() const { return m_downloads->IsPausedAll() ? L"Resume all" : L"Pause all"; }
+    winrt::hstring DownloadsViewModel::PauseAllGlyph() const { return m_downloads->IsPausedAll() ? L"\uE768" : L"\uE769"; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::PauseAllVisibility() const noexcept
+    {
+        return m_downloads->ActiveCount() > 0 || m_downloads->IsPausedAll() ? Visible : Collapsed;
+    }
     bool DownloadsViewModel::IsPausedAll() const noexcept { return m_downloads->IsPausedAll(); }
     winrt::hstring DownloadsViewModel::SelectedTag() const { return m_selected ? m_selected.Tag() : L""; }
     winrt::hstring DownloadsViewModel::SelectedTitle() const { return m_selected ? m_selected.Name() : L""; }
@@ -355,7 +388,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"SelectedPoster", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
+        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedQualityLine", L"SelectedSize", L"SelectedSubs", L"SelectedPoster", L"ReadyActionLabel", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"DetailVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const

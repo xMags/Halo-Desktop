@@ -31,9 +31,9 @@
                   <TextBlock VerticalAlignment="Bottom" Style="{StaticResource HaloMonoBig}" Text="{x:Bind ViewModel.RateText, Mode=OneWay}" />
                   <TextBlock Margin="0,0,0,3" VerticalAlignment="Bottom" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.QueueLine, Mode=OneWay}" />
                 </StackPanel>
-                <Button Grid.Column="2" Height="32" Padding="14,0" VerticalAlignment="Bottom" AutomationProperties.Name="Pause all" Click="OnPauseAllClick" FontSize="{StaticResource HaloFontBody}">
+                <Button Grid.Column="2" Height="32" Padding="14,0" VerticalAlignment="Bottom" AutomationProperties.Name="{x:Bind ViewModel.PauseAllLabel, Mode=OneWay}" Click="OnPauseAllClick" FontSize="{StaticResource HaloFontBody}" Visibility="{x:Bind ViewModel.PauseAllVisibility, Mode=OneWay}">
                   <StackPanel Orientation="Horizontal" Spacing="8">
-                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE769;" />
+                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Glyph="{x:Bind ViewModel.PauseAllGlyph, Mode=OneWay}" />
                     <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.PauseAllLabel, Mode=OneWay}" />
                   </StackPanel>
                 </Button>
