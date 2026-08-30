@@ -59,8 +59,18 @@
         PointerEntered="OnFeaturedPointerEntered"
         PointerExited="OnFeaturedPointerExited"
         Visibility="{x:Bind ViewModel.FeaturedVisibility, Mode=OneWay}">
+        <!--
+          Transparent, and with the control's own rounding off. The stock style
+          paints an opaque plate behind the cards and rounds itself a second
+          time inside the hero's corners, so any moment a card is not exactly
+          filling the viewport, that plate shows down the edge as a pale strip.
+          The hero Grid already supplies the corners and there is nothing behind
+          the cards that should ever be seen.
+        -->
         <FlipView
           x:Name="FeaturedFlip"
+          Background="Transparent"
+          CornerRadius="0"
           AutomationProperties.Name="Featured titles"
           KeyDown="OnFeaturedKeyDown"
           SelectedIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}">

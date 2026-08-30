@@ -24,22 +24,23 @@ namespace
     // continues below it keeps one rate.
     constexpr double HeroWheelStep = 150.0;
 
-    // A FlipView carries a horizontally scrollable region, and Windows redirects a
-    // plain vertical wheel into whichever axis a scroller can move. Over the hero
-    // that turned an ordinary scroll-down into a sideways flip through the
-    // featured cards, and the page below only began to move once the strip ran
-    // out of cards to flip. It also flips by panning that same scroller, which
-    // nothing on the public surface disables.
+    // The FlipView flips cards by panning its internal ScrollViewer, and nothing
+    // on the public surface disables that gesture. Take the manipulation away
+    // from the template's scroll host: the auto-advance timer, the pips pager
+    // and the arrow keys all move the selection directly, so none of them need
+    // it.
     //
-    // So the scroll host is stripped of both: no manipulation, and no scrollable
-    // axis for the wheel to be redirected into. Selection is unaffected because
-    // nothing here moves it by scrolling. The auto-advance timer, the pips pager
-    // and the arrow keys all set SelectedIndex directly.
+    // Only the manipulation. The host keeps both scrolling axes, because that is
+    // how the control walks to the selected card and settles on its edge. With
+    // them disabled it could still reach the right card but could not finish the
+    // last few pixels, leaving the strip parked just short of the boundary with
+    // the previous card's edge showing down the side of the hero. The wheel is
+    // dealt with in OnHeroPointerWheelChanged instead, before the control sees
+    // it at all.
     //
-    // The stock previous/next chevrons go at the same time. They are the same
-    // control surfacing the same sideways model, they are drawn in the system's
-    // acrylic rather than anything of Halo's, and the pips pager underneath
-    // already offers the position and the jumps.
+    // The stock previous/next chevrons go too. They surface the same sideways
+    // model, they are drawn in the system's acrylic rather than anything of
+    // Halo's, and the pips pager underneath already offers position and jumps.
     //
     // These are template part names from the WinUI 3.2.4.0 FlipView. On a future
     // SDK bump that names them differently this scan simply finds nothing, and
@@ -51,12 +52,8 @@ namespace
             auto const name = element.Name();
             if (name == L"ScrollingHost")
             {
-                auto const host = element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>();
-                host.ManipulationMode(winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
-                host.HorizontalScrollMode(winrt::Microsoft::UI::Xaml::Controls::ScrollMode::Disabled);
-                host.VerticalScrollMode(winrt::Microsoft::UI::Xaml::Controls::ScrollMode::Disabled);
-                host.IsHorizontalScrollChainingEnabled(false);
-                host.IsVerticalScrollChainingEnabled(false);
+                element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>().ManipulationMode(
+                    winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
                 // Not descended into: the cards below it are the page's whole
                 // featured list, and nothing under here needs touching.
                 return;
