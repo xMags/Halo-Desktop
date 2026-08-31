@@ -28,6 +28,11 @@
       <Color x:Key="HaloCautionStrokeColor">#3DFCE100</Color>
       <Color x:Key="HaloCriticalColor">#FFFF99A4</Color>
       <Color x:Key="HaloCriticalTintColor">#14FF99A4</Color>
+      <Color x:Key="HaloCriticalStrokeColor">#57FF99A4</Color>
+      <Color x:Key="HaloDangerFillColor">#FFC42B1C</Color>
+      <Color x:Key="HaloDangerHoverColor">#FFD13A2A</Color>
+      <Color x:Key="HaloTileTopColor">#0BFFFFFF</Color>
+      <Color x:Key="HaloTileBottomColor">#06FFFFFF</Color>
       <Color x:Key="HaloDividerColor">#15FFFFFF</Color>
       <Color x:Key="HaloFlyoutColor">#FF2C2C2C</Color>
       <Color x:Key="HaloNavSelColor">#2460CDFF</Color>
@@ -69,6 +74,13 @@
       <SolidColorBrush x:Key="HaloCautionStrokeBrush" Color="{StaticResource HaloCautionStrokeColor}" />
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
+      <SolidColorBrush x:Key="HaloCriticalStrokeBrush" Color="{StaticResource HaloCriticalStrokeColor}" />
+      <SolidColorBrush x:Key="HaloDangerFillBrush" Color="{StaticResource HaloDangerFillColor}" />
+      <SolidColorBrush x:Key="HaloDangerHoverBrush" Color="{StaticResource HaloDangerHoverColor}" />
+      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
       <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
       <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />
@@ -122,6 +134,11 @@
       <Color x:Key="HaloCautionStrokeColor">#3D9D5D00</Color>
       <Color x:Key="HaloCriticalColor">#FFC42B1C</Color>
       <Color x:Key="HaloCriticalTintColor">#14C42B1C</Color>
+      <Color x:Key="HaloCriticalStrokeColor">#57C42B1C</Color>
+      <Color x:Key="HaloDangerFillColor">#FFC42B1C</Color>
+      <Color x:Key="HaloDangerHoverColor">#FFD13A2A</Color>
+      <Color x:Key="HaloTileTopColor">#0B000000</Color>
+      <Color x:Key="HaloTileBottomColor">#06000000</Color>
       <Color x:Key="HaloDividerColor">#0F000000</Color>
       <Color x:Key="HaloFlyoutColor">#FFF9F9F9</Color>
       <Color x:Key="HaloNavSelColor">#1A005FB8</Color>
@@ -163,6 +180,13 @@
       <SolidColorBrush x:Key="HaloCautionStrokeBrush" Color="{StaticResource HaloCautionStrokeColor}" />
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
+      <SolidColorBrush x:Key="HaloCriticalStrokeBrush" Color="{StaticResource HaloCriticalStrokeColor}" />
+      <SolidColorBrush x:Key="HaloDangerFillBrush" Color="{StaticResource HaloDangerFillColor}" />
+      <SolidColorBrush x:Key="HaloDangerHoverBrush" Color="{StaticResource HaloDangerHoverColor}" />
+      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
       <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
       <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />

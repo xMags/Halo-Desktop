@@ -264,6 +264,12 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.SetFilter(3);
     }
+    void SourcesPage::OnHdFilterClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SetFilter(4);
+    }
 
     void SourcesPage::OnRecommendedSortClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
@@ -312,6 +318,13 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.ToggleExpanded(TagOf(sender));
     }
 
+    void SourcesPage::OnPickDetailsClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.TogglePickExpanded();
+    }
+
     void SourcesPage::OnRevealColdClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -358,6 +371,7 @@ namespace winrt::HaloDesktop::implementation
         package.RequestedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Copy);
         package.SetText(name);
         winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+        m_viewModel.MarkCopied(TagOf(sender));
     }
 
     winrt::fire_and_forget SourcesPage::StartDownload(winrt::hstring key)

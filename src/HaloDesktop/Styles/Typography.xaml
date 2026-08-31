@@ -103,4 +103,11 @@
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
   </Style>
+
+  <Style x:Key="HaloMonoTileCaption" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontCaption}" />
+    <Setter Property="CharacterSpacing" Value="120" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloText4Brush}" />
+  </Style>
 </ResourceDictionary>

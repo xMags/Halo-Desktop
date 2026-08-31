@@ -136,6 +136,11 @@ namespace HaloDesktop
         String VideoId { get; };
         String Poster { get; };
         Boolean RequiresNewSource { get; };
+        UInt64 DownloadedBytes { get; };
+        UInt64 TotalBytes { get; };
+        String FileName { get; };
+        String AddedLabel { get; };
+        Boolean Hdr { get; };
     };
 
     [default_interface]

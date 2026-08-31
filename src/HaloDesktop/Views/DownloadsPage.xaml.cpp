@@ -7,9 +7,20 @@
 #include "App.xaml.h"
 #include "ViewModels/DownloadsViewModel.h"
 
+#include <array>
+#include <cstdint>
 #include <microsoft.ui.xaml.window.h>
 #include <shobjidl_core.h>
 #include <winrt/Windows.Storage.Pickers.h>
+
+namespace
+{
+    winrt::hstring TagOf(winrt::Windows::Foundation::IInspectable const& sender)
+    {
+        auto const element = sender.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>();
+        return element ? winrt::unbox_value_or<winrt::hstring>(element.Tag(), L"") : winrt::hstring{};
+    }
+}
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -27,6 +38,22 @@ namespace winrt::HaloDesktop::implementation
         readyList.ItemsSource(viewModel->ReadyView());
         FindName(L"ChartList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->ChartBarsView());
         readyList.SelectedItem(viewModel->SelectedRow());
+        SyncFilterSelection();
+    }
+    // The page is cached, so a return visit reuses the markup's initial checked
+    // state while the view model still holds the filter the viewer left on. The
+    // selector is pushed back into agreement rather than the filter being reset.
+    void DownloadsPage::SyncFilterSelection()
+    {
+        std::array<wchar_t const*, 4> const names{ L"AllFilter", L"ActiveFilter", L"ReadyFilter", L"FailedFilter" };
+        auto const index = m_viewModel.FilterIndex();
+        for (std::size_t position = 0; position < names.size(); ++position)
+        {
+            if (auto const button = FindName(names[position]).try_as<Microsoft::UI::Xaml::Controls::RadioButton>())
+            {
+                button.IsChecked(static_cast<std::int32_t>(position) == index);
+            }
+        }
     }
     void DownloadsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
@@ -42,6 +69,10 @@ namespace winrt::HaloDesktop::implementation
         FindName(L"TransferList").as<Microsoft::UI::Xaml::Controls::ListView>().SelectedItem(nullptr);
         m_viewModel.Select(args.ClickedItem().as<winrt::HaloDesktop::DownloadRowViewModel>().Id());
     }
+    void DownloadsPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
+    void DownloadsPage::OnActiveFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
+    void DownloadsPage::OnReadyFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
+    void DownloadsPage::OnFailedFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(3); }
     void DownloadsPage::OnPauseAllClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (m_viewModel.IsPausedAll())
@@ -53,11 +84,19 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsPage::OnPauseSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.PauseSelected(); }
     void DownloadsPage::OnResumeSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ResumeSelected(); }
-    void DownloadsPage::OnCancelSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowCancelDialog(); }
+    void DownloadsPage::OnCancelSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowCancelDialog(L""); }
     void DownloadsPage::OnDeleteSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowDeleteDialog(); }
     void DownloadsPage::OnPlaySelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenPlayer(); }
     void DownloadsPage::OnChooseSourceClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ChooseSource(); }
+    void DownloadsPage::OnPauseRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Pause(TagOf(sender)); }
+    void DownloadsPage::OnResumeRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Resume(TagOf(sender)); }
+    void DownloadsPage::OnRetryRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(TagOf(sender)); }
+    void DownloadsPage::OnChooseSourceRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ChooseSourceFor(TagOf(sender)); }
+    void DownloadsPage::OnCancelRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowCancelDialog(TagOf(sender)); }
     void DownloadsPage::OnManageFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { PickDownloadFolder(); }
+    void DownloadsPage::OnOpenFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDownloadFolder(); }
+    void DownloadsPage::OnRetryFailedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RetryFailed(); }
+    void DownloadsPage::OnBrowseLibraryClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.BrowseLibrary(); }
 
     winrt::fire_and_forget DownloadsPage::ShowPauseAllDialog()
     {
@@ -80,7 +119,7 @@ namespace winrt::HaloDesktop::implementation
         {
         }
     }
-    winrt::fire_and_forget DownloadsPage::ShowCancelDialog()
+    winrt::fire_and_forget DownloadsPage::ShowCancelDialog(winrt::hstring id)
     {
         auto lifetime = get_strong();
         try
@@ -93,7 +132,8 @@ namespace winrt::HaloDesktop::implementation
             dialog.CloseButtonText(L"Keep transfer");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
             {
-                m_viewModel.CancelSelected();
+                if (id.empty()) m_viewModel.CancelSelected();
+                else m_viewModel.Cancel(id);
             }
         }
         catch (...)

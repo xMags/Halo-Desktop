@@ -307,11 +307,13 @@ namespace HaloDesktop::Sources
 
     SourceEntry MakeEntry(
         winrt::HaloDesktop::StreamSource const& source,
+        winrt::hstring const& providerId,
         winrt::hstring const& provider,
         double durationSeconds)
     {
         SourceEntry entry;
         entry.Source = source;
+        entry.ProviderId = providerId;
         entry.Provider = provider;
         entry.Tier = TierOf(source.Quality());
         entry.Speed = SpeedOf(source.Status());
@@ -526,6 +528,92 @@ namespace HaloDesktop::Sources
         }
         rows.emplace_back(L"Comes from", winrt::hstring{ origin });
         return rows;
+    }
+
+    SourceDetailsData DetailsFor(
+        SourceEntry const& entry,
+        DeviceContext const& device,
+        double maximumNeededMbps)
+    {
+        SourceDetailsData result;
+        if (!entry.Source) return result;
+        auto const& source = entry.Source;
+        if (auto const* dimensions = Dimensions(entry.Tier, source.Quality()))
+        {
+            result.Resolution = dimensions;
+        }
+        else
+        {
+            result.Resolution = L"Resolution not listed";
+        }
+        result.Picture = source.Range().empty() || source.Range() == L"SDR"
+            ? winrt::hstring{ L"SDR" }
+            : RangeDetail(source.Range());
+        result.Codec = CodecName(source.Codec());
+        if (result.Codec.empty()) result.Codec = L"Codec not listed";
+        result.Sound = SoundDetail(source.Audio());
+        auto const audio = Upper(source.Audio());
+        auto const separator = audio.find(L' ');
+        result.Channels = separator == std::wstring::npos ? L"Channels not listed" : winrt::hstring{ audio.substr(separator + 1) };
+
+        for (auto const& token : SplitTokens(source.Languages()))
+        {
+            if (token != NotParsed) result.AudioLanguages.push_back({ LanguageName(token), false });
+        }
+        // An empty tile reads as a rendering fault. Both lists say so instead,
+        // muted, so an absence is distinguishable from something not loading.
+        if (result.AudioLanguages.empty()) result.AudioLanguages.push_back({ L"NOT LISTED", true });
+        for (auto const& token : source.SubtitleLanguages())
+        {
+            result.Subtitles.push_back({ LanguageName(token), false });
+        }
+        if (result.Subtitles.empty()) result.Subtitles.push_back({ L"NONE INCLUDED", true });
+        result.Provider = entry.Provider.empty() ? L"An addon" : entry.Provider;
+        auto const status = source.Status();
+        switch (status)
+        {
+        case winrt::HaloDesktop::StreamStatus::OnDisk:
+            result.CacheLabel = L"Saved on this device";
+            result.CacheGood = true;
+            break;
+        case winrt::HaloDesktop::StreamStatus::Instant:
+            result.CacheLabel = L"Already cached for you";
+            result.CacheGood = true;
+            break;
+        case winrt::HaloDesktop::StreamStatus::Caching:
+            result.CacheLabel = L"Caching now";
+            break;
+        case winrt::HaloDesktop::StreamStatus::Uncached:
+            result.CacheLabel = L"Not cached yet";
+            break;
+        case winrt::HaloDesktop::StreamStatus::Unknown:
+            result.CacheLabel = L"Cache state not reported";
+            break;
+        }
+        auto const maximum = maximumNeededMbps > 0.0 ? maximumNeededMbps : entry.NeededMbps;
+        result.LineLabel = maximum > 0.0
+            ? L"HEAVIEST HERE " + Whole(maximum) + L" MBPS"
+            : L"BANDWIDTH NOT MEASURED";
+        if (entry.NeededMbps > 0.0)
+        {
+            result.MbpsLabel = Whole(entry.NeededMbps) + L" Mbps";
+            if (device.LineMbps > 0.0)
+            {
+                result.Headroom = Whole(entry.NeededMbps / device.LineMbps * 100.0)
+                    + L"% of your " + Whole(device.LineMbps) + L" Mbps line";
+            }
+            else
+            {
+                result.Headroom = L"Line speed has not been measured yet";
+            }
+            result.MeterFraction = maximum > 0.0 ? entry.NeededMbps / maximum : 0.0;
+        }
+        else
+        {
+            result.MbpsLabel = L"Not available";
+            result.Headroom = L"File size or runtime is not listed";
+        }
+        return result;
     }
 
     winrt::hstring OutcomeGroupName(StartSpeed speed)

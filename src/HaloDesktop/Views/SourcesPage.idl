@@ -13,6 +13,37 @@ namespace HaloDesktop
     }
 
     [default_interface]
+    runtimeclass SourceDetailChipViewModel
+    {
+        String Label { get; };
+        Microsoft.UI.Xaml.Visibility NormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MutedVisibility { get; };
+    }
+
+    runtimeclass SourceDetailsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Key { get; };
+        String Resolution { get; };
+        String Picture { get; };
+        String Codec { get; };
+        String Sound { get; };
+        String Channels { get; };
+        Object AudioLanguageChips { get; };
+        Object SubtitleChips { get; };
+        String Provider { get; };
+        String CacheLabel { get; };
+        Microsoft.UI.Xaml.Visibility CacheGoodVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CacheNeutralVisibility { get; };
+        String LineLabel { get; };
+        String MbpsLabel { get; };
+        String Headroom { get; };
+        Double MeterFraction { get; };
+        String FileName { get; };
+        String CopyLabel { get; };
+        void SetCopyLabel(String value);
+    }
+
+    [default_interface]
     runtimeclass SourceProviderItemViewModel
     {
         String Name { get; };
@@ -67,6 +98,7 @@ namespace HaloDesktop
         String FileName { get; };
         String Reason { get; };
         Object Specs { get; };
+        SourceDetailsViewModel Details { get; };
 
         Microsoft.UI.Xaml.Visibility ExpandedVisibility { get; };
         Microsoft.UI.Xaml.Visibility ExpandGlyphVisibility { get; };
@@ -92,6 +124,7 @@ namespace HaloDesktop
         String PlaysNowFilterCount { get; };
         String UltraHdFilterCount { get; };
         String FullHdFilterCount { get; };
+        String HdFilterCount { get; };
         String SortLabel { get; };
         Int32 FilterIndex { get; };
         Int32 SortIndex { get; };
@@ -127,6 +160,10 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PickWatchNoteVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickSelectionVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickSaveVisibility { get; };
+        SourceDetailsViewModel PickDetails { get; };
+        Microsoft.UI.Xaml.Visibility PickExpandedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickExpandGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickCollapseGlyphVisibility { get; };
 
         Microsoft.UI.Xaml.Visibility InfoVisibility { get; };
         Microsoft.UI.Xaml.Visibility InfoExpandGlyphVisibility { get; };
@@ -140,6 +177,7 @@ namespace HaloDesktop
         void SetSort(Int32 index);
         void ToggleInfo();
         void ToggleExpanded(String key);
+        void TogglePickExpanded();
         void SelectKey(String key);
         void SelectPick();
         void MoveSelection(Int32 delta);
@@ -151,6 +189,7 @@ namespace HaloDesktop
         void OpenSettings();
         void Close();
         String FileNameFor(String key);
+        void MarkCopied(String key);
     }
 
     [default_interface]

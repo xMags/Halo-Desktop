@@ -7,6 +7,9 @@
 #include "Services/StreamInfo.h"
 
 #include <algorithm>
+#include <chrono>
+#include <ctime>
+#include <shellapi.h>
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -42,6 +45,22 @@ namespace
             return L"WAITING";
         }
         return FormatBytes(bytesPerSecond) + L"/s";
+    }
+
+    winrt::hstring AddedLabel(std::uint64_t milliseconds)
+    {
+        if (milliseconds == 0) return L"ADDED UNKNOWN";
+        auto const time = static_cast<std::time_t>(milliseconds / 1000);
+        std::tm local{};
+        if (localtime_s(&local, &time) != 0) return L"ADDED UNKNOWN";
+        std::wostringstream output;
+        output << L"ADDED " << std::put_time(&local, L"%d %b");
+        auto result = output.str();
+        std::transform(result.begin(), result.end(), result.begin(), [](wchar_t character)
+        {
+            return static_cast<wchar_t>(std::towupper(character));
+        });
+        return winrt::hstring{ result };
     }
 
     winrt::hstring Tag(DownloadRecord const& record)
@@ -126,7 +145,12 @@ namespace
             subtitle,
             winrt::hstring{ record.Media.VideoId },
             winrt::hstring{ record.Media.Poster.value_or(L"") },
-            requiresNewSource);
+            requiresNewSource,
+            record.DownloadedBytes,
+            total,
+            winrt::hstring{ record.FileName },
+            AddedLabel(record.CreatedAt),
+            info.DynamicRange && *info.DynamicRange != L"SDR");
     }
 
 }
@@ -371,6 +395,48 @@ namespace HaloDesktop::Services
             return false;
         }
         RunEngineAction([engine = m_engine, jobId = std::wstring{ id.c_str() }]() { engine->Remove(jobId); });
+        return true;
+    }
+
+    void DownloadService::RetryFailedTransfers()
+    {
+        std::vector<std::wstring> ids;
+        for (auto const& record : m_records)
+        {
+            if (record.Status == DownloadStatus::Failed
+                && (!record.Failure || !Downloads::RequiresNewSource(*record.Failure)))
+            {
+                ids.push_back(record.JobId);
+            }
+        }
+        if (ids.empty()) return;
+        RunEngineAction([engine = m_engine, ids = std::move(ids)]()
+        {
+            std::exception_ptr failure;
+            for (auto const& id : ids)
+            {
+                try { engine->Resume(id); }
+                catch (...) { if (!failure) failure = std::current_exception(); }
+            }
+            if (failure) std::rethrow_exception(failure);
+        });
+    }
+
+    bool DownloadService::OpenDownloadDirectory()
+    {
+        if (m_directory.empty())
+        {
+            m_actionError = L"The download folder is not available yet.";
+            NotifyChanged();
+            return false;
+        }
+        auto const result = ::ShellExecuteW(nullptr, L"open", m_directory.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        if (reinterpret_cast<std::intptr_t>(result) <= 32)
+        {
+            m_actionError = L"The download folder could not be opened.";
+            NotifyChanged();
+            return false;
+        }
         return true;
     }
 

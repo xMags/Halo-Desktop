@@ -36,6 +36,22 @@
     <Setter Property="FontWeight" Value="SemiBold" />
   </Style>
 
+  <Style x:Key="HaloDangerButtonStyle" TargetType="Button">
+    <Setter Property="Background" Value="{ThemeResource HaloDangerFillBrush}" />
+    <Setter Property="Foreground" Value="White" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="{StaticResource HaloControlCornerRadius}" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+  </Style>
+
+  <Style x:Key="HaloDetailTileStyle" TargetType="Border">
+    <Setter Property="Padding" Value="15,13" />
+    <Setter Property="Background" Value="{ThemeResource HaloTileBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloCtrlStrokeBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="8" />
+  </Style>
+
   <Style x:Key="HaloChipButtonStyle" TargetType="Button">
     <Setter Property="Padding" Value="10,4" />
     <Setter Property="Background" Value="{ThemeResource HaloCtrlBrush}" />
@@ -415,14 +431,16 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
-          <Grid x:Name="Root" Background="Transparent" CornerRadius="15">
-            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="15" Opacity="0" />
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="4">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" Opacity="0" />
+            <!-- Selection is the accent wash rather than a neutral fill: these rows
+                 carry five pills and live counts, and grey on grey is hard to find. -->
             <Border
               x:Name="SelectionLayer"
-              Background="{ThemeResource HaloCtrlHoverBrush}"
-              BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
+              Background="{ThemeResource HaloAccentTintBrush}"
+              BorderBrush="{ThemeResource HaloInfoStrokeBrush}"
               BorderThickness="1"
-              CornerRadius="15"
+              CornerRadius="4"
               Opacity="0" />
             <ContentPresenter
               x:Name="Label"
@@ -459,8 +477,7 @@
                 <VisualState x:Name="Checked">
                   <VisualState.Setters>
                     <Setter Target="SelectionLayer.Opacity" Value="1" />
-                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloText1Brush}" />
-                    <Setter Target="Label.FontWeight" Value="SemiBold" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloAccentBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Unchecked" />

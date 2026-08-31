@@ -125,6 +125,8 @@ namespace HaloDesktop::Services
         virtual bool ResumeTransfer(winrt::hstring const& id) = 0;
         virtual bool CancelTransfer(winrt::hstring const& id) = 0;
         virtual bool DeleteReady(winrt::hstring const& id) = 0;
+        virtual void RetryFailedTransfers() = 0;
+        virtual bool OpenDownloadDirectory() = 0;
         [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
             Downloads::DownloadStartRequest request) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(

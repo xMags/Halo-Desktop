@@ -5,7 +5,9 @@
 #include "DownloadsViewModel.g.h"
 #include "Services/AppServices.h"
 #include "Services/ServiceInterfaces.h"
+#include "ViewModels/SourcePresentation.h"
 
+#include <cstdint>
 #include <memory>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 
@@ -26,11 +28,33 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring QualityLine() const;
         [[nodiscard]] winrt::hstring Size() const;
         [[nodiscard]] winrt::hstring Subs() const;
+        [[nodiscard]] winrt::hstring SubsChip() const;
         [[nodiscard]] winrt::hstring Poster() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DownloadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QueuedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FailedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility OnDiskVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RetryVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ChooseSourceVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PauseVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ResumeVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility LeadNormalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility LeadCautionVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility LeadCriticalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ProgressAccentVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ProgressCautionVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ProgressCriticalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsNormalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsMutedVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring PauseGlyph() const;
+        [[nodiscard]] winrt::hstring PauseLabel() const;
+        [[nodiscard]] winrt::hstring DownloadedLine() const;
+        [[nodiscard]] winrt::hstring FileName() const;
+        [[nodiscard]] winrt::hstring AddedLabel() const;
+        [[nodiscard]] winrt::hstring QualityBadgeTier() const;
+        [[nodiscard]] winrt::hstring QualityBadgeDetail() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityBadgeTone QualityTone() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
@@ -61,15 +85,16 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Transfers() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Ready() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ChartBars() const;
-        [[nodiscard]] winrt::hstring InfoTitle() const;
-        [[nodiscard]] winrt::hstring InfoMessage() const;
         [[nodiscard]] winrt::hstring ActionErrorText() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionErrorVisibility() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> TransfersView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ReadyView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ChartBarsView() const;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable SelectedRow() const;
+        [[nodiscard]] winrt::HaloDesktop::DownloadRowViewModel SelectedRow() const;
         [[nodiscard]] winrt::hstring RateText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RateNormalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RateIdleVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RatePausedVisibility() const noexcept;
         [[nodiscard]] winrt::hstring QueueLine() const;
         [[nodiscard]] winrt::hstring TransferCountLabel() const;
         [[nodiscard]] winrt::hstring ReadyCountLabel() const;
@@ -82,11 +107,17 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring SelectedSub() const;
         [[nodiscard]] double SelectedProgress() const noexcept;
         [[nodiscard]] winrt::hstring SelectedDetail() const;
+        [[nodiscard]] winrt::hstring SelectedPercentText() const;
         [[nodiscard]] winrt::hstring SelectedQualityLine() const;
         [[nodiscard]] winrt::hstring SelectedSize() const;
+        [[nodiscard]] winrt::hstring SelectedSizeFactLabel() const;
         [[nodiscard]] winrt::hstring SelectedSubs() const;
+        [[nodiscard]] winrt::hstring SelectedAdded() const;
+        [[nodiscard]] winrt::hstring SelectedFileName() const;
         [[nodiscard]] winrt::hstring SelectedPoster() const;
         [[nodiscard]] winrt::hstring ReadyActionLabel() const;
+        [[nodiscard]] winrt::hstring PaneNote() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PaneNoteVisibility() const noexcept;
         [[nodiscard]] winrt::hstring StorageLine() const;
         [[nodiscard]] winrt::hstring FreeLine() const;
         [[nodiscard]] winrt::hstring StoredLine() const;
@@ -94,6 +125,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PeakText() const;
         [[nodiscard]] double StorageFraction() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FolderVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedTransferVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedReadyVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PauseVisibility() const noexcept;
@@ -102,7 +134,26 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TransferSectionVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ReadySectionVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility NoMatchesVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring NoMatchesLine() const;
+        [[nodiscard]] winrt::hstring FilterAllCount() const;
+        [[nodiscard]] winrt::hstring FilterActiveCount() const;
+        [[nodiscard]] winrt::hstring FilterReadyCount() const;
+        [[nodiscard]] winrt::hstring FilterFailedCount() const;
+        [[nodiscard]] std::int32_t FilterIndex() const noexcept;
+        [[nodiscard]] double StoredFraction() const noexcept;
+        [[nodiscard]] double InFlightFraction() const noexcept;
+        [[nodiscard]] winrt::hstring DownloadDirectory() const;
+        [[nodiscard]] winrt::hstring FolderLine() const;
         void Select(winrt::hstring const& id);
+        void SetFilter(std::int32_t index);
+        void Pause(winrt::hstring const& id);
+        void Resume(winrt::hstring const& id);
+        void Retry(winrt::hstring const& id);
+        void Cancel(winrt::hstring const& id);
+        void ChooseSourceFor(winrt::hstring const& id);
+        void OpenDownloadFolder();
+        void RetryFailed();
         void PauseAll();
         void ResumeAll();
         void PauseSelected();
@@ -111,6 +162,7 @@ namespace winrt::HaloDesktop::implementation
         void DeleteSelected();
         void OpenPlayer();
         void ChooseSource();
+        void BrowseLibrary();
         [[nodiscard]] winrt::Windows::Foundation::IAsyncAction SetDownloadDirectoryAsync(
             std::filesystem::path directory);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
@@ -121,6 +173,7 @@ namespace winrt::HaloDesktop::implementation
         void SynchronizeRows(
             winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> const& source,
             winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& target);
+        void RebuildFilteredViews();
         void RebuildChart();
         void ResolveSelection();
         void RaiseState();
@@ -131,7 +184,10 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_transfers{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_ready{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredTransfers{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredReady{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_chartBars{ nullptr };
+        std::int32_t m_filterIndex{};
         winrt::HaloDesktop::DownloadRowViewModel m_selected{ nullptr };
         winrt::hstring m_selectedId;
         ::HaloDesktop::Services::DownloadChangedToken m_changedToken{};

@@ -374,22 +374,45 @@ namespace
             "QueuedVisibility",
             "PausedVisibility",
             "FailedVisibility",
+            "PauseVisibility",
+            "ResumeVisibility",
+            "RetryVisibility",
+            "ChooseSourceVisibility",
             "Progress",
             "Detail",
+            "DownloadedLine",
+            "QualityBadgeTier",
+            "QualityBadgeDetail",
+            "QualityTone",
+            "SubsChip",
+            "SubsNormalVisibility",
+            "SubsMutedVisibility",
+            "AddedLabel",
+            "LeadNormalVisibility",
+            "LeadCautionVisibility",
+            "LeadCriticalVisibility",
+            "ProgressAccentVisibility",
+            "ProgressCautionVisibility",
+            "ProgressCriticalVisibility",
         };
         for (auto const property : mutableProperties)
         {
             auto const binding = std::string{ "{x:Bind " } + std::string{ property };
             auto position = xaml.find(binding);
-            Require(position != std::string::npos, "a mutable download row property was not bound");
+            auto foundExact = false;
             while (position != std::string::npos)
             {
                 auto const mode = position + binding.size();
-                Require(
-                    xaml.compare(mode, std::string_view{ ", Mode=OneWay}" }.size(), ", Mode=OneWay}") == 0,
-                    "a mutable download row property used a one-time binding");
+                if (mode < xaml.size() && (xaml[mode] == ',' || xaml[mode] == '}'))
+                {
+                    foundExact = true;
+                    Require(
+                        xaml.compare(mode, std::string_view{ ", Mode=OneWay}" }.size(), ", Mode=OneWay}") == 0,
+                        "a mutable download row property used a one-time binding");
+                }
                 position = xaml.find(binding, mode);
             }
+            Require(foundExact, "a mutable download row property was not bound");
         }
     }
 

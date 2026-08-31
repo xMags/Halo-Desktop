@@ -1,5 +1,7 @@
 #pragma once
 
+#include "SourceDetailChipViewModel.g.h"
+#include "SourceDetailsViewModel.g.h"
 #include "SourceDisplayItemViewModel.g.h"
 #include "SourceProviderItemViewModel.g.h"
 #include "SourceQualityItemViewModel.g.h"
@@ -28,6 +30,80 @@ namespace winrt::HaloDesktop::implementation
     private:
         winrt::hstring m_key;
         winrt::hstring m_value;
+    };
+
+    struct SourceDetailChipViewModel : SourceDetailChipViewModelT<SourceDetailChipViewModel>
+    {
+        SourceDetailChipViewModel(winrt::hstring label, bool muted = false);
+        [[nodiscard]] winrt::hstring Label() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility NormalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MutedVisibility() const noexcept;
+
+    private:
+        winrt::hstring m_label;
+        bool m_muted{};
+    };
+
+    struct SourceDetailsViewModel : SourceDetailsViewModelT<SourceDetailsViewModel>
+    {
+        SourceDetailsViewModel(
+            winrt::hstring key,
+            winrt::hstring resolution,
+            winrt::hstring picture,
+            winrt::hstring codec,
+            winrt::hstring sound,
+            winrt::hstring channels,
+            std::vector<::HaloDesktop::Sources::DetailChipData> audioLanguages,
+            std::vector<::HaloDesktop::Sources::DetailChipData> subtitles,
+            winrt::hstring provider,
+            winrt::hstring cacheLabel,
+            bool cacheGood,
+            winrt::hstring lineLabel,
+            winrt::hstring mbpsLabel,
+            winrt::hstring headroom,
+            double meterFraction,
+            winrt::hstring fileName);
+        [[nodiscard]] winrt::hstring Key() const;
+        [[nodiscard]] winrt::hstring Resolution() const;
+        [[nodiscard]] winrt::hstring Picture() const;
+        [[nodiscard]] winrt::hstring Codec() const;
+        [[nodiscard]] winrt::hstring Sound() const;
+        [[nodiscard]] winrt::hstring Channels() const;
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioLanguageChips() const;
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleChips() const;
+        [[nodiscard]] winrt::hstring Provider() const;
+        [[nodiscard]] winrt::hstring CacheLabel() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheGoodVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheNeutralVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring LineLabel() const;
+        [[nodiscard]] winrt::hstring MbpsLabel() const;
+        [[nodiscard]] winrt::hstring Headroom() const;
+        [[nodiscard]] double MeterFraction() const noexcept;
+        [[nodiscard]] winrt::hstring FileName() const;
+        [[nodiscard]] winrt::hstring CopyLabel() const;
+        void SetCopyLabel(winrt::hstring value);
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+    private:
+        winrt::hstring m_key;
+        winrt::hstring m_resolution;
+        winrt::hstring m_picture;
+        winrt::hstring m_codec;
+        winrt::hstring m_sound;
+        winrt::hstring m_channels;
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_audioLanguages{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_subtitles{ nullptr };
+        winrt::hstring m_provider;
+        winrt::hstring m_cacheLabel;
+        bool m_cacheGood{};
+        winrt::hstring m_lineLabel;
+        winrt::hstring m_mbpsLabel;
+        winrt::hstring m_headroom;
+        double m_meterFraction{};
+        winrt::hstring m_fileName;
+        winrt::hstring m_copyLabel{ L"Copy file name" };
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
     // One addon, in the resolving list and again in the footer's provider column.
@@ -97,7 +173,8 @@ namespace winrt::HaloDesktop::implementation
             winrt::hstring languageLine,
             winrt::hstring warning,
             winrt::hstring reason,
-            std::vector<::HaloDesktop::Sources::SpecRow> specs);
+            std::vector<::HaloDesktop::Sources::SpecRow> specs,
+            winrt::HaloDesktop::SourceDetailsViewModel details);
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility HeaderVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RowVisibility() const noexcept;
@@ -127,6 +204,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring FileName() const;
         [[nodiscard]] winrt::hstring Reason() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Specs() const;
+        [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel Details() const;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExpandedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExpandGlyphVisibility() const noexcept;
@@ -156,6 +234,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_warning;
         winrt::hstring m_reason;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_specs{ nullptr };
+        winrt::HaloDesktop::SourceDetailsViewModel m_details{ nullptr };
         bool m_expanded{};
         bool m_selected{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
@@ -184,6 +263,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring PlaysNowFilterCount() const;
         [[nodiscard]] winrt::hstring UltraHdFilterCount() const;
         [[nodiscard]] winrt::hstring FullHdFilterCount() const;
+        [[nodiscard]] winrt::hstring HdFilterCount() const;
         [[nodiscard]] winrt::hstring SortLabel() const;
         [[nodiscard]] std::int32_t FilterIndex() const noexcept;
         [[nodiscard]] std::int32_t SortIndex() const noexcept;
@@ -219,6 +299,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickWatchNoteVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSelectionVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSaveVisibility() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel PickDetails() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickExpandedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickExpandGlyphVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickCollapseGlyphVisibility() const noexcept;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoExpandGlyphVisibility() const noexcept;
@@ -234,6 +318,7 @@ namespace winrt::HaloDesktop::implementation
         void SetSort(std::int32_t index);
         void ToggleInfo();
         void ToggleExpanded(winrt::hstring const& key);
+        void TogglePickExpanded();
         void SelectKey(winrt::hstring const& key);
         void SelectPick();
         void MoveSelection(std::int32_t delta);
@@ -245,6 +330,7 @@ namespace winrt::HaloDesktop::implementation
         void OpenSettings();
         void Close();
         [[nodiscard]] winrt::hstring FileNameFor(winrt::hstring const& key) const;
+        void MarkCopied(winrt::hstring const& key);
 
         [[nodiscard]] concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> StartDownloadAsync(
             winrt::hstring key,
@@ -269,7 +355,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool Matches(::HaloDesktop::Sources::SourceEntry const& entry, std::int32_t filterIndex) const noexcept;
         [[nodiscard]] winrt::HaloDesktop::SourceDisplayItemViewModel RowFor(
             ::HaloDesktop::Sources::SourceEntry const& entry,
-            ::HaloDesktop::Sources::SourceEntry const* pick) const;
+            ::HaloDesktop::Sources::SourceEntry const* pick,
+            double maximumNeededMbps) const;
+        [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel DetailsFor(
+            ::HaloDesktop::Sources::SourceEntry const& entry,
+            double maximumNeededMbps) const;
+        [[nodiscard]] double MaximumNeededMbps() const noexcept;
+        void ResetCopyState();
         [[nodiscard]] std::int32_t IndexOfKey(winrt::hstring const& key) const;
         [[nodiscard]] bool HasPick() const noexcept;
 
@@ -294,6 +386,8 @@ namespace winrt::HaloDesktop::implementation
         std::vector<::HaloDesktop::Sources::SourceEntry> m_pool;
         ::HaloDesktop::Sources::DeviceContext m_device;
         std::uint64_t m_smallestBytes{};
+        double m_maximumNeededMbps{};
+        winrt::HaloDesktop::SourceDetailsViewModel m_pickDetails{ nullptr };
         // How many entries at the head of m_pool are files on this device. They are
         // pushed first and rank first, so the count doubles as their extent.
         std::size_t m_localCount{};
@@ -305,6 +399,8 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_sortIndex{};
         std::int32_t m_selectedIndex{ -1 };
         winrt::hstring m_expandedKey;
+        winrt::hstring m_copiedKey;
+        bool m_pickExpanded{};
         bool m_coldRevealed{};
         bool m_infoOpen{};
         std::uint32_t m_loadVersion{};

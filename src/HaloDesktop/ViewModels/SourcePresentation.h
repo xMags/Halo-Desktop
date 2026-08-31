@@ -54,6 +54,9 @@ namespace HaloDesktop::Sources
     struct SourceEntry final
     {
         winrt::HaloDesktop::StreamSource Source{ nullptr };
+        // Native grouping identity. It is deliberately not projected to XAML,
+        // because the sheet only needs the sanitized provider name.
+        winrt::hstring ProviderId;
         winrt::hstring Provider;
         QualityTier Tier{ QualityTier::Lower };
         StartSpeed Speed{ StartSpeed::NeedsDownload };
@@ -68,8 +71,33 @@ namespace HaloDesktop::Sources
 
     using SpecRow = std::pair<winrt::hstring, winrt::hstring>;
 
+    struct DetailChipData final
+    {
+        winrt::hstring Label;
+        bool Muted{};
+    };
+
+    struct SourceDetailsData final
+    {
+        winrt::hstring Resolution;
+        winrt::hstring Picture;
+        winrt::hstring Codec;
+        winrt::hstring Sound;
+        winrt::hstring Channels;
+        std::vector<DetailChipData> AudioLanguages;
+        std::vector<DetailChipData> Subtitles;
+        winrt::hstring Provider;
+        winrt::hstring CacheLabel;
+        bool CacheGood{};
+        winrt::hstring LineLabel;
+        winrt::hstring MbpsLabel;
+        winrt::hstring Headroom;
+        double MeterFraction{};
+    };
+
     [[nodiscard]] SourceEntry MakeEntry(
         winrt::HaloDesktop::StreamSource const& source,
+        winrt::hstring const& providerId,
         winrt::hstring const& provider,
         double durationSeconds);
 
@@ -108,6 +136,10 @@ namespace HaloDesktop::Sources
     [[nodiscard]] std::vector<SpecRow> SpecsFor(
         SourceEntry const& entry,
         DeviceContext const& device);
+    [[nodiscard]] SourceDetailsData DetailsFor(
+        SourceEntry const& entry,
+        DeviceContext const& device,
+        double maximumNeededMbps);
     [[nodiscard]] winrt::hstring OutcomeGroupName(StartSpeed speed);
     [[nodiscard]] winrt::hstring OutcomeGroupNote(StartSpeed speed);
     [[nodiscard]] winrt::hstring CountLabel(std::size_t count, wchar_t const* singular, wchar_t const* plural);

@@ -225,7 +225,12 @@ namespace winrt::HaloDesktop::implementation
             hstring subs,
             hstring videoId = {},
             hstring poster = {},
-            bool requiresNewSource = false);
+            bool requiresNewSource = false,
+            std::uint64_t downloadedBytes = 0,
+            std::uint64_t totalBytes = 0,
+            hstring fileName = {},
+            hstring addedLabel = {},
+            bool hdr = false);
 
         [[nodiscard]] hstring Id() const;
         [[nodiscard]] hstring Tag() const;
@@ -241,6 +246,11 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring VideoId() const;
         [[nodiscard]] hstring Poster() const;
         [[nodiscard]] bool RequiresNewSource() const noexcept;
+        [[nodiscard]] std::uint64_t DownloadedBytes() const noexcept;
+        [[nodiscard]] std::uint64_t TotalBytes() const noexcept;
+        [[nodiscard]] hstring FileName() const;
+        [[nodiscard]] hstring AddedLabel() const;
+        [[nodiscard]] bool Hdr() const noexcept;
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
@@ -265,6 +275,11 @@ namespace winrt::HaloDesktop::implementation
         hstring m_videoId;
         hstring m_poster;
         bool m_requiresNewSource{};
+        std::uint64_t m_downloadedBytes{};
+        std::uint64_t m_totalBytes{};
+        hstring m_fileName;
+        hstring m_addedLabel;
+        bool m_hdr{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 

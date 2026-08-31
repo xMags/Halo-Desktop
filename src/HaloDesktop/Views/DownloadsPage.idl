@@ -1,3 +1,5 @@
+import "Controls/QualityBadge.idl";
+
 namespace HaloDesktop
 {
     runtimeclass DownloadRowViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
@@ -12,11 +14,33 @@ namespace HaloDesktop
         String QualityLine { get; };
         String Size { get; };
         String Subs { get; };
+        String SubsChip { get; };
         String Poster { get; };
         Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
         Microsoft.UI.Xaml.Visibility FailedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RetryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ChooseSourceVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LeadNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LeadCautionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LeadCriticalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProgressAccentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProgressCautionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProgressCriticalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubsNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubsMutedVisibility { get; };
+        String PauseGlyph { get; };
+        String PauseLabel { get; };
+        String DownloadedLine { get; };
+        String FileName { get; };
+        String AddedLabel { get; };
+        String QualityBadgeTier { get; };
+        String QualityBadgeDetail { get; };
+        QualityBadgeTone QualityTone { get; };
     }
 
     [default_interface]
@@ -32,11 +56,12 @@ namespace HaloDesktop
         Object Transfers { get; };
         Object Ready { get; };
         Object ChartBars { get; };
-        String InfoTitle { get; };
-        String InfoMessage { get; };
         String ActionErrorText { get; };
         Microsoft.UI.Xaml.Visibility ActionErrorVisibility { get; };
         String RateText { get; };
+        Microsoft.UI.Xaml.Visibility RateNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RateIdleVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RatePausedVisibility { get; };
         String QueueLine { get; };
         String TransferCountLabel { get; };
         String ReadyCountLabel { get; };
@@ -44,16 +69,23 @@ namespace HaloDesktop
         String PauseAllGlyph { get; };
         Microsoft.UI.Xaml.Visibility PauseAllVisibility { get; };
         Boolean IsPausedAll { get; };
+        DownloadRowViewModel SelectedRow { get; };
         String SelectedTag { get; };
         String SelectedTitle { get; };
         String SelectedSub { get; };
         Double SelectedProgress { get; };
         String SelectedDetail { get; };
+        String SelectedPercentText { get; };
         String SelectedQualityLine { get; };
         String SelectedSize { get; };
+        String SelectedSizeFactLabel { get; };
         String SelectedSubs { get; };
+        String SelectedAdded { get; };
+        String SelectedFileName { get; };
         String SelectedPoster { get; };
         String ReadyActionLabel { get; };
+        String PaneNote { get; };
+        Microsoft.UI.Xaml.Visibility PaneNoteVisibility { get; };
         String StorageLine { get; };
         String FreeLine { get; };
         String StoredLine { get; };
@@ -61,6 +93,7 @@ namespace HaloDesktop
         String PeakText { get; };
         Double StorageFraction { get; };
         Microsoft.UI.Xaml.Visibility DetailVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FolderVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
         Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
@@ -69,7 +102,26 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility TransferSectionVisibility { get; };
         Microsoft.UI.Xaml.Visibility ReadySectionVisibility { get; };
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NoMatchesVisibility { get; };
+        String NoMatchesLine { get; };
+        String FilterAllCount { get; };
+        String FilterActiveCount { get; };
+        String FilterReadyCount { get; };
+        String FilterFailedCount { get; };
+        Int32 FilterIndex { get; };
+        Double StoredFraction { get; };
+        Double InFlightFraction { get; };
+        String DownloadDirectory { get; };
+        String FolderLine { get; };
         void Select(String id);
+        void SetFilter(Int32 index);
+        void Pause(String id);
+        void Resume(String id);
+        void Retry(String id);
+        void Cancel(String id);
+        void ChooseSourceFor(String id);
+        void OpenDownloadFolder();
+        void RetryFailed();
         void PauseAll();
         void ResumeAll();
         void PauseSelected();
@@ -78,6 +130,7 @@ namespace HaloDesktop
         void DeleteSelected();
         void OpenPlayer();
         void ChooseSource();
+        void BrowseLibrary();
     }
 
     [default_interface]

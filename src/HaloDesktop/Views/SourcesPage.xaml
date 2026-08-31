@@ -110,6 +110,35 @@
         <TextBlock Grid.Column="1" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Value}" />
       </Grid>
     </DataTemplate>
+
+    <DataTemplate x:Key="SourceDetailChipTemplate" x:DataType="local:SourceDetailChipViewModel">
+      <Border Margin="0,0,5,5" Padding="8,3" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="4">
+        <Grid><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="110" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Label}" Visibility="{x:Bind NormalVisibility}" /><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" CharacterSpacing="110" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Label}" Visibility="{x:Bind MutedVisibility}" /></Grid>
+      </Border>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SourceDetailsTemplate" x:DataType="local:SourceDetailsViewModel">
+      <StackPanel Spacing="10">
+        <Grid ColumnSpacing="10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Border Style="{StaticResource HaloDetailTileStyle}">
+            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoTileCaption}" Text="PICTURE" /><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontEmphasis}" Text="{x:Bind Resolution}" /><TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Codec}" /></StackPanel><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Picture}" /></StackPanel>
+          </Border>
+          <Border Grid.Column="1" Style="{StaticResource HaloDetailTileStyle}">
+            <StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoTileCaption}" Text="SOUND" /><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Text="{x:Bind Sound}" /><TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind Channels}" /></StackPanel><ItemsControl ItemsSource="{x:Bind AudioLanguageChips}" ItemTemplate="{StaticResource SourceDetailChipTemplate}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></StackPanel>
+          </Border>
+        </Grid>
+        <Border Style="{StaticResource HaloDetailTileStyle}">
+          <StackPanel Spacing="8"><Grid><TextBlock Style="{StaticResource HaloMonoTileCaption}" Text="BANDWIDTH NEEDED" /><TextBlock HorizontalAlignment="Right" Style="{StaticResource HaloMonoTileCaption}" Text="{x:Bind LineLabel}" /></Grid><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontEmphasis}" Text="{x:Bind MbpsLabel}" /><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Headroom}" TextWrapping="Wrap" /></StackPanel><ProgressBar Height="4" Maximum="1" Value="{x:Bind MeterFraction}" /></StackPanel>
+        </Border>
+        <Grid ColumnSpacing="10">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+          <Border Style="{StaticResource HaloDetailTileStyle}"><StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoTileCaption}" Text="SUBTITLES" /><ItemsControl ItemsSource="{x:Bind SubtitleChips}" ItemTemplate="{StaticResource SourceDetailChipTemplate}"><ItemsControl.ItemsPanel><ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel></ItemsControl></StackPanel></Border>
+          <Border Grid.Column="1" Style="{StaticResource HaloDetailTileStyle}"><StackPanel Spacing="8"><TextBlock Style="{StaticResource HaloMonoTileCaption}" Text="COMES FROM" /><TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Text="{x:Bind Provider}" TextWrapping="Wrap" /><StackPanel Orientation="Horizontal" Spacing="6"><Ellipse Width="5" Height="5" VerticalAlignment="Center" Fill="{ThemeResource HaloSuccessBrush}" Visibility="{x:Bind CacheGoodVisibility}" /><Ellipse Width="5" Height="5" VerticalAlignment="Center" Fill="{ThemeResource HaloText4Brush}" Visibility="{x:Bind CacheNeutralVisibility}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind CacheLabel}" TextWrapping="Wrap" /></StackPanel></StackPanel></Border>
+        </Grid>
+        <Button HorizontalAlignment="Left" Padding="14,0" Height="34" Click="OnCopyFileNameClick" Tag="{x:Bind Key}" Content="{x:Bind CopyLabel, Mode=OneWay}" />
+      </StackPanel>
+    </DataTemplate>
   </Page.Resources>
 
   <Grid x:Name="SheetRoot">
@@ -195,6 +224,12 @@
                   <StackPanel Orientation="Horizontal" Spacing="7">
                     <TextBlock Text="Full HD" />
                     <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.FullHdFilterCount, Mode=OneWay}" />
+                  </StackPanel>
+                </RadioButton>
+                <RadioButton x:Name="HdFilter" GroupName="SourceSheetFilter" Click="OnHdFilterClick" Style="{StaticResource HaloFilterPillStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="7">
+                    <TextBlock Text="HD" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.HdFilterCount, Mode=OneWay}" />
                   </StackPanel>
                 </RadioButton>
               </StackPanel>
@@ -413,20 +448,17 @@
                       <TextBlock Margin="0,10,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PickFileName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
                   </Grid>
-                  <StackPanel Margin="0,18,0,0" Orientation="Horizontal" Spacing="8">
+                  <Grid Margin="0,18,0,0" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <Button Height="36" Padding="22,0" Click="OnPlayPickClick" Style="{StaticResource HaloAccentButtonStyle}">
-                      <StackPanel Orientation="Horizontal" Spacing="9">
-                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
-                        <TextBlock VerticalAlignment="Center" Text="Play" />
-                      </StackPanel>
+                      <StackPanel Orientation="Horizontal" Spacing="9"><FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" /><TextBlock VerticalAlignment="Center" Text="Play" /></StackPanel>
                     </Button>
-                    <Button Height="36" Padding="16,0" Click="OnDownloadPickClick" Visibility="{x:Bind ViewModel.PickSaveVisibility, Mode=OneWay}">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Glyph="&#xE896;" />
-                        <TextBlock VerticalAlignment="Center" Text="Save for offline" />
-                      </StackPanel>
+                    <Button Grid.Column="1" Height="36" Padding="16,0" Click="OnDownloadPickClick" Visibility="{x:Bind ViewModel.PickSaveVisibility, Mode=OneWay}">
+                      <StackPanel Orientation="Horizontal" Spacing="8"><FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Glyph="&#xE896;" /><TextBlock VerticalAlignment="Center" Text="Save for offline" /></StackPanel>
                     </Button>
-                  </StackPanel>
+                    <Button Grid.Column="3" Height="36" Padding="14,0" Click="OnPickDetailsClick"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Details" Visibility="{x:Bind ViewModel.PickExpandGlyphVisibility, Mode=OneWay}" /><TextBlock Text="Hide details" Visibility="{x:Bind ViewModel.PickCollapseGlyphVisibility, Mode=OneWay}" /><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE70D;" /></StackPanel></Button>
+                  </Grid>
+                  <Border Margin="-20,18,-20,-20" Padding="20" BorderBrush="{ThemeResource HaloAccentBrush}" BorderThickness="0,1,0,0" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="0,0,9,9" Visibility="{x:Bind ViewModel.PickExpandedVisibility, Mode=OneWay}"><ContentControl Content="{x:Bind ViewModel.PickDetails, Mode=OneWay}" ContentTemplate="{StaticResource SourceDetailsTemplate}" /></Border>
                 </StackPanel>
                 <Border
                   BorderBrush="{ThemeResource HaloAccentBrush}"
@@ -476,7 +508,7 @@
                         <StackPanel>
                           <Grid>
                             <Button
-                              Padding="18,15,136,15"
+                              Padding="18,15"
                               AutomationProperties.Name="Show source details"
                               Click="OnCardClick"
                               Style="{StaticResource HaloSheetRowButtonStyle}"
@@ -511,49 +543,24 @@
                                   </StackPanel>
                                   <TextBlock Margin="0,5,0,0" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind FileName}" TextTrimming="CharacterEllipsis" />
                                 </StackPanel>
-                                <TextBlock
-                                  Grid.Column="2"
-                                  MaxWidth="112"
-                                  VerticalAlignment="Center"
-                                  FontSize="{StaticResource HaloFontLabel}"
-                                  Foreground="{ThemeResource HaloText4Brush}"
-                                  Text="{x:Bind Reason}"
-                                  TextAlignment="Right"
-                                  TextTrimming="CharacterEllipsis" />
+                                <TextBlock Grid.Column="2" MaxWidth="112" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Reason}" TextAlignment="Right" TextTrimming="CharacterEllipsis" />
                               </Grid>
                             </Button>
-                            <StackPanel Margin="0,0,18,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="10">
-                              <Button Height="32" MinWidth="0" Padding="16,0" Click="OnPlaySourceClick" Tag="{x:Bind Key}">
-                                <StackPanel Orientation="Horizontal" Spacing="8">
-                                  <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Glyph="&#xE768;" />
-                                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Play" />
-                                </StackPanel>
-                              </Button>
-                              <Grid Width="22">
-                                <FontIcon FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70D;" Visibility="{x:Bind ExpandGlyphVisibility, Mode=OneWay}" />
-                                <FontIcon FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE70E;" Visibility="{x:Bind CollapseGlyphVisibility, Mode=OneWay}" />
-                              </Grid>
-                            </StackPanel>
                           </Grid>
 
+                          <Grid Margin="18,0,18,16" ColumnSpacing="8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                            <Button Height="36" Padding="22,0" Click="OnPlaySourceClick" Tag="{x:Bind Key}" Style="{StaticResource HaloAccentButtonStyle}"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" /><TextBlock Text="Play" /></StackPanel></Button>
+                            <Button Grid.Column="1" Height="36" Padding="16,0" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" Visibility="{x:Bind SaveVisibility}"><StackPanel Orientation="Horizontal" Spacing="8"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE896;" /><TextBlock Text="Save for offline" /></StackPanel></Button>
+                            <Button Grid.Column="3" Height="36" Padding="14,0" Click="OnCardClick" Tag="{x:Bind Key}"><StackPanel Orientation="Horizontal" Spacing="8"><TextBlock Text="Details" Visibility="{x:Bind ExpandGlyphVisibility, Mode=OneWay}" /><TextBlock Text="Hide details" Visibility="{x:Bind CollapseGlyphVisibility, Mode=OneWay}" /><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE70D;" /></StackPanel></Button>
+                          </Grid>
                           <Border
-                            Padding="114,16,18,18"
+                            Padding="20"
                             Background="{ThemeResource HaloSubtleBrush}"
                             BorderBrush="{ThemeResource HaloDividerBrush}"
                             BorderThickness="0,1,0,0"
                             Visibility="{x:Bind ExpandedVisibility, Mode=OneWay}">
-                            <StackPanel>
-                              <ItemsControl ItemsSource="{x:Bind Specs}" ItemTemplate="{StaticResource SourceSpecTemplate}" />
-                              <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
-                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnDownloadSourceClick" Tag="{x:Bind Key}" Visibility="{x:Bind SaveVisibility}">
-                                  <StackPanel Orientation="Horizontal" Spacing="8">
-                                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE896;" />
-                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Save for offline" />
-                                  </StackPanel>
-                                </Button>
-                                <Button Height="30" MinWidth="0" Padding="14,0" Click="OnCopyFileNameClick" FontSize="{StaticResource HaloFontLabel}" Content="Copy file name" Tag="{x:Bind Key}" />
-                              </StackPanel>
-                            </StackPanel>
+                            <ContentControl Content="{x:Bind Details}" ContentTemplate="{StaticResource SourceDetailsTemplate}" />
                           </Border>
                         </StackPanel>
                       </Border>

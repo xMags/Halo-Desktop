@@ -1,5 +1,11 @@
 #include "pch.h"
 #include "ViewModels/SourcesViewModel.h"
+#if __has_include("SourceDetailChipViewModel.g.cpp")
+#include "SourceDetailChipViewModel.g.cpp"
+#endif
+#if __has_include("SourceDetailsViewModel.g.cpp")
+#include "SourceDetailsViewModel.g.cpp"
+#endif
 #if __has_include("SourceDisplayItemViewModel.g.cpp")
 #include "SourceDisplayItemViewModel.g.cpp"
 #endif
@@ -41,7 +47,8 @@ namespace
     constexpr std::int32_t FilterPlaysNow = 1;
     constexpr std::int32_t FilterUltraHd = 2;
     constexpr std::int32_t FilterFullHd = 3;
-    constexpr std::int32_t FilterCount = 4;
+    constexpr std::int32_t FilterHd = 4;
+    constexpr std::int32_t FilterCount = 5;
 
     constexpr std::int32_t SortRecommended = 0;
     constexpr std::int32_t SortBestPicture = 1;
@@ -82,6 +89,7 @@ namespace
         case FilterPlaysNow: return L"plays now";
         case FilterUltraHd: return L"4K";
         case FilterFullHd: return L"Full HD";
+        case FilterHd: return L"HD";
         default: break;
         }
         return L"all";
@@ -131,6 +139,90 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourceSpecItemViewModel::Key() const { return m_key; }
     winrt::hstring SourceSpecItemViewModel::Value() const { return m_value; }
 
+    SourceDetailChipViewModel::SourceDetailChipViewModel(winrt::hstring label, bool muted)
+        : m_label(std::move(label)), m_muted(muted) {}
+    winrt::hstring SourceDetailChipViewModel::Label() const { return m_label; }
+    Microsoft::UI::Xaml::Visibility SourceDetailChipViewModel::NormalVisibility() const noexcept { return m_muted ? Collapsed : Visible; }
+    Microsoft::UI::Xaml::Visibility SourceDetailChipViewModel::MutedVisibility() const noexcept { return m_muted ? Visible : Collapsed; }
+
+    SourceDetailsViewModel::SourceDetailsViewModel(
+        winrt::hstring key,
+        winrt::hstring resolution,
+        winrt::hstring picture,
+        winrt::hstring codec,
+        winrt::hstring sound,
+        winrt::hstring channels,
+        std::vector<Sources::DetailChipData> audioLanguages,
+        std::vector<Sources::DetailChipData> subtitles,
+        winrt::hstring provider,
+        winrt::hstring cacheLabel,
+        bool cacheGood,
+        winrt::hstring lineLabel,
+        winrt::hstring mbpsLabel,
+        winrt::hstring headroom,
+        double meterFraction,
+        winrt::hstring fileName)
+        : m_key(std::move(key)),
+          m_resolution(std::move(resolution)),
+          m_picture(std::move(picture)),
+          m_codec(std::move(codec)),
+          m_sound(std::move(sound)),
+          m_channels(std::move(channels)),
+          m_audioLanguages(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_subtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_provider(std::move(provider)),
+          m_cacheLabel(std::move(cacheLabel)),
+          m_cacheGood(cacheGood),
+          m_lineLabel(std::move(lineLabel)),
+          m_mbpsLabel(std::move(mbpsLabel)),
+          m_headroom(std::move(headroom)),
+          m_meterFraction(std::clamp(meterFraction, 0.0, 1.0)),
+          m_fileName(std::move(fileName))
+    {
+        for (auto& chip : audioLanguages)
+        {
+            m_audioLanguages.Append(winrt::make<SourceDetailChipViewModel>(std::move(chip.Label), chip.Muted));
+        }
+        if (m_audioLanguages.Size() == 0)
+        {
+            m_audioLanguages.Append(winrt::make<SourceDetailChipViewModel>(L"NOT LISTED", true));
+        }
+        for (auto& chip : subtitles)
+        {
+            m_subtitles.Append(winrt::make<SourceDetailChipViewModel>(std::move(chip.Label), chip.Muted));
+        }
+        if (m_subtitles.Size() == 0)
+        {
+            m_subtitles.Append(winrt::make<SourceDetailChipViewModel>(L"NONE INCLUDED", true));
+        }
+    }
+    winrt::hstring SourceDetailsViewModel::Key() const { return m_key; }
+    winrt::hstring SourceDetailsViewModel::Resolution() const { return m_resolution; }
+    winrt::hstring SourceDetailsViewModel::Picture() const { return m_picture; }
+    winrt::hstring SourceDetailsViewModel::Codec() const { return m_codec; }
+    winrt::hstring SourceDetailsViewModel::Sound() const { return m_sound; }
+    winrt::hstring SourceDetailsViewModel::Channels() const { return m_channels; }
+    winrt::Windows::Foundation::IInspectable SourceDetailsViewModel::AudioLanguageChips() const { return m_audioLanguages; }
+    winrt::Windows::Foundation::IInspectable SourceDetailsViewModel::SubtitleChips() const { return m_subtitles; }
+    winrt::hstring SourceDetailsViewModel::Provider() const { return m_provider; }
+    winrt::hstring SourceDetailsViewModel::CacheLabel() const { return m_cacheLabel; }
+    Microsoft::UI::Xaml::Visibility SourceDetailsViewModel::CacheGoodVisibility() const noexcept { return m_cacheGood ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SourceDetailsViewModel::CacheNeutralVisibility() const noexcept { return m_cacheGood ? Collapsed : Visible; }
+    winrt::hstring SourceDetailsViewModel::LineLabel() const { return m_lineLabel; }
+    winrt::hstring SourceDetailsViewModel::MbpsLabel() const { return m_mbpsLabel; }
+    winrt::hstring SourceDetailsViewModel::Headroom() const { return m_headroom; }
+    double SourceDetailsViewModel::MeterFraction() const noexcept { return m_meterFraction; }
+    winrt::hstring SourceDetailsViewModel::FileName() const { return m_fileName; }
+    winrt::hstring SourceDetailsViewModel::CopyLabel() const { return m_copyLabel; }
+    void SourceDetailsViewModel::SetCopyLabel(winrt::hstring value)
+    {
+        if (m_copyLabel == value) return;
+        m_copyLabel = std::move(value);
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, L"CopyLabel");
+    }
+    winrt::event_token SourceDetailsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
+    void SourceDetailsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
+
     SourceProviderItemViewModel::SourceProviderItemViewModel(winrt::hstring name, winrt::hstring value, bool answered)
         : m_name(std::move(name)), m_value(std::move(value)), m_answered(answered) {}
     winrt::hstring SourceProviderItemViewModel::Name() const { return m_name; }
@@ -171,7 +263,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring languageLine,
         winrt::hstring warning,
         winrt::hstring reason,
-        std::vector<Sources::SpecRow> specs)
+        std::vector<Sources::SpecRow> specs,
+        winrt::HaloDesktop::SourceDetailsViewModel details)
         : m_kind(Kind::Row),
           m_entry(std::move(entry)),
           m_statusLabel(std::move(statusLabel)),
@@ -179,7 +272,8 @@ namespace winrt::HaloDesktop::implementation
           m_languageLine(std::move(languageLine)),
           m_warning(std::move(warning)),
           m_reason(std::move(reason)),
-          m_specs(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_specs(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_details(std::move(details))
     {
         for (auto& [key, value] : specs)
         {
@@ -243,6 +337,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourceDisplayItemViewModel::FileName() const { return m_entry.Source ? m_entry.Source.File() : L""; }
     winrt::hstring SourceDisplayItemViewModel::Reason() const { return m_reason; }
     winrt::Windows::Foundation::IInspectable SourceDisplayItemViewModel::Specs() const { return m_specs; }
+    winrt::HaloDesktop::SourceDetailsViewModel SourceDisplayItemViewModel::Details() const { return m_details; }
 
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ExpandedVisibility() const noexcept { return m_expanded ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::ExpandGlyphVisibility() const noexcept { return m_expanded ? Collapsed : Visible; }
@@ -385,6 +480,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourcesViewModel::PlaysNowFilterCount() const { return winrt::to_hstring(Filtered(FilterPlaysNow).size()); }
     winrt::hstring SourcesViewModel::UltraHdFilterCount() const { return winrt::to_hstring(Filtered(FilterUltraHd).size()); }
     winrt::hstring SourcesViewModel::FullHdFilterCount() const { return winrt::to_hstring(Filtered(FilterFullHd).size()); }
+    winrt::hstring SourcesViewModel::HdFilterCount() const { return winrt::to_hstring(Filtered(FilterHd).size()); }
     winrt::hstring SourcesViewModel::SortLabel() const { return SortName(m_sortIndex); }
     std::int32_t SourcesViewModel::FilterIndex() const noexcept { return m_filterIndex; }
     std::int32_t SourcesViewModel::SortIndex() const noexcept { return m_sortIndex; }
@@ -521,6 +617,22 @@ namespace winrt::HaloDesktop::implementation
     {
         return HasPick() && m_selectedIndex < 0 ? Visible : Collapsed;
     }
+    winrt::HaloDesktop::SourceDetailsViewModel SourcesViewModel::PickDetails() const
+    {
+        return HasPick() ? m_pickDetails : nullptr;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickExpandedVisibility() const noexcept
+    {
+        return HasPick() && m_pickExpanded ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickExpandGlyphVisibility() const noexcept
+    {
+        return PickExpandedVisibility() == Visible ? Collapsed : Visible;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickCollapseGlyphVisibility() const noexcept
+    {
+        return PickExpandedVisibility() == Visible ? Visible : Collapsed;
+    }
 
     Microsoft::UI::Xaml::Visibility SourcesViewModel::InfoVisibility() const noexcept { return m_infoOpen ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SourcesViewModel::InfoExpandGlyphVisibility() const noexcept { return m_infoOpen ? Collapsed : Visible; }
@@ -563,7 +675,9 @@ namespace winrt::HaloDesktop::implementation
         if (index < 0 || index >= FilterCount || index == m_filterIndex) return;
         m_filterIndex = index;
         m_expandedKey = L"";
+        m_pickExpanded = false;
         m_selectedIndex = -1;
+        ResetCopyState();
         Rebuild();
         RaiseState();
     }
@@ -573,7 +687,9 @@ namespace winrt::HaloDesktop::implementation
         if (index < 0 || index >= SortCount || index == m_sortIndex) return;
         m_sortIndex = index;
         m_expandedKey = L"";
+        m_pickExpanded = false;
         m_selectedIndex = -1;
+        ResetCopyState();
         Rebuild();
         RaiseState();
     }
@@ -589,13 +705,35 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::ToggleExpanded(winrt::hstring const& key)
     {
         if (key.empty()) return;
+        ResetCopyState();
+        m_pickExpanded = false;
         m_expandedKey = m_expandedKey == key ? winrt::hstring{} : key;
         for (auto const& item : m_items)
         {
             auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
             if (row->IsRow()) row->SetExpanded(row->Key() == m_expandedKey);
         }
+        Raise(L"PickExpandedVisibility");
+        Raise(L"PickExpandGlyphVisibility");
+        Raise(L"PickCollapseGlyphVisibility");
         SelectKey(key);
+    }
+
+    void SourcesViewModel::TogglePickExpanded()
+    {
+        if (!HasPick()) return;
+        ResetCopyState();
+        m_pickExpanded = !m_pickExpanded;
+        m_expandedKey = L"";
+        for (auto const& item : m_items)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow()) row->SetExpanded(false);
+        }
+        SelectPick();
+        Raise(L"PickExpandedVisibility");
+        Raise(L"PickExpandGlyphVisibility");
+        Raise(L"PickCollapseGlyphVisibility");
     }
 
     void SourcesViewModel::SelectKey(winrt::hstring const& key)
@@ -636,12 +774,22 @@ namespace winrt::HaloDesktop::implementation
     void SourcesViewModel::ExpandSelected()
     {
         auto const key = SelectedKey();
-        if (key.empty() || m_expandedKey == key) return;
+        if (key.empty())
+        {
+            if (HasPick() && !m_pickExpanded) TogglePickExpanded();
+            return;
+        }
+        if (m_expandedKey == key) return;
         ToggleExpanded(key);
     }
 
     void SourcesViewModel::CollapseSelected()
     {
+        if (m_pickExpanded)
+        {
+            TogglePickExpanded();
+            return;
+        }
         if (m_expandedKey.empty()) return;
         ToggleExpanded(m_expandedKey);
     }
@@ -686,6 +834,36 @@ namespace winrt::HaloDesktop::implementation
         return found == m_pool.end() ? winrt::hstring{} : found->Source.File();
     }
 
+    void SourcesViewModel::ResetCopyState()
+    {
+        m_copiedKey.clear();
+        if (m_pickDetails) m_pickDetails.SetCopyLabel(L"Copy file name");
+        for (auto const& item : m_items)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow() && row->Details()) row->Details().SetCopyLabel(L"Copy file name");
+        }
+    }
+
+    void SourcesViewModel::MarkCopied(winrt::hstring const& key)
+    {
+        if (key.empty()) return;
+        ResetCopyState();
+        m_copiedKey = key;
+        if (m_pickDetails && key == PickKey())
+        {
+            m_pickDetails.SetCopyLabel(L"File name copied");
+        }
+        for (auto const& item : m_items)
+        {
+            auto const row = winrt::get_self<SourceDisplayItemViewModel>(item.as<winrt::HaloDesktop::SourceDisplayItemViewModel>());
+            if (row->IsRow() && row->Key() == key && row->Details())
+            {
+                row->Details().SetCopyLabel(L"File name copied");
+            }
+        }
+    }
+
     concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> SourcesViewModel::StartDownloadAsync(
         winrt::hstring key,
         bool replaceExisting)
@@ -723,6 +901,8 @@ namespace winrt::HaloDesktop::implementation
         m_sortIndex = SortRecommended;
         m_selectedIndex = -1;
         m_expandedKey = L"";
+        m_pickExpanded = false;
+        ResetCopyState();
         m_coldRevealed = false;
         m_items.Clear();
         RaiseState();
@@ -751,6 +931,8 @@ namespace winrt::HaloDesktop::implementation
         m_failedProviders = 0;
         m_firstFailure = L"";
         m_smallestBytes = 0;
+        m_maximumNeededMbps = 0.0;
+        m_pickDetails = nullptr;
         m_localCount = 0;
         m_pool.clear();
 
@@ -793,7 +975,7 @@ namespace winrt::HaloDesktop::implementation
 
         for (auto const& source : m_sources->LocalSources())
         {
-            m_pool.push_back(Sources::MakeEntry(source, LocalProviderName, m_device.DurationSeconds));
+            m_pool.push_back(Sources::MakeEntry(source, L"local", LocalProviderName, m_device.DurationSeconds));
         }
         m_localCount = m_pool.size();
 
@@ -807,7 +989,8 @@ namespace winrt::HaloDesktop::implementation
             }
             for (auto const& source : group.Sources())
             {
-                m_pool.push_back(Sources::MakeEntry(source, group.Name(), m_device.DurationSeconds));
+                auto const providerId = group.AddonId().empty() ? group.Name() : group.AddonId();
+                m_pool.push_back(Sources::MakeEntry(source, providerId, group.Name(), m_device.DurationSeconds));
             }
         }
         std::stable_sort(m_pool.begin(), m_pool.end(), [](auto const& left, auto const& right)
@@ -817,9 +1000,13 @@ namespace winrt::HaloDesktop::implementation
 
         for (auto const& entry : m_pool)
         {
-            if (entry.SizeBytes == 0) continue;
-            if (m_smallestBytes == 0 || entry.SizeBytes < m_smallestBytes) m_smallestBytes = entry.SizeBytes;
+            if (entry.SizeBytes != 0 && (m_smallestBytes == 0 || entry.SizeBytes < m_smallestBytes))
+            {
+                m_smallestBytes = entry.SizeBytes;
+            }
+            m_maximumNeededMbps = (std::max)(m_maximumNeededMbps, entry.NeededMbps);
         }
+        if (!m_pool.empty()) m_pickDetails = DetailsFor(m_pool.front(), m_maximumNeededMbps);
     }
 
     bool SourcesViewModel::Matches(Sources::SourceEntry const& entry, std::int32_t filterIndex) const noexcept
@@ -829,6 +1016,7 @@ namespace winrt::HaloDesktop::implementation
         case FilterPlaysNow: return entry.Speed == Sources::StartSpeed::Immediate;
         case FilterUltraHd: return entry.Tier == Sources::QualityTier::UltraHd;
         case FilterFullHd: return entry.Tier == Sources::QualityTier::FullHd;
+        case FilterHd: return entry.Tier == Sources::QualityTier::Hd;
         default: break;
         }
         return true;
@@ -845,9 +1033,36 @@ namespace winrt::HaloDesktop::implementation
         return result;
     }
 
+    winrt::HaloDesktop::SourceDetailsViewModel SourcesViewModel::DetailsFor(
+        Sources::SourceEntry const& entry,
+        double maximumNeededMbps) const
+    {
+        auto data = Sources::DetailsFor(entry, m_device, maximumNeededMbps);
+        return winrt::make<SourceDetailsViewModel>(
+            entry.Source ? entry.Source.Key() : winrt::hstring{},
+            std::move(data.Resolution),
+            std::move(data.Picture),
+            std::move(data.Codec),
+            std::move(data.Sound),
+            std::move(data.Channels),
+            std::move(data.AudioLanguages),
+            std::move(data.Subtitles),
+            std::move(data.Provider),
+            std::move(data.CacheLabel),
+            data.CacheGood,
+            std::move(data.LineLabel),
+            std::move(data.MbpsLabel),
+            std::move(data.Headroom),
+            data.MeterFraction,
+            entry.Source ? entry.Source.File() : winrt::hstring{});
+    }
+
+    double SourcesViewModel::MaximumNeededMbps() const noexcept { return m_maximumNeededMbps; }
+
     winrt::HaloDesktop::SourceDisplayItemViewModel SourcesViewModel::RowFor(
         Sources::SourceEntry const& entry,
-        Sources::SourceEntry const* pick) const
+        Sources::SourceEntry const* pick,
+        double maximumNeededMbps) const
     {
         auto const& source = entry.Source;
         auto const soundAndSize = L"\x00B7 " + Sources::SoundLabel(source.Audio())
@@ -861,7 +1076,8 @@ namespace winrt::HaloDesktop::implementation
             languageLine,
             Sources::BitrateWarning(entry, m_device.LineMbps),
             Sources::ReasonFor(entry, pick, entry.SizeBytes != 0 && entry.SizeBytes == m_smallestBytes),
-            Sources::SpecsFor(entry, m_device));
+            Sources::SpecsFor(entry, m_device),
+            DetailsFor(entry, maximumNeededMbps));
     }
 
     void SourcesViewModel::Rebuild()
@@ -871,9 +1087,16 @@ namespace winrt::HaloDesktop::implementation
 
         auto listed = Filtered(m_filterIndex);
         SortEntries(listed, m_sortIndex);
+        auto const maximumNeededMbps = [&listed]()
+        {
+            auto maximum = 0.0;
+            for (auto const& entry : listed) maximum = (std::max)(maximum, entry.NeededMbps);
+            return maximum;
+        }();
 
-        Sources::SourceEntry const* pick = m_pool.empty() ? nullptr : &m_pool.front();
-        if (HasPick())
+        Sources::SourceEntry const* pick = HasPick() ? &m_pool.front() : nullptr;
+        m_pickDetails = pick ? DetailsFor(*pick, maximumNeededMbps) : nullptr;
+        if (pick)
         {
             // The pick has its own block above the list, so it is not repeated in it.
             listed.erase(
@@ -884,63 +1107,54 @@ namespace winrt::HaloDesktop::implementation
                 listed.end());
         }
 
-        if (m_sortIndex != SortRecommended)
+        struct ProviderBucket final
         {
-            if (listed.empty()) return;
-            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
-                winrt::hstring{ L"Sorted by " } + SortName(m_sortIndex),
-                m_filterIndex == FilterAll
-                    ? winrt::hstring{ L"Every source that answered" }
-                    : L"Filtered to " + winrt::hstring{ FilterName(m_filterIndex) },
-                Sources::CountLabel(listed.size(), L"source", L"sources")));
-            for (auto const& entry : listed) m_items.Append(RowFor(entry, pick));
-            return;
-        }
-
-        // Files on the device get their own heading rather than being folded into
-        // "Also ready now", which describes a stream that happens to be cached and
-        // says nothing about a file that needs no connection at all.
-        std::vector<Sources::SourceEntry> local;
+            winrt::hstring Id;
+            winrt::hstring Name;
+            std::vector<Sources::SourceEntry> Entries;
+        };
+        std::vector<ProviderBucket> providers;
+        std::size_t hiddenCold{};
         for (auto const& entry : listed)
         {
-            if (IsOnDisk(entry)) local.push_back(entry);
-        }
-        if (!local.empty())
-        {
-            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
-                winrt::hstring{ LocalProviderName },
-                winrt::hstring{ L"Saved here, so they play without a connection" },
-                Sources::CountLabel(local.size(), L"file", L"files")));
-            for (auto const& entry : local) m_items.Append(RowFor(entry, pick));
-        }
-
-        for (auto const speed : {
-                 Sources::StartSpeed::Immediate,
-                 Sources::StartSpeed::ShortWait,
-                 Sources::StartSpeed::NeedsDownload })
-        {
-            std::vector<Sources::SourceEntry> group;
-            for (auto const& entry : listed)
+            if (m_sortIndex == SortRecommended
+                && !m_coldRevealed
+                && entry.Speed == Sources::StartSpeed::NeedsDownload)
             {
-                if (entry.Speed == speed && !IsOnDisk(entry)) group.push_back(entry);
-            }
-            if (group.empty()) continue;
-
-            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
-                Sources::OutcomeGroupName(speed),
-                Sources::OutcomeGroupNote(speed),
-                Sources::CountLabel(group.size(), L"source", L"sources")));
-
-            // Cold sources are the ones nobody should have to scroll past to reach
-            // something playable, so they stay behind one deliberate click.
-            if (speed == Sources::StartSpeed::NeedsDownload && !m_coldRevealed)
-            {
-                m_items.Append(winrt::make<SourceDisplayItemViewModel>(
-                    L"Show " + Sources::CountLabel(group.size(), L"source", L"sources")
-                        + L" that need downloading first"));
+                ++hiddenCold;
                 continue;
             }
-            for (auto const& entry : group) m_items.Append(RowFor(entry, pick));
+            auto const found = std::find_if(providers.begin(), providers.end(), [&entry](auto const& provider)
+            {
+                return provider.Id == entry.ProviderId;
+            });
+            if (found == providers.end())
+            {
+                providers.push_back(ProviderBucket{ entry.ProviderId, entry.Provider, {} });
+                providers.back().Entries.push_back(entry);
+            }
+            else
+            {
+                found->Entries.push_back(entry);
+            }
+        }
+
+        for (auto const& provider : providers)
+        {
+            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                provider.Name,
+                provider.Name == LocalProviderName ? winrt::hstring{ L"Saved on this device" } : winrt::hstring{},
+                Sources::CountLabel(provider.Entries.size(), L"source", L"sources")));
+            for (auto const& entry : provider.Entries)
+            {
+                m_items.Append(RowFor(entry, pick, maximumNeededMbps));
+            }
+        }
+        if (hiddenCold != 0)
+        {
+            m_items.Append(winrt::make<SourceDisplayItemViewModel>(
+                L"Show " + Sources::CountLabel(hiddenCold, L"source", L"sources")
+                    + L" that need downloading first"));
         }
 
         for (auto const& item : m_items)
@@ -1038,7 +1252,7 @@ namespace winrt::HaloDesktop::implementation
     {
         for (auto const* property : {
                  L"Items", L"Kicker", L"KickerVisibility", L"Heading", L"CountLine",
-                 L"AllFilterCount", L"PlaysNowFilterCount", L"UltraHdFilterCount", L"FullHdFilterCount",
+                 L"AllFilterCount", L"PlaysNowFilterCount", L"UltraHdFilterCount", L"FullHdFilterCount", L"HdFilterCount",
                  L"SortLabel", L"FilterIndex", L"SortIndex",
                  L"FilterRowVisibility", L"ListVisibility", L"ResolvingVisibility", L"EmptyVisibility",
                  L"EmptyTitle", L"EmptyBody",
@@ -1047,7 +1261,8 @@ namespace winrt::HaloDesktop::implementation
                  L"PickVisibility", L"PickQualityBadgeTier", L"PickQualityBadgeDetail", L"PickQualityTone", L"PickStatusLabel",
                  L"PickInstantVisibility", L"PickOnDiskVisibility", L"PickCachingVisibility", L"PickColdVisibility",
                  L"PickWhy", L"PickLine", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
-                 L"PickSelectionVisibility", L"PickSaveVisibility", L"SelectedIndex" })
+                 L"PickSelectionVisibility", L"PickSaveVisibility", L"PickDetails", L"PickExpandedVisibility",
+                 L"PickExpandGlyphVisibility", L"PickCollapseGlyphVisibility", L"SelectedIndex" })
         {
             Raise(property);
         }

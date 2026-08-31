@@ -233,7 +233,12 @@ namespace winrt::HaloDesktop::implementation
         hstring subs,
         hstring videoId,
         hstring poster,
-        bool requiresNewSource)
+        bool requiresNewSource,
+        std::uint64_t downloadedBytes,
+        std::uint64_t totalBytes,
+        hstring fileName,
+        hstring addedLabel,
+        bool hdr)
         : m_id(std::move(id)),
           m_tag(std::move(tag)),
           m_name(std::move(name)),
@@ -247,7 +252,12 @@ namespace winrt::HaloDesktop::implementation
           m_subs(std::move(subs)),
           m_videoId(std::move(videoId)),
           m_poster(std::move(poster)),
-          m_requiresNewSource(requiresNewSource)
+          m_requiresNewSource(requiresNewSource),
+          m_downloadedBytes(downloadedBytes),
+          m_totalBytes(totalBytes),
+          m_fileName(std::move(fileName)),
+          m_addedLabel(std::move(addedLabel)),
+          m_hdr(hdr)
     {
     }
 
@@ -265,6 +275,11 @@ namespace winrt::HaloDesktop::implementation
     hstring DownloadItem::VideoId() const { return m_videoId; }
     hstring DownloadItem::Poster() const { return m_poster; }
     bool DownloadItem::RequiresNewSource() const noexcept { return m_requiresNewSource; }
+    std::uint64_t DownloadItem::DownloadedBytes() const noexcept { return m_downloadedBytes; }
+    std::uint64_t DownloadItem::TotalBytes() const noexcept { return m_totalBytes; }
+    hstring DownloadItem::FileName() const { return m_fileName; }
+    hstring DownloadItem::AddedLabel() const { return m_addedLabel; }
+    bool DownloadItem::Hdr() const noexcept { return m_hdr; }
 
     winrt::event_token DownloadItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
     {
