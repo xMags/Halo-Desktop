@@ -3,13 +3,16 @@
   x:Class="HaloDesktop.VideoHostControl"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Background="Black"
   Loaded="OnLoaded"
   SizeChanged="OnSizeChanged"
   Unloaded="OnUnloaded">
   <!-- libmpv presents into a DirectX composition swapchain that this panel
-       hosts. There is no native window, so XAML siblings can draw above it. -->
+       hosts. There is no native window, so XAML siblings can draw above it.
+       The black fill belongs on the UserControl: SwapChainPanel inherits
+       Background from Panel in the projection, so the XAML compiler accepts it,
+       but the runtime type has no such property and the parse fails. -->
   <SwapChainPanel
     x:Name="VideoPanel"
-    Background="Black"
     CompositionScaleChanged="OnCompositionScaleChanged" />
 </UserControl>
