@@ -430,6 +430,10 @@ namespace HaloDesktop::Services
         presence.Insert(L"instance", JsonValue::CreateBooleanValue(false));
         // Discord activity type 3 is Watching. Omitting this defaults to Playing.
         presence.Insert(L"type", JsonValue::CreateNumberValue(3));
+        // Future Social SDK migration: set StatusDisplayTypes::Details so Discord's
+        // compact member-list row says "Watching <movie or series>". Do not add a
+        // guessed status_display_type field to this legacy SET_ACTIVITY payload;
+        // Discord only documents that control through the official Social SDK.
         if (activity.Playback == PresencePlaybackState::Playing)
         {
             JsonObject timestamps;
