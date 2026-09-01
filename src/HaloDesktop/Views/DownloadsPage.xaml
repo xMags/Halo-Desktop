@@ -321,7 +321,10 @@
               <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCautionTintBrush}" CornerRadius="3" Visibility="{x:Bind ViewModel.SelectedRow.PausedVisibility, Mode=OneWay}"><TextBlock Style="{StaticResource StatePillTextStyle}" Foreground="{ThemeResource HaloCautionBrush}" Text="PAUSED" /></Border>
               <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCriticalTintBrush}" CornerRadius="3" Visibility="{x:Bind ViewModel.SelectedRow.FailedVisibility, Mode=OneWay}"><TextBlock Style="{StaticResource StatePillTextStyle}" Foreground="{ThemeResource HaloCriticalBrush}" Text="FAILED" /></Border>
             </StackPanel>
-            <TextBlock Style="{StaticResource HaloMonoData}" LineHeight="18" Text="{x:Bind ViewModel.SelectedFileName, Mode=OneWay}" TextWrapping="Wrap" />
+            <!-- Release names run far longer than the pane is wide, and wrapping one
+                 costs four lines to say what the head of it already says. Trimmed to
+                 a single line; the tooltip still carries the whole name. -->
+            <TextBlock Style="{StaticResource HaloMonoData}" LineHeight="18" Text="{x:Bind ViewModel.SelectedFileName, Mode=OneWay}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" ToolTipService.ToolTip="{x:Bind ViewModel.SelectedFileName, Mode=OneWay}" />
 
             <StackPanel Spacing="8" Visibility="{x:Bind ViewModel.SelectedTransferVisibility, Mode=OneWay}">
               <Grid Height="5" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3">
