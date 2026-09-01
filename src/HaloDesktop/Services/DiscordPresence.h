@@ -19,6 +19,7 @@ namespace HaloDesktop::Services
         std::wstring Title;
         std::wstring ShowName;
         std::wstring EpisodeLabel;
+        std::wstring PosterUrl;
     };
 
     enum class PresencePlaybackState
@@ -32,6 +33,7 @@ namespace HaloDesktop::Services
     {
         std::wstring Details;
         std::wstring State;
+        std::wstring ArtworkUrl;
         PresencePlaybackState Playback{ PresencePlaybackState::Playing };
         double PositionSeconds{};
         double DurationSeconds{};

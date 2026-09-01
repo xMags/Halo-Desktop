@@ -78,7 +78,9 @@ pipe. Discord must be running for the activity to appear. The application uses
 the public Discord Application ID `1544266293249712128` and the artwork asset key
 `halo`. Upload a Halo logo with that key in the Discord Developer Portal before
 testing or distributing a build. Halo never sends stream URLs, request headers,
-account identifiers, or addon metadata to Discord.
+account identifiers, or addon metadata to Discord. When a title has a public
+HTTPS poster URL, Discord receives that poster URL so it can fetch the artwork;
+local, private, credentialed, and signed URLs fall back to the Halo artwork.
 
 ## Bring your own backend
 

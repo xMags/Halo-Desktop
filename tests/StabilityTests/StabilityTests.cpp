@@ -214,7 +214,10 @@ namespace
 
         auto const capturedAt = std::chrono::system_clock::time_point{ std::chrono::seconds{ 2'000 } };
         auto state = PresenceState();
-        auto movie = BuildPresenceActivity({ L"Arrival", L"", L"" }, state, capturedAt);
+        auto movie = BuildPresenceActivity(
+            { L"Arrival", L"", L"", L"https://images.example.com/posters/arrival.jpg" },
+            state,
+            capturedAt);
         Require(movie.has_value(), "a playing movie did not produce presence");
         Require(movie->Details == L"Arrival" && movie->State == L"Movie",
             "movie presence did not contain its title and media kind");
@@ -223,10 +226,31 @@ namespace
             "elapsed playback time was not anchored to the captured position");
         Require(movieJson.find("\"end\":5480") != std::string::npos,
             "remaining playback time was not anchored to the captured duration");
-        Require(movieJson.find("halo") != std::string::npos,
-            "the configured Halo artwork key was absent");
+        Require(movieJson.find("https://images.example.com/posters/arrival.jpg") != std::string::npos,
+            "the public movie poster was not used as Discord artwork");
         Require(movieJson.find("\"type\":3") != std::string::npos,
             "Discord presence was not identified as Watching");
+
+        constexpr wchar_t const* unsafePosters[]{
+            L"http://images.example.com/poster.jpg",
+            L"https://user:password@images.example.com/poster.jpg",
+            L"https://images.example.com/poster.jpg?token=secret",
+            L"https://images.example.com/poster.jpg#fragment",
+            L"https://127.0.0.1/poster.jpg",
+            L"https://192.168.1.2/poster.jpg",
+            L"https://poster.local/poster.jpg",
+            L"file:///C:/poster.jpg",
+        };
+        for (auto const* unsafePoster : unsafePosters)
+        {
+            auto fallback = BuildPresenceActivity(
+                { L"Arrival", L"", L"", unsafePoster }, state, capturedAt);
+            Require(fallback && fallback->ArtworkUrl.empty(),
+                "an unsafe poster URL crossed the Discord presence boundary");
+            auto const fallbackJson = SerializeSetActivity(*fallback, 42);
+            Require(fallbackJson.find("\"large_image\":\"halo\"") != std::string::npos,
+                "unsafe poster artwork did not fall back to the Halo asset");
+        }
 
         auto episode = BuildPresenceActivity(
             { L"The Ones Who Live", L"The Walking Dead", L"S01E06" }, state, capturedAt);
@@ -300,7 +324,11 @@ namespace
         auto localFileTransport = std::make_shared<FakeDiscordTransport>();
         {
             DiscordPresenceService service{ true, localFileTransport, std::chrono::milliseconds{ 5 } };
-            service.SetMedia({ L"Spider-Man: No Way Home", L"", L"" });
+            service.SetMedia({
+                L"Spider-Man: No Way Home",
+                L"",
+                L"",
+                L"https://images.example.com/posters/spider-man.jpg" });
             auto loading = PresenceState();
             loading.FileSerial = 0;
             loading.Buffering = true;
@@ -313,6 +341,8 @@ namespace
             std::scoped_lock const lock{ localFileTransport->Mutex };
             Require(localFileTransport->Payloads.back().find("Spider-Man: No Way Home") != std::string::npos,
                 "local file presence did not publish its title");
+            Require(localFileTransport->Payloads.back().find("https://images.example.com/posters/spider-man.jpg") != std::string::npos,
+                "local file presence did not publish its stored poster");
         }
 
         auto retryTransport = std::make_shared<FakeDiscordTransport>();

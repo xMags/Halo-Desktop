@@ -43,7 +43,7 @@ namespace HaloDesktop::Playback
             // this start was abandoned while the source was being settled.
             if(version!=m_startVersion)co_return;
         }
-        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel())});
+        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel()),std::wstring(request.Poster())});
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
         m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;

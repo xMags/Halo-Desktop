@@ -6,7 +6,9 @@
 #include <algorithm>
 #include <atomic>
 #include <cmath>
+#include <cwctype>
 #include <windows.h>
+#include <ws2tcpip.h>
 #include <wil/resource.h>
 #include <winrt/Windows.Data.Json.h>
 
@@ -98,6 +100,78 @@ namespace
         return episode + L" · " + title;
     }
 
+    bool IsPublicIpLiteral(std::wstring const& host) noexcept
+    {
+        IN_ADDR ipv4{};
+        if (InetPtonW(AF_INET, host.c_str(), &ipv4) == 1)
+        {
+            auto const value = ntohl(ipv4.S_un.S_addr);
+            auto const first = static_cast<std::uint8_t>(value >> 24);
+            auto const second = static_cast<std::uint8_t>(value >> 16);
+            return first != 0
+                && first != 10
+                && first != 127
+                && first < 224
+                && !(first == 100 && second >= 64 && second <= 127)
+                && !(first == 169 && second == 254)
+                && !(first == 172 && second >= 16 && second <= 31)
+                && !(first == 192 && (second == 0 || second == 2 || second == 168))
+                && !(first == 198 && (second == 18 || second == 19 || second == 51))
+                && !(first == 203 && second == 0);
+        }
+
+        IN6_ADDR ipv6{};
+        if (InetPtonW(AF_INET6, host.c_str(), &ipv6) == 1)
+        {
+            if (IN6_IS_ADDR_LOOPBACK(&ipv6)
+                || IN6_IS_ADDR_UNSPECIFIED(&ipv6)
+                || IN6_IS_ADDR_LINKLOCAL(&ipv6)
+                || IN6_IS_ADDR_MULTICAST(&ipv6))
+            {
+                return false;
+            }
+            return (ipv6.u.Byte[0] & 0xfe) != 0xfc;
+        }
+        return true;
+    }
+
+    std::wstring PublicArtworkUrl(std::wstring const& value)
+    {
+        if (value.empty() || value.size() > 2048)
+        {
+            return {};
+        }
+        try
+        {
+            auto const uri = winrt::Windows::Foundation::Uri{ value };
+            auto host = std::wstring{ uri.Host() };
+            std::transform(host.begin(), host.end(), host.begin(), [](wchar_t character)
+            {
+                return static_cast<wchar_t>(std::towlower(character));
+            });
+            if (uri.SchemeName() != L"https"
+                || host.empty()
+                || !uri.UserName().empty()
+                || !uri.Password().empty()
+                || !uri.Query().empty()
+                || !uri.Fragment().empty()
+                || host == L"localhost"
+                || host.ends_with(L".localhost")
+                || host.ends_with(L".local")
+                || host.ends_with(L".internal")
+                || host.ends_with(L".lan")
+                || !IsPublicIpLiteral(host))
+            {
+                return {};
+            }
+            return std::wstring{ uri.AbsoluteUri() };
+        }
+        catch (...)
+        {
+            return {};
+        }
+    }
+
     std::optional<PresencePlaybackState> PlaybackKind(
         ::HaloDesktop::Playback::PlaybackState const& state)
     {
@@ -141,7 +215,7 @@ namespace
                 }
                 if (reply == Reply::Error)
                 {
-                    auto fallback = WithoutArtwork(payload);
+                    auto fallback = WithFallbackArtwork(payload);
                     if (fallback && Exchange(*fallback) == Reply::Success)
                     {
                         return true;
@@ -208,7 +282,7 @@ namespace
                 : Reply::Disconnected;
         }
 
-        [[nodiscard]] static std::optional<std::string> WithoutArtwork(
+        [[nodiscard]] static std::optional<std::string> WithFallbackArtwork(
             std::string const& payload) noexcept
         {
             try
@@ -220,7 +294,17 @@ namespace
                 {
                     return std::nullopt;
                 }
-                activity.Remove(L"assets");
+                auto assets = activity.GetNamedObject(L"assets");
+                auto const current = assets.GetNamedString(L"large_image", L"");
+                if (current == HaloDesktop::Config::DiscordArtworkKey)
+                {
+                    activity.Remove(L"assets");
+                }
+                else
+                {
+                    assets.Insert(L"large_image", JsonValue::CreateStringValue(HaloDesktop::Config::DiscordArtworkKey));
+                    assets.Insert(L"large_text", JsonValue::CreateStringValue(L"Halo"));
+                }
                 root.Insert(L"nonce", JsonValue::CreateStringValue(NextNonce(GetCurrentProcessId())));
                 return winrt::to_string(root.Stringify());
             }
@@ -397,6 +481,7 @@ namespace HaloDesktop::Services
         return PresenceActivity{
             .Details = std::move(details),
             .State = std::move(episode),
+            .ArtworkUrl = PublicArtworkUrl(media.PosterUrl),
             .Playback = *kind,
             .PositionSeconds = std::isfinite(state.PositionSeconds) && state.PositionSeconds > 0.0 ? state.PositionSeconds : 0.0,
             .DurationSeconds = std::isfinite(state.DurationSeconds) && state.DurationSeconds > 0.0 ? state.DurationSeconds : 0.0,
@@ -420,11 +505,14 @@ namespace HaloDesktop::Services
         {
             presence.Insert(L"state", JsonValue::CreateStringValue(activity.State));
         }
-        presence.Insert(L"assets", []
+        presence.Insert(L"assets", [&activity]
         {
             JsonObject assets;
-            assets.Insert(L"large_image", JsonValue::CreateStringValue(Config::DiscordArtworkKey));
-            assets.Insert(L"large_text", JsonValue::CreateStringValue(L"Halo"));
+            auto const usePoster = !activity.ArtworkUrl.empty();
+            assets.Insert(L"large_image", JsonValue::CreateStringValue(
+                usePoster ? winrt::hstring{ activity.ArtworkUrl } : winrt::hstring{ Config::DiscordArtworkKey }));
+            assets.Insert(L"large_text", JsonValue::CreateStringValue(
+                usePoster ? winrt::hstring{ activity.Details } : winrt::hstring{ L"Halo" }));
             return assets;
         }());
         presence.Insert(L"instance", JsonValue::CreateBooleanValue(false));
@@ -685,6 +773,7 @@ namespace HaloDesktop::Services
     {
         return left.Details == right.Details
             && left.State == right.State
+            && left.ArtworkUrl == right.ArtworkUrl
             && left.Playback == right.Playback
             && left.FileSerial == right.FileSerial
             && left.SeekSerial == right.SeekSerial
