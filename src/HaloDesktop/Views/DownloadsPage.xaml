@@ -39,10 +39,18 @@
   </Page.Resources>
 
   <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+
+    <!-- The middle pane owns the page header, so the filters sit above the list they
+         act on instead of reaching across the detail panel beside it. -->
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="*" />
+      </Grid.RowDefinitions>
 
     <local:SectionHeader Title="Downloads">
       <local:SectionHeader.RightContent>
@@ -85,13 +93,7 @@
       gives a detail column taller than the window somewhere to go instead of
       being cut off at the bottom edge.
     -->
-    <Grid Grid.Row="1" Margin="24,0">
-      <Grid.ColumnDefinitions>
-        <ColumnDefinition Width="*" />
-        <ColumnDefinition Width="292" />
-      </Grid.ColumnDefinitions>
-
-      <ScrollViewer Grid.Column="0" Margin="0,0,20,0" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+      <ScrollViewer Grid.Row="1" Margin="24,0" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="0,8,0,48" Spacing="14">
           <InfoBar
             IsOpen="True"
@@ -303,10 +305,23 @@
         </StackPanel>
       </ScrollViewer>
 
-      <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
-        <Grid Margin="0,8,0,48">
+    </Grid>
+
+    <!-- A panel rather than a column: it owns its full height, runs to the window edge,
+         and takes the window's own base tone and edge stroke, which is what the shell
+         paints the navigation rail and its content border with. The right-hand
+         counterpart to the rail, not a card floating in the list. -->
+    <Border
+      Grid.Column="1"
+      Width="300"
+      Padding="20,0"
+      Background="{ThemeResource HaloMicaBrush}"
+      BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+      BorderThickness="1,0,0,0">
+      <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+        <Grid Margin="0,20,0,32">
           <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}">
-            <Border Width="272" Height="484" HorizontalAlignment="Center" CornerRadius="6">
+            <Border Width="260" Height="462" HorizontalAlignment="Center" CornerRadius="6">
               <Grid>
                 <local:PlaceholderArt ArtCornerRadius="6" />
                 <local:ArtworkImage DecodeWidth="544" SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" />
@@ -394,6 +409,6 @@
           </Border>
         </Grid>
       </ScrollViewer>
-    </Grid>
+    </Border>
   </Grid>
 </Page>
