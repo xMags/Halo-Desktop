@@ -1,0 +1,11 @@
+namespace HaloDesktop
+{
+    [default_interface]
+    runtimeclass WrapPanel : Microsoft.UI.Xaml.Controls.Panel
+    {
+        WrapPanel();
+        // Gap between two items on the same line, and between two lines.
+        Double HorizontalSpacing;
+        Double VerticalSpacing;
+    }
+}

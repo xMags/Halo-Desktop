@@ -26,4 +26,8 @@
 #include <winrt/Microsoft.UI.Xaml.Shapes.h>
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <wil/cppwinrt_helpers.h>
+
+// The XAML type-info generator only writes includes for types that own a .xaml
+// file, so a code-only local type referenced from markup has to reach it here.
+#include "Controls/WrapPanel.h"
 #endif

@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ViewModels/SourcePresentation.h"
 
 #include <algorithm>
@@ -546,9 +546,12 @@ namespace HaloDesktop::Sources
         {
             result.Resolution = L"Resolution not listed";
         }
+        // The detail tiles set every chip in the mono plate, which is drawn for
+        // upper case; a title-cased label reads as a different control beside
+        // "NONE INCLUDED" in the tile next to it.
         result.Picture = source.Range().empty() || source.Range() == L"SDR"
             ? winrt::hstring{ L"SDR" }
-            : RangeDetail(source.Range());
+            : winrt::hstring{ Upper(RangeDetail(source.Range())) };
         result.Codec = CodecName(source.Codec());
         if (result.Codec.empty()) result.Codec = L"Codec not listed";
         result.Sound = SoundDetail(source.Audio());
@@ -558,14 +561,14 @@ namespace HaloDesktop::Sources
 
         for (auto const& token : SplitTokens(source.Languages()))
         {
-            if (token != NotParsed) result.AudioLanguages.push_back({ LanguageName(token), false });
+            if (token != NotParsed) result.AudioLanguages.push_back({ winrt::hstring{ Upper(LanguageName(token)) }, false });
         }
         // An empty tile reads as a rendering fault. Both lists say so instead,
         // muted, so an absence is distinguishable from something not loading.
         if (result.AudioLanguages.empty()) result.AudioLanguages.push_back({ L"NOT LISTED", true });
         for (auto const& token : source.SubtitleLanguages())
         {
-            result.Subtitles.push_back({ LanguageName(token), false });
+            result.Subtitles.push_back({ winrt::hstring{ Upper(LanguageName(token)) }, false });
         }
         if (result.Subtitles.empty()) result.Subtitles.push_back({ L"NONE INCLUDED", true });
         result.Provider = entry.Provider.empty() ? L"An addon" : entry.Provider;

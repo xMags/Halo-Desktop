@@ -177,6 +177,7 @@
     </ClInclude>
     <ClInclude Include="Controls\SettingRow.xaml.h"><DependentUpon>SettingRow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Controls\WrapPanel.h" />
     <ClInclude Include="Config\ServerConfig.h" />
     <ClInclude Include="Config\ServerConfig.example.h" />
     <ClInclude Include="Config\DiscordConfig.h" />
@@ -365,6 +366,7 @@
     </ClCompile>
     <ClCompile Include="Controls\SettingRow.xaml.cpp"><DependentUpon>SettingRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\TagChip.xaml.cpp"><DependentUpon>TagChip.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Controls\WrapPanel.cpp" />
     <ClCompile Include="Models\Models.cpp" />
     <ClCompile Include="Security\ProtectedHttpHeaders.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
@@ -533,6 +535,7 @@
     </Midl>
     <Midl Include="Controls\SettingRow.idl"><SubType>Code</SubType><DependentUpon>SettingRow.xaml</DependentUpon></Midl>
     <Midl Include="Controls\TagChip.idl"><SubType>Code</SubType><DependentUpon>TagChip.xaml</DependentUpon></Midl>
+    <Midl Include="Controls\WrapPanel.idl"><SubType>Code</SubType></Midl>
     <Midl Include="Models\Models.idl">
       <SubType>Code</SubType>
     </Midl>
