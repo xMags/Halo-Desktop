@@ -127,6 +127,80 @@ namespace
         return L"HDR";
     }
 
+    struct LanguageTag final
+    {
+        wchar_t const* Tag;
+        wchar_t const* Name;
+        // The short form the compact strip uses. Addons are inconsistent about
+        // which tag they send, so several tags share one code on purpose.
+        wchar_t const* Code;
+    };
+
+    constexpr LanguageTag LanguageTags[]{
+        { L"ENG", L"English", L"EN" }, { L"JPN", L"Japanese", L"JA" }, { L"GER", L"German", L"DE" },
+        { L"FRE", L"French", L"FR" }, { L"SPA", L"Spanish", L"ES" }, { L"ITA", L"Italian", L"IT" },
+        { L"KOR", L"Korean", L"KO" }, { L"CHI", L"Chinese", L"ZH" }, { L"HIN", L"Hindi", L"HI" },
+        { L"RUS", L"Russian", L"RU" }, { L"POR", L"Portuguese", L"PT" }, { L"DUT", L"Dutch", L"NL" },
+        { L"NOR", L"Norwegian", L"NO" }, { L"SWE", L"Swedish", L"SV" }, { L"DAN", L"Danish", L"DA" },
+        { L"FIN", L"Finnish", L"FI" }, { L"POL", L"Polish", L"PL" }, { L"TUR", L"Turkish", L"TR" },
+        { L"ARA", L"Arabic", L"AR" }, { L"MULTI", L"several languages", L"MULTI" },
+        { L"DUAL", L"two languages", L"DUAL" },
+        // The three-letter tags addons use are not consistent, so the common
+        // bibliographic spellings map onto the same names as the terminology ones.
+        { L"DEU", L"German", L"DE" }, { L"FRA", L"French", L"FR" }, { L"ZHO", L"Chinese", L"ZH" },
+        { L"NLD", L"Dutch", L"NL" }, { L"CES", L"Czech", L"CS" }, { L"CZE", L"Czech", L"CS" },
+        { L"ELL", L"Greek", L"EL" }, { L"GRE", L"Greek", L"EL" }, { L"RON", L"Romanian", L"RO" },
+        { L"RUM", L"Romanian", L"RO" }, { L"SLK", L"Slovak", L"SK" }, { L"SLO", L"Slovak", L"SK" },
+        { L"EN", L"English", L"EN" }, { L"JA", L"Japanese", L"JA" }, { L"DE", L"German", L"DE" },
+        { L"FR", L"French", L"FR" }, { L"ES", L"Spanish", L"ES" }, { L"IT", L"Italian", L"IT" },
+        { L"KO", L"Korean", L"KO" }, { L"ZH", L"Chinese", L"ZH" }, { L"HI", L"Hindi", L"HI" },
+        { L"RU", L"Russian", L"RU" }, { L"PT", L"Portuguese", L"PT" }, { L"NL", L"Dutch", L"NL" },
+    };
+
+    winrt::hstring LanguageCode(winrt::hstring const& code)
+    {
+        auto const upper = Upper(code);
+        for (auto const& tag : LanguageTags)
+        {
+            if (upper == tag.Tag) return tag.Code;
+        }
+        return winrt::hstring{ upper };
+    }
+
+    // The strip wants the channel layout on its own ("5.1"). Where the layout
+    // was never reported the codec name is the next most useful thing to say,
+    // which is why "ATMOS" survives here but not in the sound tile.
+    winrt::hstring SoundToken(winrt::hstring const& audio)
+    {
+        if (audio.empty() || audio == NotParsed) return L"SOUND NOT LISTED";
+        auto const text = Upper(audio);
+        auto const space = text.find(L' ');
+        return winrt::hstring{ space == std::wstring::npos ? text : text.substr(space + 1) };
+    }
+
+    // Four codes is what fits beside the quality plate before the strip wraps
+    // onto a second line. The rest are counted rather than quietly dropped.
+    winrt::hstring LanguageToken(winrt::hstring const& languages)
+    {
+        constexpr std::size_t Shown = 4;
+        std::vector<winrt::hstring> codes;
+        for (auto const& token : SplitTokens(languages))
+        {
+            if (token == NotParsed) continue;
+            auto code = LanguageCode(token);
+            if (std::find(codes.begin(), codes.end(), code) == codes.end()) codes.push_back(std::move(code));
+        }
+        if (codes.empty()) return L"LANGUAGE NOT LISTED";
+        std::wstring result;
+        for (std::size_t index{}; index < codes.size() && index < Shown; ++index)
+        {
+            if (index > 0) result.push_back(L'/');
+            result.append(codes[index].c_str());
+        }
+        if (codes.size() > Shown) result.append(L" +").append(std::to_wstring(codes.size() - Shown));
+        return winrt::hstring{ result };
+    }
+
     winrt::hstring SoundDetail(winrt::hstring const& audio)
     {
         if (audio.empty() || audio == NotParsed) return L"Not listed";
@@ -245,30 +319,9 @@ namespace HaloDesktop::Sources
 
     winrt::hstring LanguageName(winrt::hstring const& code)
     {
-        static constexpr std::pair<wchar_t const*, wchar_t const*> Names[]{
-            { L"ENG", L"English" }, { L"JPN", L"Japanese" }, { L"GER", L"German" },
-            { L"FRE", L"French" }, { L"SPA", L"Spanish" }, { L"ITA", L"Italian" },
-            { L"KOR", L"Korean" }, { L"CHI", L"Chinese" }, { L"HIN", L"Hindi" },
-            { L"RUS", L"Russian" }, { L"POR", L"Portuguese" }, { L"DUT", L"Dutch" },
-            { L"NOR", L"Norwegian" }, { L"SWE", L"Swedish" }, { L"DAN", L"Danish" },
-            { L"FIN", L"Finnish" }, { L"POL", L"Polish" }, { L"TUR", L"Turkish" },
-            { L"ARA", L"Arabic" }, { L"MULTI", L"several languages" },
-            { L"DUAL", L"two languages" },
-            // The three-letter tags addons use are not consistent, so the common
-            // bibliographic spellings map onto the same names as the terminology ones.
-            { L"DEU", L"German" }, { L"FRA", L"French" }, { L"ZHO", L"Chinese" },
-            { L"NLD", L"Dutch" }, { L"CES", L"Czech" }, { L"CZE", L"Czech" },
-            { L"ELL", L"Greek" }, { L"GRE", L"Greek" }, { L"RON", L"Romanian" },
-            { L"RUM", L"Romanian" }, { L"SLK", L"Slovak" }, { L"SLO", L"Slovak" },
-            { L"EN", L"English" }, { L"JA", L"Japanese" }, { L"DE", L"German" },
-            { L"FR", L"French" }, { L"ES", L"Spanish" }, { L"IT", L"Italian" },
-            { L"KO", L"Korean" }, { L"ZH", L"Chinese" }, { L"HI", L"Hindi" },
-            { L"RU", L"Russian" }, { L"PT", L"Portuguese" }, { L"NL", L"Dutch" },
-        };
-        auto const upper = Upper(code);
-        for (auto const& [tag, name] : Names)
+        for (auto const& tag : LanguageTags)
         {
-            if (upper == tag) return name;
+            if (Upper(code) == tag.Tag) return tag.Name;
         }
         return code;
     }
@@ -387,49 +440,57 @@ namespace HaloDesktop::Sources
         return L"The best picture here, but it has to come down first.";
     }
 
-    winrt::hstring PickSummary(SourceEntry const& entry, DeviceContext const& device)
+    MetaLineData MetaLineFor(
+        SourceEntry const& entry,
+        bool includeRange,
+        std::optional<winrt::hstring> const& preferredSubtitleLanguage)
     {
-        if (!entry.Source) return {};
-        // "Sound not listed in English and Japanese" would be a sentence that says
-        // the opposite of what it means, so the two clauses only join when the
-        // sound is actually known.
-        auto const sound = SoundLabel(entry.Source.Audio());
-        auto const known = sound != L"Sound not listed";
-        auto const languages = AudioLanguageLine(entry.Source.Languages());
-        std::wstring spoken;
-        if (languages != L"Audio language not listed")
+        MetaLineData result;
+        if (!entry.Source) return result;
+        auto const& source = entry.Source;
+
+        std::vector<winrt::hstring> parts;
+        parts.push_back(winrt::hstring{ Upper(SizeLabel(source.Size())) });
+        if (includeRange && IsHdr(source.Range())) parts.push_back(winrt::hstring{ Upper(RangeDetail(source.Range())) });
+        parts.push_back(SoundToken(source.Audio()));
+        parts.push_back(LanguageToken(source.Languages()));
+
+        std::wstring line;
+        for (std::size_t index{}; index < parts.size(); ++index)
         {
-            spoken.assign(languages.c_str());
-            // The pick reads as one sentence, so the trailing noun from the row
-            // line ("... audio") is dropped here.
-            auto const suffix = std::wstring{ L" audio" };
-            if (spoken.size() > suffix.size() && spoken.compare(spoken.size() - suffix.size(), suffix.size(), suffix) == 0)
+            if (index > 0) line.append(Separator);
+            line.append(parts[index].c_str());
+        }
+        result.Line = winrt::hstring{ line };
+
+        auto const tracks = source.SubtitleLanguages();
+        auto const count = tracks ? tracks.Size() : 0u;
+        if (count == 0)
+        {
+            result.Subtitles = L"NO SUBS";
+            return result;
+        }
+        if (preferredSubtitleLanguage && !preferredSubtitleLanguage->empty())
+        {
+            auto const wantedName = LanguageName(*preferredSubtitleLanguage);
+            auto const wantedTag = Upper(*preferredSubtitleLanguage);
+            for (auto const& track : tracks)
             {
-                spoken.resize(spoken.size() - suffix.size());
+                if (Upper(track) == wantedTag || LanguageName(track) == wantedName)
+                {
+                    result.HasSubtitles = true;
+                    result.Subtitles = L"SUB " + LanguageCode(*preferredSubtitleLanguage);
+                    return result;
+                }
             }
+            // Tracks exist, but none in the language this viewer reads, which is
+            // a no for them. The plate stays muted and names what is missing.
+            result.Subtitles = L"NO " + LanguageCode(*preferredSubtitleLanguage) + L" SUBS";
+            return result;
         }
-        std::wstring result;
-        if (known)
-        {
-            result.assign(sound.c_str());
-            if (!spoken.empty()) result.append(L" in ").append(spoken);
-        }
-        else if (!spoken.empty())
-        {
-            result.assign(spoken).append(L" audio, sound format not listed");
-        }
-        else
-        {
-            result.assign(sound.c_str());
-        }
-        auto const subtitles = entry.Source.SubtitleLanguages();
-        result.append(L", ");
-        result.append(SubtitleStatement(subtitles, device.PreferredSubtitleLanguage).c_str());
-        result.append(L", ");
-        result.append(SizeLabel(entry.Source.Size()).c_str());
-        result.push_back(L'.');
-        if (!result.empty()) result[0] = static_cast<wchar_t>(std::towupper(result[0]));
-        return winrt::hstring{ result };
+        result.HasSubtitles = true;
+        result.Subtitles = count == 1 ? winrt::hstring{ L"1 SUB" } : winrt::to_hstring(count) + L" SUBS";
+        return result;
     }
 
     bool HasWatchProgress(DeviceContext const& device) noexcept

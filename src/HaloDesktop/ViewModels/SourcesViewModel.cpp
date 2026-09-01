@@ -1,4 +1,4 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "ViewModels/SourcesViewModel.h"
 #if __has_include("SourceDetailChipViewModel.g.cpp")
 #include "SourceDetailChipViewModel.g.cpp"
@@ -259,8 +259,7 @@ namespace winrt::HaloDesktop::implementation
     SourceDisplayItemViewModel::SourceDisplayItemViewModel(
         Sources::SourceEntry entry,
         winrt::hstring statusLabel,
-        winrt::hstring soundAndSize,
-        winrt::hstring languageLine,
+        Sources::MetaLineData meta,
         winrt::hstring warning,
         winrt::hstring reason,
         std::vector<Sources::SpecRow> specs,
@@ -268,8 +267,7 @@ namespace winrt::HaloDesktop::implementation
         : m_kind(Kind::Row),
           m_entry(std::move(entry)),
           m_statusLabel(std::move(statusLabel)),
-          m_soundAndSize(std::move(soundAndSize)),
-          m_languageLine(std::move(languageLine)),
+          m_meta(std::move(meta)),
           m_warning(std::move(warning)),
           m_reason(std::move(reason)),
           m_specs(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -330,8 +328,16 @@ namespace winrt::HaloDesktop::implementation
         return OnDiskVisibility() == Visible ? Collapsed : Visible;
     }
 
-    winrt::hstring SourceDisplayItemViewModel::SoundAndSize() const { return m_soundAndSize; }
-    winrt::hstring SourceDisplayItemViewModel::LanguageLine() const { return m_languageLine; }
+    winrt::hstring SourceDisplayItemViewModel::MetaLine() const { return m_meta.Line; }
+    winrt::hstring SourceDisplayItemViewModel::SubsChip() const { return m_meta.Subtitles; }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::SubsOnVisibility() const noexcept
+    {
+        return m_meta.HasSubtitles ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::SubsOffVisibility() const noexcept
+    {
+        return m_meta.HasSubtitles ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible;
+    }
     winrt::hstring SourceDisplayItemViewModel::Warning() const { return m_warning; }
     Microsoft::UI::Xaml::Visibility SourceDisplayItemViewModel::WarningVisibility() const noexcept { return m_warning.empty() ? Collapsed : Visible; }
     winrt::hstring SourceDisplayItemViewModel::FileName() const { return m_entry.Source ? m_entry.Source.File() : L""; }
@@ -606,7 +612,16 @@ namespace winrt::HaloDesktop::implementation
     {
         return HasPick() ? Sources::PickHeadline(m_pool.front(), m_pool.size() == 1) : L"";
     }
-    winrt::hstring SourcesViewModel::PickLine() const { return HasPick() ? Sources::PickSummary(m_pool.front(), m_device) : L""; }
+    winrt::hstring SourcesViewModel::PickMetaLine() const { return m_pickMeta.Line; }
+    winrt::hstring SourcesViewModel::PickSubsChip() const { return m_pickMeta.Subtitles; }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickSubsOnVisibility() const noexcept
+    {
+        return m_pickMeta.HasSubtitles ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::PickSubsOffVisibility() const noexcept
+    {
+        return m_pickMeta.HasSubtitles ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible;
+    }
     winrt::hstring SourcesViewModel::PickFileName() const { return HasPick() ? m_pool.front().Source.File() : L""; }
     winrt::hstring SourcesViewModel::PickWatchNote() const { return HasPick() ? Sources::WatchNote(m_device) : L""; }
     Microsoft::UI::Xaml::Visibility SourcesViewModel::PickWatchNoteVisibility() const noexcept
@@ -1065,15 +1080,12 @@ namespace winrt::HaloDesktop::implementation
         double maximumNeededMbps) const
     {
         auto const& source = entry.Source;
-        auto const soundAndSize = L"\x00B7 " + Sources::SoundLabel(source.Audio())
-            + L" \x00B7 " + Sources::SizeLabel(source.Size());
-        auto const languageLine = Sources::AudioLanguageLine(source.Languages())
-            + L" \x00B7 " + Sources::SubtitleStatement(source.SubtitleLanguages(), m_device.PreferredSubtitleLanguage);
+        // Rows leave the range to the quality plate beside them; only the pick
+        // spells it out.
         return winrt::make<SourceDisplayItemViewModel>(
             entry,
             Sources::StatusLabel(source.Status()),
-            soundAndSize,
-            languageLine,
+            Sources::MetaLineFor(entry, false, m_device.PreferredSubtitleLanguage),
             Sources::BitrateWarning(entry, m_device.LineMbps),
             Sources::ReasonFor(entry, pick, entry.SizeBytes != 0 && entry.SizeBytes == m_smallestBytes),
             Sources::SpecsFor(entry, m_device),
@@ -1096,6 +1108,10 @@ namespace winrt::HaloDesktop::implementation
 
         Sources::SourceEntry const* pick = HasPick() ? &m_pool.front() : nullptr;
         m_pickDetails = pick ? DetailsFor(*pick, maximumNeededMbps) : nullptr;
+        // The pick is the one card arguing for itself, so it names its range.
+        m_pickMeta = pick
+            ? Sources::MetaLineFor(*pick, true, m_device.PreferredSubtitleLanguage)
+            : Sources::MetaLineData{};
         if (pick)
         {
             // The pick has its own block above the list, so it is not repeated in it.
@@ -1260,7 +1276,8 @@ namespace winrt::HaloDesktop::implementation
                  L"BannerTitle", L"BannerBody", L"BannerAction",
                  L"PickVisibility", L"PickQualityBadgeTier", L"PickQualityBadgeDetail", L"PickQualityTone", L"PickStatusLabel",
                  L"PickInstantVisibility", L"PickOnDiskVisibility", L"PickCachingVisibility", L"PickColdVisibility",
-                 L"PickWhy", L"PickLine", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
+                 L"PickWhy", L"PickMetaLine", L"PickSubsChip", L"PickSubsOnVisibility",
+                 L"PickSubsOffVisibility", L"PickFileName", L"PickWatchNote", L"PickWatchNoteVisibility",
                  L"PickSelectionVisibility", L"PickSaveVisibility", L"PickDetails", L"PickExpandedVisibility",
                  L"PickExpandGlyphVisibility", L"PickCollapseGlyphVisibility", L"SelectedIndex" })
         {

@@ -1,4 +1,4 @@
-// The badge tone is declared with the control that renders it. This is the one
+﻿// The badge tone is declared with the control that renders it. This is the one
 // type this sheet borrows from another file, so it is imported rather than
 // restated.
 import "Controls/QualityBadge.idl";
@@ -90,8 +90,10 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
         Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ColdVisibility { get; };
-        String SoundAndSize { get; };
-        String LanguageLine { get; };
+        String MetaLine { get; };
+        String SubsChip { get; };
+        Microsoft.UI.Xaml.Visibility SubsOnVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubsOffVisibility { get; };
         String Warning { get; };
         Microsoft.UI.Xaml.Visibility WarningVisibility { get; };
         Microsoft.UI.Xaml.Visibility SaveVisibility { get; };
@@ -154,7 +156,10 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PickCachingVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickColdVisibility { get; };
         String PickWhy { get; };
-        String PickLine { get; };
+        String PickMetaLine { get; };
+        String PickSubsChip { get; };
+        Microsoft.UI.Xaml.Visibility PickSubsOnVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickSubsOffVisibility { get; };
         String PickFileName { get; };
         String PickWatchNote { get; };
         Microsoft.UI.Xaml.Visibility PickWatchNoteVisibility { get; };

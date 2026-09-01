@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include <cstdint>
 #include <optional>
@@ -77,6 +77,16 @@ namespace HaloDesktop::Sources
         bool Muted{};
     };
 
+    // The compact strip under the headline on a collapsed card: mono, upper
+    // case, and separated by middots. The subtitle count sits beside it in its
+    // own plate rather than inside the strip, so it can carry its own ink.
+    struct MetaLineData final
+    {
+        winrt::hstring Line;
+        winrt::hstring Subtitles;
+        bool HasSubtitles{};
+    };
+
     struct SourceDetailsData final
     {
         winrt::hstring Resolution;
@@ -130,7 +140,14 @@ namespace HaloDesktop::Sources
         bool isSmallest);
     // The single sentence under the quality plate on the recommended pick.
     [[nodiscard]] winrt::hstring PickHeadline(SourceEntry const& entry, bool alone);
-    [[nodiscard]] winrt::hstring PickSummary(SourceEntry const& entry, DeviceContext const& device);
+    // The recommended pick names its dynamic range, because it is the one card
+    // arguing for itself; the rows below it leave that to the quality plate.
+    // The preferred language decides what the subtitle plate can promise: a
+    // count means nothing to someone who only reads one of them.
+    [[nodiscard]] MetaLineData MetaLineFor(
+        SourceEntry const& entry,
+        bool includeRange,
+        std::optional<winrt::hstring> const& preferredSubtitleLanguage);
     [[nodiscard]] bool HasWatchProgress(DeviceContext const& device) noexcept;
     [[nodiscard]] winrt::hstring WatchNote(DeviceContext const& device);
     [[nodiscard]] std::vector<SpecRow> SpecsFor(

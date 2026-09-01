@@ -506,7 +506,15 @@
                       Tone="{x:Bind ViewModel.PickQualityTone, Mode=OneWay}" />
                     <StackPanel Grid.Column="1">
                       <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.PickWhy, Mode=OneWay}" TextWrapping="Wrap" />
-                      <TextBlock Margin="0,5,0,0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.PickLine, Mode=OneWay}" TextWrapping="Wrap" />
+                      <local:WrapPanel Margin="0,7,0,0" HorizontalSpacing="10" VerticalSpacing="5">
+                        <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoMeta}" Text="{x:Bind ViewModel.PickMetaLine, Mode=OneWay}" />
+                        <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
+                          <Grid>
+                            <TextBlock Style="{StaticResource HaloMonoMeta}" CharacterSpacing="50" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.PickSubsChip, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickSubsOnVisibility, Mode=OneWay}" />
+                            <TextBlock Style="{StaticResource HaloMonoMeta}" CharacterSpacing="50" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PickSubsChip, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickSubsOffVisibility, Mode=OneWay}" />
+                          </Grid>
+                        </Border>
+                      </local:WrapPanel>
                       <TextBlock Margin="0,6,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloAccentBrush}" Text="{x:Bind ViewModel.PickWatchNote, Mode=OneWay}" Visibility="{x:Bind ViewModel.PickWatchNoteVisibility, Mode=OneWay}" />
                       <TextBlock Margin="0,10,0,0" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.PickFileName, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                     </StackPanel>
@@ -597,9 +605,16 @@
                                       <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind CachingVisibility}" />
                                       <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind StatusLabel}" Visibility="{x:Bind ColdVisibility}" />
                                     </Grid>
-                                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind SoundAndSize}" TextTrimming="CharacterEllipsis" />
                                   </StackPanel>
-                                  <TextBlock Margin="0,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind LanguageLine}" TextTrimming="CharacterEllipsis" />
+                                  <local:WrapPanel Margin="0,6,0,0" HorizontalSpacing="10" VerticalSpacing="5">
+                                    <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoMeta}" Text="{x:Bind MetaLine}" />
+                                    <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
+                                      <Grid>
+                                        <TextBlock Style="{StaticResource HaloMonoMeta}" CharacterSpacing="50" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind SubsChip}" Visibility="{x:Bind SubsOnVisibility}" />
+                                        <TextBlock Style="{StaticResource HaloMonoMeta}" CharacterSpacing="50" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind SubsChip}" Visibility="{x:Bind SubsOffVisibility}" />
+                                      </Grid>
+                                    </Border>
+                                  </local:WrapPanel>
                                   <StackPanel Margin="0,5,0,0" Orientation="Horizontal" Spacing="7" Visibility="{x:Bind WarningVisibility}">
                                     <FontIcon VerticalAlignment="Top" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE7BA;" />
                                     <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Warning}" TextWrapping="Wrap" />

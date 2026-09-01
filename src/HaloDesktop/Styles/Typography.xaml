@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <ResourceDictionary
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
@@ -102,6 +102,13 @@
     <Setter Property="FontSize" Value="{StaticResource HaloFontMonoBig}" />
     <Setter Property="FontWeight" Value="Bold" />
     <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
+  </Style>
+
+  <!-- The compact strip under a source headline: size, range, sound, language. -->
+  <Style x:Key="HaloMonoMeta" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontCaption}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloText3Brush}" />
   </Style>
 
   <Style x:Key="HaloMonoTileCaption" TargetType="TextBlock">

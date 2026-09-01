@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "SourceDetailChipViewModel.g.h"
 #include "SourceDetailsViewModel.g.h"
@@ -169,8 +169,7 @@ namespace winrt::HaloDesktop::implementation
         SourceDisplayItemViewModel(
             ::HaloDesktop::Sources::SourceEntry entry,
             winrt::hstring statusLabel,
-            winrt::hstring soundAndSize,
-            winrt::hstring languageLine,
+            ::HaloDesktop::Sources::MetaLineData meta,
             winrt::hstring warning,
             winrt::hstring reason,
             std::vector<::HaloDesktop::Sources::SpecRow> specs,
@@ -194,8 +193,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OnDiskVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility CachingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ColdVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring SoundAndSize() const;
-        [[nodiscard]] winrt::hstring LanguageLine() const;
+        [[nodiscard]] winrt::hstring MetaLine() const;
+        [[nodiscard]] winrt::hstring SubsChip() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsOnVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsOffVisibility() const noexcept;
         [[nodiscard]] winrt::hstring Warning() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility WarningVisibility() const noexcept;
         // Hidden on a file already saved: offering to save it again is an action
@@ -229,8 +230,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_showMoreLabel;
         ::HaloDesktop::Sources::SourceEntry m_entry;
         winrt::hstring m_statusLabel;
-        winrt::hstring m_soundAndSize;
-        winrt::hstring m_languageLine;
+        ::HaloDesktop::Sources::MetaLineData m_meta;
         winrt::hstring m_warning;
         winrt::hstring m_reason;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_specs{ nullptr };
@@ -293,7 +293,12 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickCachingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickColdVisibility() const noexcept;
         [[nodiscard]] winrt::hstring PickWhy() const;
-        [[nodiscard]] winrt::hstring PickLine() const;
+        [[nodiscard]] winrt::hstring PickMetaLine() const;
+        [[nodiscard]] winrt::hstring PickSubsChip() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSubsOnVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSubsOffVisibility() const noexcept;
+        // Built once per rebuild alongside the pick's details, rather than on
+        // each of the four getters the card binds to it.
         [[nodiscard]] winrt::hstring PickFileName() const;
         [[nodiscard]] winrt::hstring PickWatchNote() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickWatchNoteVisibility() const noexcept;
@@ -388,6 +393,7 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t m_smallestBytes{};
         double m_maximumNeededMbps{};
         winrt::HaloDesktop::SourceDetailsViewModel m_pickDetails{ nullptr };
+        ::HaloDesktop::Sources::MetaLineData m_pickMeta;
         // How many entries at the head of m_pool are files on this device. They are
         // pushed first and rank first, so the count doubles as their extent.
         std::size_t m_localCount{};
