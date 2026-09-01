@@ -215,7 +215,7 @@ namespace
         auto const capturedAt = std::chrono::system_clock::time_point{ std::chrono::seconds{ 2'000 } };
         auto state = PresenceState();
         auto movie = BuildPresenceActivity(
-            { L"Arrival", L"", L"", L"https://images.example.com/posters/arrival.jpg" },
+            { L"Arrival", L"Arrival", L"", L"movie", L"https://images.example.com/posters/arrival.jpg" },
             state,
             capturedAt);
         Require(movie.has_value(), "a playing movie did not produce presence");
@@ -244,7 +244,7 @@ namespace
         for (auto const* unsafePoster : unsafePosters)
         {
             auto fallback = BuildPresenceActivity(
-                { L"Arrival", L"", L"", unsafePoster }, state, capturedAt);
+                { L"Arrival", L"Arrival", L"", L"movie", unsafePoster }, state, capturedAt);
             Require(fallback && fallback->ArtworkUrl.empty(),
                 "an unsafe poster URL crossed the Discord presence boundary");
             auto const fallbackJson = SerializeSetActivity(*fallback, 42);
@@ -253,7 +253,7 @@ namespace
         }
 
         auto episode = BuildPresenceActivity(
-            { L"The Ones Who Live", L"The Walking Dead", L"S01E06" }, state, capturedAt);
+            { L"The Ones Who Live", L"The Walking Dead", L"S01E06", L"series" }, state, capturedAt);
         Require(episode.has_value(), "a playing episode did not produce presence");
         Require(episode->Details == L"The Walking Dead"
                 && episode->State == L"S01E06 \u00b7 The Ones Who Live",
@@ -326,8 +326,9 @@ namespace
             DiscordPresenceService service{ true, localFileTransport, std::chrono::milliseconds{ 5 } };
             service.SetMedia({
                 L"Spider-Man: No Way Home",
+                L"Spider-Man: No Way Home",
                 L"",
-                L"",
+                L"movie",
                 L"https://images.example.com/posters/spider-man.jpg" });
             auto loading = PresenceState();
             loading.FileSerial = 0;

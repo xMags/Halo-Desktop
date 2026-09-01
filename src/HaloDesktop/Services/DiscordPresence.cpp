@@ -100,6 +100,16 @@ namespace
         return episode + L" · " + title;
     }
 
+    bool IsSeries(PresenceMedia const& media)
+    {
+        auto type = CleanText(media.MediaType);
+        std::transform(type.begin(), type.end(), type.begin(), [](wchar_t character)
+        {
+            return static_cast<wchar_t>(std::towlower(character));
+        });
+        return type == L"series";
+    }
+
     bool IsPublicIpLiteral(std::wstring const& host) noexcept
     {
         IN_ADDR ipv4{};
@@ -452,22 +462,18 @@ namespace HaloDesktop::Services
         {
             return std::nullopt;
         }
-        auto details = CleanText(media.ShowName);
-        auto episode = JoinEpisode(media);
-        if (details.empty())
+        auto const series = IsSeries(media);
+        auto details = series ? CleanText(media.ShowName) : CleanText(media.Title);
+        auto episode = series ? JoinEpisode(media) : std::wstring{ L"Movie" };
+        if (details.empty() && series)
         {
             details = CleanText(media.Title);
-            episode.clear();
         }
         details = TruncateText(std::move(details));
         episode = TruncateText(std::move(episode));
         if (details.empty())
         {
             return std::nullopt;
-        }
-        if (episode.empty() && CleanText(media.ShowName).empty())
-        {
-            episode = L"Movie";
         }
         if (*kind == PresencePlaybackState::Paused)
         {

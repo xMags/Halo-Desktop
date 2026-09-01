@@ -19,6 +19,7 @@ namespace HaloDesktop::Services
         std::wstring Title;
         std::wstring ShowName;
         std::wstring EpisodeLabel;
+        std::wstring MediaType;
         std::wstring PosterUrl;
     };
 
