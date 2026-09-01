@@ -7,6 +7,17 @@
   Loaded="OnLoaded"
   Unloaded="OnUnloaded"
   Width="268">
+  <UserControl.Resources>
+    <!--
+      The card already states hover itself: a 2px lift and the accent ring over
+      the art frame. The stock Button paints a filled, rounded panel behind the
+      whole card on top of that, which reads as a pane of glass laid under the
+      still and its title. Only that fill is dropped. The button keeps its
+      transparent background, so the still, the title and the gaps around them
+      all stay hit-testable as one card.
+    -->
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+  </UserControl.Resources>
   <Button
     x:Name="CardButton"
     Padding="0"
