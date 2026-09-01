@@ -483,8 +483,17 @@ namespace HaloDesktop::Playback
     {
         // Changing this option at runtime makes libmpv resize the composition
         // swapchain; there is no window for it to watch.
+        //
+        // The request is queued rather than set synchronously because this runs
+        // on the UI thread for every resize event. A synchronous set waits for
+        // the player core, which was measured blocking for over a tenth of a
+        // second while the video output reconfigured, long enough to visibly
+        // stall a resize drag. libmpv copies the value and applies queued
+        // requests in order, so the final size still wins.
+        auto value = FormatSurfaceSize(size);
+        auto* raw = value.data();
         CheckMpv("set d3d11-composition-size",
-                 mpv_set_property_string(m_handle, "d3d11-composition-size", FormatSurfaceSize(size).c_str()));
+                 mpv_set_property_async(m_handle, 0, "d3d11-composition-size", MPV_FORMAT_STRING, &raw));
     }
 
     void MpvClient::Shutdown() noexcept

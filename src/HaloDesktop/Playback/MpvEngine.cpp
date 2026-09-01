@@ -184,11 +184,15 @@ namespace HaloDesktop::Playback
         {
             return;
         }
-        m_surfaceSize = size;
+        // The size is committed only once the client has accepted it. Recording
+        // it first would let a failed request be swallowed by the guard above,
+        // leaving the swapchain at the stale size until the panel happens to
+        // resize to some other value.
         if (m_client)
         {
             m_client->SetSurfaceSize(size);
         }
+        m_surfaceSize = size;
     }
 
     void MpvEngine::DetachVideoSurface() noexcept
