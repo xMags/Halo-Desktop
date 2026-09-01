@@ -91,7 +91,8 @@ namespace HaloDesktop::Services::Downloads
             std::wstring const& jobId,
             std::uint64_t downloadedBytes,
             std::uint64_t totalBytes,
-            std::uint64_t bytesPerSecond);
+            std::uint64_t bytesPerSecond,
+            bool persist);
 
         [[nodiscard]] std::vector<DownloadRecord> SnapshotLocked() const;
         [[nodiscard]] std::vector<DownloadChangedHandler> HandlersLocked() const;

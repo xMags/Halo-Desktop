@@ -2,6 +2,7 @@
 #include "Services/Downloads/TransferEngine.h"
 
 #include "Security/ProtectedRedirect.h"
+#include "Services/Downloads/TransferRateWindow.h"
 #include "Storage/FileStorage.h"
 
 #include <algorithm>
@@ -23,6 +24,12 @@ namespace
     constexpr std::size_t TransferChunkSize = 64u * 1024u;
     constexpr std::uint64_t MaximumSubtitleBytes = 32ull * 1024ull * 1024ull;
     constexpr auto ProgressInterval = std::chrono::milliseconds{ 250 };
+    // Progress is reported every ProgressInterval; the data file is flushed and
+    // the index persisted only every DurableInterval, because both are
+    // synchronous disk work that stalls the socket when done four times a second.
+    constexpr auto DurableInterval = std::chrono::seconds{ 2 };
+    // Throughput is averaged over this much history before it is reported.
+    constexpr auto RateWindow = std::chrono::seconds{ 3 };
     constexpr int TransferAttempts = 3;
 
     struct RedirectError final
@@ -1879,8 +1886,11 @@ namespace HaloDesktop::Services::Downloads
 
         std::array<std::uint8_t, TransferChunkSize> buffer{};
         auto written = partial;
-        auto lastBytes = written;
-        auto lastProgress = std::chrono::steady_clock::now();
+        auto const started = std::chrono::steady_clock::now();
+        auto lastProgress = started;
+        auto lastDurable = started;
+        TransferRateWindow rate{ RateWindow };
+        rate.Reset(started, written);
         for (;;)
         {
             if (stopToken.stop_requested())
@@ -1951,19 +1961,22 @@ namespace HaloDesktop::Services::Downloads
             auto const elapsed = now - lastProgress;
             if (elapsed >= ProgressInterval)
             {
-                if (!FlushFileBuffers(output.get()))
+                auto const durable = now - lastDurable >= DurableInterval;
+                if (durable)
                 {
-                    throw TransferError{
-                        .Type = TransferError::Kind::Permanent,
-                        .Failure = DownloadFailureCode::StorageFull,
-                    };
+                    if (!FlushFileBuffers(output.get()))
+                    {
+                        throw TransferError{
+                            .Type = TransferError::Kind::Permanent,
+                            .Failure = DownloadFailureCode::StorageFull,
+                        };
+                    }
+                    lastDurable = now;
                 }
-                auto const seconds = std::chrono::duration<double>(elapsed).count();
-                auto const rate = static_cast<std::uint64_t>(
-                    static_cast<double>(written - lastBytes) / (std::max)(0.001, seconds));
-                UpdateProgress(jobId, written, total, rate);
+                // Persisting only on a durable tick keeps the stored byte count
+                // at or below what is actually on disk.
+                UpdateProgress(jobId, written, total, rate.Record(now, written), durable);
                 lastProgress = now;
-                lastBytes = written;
             }
         }
         if (stopToken.stop_requested())
@@ -2255,7 +2268,8 @@ namespace HaloDesktop::Services::Downloads
         std::wstring const& jobId,
         std::uint64_t downloadedBytes,
         std::uint64_t totalBytes,
-        std::uint64_t bytesPerSecond)
+        std::uint64_t bytesPerSecond,
+        bool persist)
     {
         DownloadRecord changed;
         std::vector<DownloadRecord> snapshot;
@@ -2274,7 +2288,10 @@ namespace HaloDesktop::Services::Downloads
             snapshot = { changed };
             handlers = HandlersLocked();
         }
-        Persist(std::move(snapshot), generation);
+        if (persist)
+        {
+            Persist(std::move(snapshot), generation);
+        }
         Notify(handlers, changed);
     }
 

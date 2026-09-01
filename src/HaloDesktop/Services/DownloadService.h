@@ -92,6 +92,9 @@ namespace HaloDesktop::Services
         void ApplySnapshot(Snapshot snapshot, std::uint64_t version);
         void EnrichMissingArtwork();
         void RebuildObservables();
+        void SampleThroughput();
+        void UpdateThroughputTimer();
+        [[nodiscard]] bool HasActiveTransfer() const noexcept;
         void RunEngineAction(std::function<void()> action);
         void NotifyChanged();
         [[nodiscard]] std::optional<Downloads::DownloadRecord> FindRecord(
@@ -106,6 +109,10 @@ namespace HaloDesktop::Services
         std::shared_ptr<DevicePreferencesStore> m_devicePreferences;
         std::shared_ptr<DownloadArtworkService> m_artwork;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
+        // The chart is sampled on a clock rather than on progress events, so its
+        // slots always mean seconds no matter how many transfers are reporting.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_throughputTimer{ nullptr };
+        winrt::event_token m_throughputTickToken{};
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_transfers{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_ready{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<double> m_throughput{ nullptr };

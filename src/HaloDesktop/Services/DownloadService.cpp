@@ -24,6 +24,9 @@ namespace
     using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStatus;
 
+    constexpr std::uint32_t ThroughputSlots = 30;
+    constexpr auto ThroughputSampleInterval = std::chrono::seconds{ 1 };
+
     winrt::hstring FormatBytes(std::uint64_t value)
     {
         constexpr std::array<wchar_t const*, 5> units{ L"B", L"KB", L"MB", L"GB", L"TB" };
@@ -178,7 +181,7 @@ namespace HaloDesktop::Services
         {
             throw std::invalid_argument{ "DownloadService requires all dependencies." };
         }
-        for (std::size_t index = 0; index < 30; ++index)
+        for (std::uint32_t index = 0; index < ThroughputSlots; ++index)
         {
             m_throughput.Append(0.0);
         }
@@ -210,6 +213,19 @@ namespace HaloDesktop::Services
                 self->RequestSynchronize();
             }
         });
+        m_throughputTimer = m_dispatcher.CreateTimer();
+        m_throughputTimer.Interval(ThroughputSampleInterval);
+        m_throughputTimer.IsRepeating(true);
+        m_throughputTickToken = m_throughputTimer.Tick(
+            [weak = weak_from_this()](
+                [[maybe_unused]] winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer const& timer,
+                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
+            {
+                if (auto const self = weak.lock())
+                {
+                    self->SampleThroughput();
+                }
+            });
         m_running = true;
         RebindAccount();
     }
@@ -222,6 +238,19 @@ namespace HaloDesktop::Services
         {
             m_engine->RemoveChangedHandler(m_engineToken);
             m_engineToken = 0;
+        }
+        try
+        {
+            if (m_throughputTimer)
+            {
+                m_throughputTimer.Stop();
+                m_throughputTimer.Tick(m_throughputTickToken);
+                m_throughputTickToken = {};
+                m_throughputTimer = nullptr;
+            }
+        }
+        catch (...)
+        {
         }
     }
 
@@ -853,12 +882,10 @@ namespace HaloDesktop::Services
         m_storedBytes = 0;
         m_inFlightBytes = 0;
         m_aggregateRate = 0.0;
-        std::uint64_t bytesPerSecond{};
         std::vector<winrt::HaloDesktop::DownloadItem> transfers;
         std::vector<winrt::HaloDesktop::DownloadItem> ready;
         for (auto const& record : m_records)
         {
-            bytesPerSecond += record.BytesPerSecond;
             m_aggregateRate += static_cast<double>(record.BytesPerSecond) / (1024.0 * 1024.0);
             if (record.Status == DownloadStatus::Done)
             {
@@ -875,10 +902,60 @@ namespace HaloDesktop::Services
         for (auto const& item : transfers) m_transfers.Append(item);
         m_ready.Clear();
         for (auto const& item : ready) m_ready.Append(item);
-        if (m_throughput.Size() >= 30) m_throughput.RemoveAt(0);
-        m_throughput.Append(m_aggregateRate);
+        UpdateThroughputTimer();
+        NotifyChanged();
+    }
+
+    bool DownloadService::HasActiveTransfer() const noexcept
+    {
+        return std::any_of(m_records.begin(), m_records.end(), [](auto const& record)
+        {
+            return record.Status == DownloadStatus::Downloading;
+        });
+    }
+
+    // The chart is a clock, not an event log: one sample per second regardless
+    // of how many transfers are reporting, so thirty slots are thirty seconds.
+    void DownloadService::UpdateThroughputTimer()
+    {
+        if (!m_throughputTimer)
+        {
+            return;
+        }
+        auto const active = HasActiveTransfer();
+        if (active && !m_throughputTimer.IsRunning())
+        {
+            m_throughputTimer.Start();
+            return;
+        }
+        if (!active && m_throughputTimer.IsRunning())
+        {
+            m_throughputTimer.Stop();
+            // Close the trace at zero so the chart shows the transfers ending
+            // instead of freezing on the last busy sample.
+            if (m_throughput.Size() >= ThroughputSlots) m_throughput.RemoveAt(0);
+            m_throughput.Append(0.0);
+        }
+    }
+
+    void DownloadService::SampleThroughput()
+    {
+        if (!m_running)
+        {
+            return;
+        }
+        std::uint64_t bytesPerSecond{};
+        for (auto const& record : m_records)
+        {
+            if (record.Status == DownloadStatus::Downloading) bytesPerSecond += record.BytesPerSecond;
+        }
+        auto const megabytesPerSecond = static_cast<double>(bytesPerSecond) / (1024.0 * 1024.0);
+        if (m_throughput.Size() >= ThroughputSlots) m_throughput.RemoveAt(0);
+        m_throughput.Append(megabytesPerSecond);
         // Megabits, not mebibytes: the number is compared against what a line is
-        // sold as, and the store drops anything that is not a new peak.
+        // sold as, and the store drops anything that is not a new peak. Only these
+        // once-a-second samples of the engine's windowed rate qualify; a raw
+        // progress slice would record a burst as the line speed.
         m_devicePreferences->RecordMeasuredLineMbps(static_cast<double>(bytesPerSecond) * 8.0 / 1'000'000.0);
         NotifyChanged();
     }

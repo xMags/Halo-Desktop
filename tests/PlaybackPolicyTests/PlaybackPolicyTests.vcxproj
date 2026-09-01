@@ -72,6 +72,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadSourceMatch.cpp">
       <Link>DownloadSourceMatch.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\TransferRateWindow.cpp">
+      <Link>TransferRateWindow.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Playback\TemporaryFileCollection.cpp">
       <Link>TemporaryFileCollection.cpp</Link>
     </ClCompile>

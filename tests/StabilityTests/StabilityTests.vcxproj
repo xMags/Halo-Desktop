@@ -110,6 +110,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\TransferEngine.cpp">
       <Link>TransferEngine.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\TransferRateWindow.cpp">
+      <Link>TransferRateWindow.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Storage\AppStoragePaths.cpp">
       <Link>AppStoragePaths.cpp</Link>
     </ClCompile>

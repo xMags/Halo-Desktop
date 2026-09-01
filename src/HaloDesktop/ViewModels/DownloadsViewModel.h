@@ -9,6 +9,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -188,6 +189,9 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredTransfers{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredReady{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_chartBars{ nullptr };
+        // The samples the bars were last built from, so an unchanged strip is
+        // not torn down and rebuilt on every unrelated state change.
+        std::vector<double> m_chartValues;
         std::int32_t m_filterIndex{};
         winrt::HaloDesktop::DownloadRowViewModel m_selected{ nullptr };
         winrt::hstring m_selectedId;

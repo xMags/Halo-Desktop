@@ -102,7 +102,7 @@ namespace winrt::HaloDesktop::implementation
         : m_item(std::move(item))
     {
     }
-    // A row is handed a rebuilt item on every progress sample, roughly once a
+    // A row is handed a rebuilt item on every progress sample, four times a
     // second per transfer. Raising every property each time re-runs every
     // binding on the row, and the poster binding turns a string into a fresh
     // BitmapImage each pass: the artwork blinks out and decodes again while the
@@ -562,7 +562,7 @@ namespace winrt::HaloDesktop::implementation
         ResolveSelection();
         RaiseState();
     }
-    // A transfer publishes a fresh sample about once a second. Clearing and
+    // A transfer publishes progress four times a second. Clearing and
     // refilling the bound vector on every one of those tears the ListView's
     // containers down and back up: the poster is decoded again and the selection
     // visual blinks. The membership is compared first so a moving progress bar
@@ -633,19 +633,31 @@ namespace winrt::HaloDesktop::implementation
     // across the whole cell and read as a chart of two enormous readings.
     void DownloadsViewModel::RebuildChart()
     {
+        auto const source = m_downloads->Throughput();
+        std::vector<double> values;
+        values.reserve(source.Size());
+        for (auto const value : source) values.push_back(value);
+        // Every state change refreshes the page, but the samples only move once
+        // a second. Rebuilding identical bars would restart their animations.
+        if (m_chartBars.Size() == ChartSlots && values == m_chartValues)
+        {
+            return;
+        }
+        m_chartValues = values;
+
         m_chartBars.Clear();
-        auto const values = m_downloads->Throughput();
         auto peak = 0.0;
         for (auto const value : values) peak = (std::max)(peak, value);
-        auto const taken = (std::min)(values.Size(), ChartSlots);
+        auto const count = static_cast<std::uint32_t>(values.size());
+        auto const taken = (std::min)(count, ChartSlots);
         for (auto slot = taken; slot < ChartSlots; ++slot)
         {
             m_chartBars.Append(winrt::make<ChartBarViewModel>(0.0, false));
         }
-        for (std::uint32_t index = values.Size() - taken; index < values.Size(); ++index)
+        for (std::uint32_t index = count - taken; index < count; ++index)
         {
-            auto const height = peak > 0.0 ? values.GetAt(index) / peak * ChartHeight : 0.0;
-            m_chartBars.Append(winrt::make<ChartBarViewModel>(height, index + 6 >= values.Size()));
+            auto const height = peak > 0.0 ? values[index] / peak * ChartHeight : 0.0;
+            m_chartBars.Append(winrt::make<ChartBarViewModel>(height, index + 6 >= count));
         }
     }
     void DownloadsViewModel::ResolveSelection()

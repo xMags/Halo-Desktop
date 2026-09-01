@@ -224,6 +224,7 @@
     <ClInclude Include="Services\Downloads\DownloadPreparation.h" />
     <ClInclude Include="Services\Downloads\RequestVault.h" />
     <ClInclude Include="Services\Downloads\TransferEngine.h" />
+    <ClInclude Include="Services\Downloads\TransferRateWindow.h" />
     <ClInclude Include="Services\Auth\LocalAuthSession.h" />
     <ClInclude Include="Services\Auth\LoopbackListener.h" />
     <ClInclude Include="Services\Auth\OidcAuthSession.h" />
@@ -440,6 +441,9 @@
     </ClCompile>
     <ClCompile Include="Services\Downloads\RequestVault.cpp" />
     <ClCompile Include="Services\Downloads\TransferEngine.cpp" />
+    <ClCompile Include="Services\Downloads\TransferRateWindow.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="Services\Auth\LoopbackListener.cpp" />
     <ClCompile Include="Services\Auth\OidcAuthSession.cpp" />
     <ClCompile Include="Services\Auth\OidcSignInFlow.cpp" />

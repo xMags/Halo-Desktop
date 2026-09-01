@@ -7,6 +7,7 @@
 #include "Security/ProtectedHttpHeaders.h"
 #include "Services/AddonSelectionPolicy.h"
 #include "Services/DownloadSourceMatch.h"
+#include "Services/Downloads/TransferRateWindow.h"
 #include "Shell/WindowPresentationPolicy.h"
 
 #include <chrono>
@@ -490,6 +491,42 @@ namespace
         Require(ReleaseLeafName(L" c.mkv ")==L"c.mkv","the leaf is trimmed");
         Require(ReleaseLeafName(L"").empty(),"an empty name has no leaf");
     }
+
+    void TestTransferRateWindow()
+    {
+        using HaloDesktop::Services::Downloads::TransferRateWindow;
+        using namespace std::chrono_literals;
+        using Clock = TransferRateWindow::Clock;
+
+        auto const origin = Clock::time_point{};
+        auto const tick = 250ms;
+        constexpr std::uint64_t megabyte = 1'000'000;
+
+        TransferRateWindow window{ 3s };
+        window.Reset(origin, 0);
+        std::uint64_t reported{};
+        std::uint64_t bytes{};
+        for (int step = 1; step <= 40; ++step)
+        {
+            bytes += megabyte;
+            reported = window.Record(origin + tick * step, bytes);
+        }
+        Require(reported >= 3'900'000 && reported <= 4'100'000,
+                "a steady 4 MB/s transfer was not reported as 4 MB/s");
+
+        // A stall followed by a catch-up burst must not swing the average.
+        reported = window.Record(origin + tick * 41, bytes);
+        Require(reported >= 3'500'000 && reported <= 4'100'000,
+                "one empty slice collapsed the windowed rate");
+        bytes += 2 * megabyte;
+        reported = window.Record(origin + tick * 42, bytes);
+        Require(reported >= 3'500'000 && reported <= 4'500'000,
+                "one catch-up slice inflated the windowed rate");
+
+        // A restart from a smaller offset forgets the history.
+        Require(window.Record(origin + tick * 43, megabyte) == 0,
+                "a rewound byte count did not reset the window");
+    }
 }
 
 int main()
@@ -514,6 +551,7 @@ int main()
         TestScrubPreviewCoalescing();
         TestPlaybackTimeFormatting();
         TestReleaseFileMatching();
+        TestTransferRateWindow();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }
