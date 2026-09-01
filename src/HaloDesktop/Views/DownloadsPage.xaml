@@ -155,9 +155,9 @@
                   <ProgressBar Height="8" Maximum="1" Value="{x:Bind ViewModel.StorageFraction, Mode=OneWay}" Background="Transparent" Foreground="{ThemeResource HaloCautionBrush}" />
                   <ProgressBar Height="8" Maximum="1" Value="{x:Bind ViewModel.StoredFraction, Mode=OneWay}" Background="Transparent" Foreground="{ThemeResource HaloAccentAltBrush}" />
                 </Grid>
-                <StackPanel Orientation="Horizontal" Spacing="16">
-                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
-                  <StackPanel Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
+                <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="16">
+                  <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloAccentBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Stored" /><TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.StoredLine, Mode=OneWay}" /></StackPanel>
+                  <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="7"><Rectangle Width="8" Height="8" VerticalAlignment="Center" Fill="{ThemeResource HaloCautionBrush}" RadiusX="2" RadiusY="2" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="In flight" /><TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.InFlightLine, Mode=OneWay}" /></StackPanel>
                 </StackPanel>
               </StackPanel>
             </Grid>
@@ -328,7 +328,6 @@
               <Grid>
                 <local:PlaceholderArt ArtCornerRadius="6" />
                 <local:ArtworkImage DecodeWidth="544" SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" />
-                <Button Width="44" Height="44" MinWidth="0" Padding="0" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#C0000000" BorderThickness="0" CornerRadius="22" Click="OnPlaySelectedClick" AutomationProperties.Name="Play offline" Visibility="{x:Bind ViewModel.SelectedReadyVisibility, Mode=OneWay}"><FontIcon FontSize="{StaticResource HaloFontSubtitle}" Foreground="White" Glyph="&#xE768;" /></Button>
                 <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind ViewModel.SelectedProgress, Mode=OneWay}" Background="{ThemeResource HaloCardStrokeBrush}" Foreground="{ThemeResource HaloAccentBrush}" />
               </Grid>
             </Border>
