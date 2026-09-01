@@ -321,7 +321,10 @@
       <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
         <Grid Margin="0,20,0,32">
           <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.DetailVisibility, Mode=OneWay}">
-            <Border Width="260" Height="462" HorizontalAlignment="Center" CornerRadius="6">
+            <!-- 2:3, the aspect posters are actually drawn at. The taller frame it
+                 replaces cropped the top and bottom off every one, and cost the panel
+                 the height the delete action needed to sit above the window edge. -->
+            <Border Width="260" Height="390" HorizontalAlignment="Center" CornerRadius="6">
               <Grid>
                 <local:PlaceholderArt ArtCornerRadius="6" />
                 <local:ArtworkImage DecodeWidth="544" SourceUrl="{x:Bind ViewModel.SelectedPoster, Mode=OneWay}" />
