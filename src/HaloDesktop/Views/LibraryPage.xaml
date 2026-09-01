@@ -40,7 +40,7 @@
       Loaded="OnGridLoaded"
       ScrollViewer.VerticalScrollBarVisibility="Hidden"
       Grid.Row="2"
-      Padding="24,20,24,32"
+      Padding="24,16,24,32"
       Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}"
       IsItemClickEnabled="False"
       SelectionMode="None">

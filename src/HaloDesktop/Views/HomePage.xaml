@@ -173,13 +173,7 @@
                the scroller itself, and marks it handled, so one attached there is
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
-          <!-- The strip is exactly as tall as one card and a scroll viewer clips
-               to its viewport, so the 2px a hovered card lifts by was cut off its
-               top edge: the card read as sliding down into a slot instead of
-               rising out of the row. The padding gives the lift room inside the
-               clip; the matching negative margin puts the strip back on the line
-               it sat on before. -->
-          <Grid Padding="0,4,0,0" Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
+          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
             <!-- The last list on this page that realised everything it was given. -->
             <ItemsRepeater x:Name="ContinueList">
             <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>

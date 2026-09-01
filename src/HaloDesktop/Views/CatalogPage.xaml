@@ -31,7 +31,7 @@
       x:Name="CatalogGrid"
       Loaded="OnGridLoaded"
       Grid.Row="1"
-      Padding="24,20,24,32"
+      Padding="24,16,24,32"
       IsItemClickEnabled="False"
       ScrollViewer.VerticalScrollBarVisibility="Hidden"
       SelectionMode="None"

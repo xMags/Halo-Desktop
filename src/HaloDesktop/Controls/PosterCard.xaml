@@ -18,8 +18,18 @@
     -->
     <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
   </UserControl.Resources>
+  <!--
+    The four pixels above the button are the room the card lifts into on hover.
+    The lift is a render-time translation, so with no space of its own the card
+    slid straight out of whatever clips it: a shelf is a scroll viewer exactly
+    one card tall, and a grid view item clips to its own bounds. Both cut the
+    lift off flat and squared the top corners, so the card read as dropping into
+    a slot rather than rising out of the row. Hosts that care about the gap
+    above the row cancel this band with a matching negative margin.
+  -->
   <Button
     x:Name="CardButton"
+    Margin="0,4,0,0"
     Padding="0"
     HorizontalContentAlignment="Stretch"
     Background="Transparent"
