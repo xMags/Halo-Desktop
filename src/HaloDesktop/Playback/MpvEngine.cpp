@@ -45,9 +45,9 @@ namespace HaloDesktop::Playback
         {
             return;
         }
-        if (m_windowHandle == 0)
+        if (!m_surfaceAttached)
         {
-            throw std::logic_error("A video host window must be attached before playback starts");
+            throw std::logic_error("A video surface must be attached before playback starts");
         }
 
         auto const dispatcher = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();
@@ -57,7 +57,7 @@ namespace HaloDesktop::Playback
         }
 
         auto const weak = weak_from_this();
-        m_client = std::make_unique<MpvClient>(m_windowHandle, dispatcher, [weak](PlaybackUpdate update) {
+        m_client = std::make_unique<MpvClient>(m_surfaceSize, dispatcher, [weak](PlaybackUpdate update) {
             if (auto const self = weak.lock())
             {
                 self->ApplyUpdate(std::move(update));
@@ -89,6 +89,9 @@ namespace HaloDesktop::Playback
     void MpvEngine::Stop() noexcept
     {
         m_running = false;
+        // The panel must release the swapchain before libmpv destroys it, so it
+        // is never left presenting an object that no longer exists.
+        PublishSwapChain(0);
         if (m_client)
         {
             m_client->Shutdown();
@@ -154,15 +157,11 @@ namespace HaloDesktop::Playback
         NotifyChanged();
     }
 
-    void MpvEngine::AttachVideoWindow(std::uintptr_t windowHandle)
+    void MpvEngine::AttachVideoSurface(VideoSurfaceSize size, VideoSwapChainHandler handler)
     {
-        if (windowHandle == 0)
+        if (!handler)
         {
-            throw std::invalid_argument("A valid child window handle is required");
-        }
-        if (m_windowHandle == windowHandle)
-        {
-            return;
+            throw std::invalid_argument("A swapchain handler is required");
         }
 
         auto const restart = m_running;
@@ -170,17 +169,53 @@ namespace HaloDesktop::Playback
         {
             Stop();
         }
-        m_windowHandle = windowHandle;
+        m_surfaceSize = size;
+        m_swapChainHandler = std::move(handler);
+        m_surfaceAttached = true;
         if (restart)
         {
             Start();
         }
     }
 
-    void MpvEngine::DetachVideoWindow() noexcept
+    void MpvEngine::SetVideoSurfaceSize(VideoSurfaceSize size)
+    {
+        if (m_surfaceSize == size)
+        {
+            return;
+        }
+        m_surfaceSize = size;
+        if (m_client)
+        {
+            m_client->SetSurfaceSize(size);
+        }
+    }
+
+    void MpvEngine::DetachVideoSurface() noexcept
     {
         Stop();
-        m_windowHandle = 0;
+        m_surfaceAttached = false;
+        m_swapChainHandler = {};
+    }
+
+    void MpvEngine::PublishSwapChain(std::uintptr_t address) noexcept
+    {
+        if (m_publishedSwapChain == address)
+        {
+            return;
+        }
+        m_publishedSwapChain = address;
+        if (!m_swapChainHandler)
+        {
+            return;
+        }
+        try
+        {
+            m_swapChainHandler(address);
+        }
+        catch (...)
+        {
+        }
     }
 
     void MpvEngine::SetPaused(bool paused)
@@ -384,6 +419,10 @@ namespace HaloDesktop::Playback
 
     void MpvEngine::ApplyUpdate(PlaybackUpdate update)
     {
+        if (update.SwapChainAddress)
+        {
+            PublishSwapChain(*update.SwapChainAddress);
+        }
         if (update.Seeking)
         {
             m_state.SeekPending = *update.Seeking;

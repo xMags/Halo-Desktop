@@ -111,6 +111,20 @@ namespace HaloDesktop::Playback
     // presentation; clearing it makes the fields above win over the track.
     struct SubtitleStyle final{double Scale{1.0};std::wstring Font{L"Segoe UI"};double BorderSize{3.0};double ShadowOffset{2.0};bool KeepTrackStyling{true};};
 
+    struct VideoSurfaceSize final
+    {
+        std::uint32_t WidthPixels{ 1 };
+        std::uint32_t HeightPixels{ 1 };
+
+        bool operator==(VideoSurfaceSize const&) const = default;
+    };
+
+    // Receives the address of the IDXGISwapChain the engine presents into, or 0
+    // when that swapchain is gone. Always invoked on the UI thread. The engine
+    // owns the swapchain; the receiver must take its own COM reference if it
+    // needs the object to outlive the call.
+    using VideoSwapChainHandler = std::function<void(std::uintptr_t swapChainAddress)>;
+
     using PlaybackChangedToken = std::uint64_t;
     using PlaybackChangedHandler = std::function<void()>;
 
@@ -122,8 +136,11 @@ namespace HaloDesktop::Playback
         virtual void Stop() noexcept = 0;
         virtual void Open(PlaybackSource source) = 0;
         virtual void Replay() = 0;
-        virtual void AttachVideoWindow(std::uintptr_t windowHandle) = 0;
-        virtual void DetachVideoWindow() noexcept = 0;
+        // The surface must be attached before Start(). Attaching while running
+        // restarts the engine on the new surface.
+        virtual void AttachVideoSurface(VideoSurfaceSize size, VideoSwapChainHandler handler) = 0;
+        virtual void SetVideoSurfaceSize(VideoSurfaceSize size) = 0;
+        virtual void DetachVideoSurface() noexcept = 0;
         virtual void SetPaused(bool paused) = 0;
         virtual void SeekAbsolute(double seconds) = 0;
         virtual void SeekRelative(double seconds) = 0;

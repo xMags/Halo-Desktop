@@ -79,13 +79,19 @@ namespace HaloDesktop::Playback
         if(m_source.Location.empty())return;
         m_state.PositionSeconds=0.0;m_state.Paused=false;m_state.EndReason=PlaybackEndReason::None;++m_state.FileSerial;NotifyChanged();
     }
-    void NullEngine::AttachVideoWindow(std::uintptr_t windowHandle)
+    // The fake engine decodes nothing, so it never has a swapchain to publish
+    // and the handler is deliberately dropped.
+    void NullEngine::AttachVideoSurface(VideoSurfaceSize size, VideoSwapChainHandler handler)
     {
-        m_windowHandle = windowHandle;
+        static_cast<void>(handler);
+        m_surfaceSize = size;
     }
-    void NullEngine::DetachVideoWindow() noexcept
+    void NullEngine::SetVideoSurfaceSize(VideoSurfaceSize size)
     {
-        m_windowHandle = 0;
+        m_surfaceSize = size;
+    }
+    void NullEngine::DetachVideoSurface() noexcept
+    {
     }
     void NullEngine::SetPaused(bool paused)
     {

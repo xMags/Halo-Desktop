@@ -25,33 +25,4 @@ namespace HaloDesktop::Shell
             ? requestedFullscreen
             : currentFullscreen;
     }
-
-    void PlayerOverlayMoveState::Reset() noexcept
-    {
-        m_active = false;
-    }
-
-    bool PlayerOverlayMoveState::Enter() noexcept
-    {
-        auto const changed = !m_active;
-        m_active = true;
-        return changed;
-    }
-
-    bool PlayerOverlayMoveState::Exit(PlayerOverlayLifecycle lifecycle) noexcept
-    {
-        auto const wasActive = m_active;
-        m_active = false;
-        return wasActive && lifecycle == PlayerOverlayLifecycle::Ready;
-    }
-
-    bool PlayerOverlayMoveState::CanOpen(PlayerOverlayLifecycle lifecycle) const noexcept
-    {
-        return lifecycle == PlayerOverlayLifecycle::Ready && !m_active;
-    }
-
-    bool PlayerOverlayMoveState::IsActive() const noexcept
-    {
-        return m_active;
-    }
 } // namespace HaloDesktop::Shell

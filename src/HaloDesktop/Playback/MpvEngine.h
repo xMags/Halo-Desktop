@@ -35,8 +35,9 @@ namespace HaloDesktop::Playback
         void Stop() noexcept override;
         void Open(PlaybackSource source) override;
         void Replay() override;
-        void AttachVideoWindow(std::uintptr_t windowHandle) override;
-        void DetachVideoWindow() noexcept override;
+        void AttachVideoSurface(VideoSurfaceSize size, VideoSwapChainHandler handler) override;
+        void SetVideoSurfaceSize(VideoSurfaceSize size) override;
+        void DetachVideoSurface() noexcept override;
         void SetPaused(bool paused) override;
         void SeekAbsolute(double seconds) override;
         void SeekRelative(double seconds) override;
@@ -61,6 +62,9 @@ namespace HaloDesktop::Playback
 
     private:
         void ApplyUpdate(PlaybackUpdate update);
+        // Hands the host panel the swapchain libmpv presents into, or 0 when it
+        // is about to go away. Runs on the UI thread and never throws outward.
+        void PublishSwapChain(std::uintptr_t address) noexcept;
         void SynchronizeAudioSession();
         void NotifyChanged();
         // Keep the newest commanded position on screen until libmpv restarts at that
@@ -74,7 +78,10 @@ namespace HaloDesktop::Playback
         std::unordered_map<PlaybackChangedToken, PlaybackChangedHandler> m_handlers;
         PlaybackChangedToken m_nextToken{};
         PlaybackSource m_source;
-        std::uintptr_t m_windowHandle{};
+        VideoSurfaceSize m_surfaceSize;
+        VideoSwapChainHandler m_swapChainHandler;
+        std::uintptr_t m_publishedSwapChain{};
+        bool m_surfaceAttached{};
         std::chrono::steady_clock::time_point m_seekIssuedAt{};
         std::optional<double> m_seekTarget;
         bool m_seekRestarted{};

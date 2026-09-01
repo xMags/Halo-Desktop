@@ -363,7 +363,7 @@ namespace winrt::HaloDesktop::implementation
         }
         m_engineToken = 0;
         m_engine->Stop();
-        m_engine->DetachVideoWindow();
+        m_engine->DetachVideoSurface();
         if (m_windowPresentation->IsFullscreen())
         {
             static_cast<void>(m_windowPresentation->TrySetFullscreen(false));

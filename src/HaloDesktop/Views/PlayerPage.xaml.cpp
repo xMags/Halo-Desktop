@@ -11,7 +11,6 @@
 #include "Playback/SubtitleController.h"
 #include "Services/NavigationService.h"
 #include "Services/SettingsSyncService.h"
-#include "Shell/WindowPresentationService.h"
 #include "ViewModels/PlayerViewModel.h"
 
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -25,15 +24,8 @@ namespace winrt::HaloDesktop::implementation
 
     void PlayerPage::OnLoaded(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_loaded=true;m_closing=false;m_overlayMoveState.Reset();RemoveWindowMoveSizeHandler();
-        auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->EnsureHostWindow();
-        auto const windowPresentation=App::Services().WindowPresentation;
-        m_moveSizeChangedToken=windowPresentation->AddMoveSizeChangedHandler(
-            [weak=get_weak()](bool active)
-            {
-                if(auto self=weak.get())self->OnWindowMoveSizeChanged(active);
-            });
-        if(windowPresentation->IsMoveSizeActive())OnWindowMoveSizeChanged(true);
+        m_loaded=true;m_closing=false;
+        auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->EnsureSurface();
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();m_viewModel=overlay.ViewModel();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);
         viewModel->SetCloseRequestedHandler([weak=get_weak()](){if(auto self=weak.get())self->BeginClose();});
         viewModel->SetPlayNextHandler([weak=get_weak()](){if(auto self=weak.get())self->AdvanceUpNextAsync();});
@@ -41,21 +33,18 @@ namespace winrt::HaloDesktop::implementation
         viewModel->SetSubtitleTrackHandler([subtitles](std::int64_t id){subtitles->SelectTrack(id);});
         viewModel->SetSubtitlesOffHandler([subtitles](){subtitles->Disable();});
         viewModel->SetAddonSubtitleHandler([subtitles](winrt::hstring key){subtitles->SelectAsync(std::move(key)).then([](concurrency::task<void>task){try{task.get();}catch(...){}});});
-        m_presentationChangedToken=m_viewModel.PropertyChanged([weak=get_weak()](auto const&,Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const&args){if(args.PropertyName()==L"IsFullscreen")if(auto self=weak.get())self->RefreshOverlayAfterPresentationChange();});
-        UpdateOverlayLayout();
+        FocusOverlay();
         try{viewModel->Activate();InitializePlaybackAsync();}
         catch(...){ShowMediaPrompt(L"The player could not start this source.");}
     }
 
     void PlayerPage::OnUnloaded(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_loaded=false;++m_overlayLayoutGeneration;RemoveWindowMoveSizeHandler();m_overlayMoveState.Reset();
-        if(m_viewModel&&m_presentationChangedToken.value!=0){m_viewModel.PropertyChanged(m_presentationChangedToken);m_presentationChangedToken={};}
-        CloseOverlayPopup(true);
+        m_loaded=false;
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
         if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetSubtitleTrackHandler({});vm->SetSubtitlesOffHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         App::Services().Subtitles->CleanupTemporaryFiles();
-        auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
+        auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->ReleaseSurface();
         m_session.reset();
     }
 
@@ -190,7 +179,6 @@ namespace winrt::HaloDesktop::implementation
         auto const uiContext = winrt::apartment_context{};
         if (m_closing) co_return;
         m_closing = true;
-        ++m_overlayLayoutGeneration;
         ++m_playbackGeneration;
         try
         {
@@ -203,18 +191,16 @@ namespace winrt::HaloDesktop::implementation
         co_await uiContext;
         if (!m_loaded) co_return;
 
-        CloseOverlayPopup(true);
         App::Services().Subtitles->Stop();
         if (m_viewModel) winrt::get_self<PlayerViewModel>(m_viewModel)->Deactivate();
         App::Services().Subtitles->CleanupTemporaryFiles();
         auto const videoHost = FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();
-        winrt::get_self<VideoHostControl>(videoHost)->DestroyHostWindow();
+        winrt::get_self<VideoHostControl>(videoHost)->ReleaseSurface();
     }
 
     void PlayerPage::ShowMediaPrompt(winrt::hstring const&message){FindName(L"MediaPromptMessage").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(message);FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Visible);}
     void PlayerPage::ShowSubtitleError(){FindName(L"SubtitleNotice").as<Microsoft::UI::Xaml::Controls::InfoBar>().IsOpen(true);}
     void PlayerPage::OnCloseErrorClick(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::RoutedEventArgs const&){BeginClose();}
-    void PlayerPage::OnPlayerSizeChanged(winrt::Windows::Foundation::IInspectable const&,Microsoft::UI::Xaml::SizeChangedEventArgs const&){UpdateOverlayLayout();}
     void PlayerPage::OnSpaceInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.TogglePause();CompleteKeyboardAction(args);}
     void PlayerPage::OnLeftInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.SeekRelative(-10.0);CompleteKeyboardAction(args);}
     void PlayerPage::OnRightInvoked(Microsoft::UI::Xaml::Input::KeyboardAccelerator const&,Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){m_viewModel.SeekRelative(10.0);CompleteKeyboardAction(args);}
@@ -232,143 +218,8 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerPage::CompleteKeyboardAction(Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const&args){if(m_viewModel)m_viewModel.NotifyUserActivity();args.Handled(true);}
 
-    void PlayerPage::CloseOverlayPopup(bool detachChild) noexcept
-    {
-        try
-        {
-            auto const popup = FindName(L"OverlayPopup").try_as<Microsoft::UI::Xaml::Controls::Primitives::Popup>();
-            if (!popup)
-            {
-                return;
-            }
-            popup.IsOpen(false);
-            if (detachChild)
-            {
-                popup.Child(nullptr);
-            }
-        }
-        catch (...)
-        {
-        }
-    }
-
-    void PlayerPage::UpdateOverlayLayout() noexcept
-    {
-        if (!CanOpenOverlay())
-        {
-            CloseOverlayPopup(false);
-            return;
-        }
-
-        try
-        {
-            auto const root = PlayerRoot();
-            if (root.ActualWidth() <= 0.0 || root.ActualHeight() <= 0.0)
-            {
-                CloseOverlayPopup(false);
-                return;
-            }
-
-            auto const popup = OverlayPopup();
-            auto const overlay = OverlayHost();
-            overlay.Width(root.ActualWidth());
-            overlay.Height(root.ActualHeight());
-            popup.HorizontalOffset(0.0);
-            popup.VerticalOffset(0.0);
-            if (!CanOpenOverlay())
-            {
-                CloseOverlayPopup(false);
-                return;
-            }
-            if (!popup.IsOpen())
-            {
-                popup.IsOpen(true);
-            }
-            static_cast<void>(overlay.Focus(Microsoft::UI::Xaml::FocusState::Programmatic));
-        }
-        catch (...)
-        {
-            CloseOverlayPopup(false);
-        }
-    }
-
-    void PlayerPage::RefreshOverlayAfterPresentationChange() noexcept
-    {
-        if(!CanOpenOverlay()){++m_overlayLayoutGeneration;CloseOverlayPopup(false);return;}
-        CloseOverlayPopup(false);
-        QueueOverlayRestore();
-    }
-
-    void PlayerPage::OnWindowMoveSizeChanged(bool active) noexcept
-    {
-        if(active)
-        {
-            if(m_overlayMoveState.Enter())++m_overlayLayoutGeneration;
-            CloseOverlayPopup(false);
-            return;
-        }
-
-        if(m_overlayMoveState.Exit(OverlayLifecycle()))QueueOverlayRestore();
-    }
-
-    void PlayerPage::RemoveWindowMoveSizeHandler() noexcept
-    {
-        if(m_moveSizeChangedToken==0)return;
-        try
-        {
-            App::Services().WindowPresentation->RemoveMoveSizeChangedHandler(m_moveSizeChangedToken);
-        }
-        catch (...)
-        {
-        }
-        m_moveSizeChangedToken=0;
-    }
-
-    void PlayerPage::QueueOverlayRestore() noexcept
-    {
-        if(!CanOpenOverlay())return;
-        auto const generation=++m_overlayLayoutGeneration;
-        try
-        {
-            if(DispatcherQueue().TryEnqueue(
-                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
-                [weak=get_weak(),generation]()
-                {
-                    if(auto self=weak.get();self&&generation==self->m_overlayLayoutGeneration)
-                    {
-                        self->UpdateOverlayLayout();
-                    }
-                }))
-            {
-                return;
-            }
-        }
-        catch (...)
-        {
-        }
-
-        if(generation==m_overlayLayoutGeneration)UpdateOverlayLayout();
-    }
-
-    bool PlayerPage::CanOpenOverlay() const noexcept
-    {
-        return m_overlayMoveState.CanOpen(OverlayLifecycle());
-    }
-
-    ::HaloDesktop::Shell::PlayerOverlayLifecycle PlayerPage::OverlayLifecycle() const noexcept
-    {
-        if(!m_loaded)return ::HaloDesktop::Shell::PlayerOverlayLifecycle::Unloaded;
-        if(m_closing)return ::HaloDesktop::Shell::PlayerOverlayLifecycle::Closing;
-        return ::HaloDesktop::Shell::PlayerOverlayLifecycle::Ready;
-    }
-
     void PlayerPage::RestoreOverlayFocusAfterActivation() noexcept
     {
-        if (!CanOpenOverlay())
-        {
-            return;
-        }
-
         try
         {
             if (DispatcherQueue().TryEnqueue(
@@ -377,7 +228,7 @@ namespace winrt::HaloDesktop::implementation
                 {
                     if (auto const self = weak.get())
                     {
-                        self->FocusOverlayIfOpen();
+                        self->FocusOverlay();
                     }
                 }))
             {
@@ -388,22 +239,18 @@ namespace winrt::HaloDesktop::implementation
         {
         }
 
-        FocusOverlayIfOpen();
+        FocusOverlay();
     }
 
-    void PlayerPage::FocusOverlayIfOpen() noexcept
+    void PlayerPage::FocusOverlay() noexcept
     {
-        if (!CanOpenOverlay())
+        if (!m_loaded || m_closing)
         {
             return;
         }
 
         try
         {
-            if (!OverlayPopup().IsOpen())
-            {
-                return;
-            }
             static_cast<void>(OverlayHost().Focus(Microsoft::UI::Xaml::FocusState::Programmatic));
         }
         catch (...)

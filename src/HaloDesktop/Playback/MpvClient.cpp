@@ -28,6 +28,12 @@ namespace
         }
     }
 
+    std::string FormatSurfaceSize(HaloDesktop::Playback::VideoSurfaceSize size)
+    {
+        return std::to_string((std::max)(size.WidthPixels, 1u)) + "x"
+            + std::to_string((std::max)(size.HeightPixels, 1u));
+    }
+
     mpv_node const* FindMapValue(mpv_node const& map, std::string_view key) noexcept
     {
         if (map.format != MPV_FORMAT_NODE_MAP || !map.u.list)
@@ -200,13 +206,28 @@ namespace
     std::optional<HaloDesktop::Playback::PlaybackUpdate> TranslateProperty(mpv_event const& event)
     {
         auto const property = static_cast<mpv_event_property const*>(event.data);
-        if (!property || !property->name || property->format == MPV_FORMAT_NONE || !property->data)
+        if (!property || !property->name)
         {
             return std::nullopt;
         }
 
         HaloDesktop::Playback::PlaybackUpdate update;
         auto const name = std::string_view(property->name);
+        // The swapchain is read before the "no value" guard below: libmpv
+        // reports a destroyed video output by making the property unavailable,
+        // and the panel has to hear about that to let go of it.
+        if (name == "display-swapchain")
+        {
+            auto const available = property->format == MPV_FORMAT_INT64 && property->data;
+            auto const address = available ? *static_cast<std::int64_t const*>(property->data) : 0;
+            update.SwapChainAddress = address > 0 ? static_cast<std::uintptr_t>(address) : 0;
+            return update;
+        }
+        if (property->format == MPV_FORMAT_NONE || !property->data)
+        {
+            return std::nullopt;
+        }
+
         if (name == "time-pos" && property->format == MPV_FORMAT_DOUBLE)
         {
             update.PositionSeconds = *static_cast<double const*>(property->data);
@@ -282,22 +303,22 @@ namespace
 
 namespace HaloDesktop::Playback
 {
-    MpvClient::MpvClient(std::uintptr_t videoWindowHandle,
+    MpvClient::MpvClient(VideoSurfaceSize surfaceSize,
                          winrt::Microsoft::UI::Dispatching::DispatcherQueue const& dispatcher,
                          UpdateHandler updateHandler,
                          bool hardwareDecoding)
         : m_dispatcher(dispatcher), m_updateHandler(std::move(updateHandler))
     {
-        if (videoWindowHandle == 0 || !m_dispatcher || !m_updateHandler)
+        if (!m_dispatcher || !m_updateHandler)
         {
-            throw std::invalid_argument("MpvClient requires a video window, dispatcher, and update handler");
+            throw std::invalid_argument("MpvClient requires a dispatcher and update handler");
         }
 
         int initializationError{};
-        m_handle = CreateInitializedHandle(videoWindowHandle, "gpu-next", hardwareDecoding, initializationError);
+        m_handle = CreateInitializedHandle(surfaceSize, "gpu-next", hardwareDecoding, initializationError);
         if (!m_handle)
         {
-            m_handle = CreateInitializedHandle(videoWindowHandle, "gpu", hardwareDecoding, initializationError);
+            m_handle = CreateInitializedHandle(surfaceSize, "gpu", hardwareDecoding, initializationError);
         }
         if (!m_handle)
         {
@@ -313,7 +334,7 @@ namespace HaloDesktop::Playback
     }
 
     mpv_handle* MpvClient::CreateInitializedHandle(
-        std::uintptr_t videoWindowHandle,
+        VideoSurfaceSize surfaceSize,
         char const* videoOutput,
         bool hardwareDecoding,
         int& initializationError)
@@ -326,9 +347,13 @@ namespace HaloDesktop::Playback
 
         try
         {
-            auto windowId = static_cast<std::int64_t>(videoWindowHandle);
-            CheckMpv("set wid", mpv_set_option(handle, "wid", MPV_FORMAT_INT64, &windowId));
             CheckMpv("set vo", mpv_set_option_string(handle, "vo", videoOutput));
+            // Composition mode presents into a swapchain instead of a window, so
+            // there is no child HWND to compose above the XAML overlay.
+            CheckMpv("set gpu-context", mpv_set_option_string(handle, "gpu-context", "d3d11"));
+            CheckMpv("set d3d11-output-mode", mpv_set_option_string(handle, "d3d11-output-mode", "composition"));
+            CheckMpv("set d3d11-composition-size",
+                     mpv_set_option_string(handle, "d3d11-composition-size", FormatSurfaceSize(surfaceSize).c_str()));
             CheckMpv("set hwdec", mpv_set_option_string(
                 handle,
                 "hwdec",
@@ -358,6 +383,8 @@ namespace HaloDesktop::Playback
             CheckMpv("observe track-list", mpv_observe_property(handle, 0, "track-list", MPV_FORMAT_NODE));
             CheckMpv("observe video-params", mpv_observe_property(handle, 0, "video-params", MPV_FORMAT_NODE));
             CheckMpv("observe paused-for-cache", mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG));
+            CheckMpv("observe display-swapchain",
+                     mpv_observe_property(handle, 0, "display-swapchain", MPV_FORMAT_INT64));
             return handle;
         }
         catch (...)
@@ -450,6 +477,14 @@ namespace HaloDesktop::Playback
         // derives the zoom from the video and window geometry itself, so this works
         // before any frame has been decoded.
         SetDoubleProperty("panscan", mode == VideoFitMode::Fill ? 1.0 : 0.0);
+    }
+
+    void MpvClient::SetSurfaceSize(VideoSurfaceSize size)
+    {
+        // Changing this option at runtime makes libmpv resize the composition
+        // swapchain; there is no window for it to watch.
+        CheckMpv("set d3d11-composition-size",
+                 mpv_set_property_string(m_handle, "d3d11-composition-size", FormatSurfaceSize(size).c_str()));
     }
 
     void MpvClient::Shutdown() noexcept

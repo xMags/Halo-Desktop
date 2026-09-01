@@ -2,9 +2,12 @@
 
 #include "VideoHostControl.g.h"
 
+#include "Playback/IPlaybackEngine.h"
+
 #include <cstdint>
-#include <optional>
+#include <dxgi1_3.h>
 #include <winrt/Microsoft.UI.Xaml.h>
+#include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Windows.Foundation.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -18,31 +21,23 @@ namespace winrt::HaloDesktop::implementation
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnSizeChanged(winrt::Windows::Foundation::IInspectable const&,
                            Microsoft::UI::Xaml::SizeChangedEventArgs const&);
+        void OnCompositionScaleChanged(Microsoft::UI::Xaml::Controls::SwapChainPanel const&,
+                                       winrt::Windows::Foundation::IInspectable const&);
 
-        void EnsureHostWindow();
-        void DestroyHostWindow() noexcept;
-        [[nodiscard]] std::uintptr_t HostWindowHandle() const noexcept;
+        // Attaches the engine to this panel. Safe to call more than once.
+        void EnsureSurface();
+        // Stops playback and releases the swapchain. Safe to call more than once.
+        void ReleaseSurface() noexcept;
 
     private:
-        struct HostBounds final
-        {
-            int X{};
-            int Y{};
-            int Width{};
-            int Height{};
+        // Not const: the generated VideoPanel() accessor is non-const.
+        [[nodiscard]] ::HaloDesktop::Playback::VideoSurfaceSize CurrentSurfaceSize();
+        void UpdateSurfaceSize() noexcept;
+        void ApplySwapChain(std::uintptr_t address) noexcept;
+        void ApplyScaleTransform();
 
-            bool operator==(HostBounds const&) const = default;
-        };
-
-        void UpdateBounds() noexcept;
-        void TryUpdateBounds(bool allowRetry) noexcept;
-        void QueueBoundsRetry() noexcept;
-
-        std::uintptr_t m_hostWindow{};
-        std::optional<HostBounds> m_lastBounds;
-        std::uint64_t m_hostWindowGeneration{};
-        bool m_boundsRetryQueued{};
-        Microsoft::UI::Xaml::XamlRoot::Changed_revoker m_xamlRootChangedRevoker{};
+        winrt::com_ptr<IDXGISwapChain2> m_swapChain;
+        bool m_surfaceAttached{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

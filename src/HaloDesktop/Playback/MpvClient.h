@@ -31,6 +31,8 @@ namespace HaloDesktop::Playback
         std::optional<bool> Seeking;
         std::optional<VideoFormat> Video;
         std::optional<std::vector<TrackInfo>> Tracks;
+        // Address of the D3D11 swapchain, 0 once libmpv has released it.
+        std::optional<std::uintptr_t> SwapChainAddress;
     };
 
     // Owns one libmpv handle and its event thread. Commands are issued by the
@@ -40,7 +42,7 @@ namespace HaloDesktop::Playback
     public:
         using UpdateHandler = std::function<void(PlaybackUpdate)>;
 
-        MpvClient(std::uintptr_t videoWindowHandle,
+        MpvClient(VideoSurfaceSize surfaceSize,
                   winrt::Microsoft::UI::Dispatching::DispatcherQueue const& dispatcher,
                   UpdateHandler updateHandler,
                   bool hardwareDecoding);
@@ -69,12 +71,13 @@ namespace HaloDesktop::Playback
         void RemoveTrack(std::int64_t id);
         void ApplySubtitleStyle(SubtitleStyle const& style);
         void SetVideoFit(VideoFitMode mode);
+        void SetSurfaceSize(VideoSurfaceSize size);
         [[nodiscard]] double DurationSeconds() const noexcept;
         void Shutdown() noexcept;
 
     private:
         static mpv_handle* CreateInitializedHandle(
-            std::uintptr_t videoWindowHandle,
+            VideoSurfaceSize surfaceSize,
             char const* videoOutput,
             bool hardwareDecoding,
             int& initializationError);

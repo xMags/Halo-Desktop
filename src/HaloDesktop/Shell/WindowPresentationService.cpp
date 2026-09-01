@@ -7,9 +7,7 @@
 #include <shobjidl_core.h>
 #include <stdexcept>
 #include <utility>
-#include <vector>
 #include <wrl/client.h>
-#include <winrt/Microsoft.UI.Interop.h>
 
 namespace
 {
@@ -235,16 +233,6 @@ namespace HaloDesktop::Shell
         }
         m_windowHandle = windowHandle;
         m_titleBarRow = titleBarRow;
-        try
-        {
-            AttachMoveSizeSource();
-        }
-        catch (...)
-        {
-            m_windowHandle = 0;
-            m_titleBarRow = nullptr;
-            throw;
-        }
     }
 
     void WindowPresentationService::Detach() noexcept
@@ -262,9 +250,6 @@ namespace HaloDesktop::Shell
             }
         }
 
-        DetachMoveSizeSource();
-        m_moveSizeHandlers.clear();
-
         m_windowHandle = 0;
         m_titleBarRow = nullptr;
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };
@@ -275,7 +260,6 @@ namespace HaloDesktop::Shell
         m_wasMaximized = false;
         m_fullscreen = false;
         m_taskbarFullscreenMarked = false;
-        m_moveSizeActive = false;
     }
 
     bool WindowPresentationService::TrySetFullscreen(bool fullscreen) noexcept
@@ -427,123 +411,4 @@ namespace HaloDesktop::Shell
         return m_windowHandle;
     }
 
-    MoveSizeChangedToken WindowPresentationService::AddMoveSizeChangedHandler(
-        MoveSizeChangedHandler handler)
-    {
-        if (!handler)
-        {
-            return 0;
-        }
-
-        auto const token = m_nextMoveSizeToken++;
-        m_moveSizeHandlers.emplace(token, std::move(handler));
-        return token;
-    }
-
-    void WindowPresentationService::RemoveMoveSizeChangedHandler(
-        MoveSizeChangedToken token) noexcept
-    {
-        m_moveSizeHandlers.erase(token);
-    }
-
-    bool WindowPresentationService::IsMoveSizeActive() const noexcept
-    {
-        return m_moveSizeActive;
-    }
-
-    void WindowPresentationService::AttachMoveSizeSource()
-    {
-        auto const window = NativeWindow(m_windowHandle);
-        auto const windowId = winrt::Microsoft::UI::GetWindowIdFromWindow(window);
-        m_nonClientPointerSource =
-            winrt::Microsoft::UI::Input::InputNonClientPointerSource::GetForWindowId(windowId);
-        if (!m_nonClientPointerSource)
-        {
-            throw std::runtime_error{ "The non-client pointer source is unavailable." };
-        }
-
-        try
-        {
-            m_enteringMoveSizeToken = m_nonClientPointerSource.EnteringMoveSize(
-                [this](
-                    [[maybe_unused]] winrt::Microsoft::UI::Input::InputNonClientPointerSource const& sender,
-                    [[maybe_unused]] winrt::Microsoft::UI::Input::EnteringMoveSizeEventArgs const& args) noexcept
-                {
-                    SetMoveSizeActive(true);
-                });
-            m_exitedMoveSizeToken = m_nonClientPointerSource.ExitedMoveSize(
-                [this](
-                    [[maybe_unused]] winrt::Microsoft::UI::Input::InputNonClientPointerSource const& sender,
-                    [[maybe_unused]] winrt::Microsoft::UI::Input::ExitedMoveSizeEventArgs const& args) noexcept
-                {
-                    SetMoveSizeActive(false);
-                });
-        }
-        catch (...)
-        {
-            DetachMoveSizeSource();
-            throw;
-        }
-    }
-
-    void WindowPresentationService::DetachMoveSizeSource() noexcept
-    {
-        if (!m_nonClientPointerSource)
-        {
-            return;
-        }
-
-        try
-        {
-            if (m_enteringMoveSizeToken.value != 0)
-            {
-                m_nonClientPointerSource.EnteringMoveSize(m_enteringMoveSizeToken);
-            }
-            if (m_exitedMoveSizeToken.value != 0)
-            {
-                m_nonClientPointerSource.ExitedMoveSize(m_exitedMoveSizeToken);
-            }
-        }
-        catch (...)
-        {
-        }
-
-        m_enteringMoveSizeToken = {};
-        m_exitedMoveSizeToken = {};
-        m_nonClientPointerSource = nullptr;
-    }
-
-    void WindowPresentationService::SetMoveSizeActive(bool active) noexcept
-    {
-        if (m_moveSizeActive == active)
-        {
-            return;
-        }
-        m_moveSizeActive = active;
-
-        try
-        {
-            // A page may unregister while handling the notification, so invoke a
-            // snapshot instead of iterating the live token map.
-            std::vector<MoveSizeChangedHandler> handlers;
-            handlers.reserve(m_moveSizeHandlers.size());
-            for (auto const& entry : m_moveSizeHandlers)
-            {
-                handlers.push_back(entry.second);
-            }
-            for (auto const& handler : handlers)
-            {
-                try
-                {
-                    handler(active);
-                }
-                catch (...)
-                {
-                }
-            }
-        }
-        catch (...)
-        {
-        }
-    }
 } // namespace HaloDesktop::Shell

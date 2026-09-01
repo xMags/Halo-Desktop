@@ -6,5 +6,10 @@
   Loaded="OnLoaded"
   SizeChanged="OnSizeChanged"
   Unloaded="OnUnloaded">
-  <Grid Background="Black" />
+  <!-- libmpv presents into a DirectX composition swapchain that this panel
+       hosts. There is no native window, so XAML siblings can draw above it. -->
+  <SwapChainPanel
+    x:Name="VideoPanel"
+    Background="Black"
+    CompositionScaleChanged="OnCompositionScaleChanged" />
 </UserControl>

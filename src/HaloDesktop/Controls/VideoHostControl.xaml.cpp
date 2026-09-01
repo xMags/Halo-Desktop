@@ -6,57 +6,23 @@
 
 #include "App.xaml.h"
 #include "Playback/IPlaybackEngine.h"
-#include "Shell/WindowPresentationService.h"
 
+#include <microsoft.ui.xaml.media.dxinterop.h>
+
+#include <algorithm>
 #include <cmath>
-#include <limits>
-#include <mutex>
-#include <optional>
-#include <stdexcept>
-#include <wil/resource.h>
 
 namespace
 {
-    constexpr wchar_t VideoHostClassName[] = L"HaloDesktop.MpvVideoHost";
+    // Upper bound on a swapchain edge. D3D11 refuses anything larger, and a
+    // layout glitch must not turn into a gigantic allocation.
+    constexpr double MaximumSurfaceEdge = 16384.0;
 
-    [[nodiscard]] std::optional<int> TryRoundToInt(double value) noexcept
+    [[nodiscard]] std::uint32_t ToSurfaceEdge(double logical, float scale) noexcept
     {
-        constexpr auto minimum = static_cast<double>((std::numeric_limits<int>::min)());
-        constexpr auto maximum = static_cast<double>((std::numeric_limits<int>::max)());
-        if (!std::isfinite(value) || value < minimum || value > maximum)
-        {
-            return std::nullopt;
-        }
-        return static_cast<int>(std::lround(value));
-    }
-
-    LRESULT CALLBACK VideoHostWindowProcedure(HWND window, UINT message, WPARAM wParam, LPARAM lParam) noexcept
-    {
-        return DefWindowProcW(window, message, wParam, lParam);
-    }
-
-    void EnsureVideoHostClass()
-    {
-        static std::once_flag registrationFlag;
-        std::call_once(registrationFlag, [] {
-            static wil::unique_hbrush const backgroundBrush{ CreateSolidBrush(RGB(0, 0, 0)) };
-            if (!backgroundBrush)
-            {
-                throw std::runtime_error("Unable to create the video host background brush");
-            }
-
-            WNDCLASSEXW windowClass{};
-            windowClass.cbSize = sizeof(windowClass);
-            windowClass.lpfnWndProc = VideoHostWindowProcedure;
-            windowClass.hInstance = GetModuleHandleW(nullptr);
-            windowClass.hCursor = LoadCursorW(nullptr, IDC_ARROW);
-            windowClass.hbrBackground = backgroundBrush.get();
-            windowClass.lpszClassName = VideoHostClassName;
-            if (RegisterClassExW(&windowClass) == 0)
-            {
-                winrt::throw_last_error();
-            }
-        });
+        auto const pixels = std::isfinite(logical) && std::isfinite(scale) ? logical * scale : 0.0;
+        auto const clamped = std::clamp(std::round(pixels), 1.0, MaximumSurfaceEdge);
+        return static_cast<std::uint32_t>(clamped);
     }
 } // namespace
 
@@ -66,232 +32,154 @@ namespace winrt::HaloDesktop::implementation
 
     VideoHostControl::~VideoHostControl()
     {
-        DestroyHostWindow();
+        ReleaseSurface();
     }
 
     void VideoHostControl::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                     [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        EnsureHostWindow();
-        if (auto const root = XamlRoot())
-        {
-            m_xamlRootChangedRevoker = root.Changed(
-                winrt::auto_revoke,
-                [weak = get_weak()]([[maybe_unused]] Microsoft::UI::Xaml::XamlRoot const& changedRoot,
-                                    [[maybe_unused]] Microsoft::UI::Xaml::XamlRootChangedEventArgs const& changedArgs) {
-                    if (auto const self = weak.get())
-                    {
-                        self->UpdateBounds();
-                    }
-                });
-        }
-        UpdateBounds();
+        EnsureSurface();
+        UpdateSurfaceSize();
     }
 
     void VideoHostControl::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                       [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        DestroyHostWindow();
+        ReleaseSurface();
     }
 
     void VideoHostControl::OnSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                                          [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
     {
-        UpdateBounds();
+        UpdateSurfaceSize();
     }
 
-    void VideoHostControl::EnsureHostWindow()
+    void VideoHostControl::OnCompositionScaleChanged(
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::SwapChainPanel const& sender,
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
     {
-        if (m_hostWindow != 0)
-        {
-            return;
-        }
-
-        EnsureVideoHostClass();
-        auto const parentValue = App::Services().WindowPresentation->WindowHandle();
-        auto const parent = reinterpret_cast<HWND>(parentValue);
-        auto const instance = GetModuleHandleW(nullptr);
-        auto const window = CreateWindowExW(0, VideoHostClassName, L"", WS_CHILD | WS_VISIBLE | WS_CLIPSIBLINGS, 0, 0,
-                                            1, 1, parent, nullptr, instance, nullptr);
-        if (!window)
-        {
-            winrt::throw_last_error();
-        }
-
-        // HWND is an opaque pointer. uintptr_t keeps that Windows type out of
-        // the platform-neutral playback engine contract.
-        m_hostWindow = reinterpret_cast<std::uintptr_t>(window);
-        ++m_hostWindowGeneration;
-        m_lastBounds.reset();
-        m_boundsRetryQueued = false;
+        UpdateSurfaceSize();
         try
         {
-            App::Services().Playback->AttachVideoWindow(m_hostWindow);
-        }
-        catch (...)
-        {
-            DestroyWindow(window);
-            m_hostWindow = 0;
-            ++m_hostWindowGeneration;
-            m_lastBounds.reset();
-            m_boundsRetryQueued = false;
-            throw;
-        }
-    }
-
-    void VideoHostControl::DestroyHostWindow() noexcept
-    {
-        try
-        {
-            m_xamlRootChangedRevoker.revoke();
+            ApplyScaleTransform();
         }
         catch (...)
         {
         }
-        ++m_hostWindowGeneration;
-        m_lastBounds.reset();
-        m_boundsRetryQueued = false;
-        if (m_hostWindow == 0)
+    }
+
+    void VideoHostControl::EnsureSurface()
+    {
+        if (m_surfaceAttached)
         {
             return;
         }
 
-        auto const window = reinterpret_cast<HWND>(m_hostWindow);
-        m_hostWindow = 0;
-        try
-        {
-            App::Services().Playback->Stop();
-            App::Services().Playback->DetachVideoWindow();
-        }
-        catch (...)
-        {
-        }
-        if (IsWindow(window))
-        {
-            static_cast<void>(DestroyWindow(window));
-        }
-    }
-
-    std::uintptr_t VideoHostControl::HostWindowHandle() const noexcept
-    {
-        return m_hostWindow;
-    }
-
-    void VideoHostControl::UpdateBounds() noexcept
-    {
-        TryUpdateBounds(true);
-    }
-
-    void VideoHostControl::TryUpdateBounds(bool allowRetry) noexcept
-    {
-        if (m_hostWindow == 0)
-        {
-            return;
-        }
-
-        auto const window = reinterpret_cast<HWND>(m_hostWindow);
-        if (!IsWindow(window))
-        {
-            return;
-        }
-
-        try
-        {
-            auto const actualWidth = ActualWidth();
-            auto const actualHeight = ActualHeight();
-            auto const root = XamlRoot();
-            if (!root || !std::isfinite(actualWidth) || !std::isfinite(actualHeight)
-                || actualWidth <= 0.0 || actualHeight <= 0.0)
+        App::Services().Playback->AttachVideoSurface(
+            CurrentSurfaceSize(),
+            [weak = get_weak()](std::uintptr_t address)
             {
-                if (allowRetry) QueueBoundsRetry();
-                return;
-            }
-
-            auto const scale = root.RasterizationScale();
-            if (!std::isfinite(scale) || scale <= 0.0)
-            {
-                if (allowRetry) QueueBoundsRetry();
-                return;
-            }
-
-            auto const origin = TransformToVisual(nullptr).TransformPoint({ 0.0f, 0.0f });
-            auto const x = TryRoundToInt(static_cast<double>(origin.X) * scale);
-            auto const y = TryRoundToInt(static_cast<double>(origin.Y) * scale);
-            auto const width = TryRoundToInt(actualWidth * scale);
-            auto const height = TryRoundToInt(actualHeight * scale);
-            if (!x || !y || !width || !height)
-            {
-                if (allowRetry) QueueBoundsRetry();
-                return;
-            }
-
-            HostBounds const bounds{
-                .X = *x,
-                .Y = *y,
-                .Width = (std::max)(1, *width),
-                .Height = (std::max)(1, *height),
-            };
-            if (m_lastBounds && *m_lastBounds == bounds)
-            {
-                return;
-            }
-
-            if (!SetWindowPos(
-                    window,
-                    nullptr,
-                    bounds.X,
-                    bounds.Y,
-                    bounds.Width,
-                    bounds.Height,
-                    SWP_NOACTIVATE | SWP_NOZORDER))
-            {
-                if (allowRetry) QueueBoundsRetry();
-                return;
-            }
-            m_lastBounds = bounds;
-        }
-        catch (...)
-        {
-            if (allowRetry) QueueBoundsRetry();
-        }
-    }
-
-    void VideoHostControl::QueueBoundsRetry() noexcept
-    {
-        if (m_boundsRetryQueued || m_hostWindow == 0)
-        {
-            return;
-        }
-
-        auto const generation = m_hostWindowGeneration;
-        try
-        {
-            auto const dispatcher = DispatcherQueue();
-            if (!dispatcher)
-            {
-                return;
-            }
-
-            m_boundsRetryQueued = true;
-            if (dispatcher.TryEnqueue(
-                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
-                [weak = get_weak(), generation]()
+                if (auto const self = weak.get())
                 {
-                    auto const self = weak.get();
-                    if (!self || generation != self->m_hostWindowGeneration)
-                    {
-                        return;
-                    }
-                    self->m_boundsRetryQueued = false;
-                    self->TryUpdateBounds(false);
-                }))
-            {
-                return;
-            }
+                    self->ApplySwapChain(address);
+                }
+            });
+        m_surfaceAttached = true;
+    }
+
+    void VideoHostControl::ReleaseSurface() noexcept
+    {
+        if (!m_surfaceAttached)
+        {
+            return;
+        }
+        m_surfaceAttached = false;
+        try
+        {
+            // Stop publishes a null swapchain through the handler before libmpv
+            // tears the swapchain down, so the panel never presents a dead one.
+            App::Services().Playback->Stop();
+            App::Services().Playback->DetachVideoSurface();
         }
         catch (...)
         {
         }
-        m_boundsRetryQueued = false;
+        ApplySwapChain(0);
+    }
+
+    ::HaloDesktop::Playback::VideoSurfaceSize VideoHostControl::CurrentSurfaceSize()
+    {
+        auto const panel = VideoPanel();
+        return {
+            .WidthPixels = ToSurfaceEdge(panel.ActualWidth(), panel.CompositionScaleX()),
+            .HeightPixels = ToSurfaceEdge(panel.ActualHeight(), panel.CompositionScaleY()),
+        };
+    }
+
+    void VideoHostControl::UpdateSurfaceSize() noexcept
+    {
+        if (!m_surfaceAttached)
+        {
+            return;
+        }
+        try
+        {
+            App::Services().Playback->SetVideoSurfaceSize(CurrentSurfaceSize());
+        }
+        catch (...)
+        {
+        }
+    }
+
+    void VideoHostControl::ApplySwapChain(std::uintptr_t address) noexcept
+    {
+        try
+        {
+            auto const native = VideoPanel().as<ISwapChainPanelNative>();
+            if (address == 0)
+            {
+                m_swapChain = nullptr;
+                winrt::check_hresult(native->SetSwapChain(nullptr));
+                return;
+            }
+
+            // libmpv publishes its swapchain as an integer address, and this is
+            // the only place that address becomes a pointer again. libmpv keeps
+            // ownership, so copy_from takes a reference of our own rather than
+            // adopting the one libmpv holds.
+            auto* const raw = reinterpret_cast<IDXGISwapChain*>(address);
+            winrt::com_ptr<IDXGISwapChain> swapChain;
+            swapChain.copy_from(raw);
+            m_swapChain = swapChain.try_as<IDXGISwapChain2>();
+            ApplyScaleTransform();
+            winrt::check_hresult(native->SetSwapChain(swapChain.get()));
+        }
+        catch (...)
+        {
+            m_swapChain = nullptr;
+        }
+    }
+
+    void VideoHostControl::ApplyScaleTransform()
+    {
+        if (!m_swapChain)
+        {
+            return;
+        }
+
+        // The swapchain is sized in physical pixels. XAML positions it in
+        // logical pixels, so the inverse composition scale maps one onto the
+        // other; without it a 150% display shows the video 1.5 times too large.
+        auto const panel = VideoPanel();
+        auto const scaleX = panel.CompositionScaleX();
+        auto const scaleY = panel.CompositionScaleY();
+        if (scaleX <= 0.0f || scaleY <= 0.0f)
+        {
+            return;
+        }
+        DXGI_MATRIX_3X2_F transform{};
+        transform._11 = 1.0f / scaleX;
+        transform._22 = 1.0f / scaleY;
+        winrt::check_hresult(m_swapChain->SetMatrixTransform(&transform));
     }
 } // namespace winrt::HaloDesktop::implementation

@@ -22,64 +22,59 @@
   </Page.KeyboardAccelerators>
   <Grid
     x:Name="PlayerRoot"
-    Background="#FF050506"
-    SizeChanged="OnPlayerSizeChanged">
+    Background="#FF050506">
 
-    <!-- mpv paints through a native child HWND. The Popup owns the only XAML
-         surface that can composite controls above that child window. PlayerPage
-         closes and detaches it explicitly before XAML teardown. -->
+    <!-- The video is a SwapChainPanel, so the overlay below is an ordinary sibling drawn above it. -->
     <local:VideoHostControl
       x:Name="VideoHost"
       HorizontalAlignment="Stretch"
       VerticalAlignment="Stretch" />
 
-    <Popup x:Name="OverlayPopup" ShouldConstrainToRootBounds="False">
-      <Grid
-        x:Name="OverlayHost"
-        Background="Transparent"
-        IsTabStop="True"
-        PreviewKeyDown="OnOverlayPreviewKeyDown"
-        UseSystemFocusVisuals="False">
-        <local:PlayerOsd x:Name="PlayerOverlay" />
-        <InfoBar
-          x:Name="SubtitleNotice"
-          MaxWidth="520"
-          Margin="24,72,24,0"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Top"
-          IsClosable="True"
-          IsOpen="False"
-          Message="That subtitle could not be loaded. Try another subtitle."
-          Severity="Warning"
-          Title="Subtitle unavailable" />
-        <Border
-          x:Name="MediaPrompt"
-          Width="360"
-          Padding="24"
-          HorizontalAlignment="Center"
-          VerticalAlignment="Center"
-          Background="#EC1A1A1E"
-          CornerRadius="10">
-          <Border.Visibility>Collapsed</Border.Visibility>
-          <StackPanel Spacing="12">
-            <TextBlock
-              FontSize="{StaticResource HaloFontSection}"
-              FontWeight="SemiBold"
-              Foreground="White"
-              Text="Playback unavailable" />
-            <TextBlock
-              x:Name="MediaPromptMessage"
-              Foreground="#A8FFFFFF"
-              Text="Return to Sources and choose another source."
-              TextWrapping="Wrap" />
-            <Button
-              HorizontalAlignment="Left"
-              Click="OnCloseErrorClick"
-              Content="Back to Sources"
-              Style="{StaticResource HaloAccentButtonStyle}" />
-          </StackPanel>
-        </Border>
-      </Grid>
-    </Popup>
+    <Grid
+      x:Name="OverlayHost"
+      Background="Transparent"
+      IsTabStop="True"
+      PreviewKeyDown="OnOverlayPreviewKeyDown"
+      UseSystemFocusVisuals="False">
+      <local:PlayerOsd x:Name="PlayerOverlay" />
+      <InfoBar
+        x:Name="SubtitleNotice"
+        MaxWidth="520"
+        Margin="24,72,24,0"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Top"
+        IsClosable="True"
+        IsOpen="False"
+        Message="That subtitle could not be loaded. Try another subtitle."
+        Severity="Warning"
+        Title="Subtitle unavailable" />
+      <Border
+        x:Name="MediaPrompt"
+        Width="360"
+        Padding="24"
+        HorizontalAlignment="Center"
+        VerticalAlignment="Center"
+        Background="#EC1A1A1E"
+        CornerRadius="10">
+        <Border.Visibility>Collapsed</Border.Visibility>
+        <StackPanel Spacing="12">
+          <TextBlock
+            FontSize="{StaticResource HaloFontSection}"
+            FontWeight="SemiBold"
+            Foreground="White"
+            Text="Playback unavailable" />
+          <TextBlock
+            x:Name="MediaPromptMessage"
+            Foreground="#A8FFFFFF"
+            Text="Return to Sources and choose another source."
+            TextWrapping="Wrap" />
+          <Button
+            HorizontalAlignment="Left"
+            Click="OnCloseErrorClick"
+            Content="Back to Sources"
+            Style="{StaticResource HaloAccentButtonStyle}" />
+        </StackPanel>
+      </Border>
+    </Grid>
   </Grid>
 </Page>

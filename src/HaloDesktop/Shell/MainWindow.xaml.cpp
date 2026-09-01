@@ -146,7 +146,7 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().DiscordPresence->Clear();
             App::Services().Playback->Stop();
-            App::Services().Playback->DetachVideoWindow();
+            App::Services().Playback->DetachVideoSurface();
             App::Services().Downloads->Stop();
             App::Services().Navigation->Detach();
             if (m_activatedToken.value != 0)

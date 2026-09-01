@@ -25,8 +25,9 @@ namespace HaloDesktop::Playback
         void Stop() noexcept override;
         void Open(PlaybackSource source) override;
         void Replay() override;
-        void AttachVideoWindow(std::uintptr_t windowHandle) override;
-        void DetachVideoWindow() noexcept override;
+        void AttachVideoSurface(VideoSurfaceSize size, VideoSwapChainHandler handler) override;
+        void SetVideoSurfaceSize(VideoSurfaceSize size) override;
+        void DetachVideoSurface() noexcept override;
         void SetPaused(bool paused) override;
         void SeekAbsolute(double seconds) override;
         void SeekRelative(double seconds) override;
@@ -60,7 +61,7 @@ namespace HaloDesktop::Playback
         std::chrono::steady_clock::time_point m_lastTick{};
         PlaybackChangedToken m_nextToken{};
         PlaybackSource m_source;
-        std::uintptr_t m_windowHandle{};
+        VideoSurfaceSize m_surfaceSize;
         std::int64_t m_audioTrack{ 1 };
         std::optional<std::int64_t> m_subtitleTrack{ 1 };
         double m_subtitleDelay{};

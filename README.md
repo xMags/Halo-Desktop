@@ -26,7 +26,7 @@
 
 Halo Desktop is a packaged Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
 
-It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering into a native child window. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles. Downloads stay on the Windows device and remain available offline.
+It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering through a DirectX composition swapchain into a XAML SwapChainPanel. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles. Downloads stay on the Windows device and remain available offline.
 
 The upstream project said native desktop apps would come later. One remaining brain cell took that personally.
 
