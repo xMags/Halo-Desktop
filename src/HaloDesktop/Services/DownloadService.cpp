@@ -3,6 +3,7 @@
 
 #include "Models/Models.h"
 #include "Services/DevicePreferencesStore.h"
+#include "Services/DownloadArtworkService.h"
 #include "Services/DownloadSourceMatch.h"
 #include "Services/StreamInfo.h"
 
@@ -145,6 +146,7 @@ namespace
             subtitle,
             winrt::hstring{ record.Media.VideoId },
             winrt::hstring{ record.Media.Poster.value_or(L"") },
+            winrt::hstring{ record.Media.LandscapeArtwork.value_or(L"") },
             requiresNewSource,
             record.DownloadedBytes,
             total,
@@ -161,16 +163,18 @@ namespace HaloDesktop::Services
         std::shared_ptr<Downloads::TransferEngine> engine,
         std::shared_ptr<ISessionService> session,
         std::shared_ptr<DevicePreferencesStore> devicePreferences,
+        std::shared_ptr<DownloadArtworkService> artwork,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
         : m_engine(std::move(engine)),
           m_session(std::move(session)),
           m_devicePreferences(std::move(devicePreferences)),
+          m_artwork(std::move(artwork)),
           m_dispatcher(std::move(dispatcher)),
           m_transfers(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
           m_ready(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
           m_throughput(winrt::single_threaded_observable_vector<double>())
     {
-        if (!m_engine || !m_session || !m_devicePreferences || !m_dispatcher)
+        if (!m_engine || !m_session || !m_devicePreferences || !m_artwork || !m_dispatcher)
         {
             throw std::invalid_argument{ "DownloadService requires all dependencies." };
         }
@@ -230,6 +234,8 @@ namespace HaloDesktop::Services
         m_snapshotFloor.store(version);
         m_records.clear();
         m_pauseAllIds.clear();
+        m_artworkPending.clear();
+        m_artwork->OnAccountChanged();
         m_freeBytes.reset();
         m_directory.clear();
         m_actionError.clear();
@@ -788,6 +794,58 @@ namespace HaloDesktop::Services
         m_freeBytes = snapshot.FreeBytes;
         m_directory = std::move(snapshot.Directory);
         RebuildObservables();
+        EnrichMissingArtwork();
+    }
+
+    void DownloadService::EnrichMissingArtwork()
+    {
+        auto const accountVersion = m_accountVersion.load();
+        auto const weak = weak_from_this();
+        for (auto const& record : m_records)
+        {
+            auto const& media = record.Media;
+            if (media.LandscapeArtwork
+                || !media.MetaId || media.MetaId->empty()
+                || media.MediaType.empty() || media.VideoId.empty()
+                || !m_artworkPending.insert(record.JobId).second)
+            {
+                continue;
+            }
+            auto completion = m_artwork->ResolveAsync(
+                winrt::hstring{ media.MediaType },
+                winrt::hstring{ *media.MetaId },
+                winrt::hstring{ media.VideoId }).then(
+                [weak,
+                 jobId = record.JobId,
+                 accountKey = record.AccountKey,
+                 accountVersion](concurrency::task<winrt::hstring> result)
+                {
+                    winrt::hstring artwork;
+                    try { artwork = result.get(); } catch (...) {}
+                    if (auto const owner = weak.lock())
+                    {
+                        if (!artwork.empty())
+                        {
+                            try
+                            {
+                                if (owner->m_running
+                                    && accountVersion == owner->m_accountVersion.load()
+                                    && accountVersion == owner->m_boundAccountVersion.load())
+                                {
+                                    static_cast<void>(owner->m_engine->SetLandscapeArtwork(
+                                        jobId,
+                                        accountKey,
+                                        std::wstring{ artwork }));
+                                }
+                            }
+                            catch (...)
+                            {
+                            }
+                        }
+                    }
+                });
+            static_cast<void>(completion);
+        }
     }
 
     void DownloadService::RebuildObservables()

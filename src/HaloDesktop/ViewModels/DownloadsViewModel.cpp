@@ -134,6 +134,7 @@ namespace winrt::HaloDesktop::implementation
             raise(L"SubsMutedVisibility");
         }
         if (previous.Poster() != m_item.Poster()) raise(L"Poster");
+        if (previous.RowArtwork() != m_item.RowArtwork()) raise(L"RowArtwork");
         if (previous.DownloadedBytes() != m_item.DownloadedBytes()
             || previous.TotalBytes() != m_item.TotalBytes()) raise(L"DownloadedLine");
         if (previous.FileName() != m_item.FileName()) raise(L"FileName");
@@ -182,6 +183,7 @@ namespace winrt::HaloDesktop::implementation
         return winrt::hstring{ L"SUB " + language };
     }
     winrt::hstring DownloadRowViewModel::Poster() const { return m_item.Poster(); }
+    winrt::hstring DownloadRowViewModel::RowArtwork() const { return m_item.RowArtwork(); }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::DownloadingVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Downloading ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::QueuedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Queued ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PausedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Paused ? Visible : Collapsed; }

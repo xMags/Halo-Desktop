@@ -46,6 +46,10 @@ namespace HaloDesktop::Services::Downloads
         void Pause(std::wstring const& jobId);
         void Resume(std::wstring const& jobId);
         void Remove(std::wstring const& jobId);
+        bool SetLandscapeArtwork(
+            std::wstring const& jobId,
+            std::wstring const& expectedAccount,
+            std::wstring artwork);
 
         [[nodiscard]] PlaybackFiles FilesForPlayback(std::wstring const& jobId);
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;

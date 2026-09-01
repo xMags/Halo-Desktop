@@ -78,7 +78,7 @@ namespace HaloDesktop::Services
             co_return;
         }
 
-        MetaArtwork artwork;
+        LandscapeArtworkSet artwork;
         try
         {
             auto const meta = co_await m_apiClient->GetMetaAsync(item.Type(), item.MetaId());
@@ -107,12 +107,11 @@ namespace HaloDesktop::Services
 
     void ContinueArtworkService::Apply(
         winrt::HaloDesktop::ContinueItem const& item,
-        MetaArtwork const& artwork)
+        LandscapeArtworkSet const& artwork)
     {
         // The episode still beats the backdrop: it is the frame from the episode the
         // viewer is partway through, not a picture of the show in general.
-        auto const thumbnail = artwork.Thumbnails.find(std::wstring{ item.VideoId() });
-        auto const still = thumbnail != artwork.Thumbnails.end() ? thumbnail->second : artwork.Background;
+        auto const still = SelectLandscapeArtwork(item.VideoId(), artwork);
         if (still.empty())
         {
             return;

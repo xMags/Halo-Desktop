@@ -116,6 +116,7 @@
     <ClCompile Include="Services\CatalogService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\CatalogRefreshPolicy.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ContinueArtworkService.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\DownloadArtworkService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ContinueNextEpisodeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ContinueShelfPolicy.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\DevicePreferencesStore.cpp"><Filter>Services</Filter></ClCompile>
@@ -227,6 +228,8 @@
     <ClInclude Include="Services\CatalogService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\CatalogRefreshPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ContinueArtworkService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\DownloadArtworkService.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\LandscapeArtworkPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ContinueNextEpisodeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ContinueShelfPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\DevicePreferencesStore.h"><Filter>Services</Filter></ClInclude>

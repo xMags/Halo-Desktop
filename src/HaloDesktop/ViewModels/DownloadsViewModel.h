@@ -30,6 +30,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring Subs() const;
         [[nodiscard]] winrt::hstring SubsChip() const;
         [[nodiscard]] winrt::hstring Poster() const;
+        [[nodiscard]] winrt::hstring RowArtwork() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DownloadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QueuedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PausedVisibility() const noexcept;

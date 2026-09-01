@@ -177,7 +177,7 @@
                   <Border Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4">
                     <Grid>
                       <local:PlaceholderArt ArtCornerRadius="4" />
-                      <local:ArtworkImage DecodeWidth="148" SourceUrl="{x:Bind Poster, Mode=OneWay}" />
+                      <local:ArtworkImage DecodeWidth="148" SourceUrl="{x:Bind RowArtwork, Mode=OneWay}" />
                       <ProgressBar Height="3" VerticalAlignment="Bottom" Maximum="1" Value="{x:Bind Progress, Mode=OneWay}" Background="Transparent" Foreground="{ThemeResource HaloAccentBrush}" />
                     </Grid>
                   </Border>
@@ -242,7 +242,7 @@
               <DataTemplate x:DataType="local:DownloadRowViewModel">
                 <Grid ColumnSpacing="14">
                   <Grid.ColumnDefinitions><ColumnDefinition Width="74" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <Border Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><Grid><local:PlaceholderArt ArtCornerRadius="4" /><local:ArtworkImage DecodeWidth="148" SourceUrl="{x:Bind Poster, Mode=OneWay}" /></Grid></Border>
+                  <Border Width="74" Height="42" VerticalAlignment="Center" CornerRadius="4"><Grid><local:PlaceholderArt ArtCornerRadius="4" /><local:ArtworkImage DecodeWidth="148" SourceUrl="{x:Bind RowArtwork, Mode=OneWay}" /></Grid></Border>
                   <StackPanel Grid.Column="1" MinWidth="0" VerticalAlignment="Center" Spacing="6">
                     <Grid ColumnSpacing="9">
                       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>

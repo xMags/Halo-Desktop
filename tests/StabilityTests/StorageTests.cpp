@@ -364,6 +364,48 @@ namespace
             "a wholly malformed download index was not quarantined");
     }
 
+    void TestDownloadLandscapeArtworkPersistence()
+    {
+        TemporaryDirectory temporary;
+        DownloadIndexStore store{ temporary.Path() / L"state" };
+        auto record = Record(L"job-art", L"series:art:1:2");
+        record.Media.MediaType = L"series";
+        record.Media.MetaId = L"series:art";
+        store.Save({ record }, 1);
+
+        Require(
+            !store.SetLandscapeArtwork(record.JobId, L"another-account", L"wrong.jpg"),
+            "landscape artwork crossed the download account boundary");
+        auto const updated = store.SetLandscapeArtwork(
+            record.JobId,
+            record.AccountKey,
+            L"https://images.example.test/episode.jpg");
+        Require(updated
+                && updated->Media.LandscapeArtwork
+                && *updated->Media.LandscapeArtwork == L"https://images.example.test/episode.jpg",
+            "landscape artwork was not added to the persisted record");
+        auto const repeated = store.SetLandscapeArtwork(
+            record.JobId,
+            record.AccountKey,
+            L"https://images.example.test/replacement.jpg");
+        Require(repeated
+                && repeated->Media.LandscapeArtwork
+                && *repeated->Media.LandscapeArtwork == L"https://images.example.test/episode.jpg",
+            "a concurrent resolver replaced or failed to adopt persisted landscape artwork");
+
+        // This is the shape of a progress snapshot copied before enrichment.
+        // Applying it later must not erase the independently resolved artwork.
+        record.DownloadedBytes = 512;
+        record.UpdatedAt = 2;
+        store.Apply({ record });
+        auto const loaded = store.Load(false);
+        Require(loaded.size() == 1
+                && loaded.front().DownloadedBytes == 512
+                && loaded.front().Media.LandscapeArtwork
+                && *loaded.front().Media.LandscapeArtwork == L"https://images.example.test/episode.jpg",
+            "a stale progress record erased persisted landscape artwork");
+    }
+
     void TestPendingDownloadDeletionRecovery()
     {
         TemporaryDirectory temporary;
@@ -554,6 +596,7 @@ void RunStandaloneStorageTests()
     TestMigrationProtectsExistingTarget();
     TestDownloadLeasesAndAtomicIndexMerge();
     TestCorruptDownloadIndexRecovery();
+    TestDownloadLandscapeArtworkPersistence();
     TestPendingDownloadDeletionRecovery();
     TestMissingCompletedDownloadRecovery();
     TestDownloadsOutsideApprovedRootsAreQuarantined();

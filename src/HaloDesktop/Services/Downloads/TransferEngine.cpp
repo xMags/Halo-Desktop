@@ -874,6 +874,50 @@ namespace HaloDesktop::Services::Downloads
         return result;
     }
 
+    bool TransferEngine::SetLandscapeArtwork(
+        std::wstring const& jobId,
+        std::wstring const& expectedAccount,
+        std::wstring artwork)
+    {
+        if (artwork.empty())
+        {
+            return false;
+        }
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || *m_activeAccount != expectedAccount)
+            {
+                return false;
+            }
+        }
+
+        auto const persisted = m_store.SetLandscapeArtwork(
+            jobId,
+            expectedAccount,
+            std::move(artwork));
+        if (!persisted)
+        {
+            return false;
+        }
+
+        auto changed = *persisted;
+        std::vector<DownloadChangedHandler> handlers;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            auto const current = m_records.find(jobId);
+            if (current == m_records.end() || current->second.AccountKey != expectedAccount)
+            {
+                return true;
+            }
+            current->second.Media.LandscapeArtwork = changed.Media.LandscapeArtwork;
+            current->second.UpdatedAt = (std::max)(current->second.UpdatedAt, changed.UpdatedAt);
+            changed = current->second;
+            handlers = HandlersLocked();
+        }
+        Notify(handlers, changed);
+        return true;
+    }
+
     DownloadRecord TransferEngine::Start(DownloadStartRequest request)
     {
         if (request.Media.VideoId.empty()

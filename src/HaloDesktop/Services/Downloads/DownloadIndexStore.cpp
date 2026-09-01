@@ -221,6 +221,7 @@ namespace
         InsertOptionalString(object, L"showName", media.ShowName);
         InsertOptionalString(object, L"episodeLabel", media.EpisodeLabel);
         InsertOptionalString(object, L"poster", media.Poster);
+        InsertOptionalString(object, L"landscapeArtwork", media.LandscapeArtwork);
         InsertOptionalString(object, L"addonId", media.AddonId);
         InsertOptionalString(object, L"bingeGroup", media.BingeGroup);
         InsertOptionalString(object, L"fileName", media.FileName);
@@ -243,6 +244,7 @@ namespace
             .ShowName = OptionalString(object, L"showName"),
             .EpisodeLabel = OptionalString(object, L"episodeLabel"),
             .Poster = OptionalString(object, L"poster"),
+            .LandscapeArtwork = OptionalString(object, L"landscapeArtwork"),
             .AddonId = OptionalString(object, L"addonId"),
             .BingeGroup = OptionalString(object, L"bingeGroup"),
             .FileName = OptionalString(object, L"fileName"),
@@ -800,7 +802,16 @@ namespace HaloDesktop::Services::Downloads
             }
             else
             {
-                *found = replacement;
+                auto merged = replacement;
+                // Artwork enrichment and transfer progress are independent. A
+                // progress snapshot may have been copied before the artwork
+                // lookup completed, so it must not erase a landscape URL that a
+                // concurrent record update already persisted.
+                if (!merged.Media.LandscapeArtwork && found->Media.LandscapeArtwork)
+                {
+                    merged.Media.LandscapeArtwork = found->Media.LandscapeArtwork;
+                }
+                *found = std::move(merged);
             }
         }
         WriteAtomic(m_paths.IndexFile, SerializeRecords(records));
@@ -809,6 +820,34 @@ namespace HaloDesktop::Services::Downloads
         {
             m_observedJobIds.insert(record.JobId);
         }
+    }
+
+    std::optional<DownloadRecord> DownloadIndexStore::SetLandscapeArtwork(
+        std::wstring const& jobId,
+        std::wstring const& expectedAccount,
+        std::wstring artwork)
+    {
+        if (artwork.empty())
+        {
+            return std::nullopt;
+        }
+        std::scoped_lock const lock{ m_mutex };
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
+        auto records = LoadRecovering(m_paths.IndexFile, false);
+        auto const found = std::find_if(records.begin(), records.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (found == records.end() || found->AccountKey != expectedAccount)
+        {
+            return std::nullopt;
+        }
+        if (!found->Media.LandscapeArtwork)
+        {
+            found->Media.LandscapeArtwork = std::move(artwork);
+            WriteAtomic(m_paths.IndexFile, SerializeRecords(records));
+        }
+        return *found;
     }
 
     std::filesystem::path DownloadIndexStore::DownloadDirectory() const

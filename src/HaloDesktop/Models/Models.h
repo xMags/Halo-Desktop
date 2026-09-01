@@ -225,6 +225,7 @@ namespace winrt::HaloDesktop::implementation
             hstring subs,
             hstring videoId = {},
             hstring poster = {},
+            hstring rowArtwork = {},
             bool requiresNewSource = false,
             std::uint64_t downloadedBytes = 0,
             std::uint64_t totalBytes = 0,
@@ -245,6 +246,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring Subs() const;
         [[nodiscard]] hstring VideoId() const;
         [[nodiscard]] hstring Poster() const;
+        [[nodiscard]] hstring RowArtwork() const;
         [[nodiscard]] bool RequiresNewSource() const noexcept;
         [[nodiscard]] std::uint64_t DownloadedBytes() const noexcept;
         [[nodiscard]] std::uint64_t TotalBytes() const noexcept;
@@ -274,6 +276,7 @@ namespace winrt::HaloDesktop::implementation
         hstring m_subs;
         hstring m_videoId;
         hstring m_poster;
+        hstring m_rowArtwork;
         bool m_requiresNewSource{};
         std::uint64_t m_downloadedBytes{};
         std::uint64_t m_totalBytes{};

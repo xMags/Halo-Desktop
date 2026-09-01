@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <string>
 #include <vector>
@@ -33,6 +34,10 @@ namespace HaloDesktop::Services::Downloads
         void Apply(
             std::vector<DownloadRecord> const& upserts,
             std::vector<std::wstring> const& removals = {});
+        [[nodiscard]] std::optional<DownloadRecord> SetLandscapeArtwork(
+            std::wstring const& jobId,
+            std::wstring const& expectedAccount,
+            std::wstring artwork);
 
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
         void SetDownloadDirectory(std::filesystem::path directory);

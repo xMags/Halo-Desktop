@@ -46,6 +46,7 @@ namespace HaloDesktop::Services::Downloads
         std::optional<std::wstring> ShowName;
         std::optional<std::wstring> EpisodeLabel;
         std::optional<std::wstring> Poster;
+        std::optional<std::wstring> LandscapeArtwork;
         std::optional<std::wstring> AddonId;
         std::optional<std::wstring> BingeGroup;
         std::optional<std::wstring> FileName;

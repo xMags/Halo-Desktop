@@ -9,6 +9,7 @@
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Services/Downloads/DownloadPreparation.h"
+#include "Services/LandscapeArtworkPolicy.h"
 #include "Services/Auth/LoopbackListener.h"
 #include "Services/StreamInfo.h"
 #include "Services/ContinueShelfPolicy.h"
@@ -573,7 +574,6 @@ namespace
             std::istreambuf_iterator<char>{ input },
             std::istreambuf_iterator<char>{} };
         constexpr std::string_view mutableProperties[]{
-            "Poster",
             "Tag",
             "Name",
             "Sub",
@@ -594,6 +594,7 @@ namespace
             "SubsChip",
             "SubsNormalVisibility",
             "SubsMutedVisibility",
+            "RowArtwork",
             "AddedLabel",
             "LeadNormalVisibility",
             "LeadCautionVisibility",
@@ -621,6 +622,28 @@ namespace
             }
             Require(foundExact, "a mutable download row property was not bound");
         }
+    }
+
+    void TestLandscapeArtworkSelection()
+    {
+        HaloDesktop::Services::LandscapeArtworkSet artwork{
+            .Background = L"https://images.example.test/backdrop.jpg",
+            .Thumbnails = {
+                { L"series:one:1:2", L"https://images.example.test/episode.jpg" },
+            },
+        };
+        Require(
+            HaloDesktop::Services::SelectLandscapeArtwork(L"series:one:1:2", artwork)
+                == L"https://images.example.test/episode.jpg",
+            "an episode did not prefer its exact thumbnail");
+        Require(
+            HaloDesktop::Services::SelectLandscapeArtwork(L"series:one:1:3", artwork)
+                == L"https://images.example.test/backdrop.jpg",
+            "a missing episode thumbnail did not fall back to the title backdrop");
+        artwork.Background.clear();
+        Require(
+            HaloDesktop::Services::SelectLandscapeArtwork(L"movie:one", artwork).empty(),
+            "missing landscape metadata invented an artwork URL");
     }
 
     void TestBrowserSignInListenerCancellation()
@@ -851,6 +874,7 @@ int main()
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();
+        TestLandscapeArtworkSelection();
         TestBrowserSignInListenerCancellation();
         RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();

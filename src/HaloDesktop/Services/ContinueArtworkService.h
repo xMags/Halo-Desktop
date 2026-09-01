@@ -9,6 +9,8 @@
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Dispatching.h>
 
+#include "Services/LandscapeArtworkPolicy.h"
+
 namespace HaloDesktop::Api
 {
     class ApiClient;
@@ -45,16 +47,10 @@ namespace HaloDesktop::Services
         void OnAccountChanged() noexcept;
 
     private:
-        struct MetaArtwork final
-        {
-            winrt::hstring Background;
-            std::unordered_map<std::wstring, winrt::hstring> Thumbnails;
-        };
-
         [[nodiscard]] concurrency::task<void> FillItemAsync(
             winrt::HaloDesktop::ContinueItem item,
             std::uint64_t generation);
-        static void Apply(winrt::HaloDesktop::ContinueItem const& item, MetaArtwork const& artwork);
+        static void Apply(winrt::HaloDesktop::ContinueItem const& item, LandscapeArtworkSet const& artwork);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         // Results come back on a worker thread and are handed to items the shelf
@@ -65,7 +61,7 @@ namespace HaloDesktop::Services
         // Keyed by item id, which already carries the type and the meta id. Holds
         // failures as well as hits, so one unreachable addon cannot be retried on
         // every catalog refresh for the rest of the session.
-        std::unordered_map<std::wstring, MetaArtwork> m_cache;
+        std::unordered_map<std::wstring, LandscapeArtworkSet> m_cache;
         std::uint64_t m_generation{};
     };
 }

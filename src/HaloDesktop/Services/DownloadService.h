@@ -16,6 +16,7 @@
 namespace HaloDesktop::Services
 {
     class DevicePreferencesStore;
+    class DownloadArtworkService;
 
     // UI-thread-only facade over the thread-safe transfer engine. Engine
     // callbacks are always marshalled through the captured dispatcher before
@@ -29,6 +30,7 @@ namespace HaloDesktop::Services
             std::shared_ptr<Downloads::TransferEngine> engine,
             std::shared_ptr<ISessionService> session,
             std::shared_ptr<DevicePreferencesStore> devicePreferences,
+            std::shared_ptr<DownloadArtworkService> artwork,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
         ~DownloadService() override;
 
@@ -88,6 +90,7 @@ namespace HaloDesktop::Services
         void RequestSynchronize();
         void ApplyEngineProgress(Downloads::DownloadRecord record, std::uint64_t accountVersion);
         void ApplySnapshot(Snapshot snapshot, std::uint64_t version);
+        void EnrichMissingArtwork();
         void RebuildObservables();
         void RunEngineAction(std::function<void()> action);
         void NotifyChanged();
@@ -101,6 +104,7 @@ namespace HaloDesktop::Services
         // Transfers are the only sustained throughput this app produces, so they
         // are also the only honest measurement of the line behind it.
         std::shared_ptr<DevicePreferencesStore> m_devicePreferences;
+        std::shared_ptr<DownloadArtworkService> m_artwork;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_transfers{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_ready{ nullptr };
@@ -108,6 +112,7 @@ namespace HaloDesktop::Services
         std::vector<Downloads::DownloadRecord> m_records;
         std::unordered_map<DownloadChangedToken, DownloadChangedHandler> m_handlers;
         std::set<std::wstring, std::less<>> m_pauseAllIds;
+        std::set<std::wstring, std::less<>> m_artworkPending;
         Downloads::DownloadChangedToken m_engineToken{};
         DownloadChangedToken m_nextToken{ 1 };
         std::atomic_uint64_t m_snapshotVersion{ 0 };

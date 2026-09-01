@@ -135,6 +135,7 @@ namespace HaloDesktop
         String Subs { get; };
         String VideoId { get; };
         String Poster { get; };
+        String RowArtwork { get; };
         Boolean RequiresNewSource { get; };
         UInt64 DownloadedBytes { get; };
         UInt64 TotalBytes { get; };

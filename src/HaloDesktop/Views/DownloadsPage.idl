@@ -16,6 +16,7 @@ namespace HaloDesktop
         String Subs { get; };
         String SubsChip { get; };
         String Poster { get; };
+        String RowArtwork { get; };
         Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PausedVisibility { get; };

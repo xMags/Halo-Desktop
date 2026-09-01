@@ -210,6 +210,8 @@
     <ClInclude Include="Services\ContinueShelfPolicy.h" />
     <ClInclude Include="Services\ContinueNextEpisodeService.h" />
     <ClInclude Include="Services\ContinueArtworkService.h" />
+    <ClInclude Include="Services\DownloadArtworkService.h" />
+    <ClInclude Include="Services\LandscapeArtworkPolicy.h" />
     <ClInclude Include="Services\DevicePreferencesStore.h" />
     <ClInclude Include="Services\DiscordPresence.h" />
     <ClInclude Include="Services\LibraryService.h" />
@@ -420,6 +422,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\ContinueArtworkService.cpp" />
+    <ClCompile Include="Services\DownloadArtworkService.cpp" />
     <ClCompile Include="Services\ContinueNextEpisodeService.cpp" />
     <ClCompile Include="Services\ContinueShelfPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
