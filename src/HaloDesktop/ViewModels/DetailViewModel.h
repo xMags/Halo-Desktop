@@ -18,6 +18,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable Episodes()const;winrt::Windows::Foundation::IInspectable Facts()const;winrt::Windows::Foundation::IInspectable Availability()const;winrt::Windows::Foundation::IInspectable Seasons()const;
         auto EpisodesView()const{return m_episodes;}auto FactsView()const{return m_facts;}auto AvailabilityView()const{return m_availability;}auto SeasonsView()const{return m_seasons;}
         Microsoft::UI::Xaml::Visibility ContentVisibility()const noexcept;Microsoft::UI::Xaml::Visibility LoadingVisibility()const noexcept;Microsoft::UI::Xaml::Visibility ErrorVisibility()const noexcept;Microsoft::UI::Xaml::Visibility EpisodeSectionVisibility()const noexcept;
+        Microsoft::UI::Xaml::Controls::Orientation AsideOrientation()const noexcept;std::int32_t AsideColumn()const noexcept;std::int32_t AsideColumnSpan()const noexcept;double AsideCardWidth()const noexcept;
         void Load(winrt::Windows::Foundation::IInspectable const& parameter);void SelectSeason(std::int32_t index);void Retry();void ToggleLibrary();void OpenSources(winrt::Windows::Foundation::IInspectable const& episode);void OpenPrimarySource();void BrowseSources();void OpenDownloads();void GoBack();
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&);void PropertyChanged(winrt::event_token const&)noexcept;
     private:

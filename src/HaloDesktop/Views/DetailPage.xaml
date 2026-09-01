@@ -8,16 +8,10 @@
   Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition Height="Auto" />
-      <RowDefinition Height="*" />
-    </Grid.RowDefinitions>
-  <!-- Pinned outside the scroller. The loading and error states replace the scrolled
-       content wholesale, and the back button has to survive both: a title that fails
-       to load is exactly when there is nothing else to leave the page with. The title
-       shows only in those two states, since the hero carries it the rest of the time. -->
-  <local:SectionHeader ShowBack="True" BackClick="OnBackClick" Title="{x:Bind ViewModel.HeaderTitle, Mode=OneWay}" />
-  <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+  <!-- No section header: the hero backdrop runs to the top of the page and the back
+       button sits on it. Everything here overlaps in one cell, back button last so it
+       stays on top. -->
+  <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
       <Grid Height="268">
         <local:PlaceholderArt Caption="BACKDROP" />
@@ -103,16 +97,24 @@
           </ItemsControl>
         </StackPanel>
 
-        <!-- The aside sits beside the episode list, not beside the hero. -->
-        <StackPanel Grid.Row="1" Grid.Column="2" Spacing="12">
-          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+        <!-- The aside sits beside the episode list, not beside the hero, and takes the
+             whole row instead when there is no episode list to sit beside. The view
+             model owns the two arrangements so the switch is one decision, not four. -->
+        <StackPanel
+          Grid.Row="1"
+          Grid.Column="{x:Bind ViewModel.AsideColumn, Mode=OneWay}"
+          Grid.ColumnSpan="{x:Bind ViewModel.AsideColumnSpan, Mode=OneWay}"
+          HorizontalAlignment="Left"
+          Orientation="{x:Bind ViewModel.AsideOrientation, Mode=OneWay}"
+          Spacing="12">
+          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
               <TextBlock Text="SYNOPSIS" Style="{StaticResource HaloMonoKicker}" />
               <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.Synopsis, Mode=OneWay}" />
               <ItemsControl x:Name="FactsList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             </StackPanel>
           </Border>
-          <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
               <TextBlock Text="AVAILABILITY" Style="{StaticResource HaloMonoKicker}" />
               <ItemsControl x:Name="AvailabilityList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
@@ -123,7 +125,31 @@
       </Grid>
     </StackPanel>
   </ScrollViewer>
-  <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading title details…" /></StackPanel>
-  <StackPanel Grid.Row="1" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Title details could not be loaded." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
+  <!-- HeaderTitle is empty while the hero is up and names the title otherwise, so
+       these two states still say which title is loading or failed. -->
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing HorizontalAlignment="Center" IsActive="True" /><TextBlock HorizontalAlignment="Center" Text="{x:Bind ViewModel.HeaderTitle, Mode=OneWay}" Style="{StaticResource HaloPageTitle}" /><TextBlock HorizontalAlignment="Center" Text="Loading title details…" /></StackPanel>
+  <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock HorizontalAlignment="Center" Text="{x:Bind ViewModel.HeaderTitle, Mode=OneWay}" Style="{StaticResource HaloPageTitle}" /><TextBlock HorizontalAlignment="Center" Foreground="{ThemeResource HaloCriticalBrush}" Text="Title details could not be loaded." /><Button HorizontalAlignment="Center" Content="Retry" Click="OnRetryClick" /></StackPanel>
+
+  <!-- Outside the scroller so it survives the loading and error states, which replace
+       the scrolled content wholesale: a title that fails to load is exactly when there
+       is nothing else to leave the page with. Carries its own scrim rather than the
+       theme's translucent button fill, because it sits on photography that can be any
+       brightness. -->
+  <Button
+    Width="34"
+    Height="34"
+    MinWidth="0"
+    Margin="24,12,0,0"
+    Padding="0"
+    HorizontalAlignment="Left"
+    VerticalAlignment="Top"
+    AutomationProperties.Name="Back"
+    Background="#C0000000"
+    BorderThickness="0"
+    Click="OnBackClick"
+    CornerRadius="4"
+    ToolTipService.ToolTip="Back">
+    <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="White" Glyph="&#xE72B;" />
+  </Button>
   </Grid>
 </Page>

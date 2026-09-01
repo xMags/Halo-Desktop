@@ -39,6 +39,10 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
         Microsoft.UI.Xaml.Visibility EpisodeSectionVisibility { get; };
+        Microsoft.UI.Xaml.Controls.Orientation AsideOrientation { get; };
+        Int32 AsideColumn { get; };
+        Int32 AsideColumnSpan { get; };
+        Double AsideCardWidth { get; };
         void Load(Object parameter);
         void SelectSeason(Int32 index);
         void Retry();
