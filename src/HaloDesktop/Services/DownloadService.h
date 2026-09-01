@@ -95,6 +95,7 @@ namespace HaloDesktop::Services
         void SampleThroughput();
         void UpdateThroughputTimer();
         [[nodiscard]] bool HasActiveTransfer() const noexcept;
+        [[nodiscard]] bool HasThroughputHistory() const;
         void RunEngineAction(std::function<void()> action);
         void NotifyChanged();
         [[nodiscard]] std::optional<Downloads::DownloadRecord> FindRecord(

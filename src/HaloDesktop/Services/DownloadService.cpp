@@ -914,27 +914,28 @@ namespace HaloDesktop::Services
         });
     }
 
+    bool DownloadService::HasThroughputHistory() const
+    {
+        for (auto const value : m_throughput)
+        {
+            if (value > 0.0) return true;
+        }
+        return false;
+    }
+
     // The chart is a clock, not an event log: one sample per second regardless
     // of how many transfers are reporting, so thirty slots are thirty seconds.
+    // Stopping is left to the sampler, which keeps ticking until the trace has
+    // drained; ending it here would freeze the strip mid-plateau.
     void DownloadService::UpdateThroughputTimer()
     {
         if (!m_throughputTimer)
         {
             return;
         }
-        auto const active = HasActiveTransfer();
-        if (active && !m_throughputTimer.IsRunning())
+        if (HasActiveTransfer() && !m_throughputTimer.IsRunning())
         {
             m_throughputTimer.Start();
-            return;
-        }
-        if (!active && m_throughputTimer.IsRunning())
-        {
-            m_throughputTimer.Stop();
-            // Close the trace at zero so the chart shows the transfers ending
-            // instead of freezing on the last busy sample.
-            if (m_throughput.Size() >= ThroughputSlots) m_throughput.RemoveAt(0);
-            m_throughput.Append(0.0);
         }
     }
 
@@ -957,6 +958,14 @@ namespace HaloDesktop::Services
         // once-a-second samples of the engine's windowed rate qualify; a raw
         // progress slice would record a burst as the line speed.
         m_devicePreferences->RecordMeasuredLineMbps(static_cast<double>(bytesPerSecond) * 8.0 / 1'000'000.0);
+        // Sampling continues after the last transfer ends so the trace falls to
+        // zero and the peak decays with it, rather than leaving a plateau and a
+        // stale peak on screen for the rest of the session. Once the window
+        // holds nothing but zeros there is nothing left to draw.
+        if (m_throughputTimer && !HasActiveTransfer() && !HasThroughputHistory())
+        {
+            m_throughputTimer.Stop();
+        }
         NotifyChanged();
     }
 
