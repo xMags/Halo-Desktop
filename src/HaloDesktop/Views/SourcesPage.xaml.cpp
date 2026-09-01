@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Views/PageDialog.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/SourcesViewModel.h"
 
@@ -471,11 +472,11 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::Windows::Foundation::IAsyncOperation<bool> SourcesPage::ConfirmReplacementAsync()
     {
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Replace the saved source?"));
-        dialog.Content(winrt::box_value(
-            L"Halo will keep the current file until the replacement finishes successfully."));
+        auto dialog = ::HaloDesktop::Views::MakeDialog(
+            XamlRoot(),
+            ActualTheme(),
+            L"Replace the saved source?",
+            L"Halo will keep the current file until the replacement finishes successfully.");
         dialog.PrimaryButtonText(L"Replace");
         dialog.CloseButtonText(L"Keep current");
         dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Close);
@@ -485,11 +486,11 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::Windows::Foundation::IAsyncAction SourcesPage::ShowDownloadFailureAsync()
     {
-        Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-        dialog.XamlRoot(XamlRoot());
-        dialog.Title(winrt::box_value(L"Download could not start"));
-        dialog.Content(winrt::box_value(
-            L"Check the source, free storage, and download folder, then try again."));
+        auto dialog = ::HaloDesktop::Views::MakeDialog(
+            XamlRoot(),
+            ActualTheme(),
+            L"Download could not start",
+            L"Check the source, free storage, and download folder, then try again.");
         dialog.CloseButtonText(L"Close");
         co_await dialog.ShowAsync();
     }

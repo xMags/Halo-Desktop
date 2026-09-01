@@ -280,6 +280,7 @@
     <ClInclude Include="Views\DownloadsPage.xaml.h">
       <DependentUpon>DownloadsPage.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Views\PageDialog.h" />
     <ClInclude Include="Views\HomePage.xaml.h">
       <DependentUpon>HomePage.xaml</DependentUpon>
     </ClInclude>
@@ -494,6 +495,7 @@
     <ClCompile Include="Views\DownloadsPage.xaml.cpp">
       <DependentUpon>DownloadsPage.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Views\PageDialog.cpp" />
     <ClCompile Include="Views\HomePage.xaml.cpp">
       <DependentUpon>HomePage.xaml</DependentUpon>
     </ClCompile>

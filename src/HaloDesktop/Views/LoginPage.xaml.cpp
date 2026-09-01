@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Views/PageDialog.h"
 #include "ViewModels/LoginViewModel.h"
 
 #include <winrt/Windows.System.h>
@@ -57,10 +58,11 @@ namespace winrt::HaloDesktop::implementation
 
         try
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Help could not be opened"));
-            dialog.Content(winrt::box_value(L"Open the Halo Desktop issues page in a browser and try again."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Help could not be opened",
+                L"Open the Halo Desktop issues page in a browser and try again.");
             dialog.CloseButtonText(L"Close");
             co_await dialog.ShowAsync();
         }

@@ -101,6 +101,17 @@
       <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
 
+
+      <!--
+        The stock dialog surface is a different grey from every other Halo overlay and
+        splits its button row onto its own band. Repainted from the flyout tokens so a
+        dialog reads as the same material as a menu, in whichever theme it opens.
+      -->
+      <SolidColorBrush x:Key="ContentDialogBackground" Color="{StaticResource HaloFlyoutColor}" />
+      <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="{StaticResource HaloCardStrokeColor}" />
+      <SolidColorBrush x:Key="ContentDialogForeground" Color="{StaticResource HaloText1Color}" />
+      <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent" />
+      <SolidColorBrush x:Key="ContentDialogSeparatorBorderBrush" Color="{StaticResource HaloCardStrokeColor}" />
       <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-dark.png" />
     </ResourceDictionary>
 
@@ -209,6 +220,17 @@
       <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
 
+      <!--
+        The stock dialog surface is a different grey from every other Halo overlay and
+        splits its button row onto its own band. Repainted from the flyout tokens so a
+        dialog reads as the same material as a menu, in whichever theme it opens.
+      -->
+      <SolidColorBrush x:Key="ContentDialogBackground" Color="{StaticResource HaloFlyoutColor}" />
+      <SolidColorBrush x:Key="ContentDialogBorderBrush" Color="{StaticResource HaloCardStrokeColor}" />
+      <SolidColorBrush x:Key="ContentDialogForeground" Color="{StaticResource HaloText1Color}" />
+      <SolidColorBrush x:Key="ContentDialogTopOverlay" Color="Transparent" />
+      <SolidColorBrush x:Key="ContentDialogSeparatorBorderBrush" Color="{StaticResource HaloCardStrokeColor}" />
+
       <BitmapImage x:Key="HaloPlaceholderStripe" UriSource="ms-appx:///Assets/stripe-light.png" />
     </ResourceDictionary>
   </ResourceDictionary.ThemeDictionaries>
@@ -292,5 +314,11 @@
   <x:Double x:Key="HaloHeroHeight">304</x:Double>
   <x:Double x:Key="HaloHeroTitleSize">36</x:Double>
   <x:Double x:Key="HaloFormMaxWidth">680</x:Double>
+  <!--
+    Both bounds carry the same value, so a dialog is one fixed, compact box rather than
+    a band as wide as its longest sentence.
+  -->
+  <x:Double x:Key="ContentDialogMinWidth">440</x:Double>
+  <x:Double x:Key="ContentDialogMaxWidth">440</x:Double>
   <x:Double x:Key="HaloLibraryColumns">6</x:Double>
 </ResourceDictionary>

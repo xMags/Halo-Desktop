@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Views/PageDialog.h"
 #include "ViewModels/SettingsRailPolicy.h"
 #include "ViewModels/SettingsViewModel.h"
 
@@ -144,10 +145,11 @@ namespace winrt::HaloDesktop::implementation
             {
                 co_return;
             }
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(xamlRoot);
-            dialog.Title(winrt::box_value(L"Could not open the releases page"));
-            dialog.Content(winrt::box_value(L"Check your default browser settings and try again."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                xamlRoot,
+                ActualTheme(),
+                L"Could not open the releases page",
+                L"Check your default browser settings and try again.");
             dialog.CloseButtonText(L"Close");
             co_await dialog.ShowAsync();
         }
@@ -210,13 +212,14 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         try
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Remove addon?"));
             auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
-            dialog.Content(winrt::box_value(viewModel->IsGlobalAddon(id)
-                ? L"This removes the addon for every user on this server."
-                : L"This removes the addon from your account."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Remove addon?",
+                viewModel->IsGlobalAddon(id)
+                    ? L"This removes the addon for every user on this server."
+                    : L"This removes the addon from your account.");
             dialog.PrimaryButtonText(L"Remove");
             dialog.CloseButtonText(L"Cancel");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)

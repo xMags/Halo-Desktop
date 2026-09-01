@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Views/PageDialog.h"
 #include "ViewModels/DownloadsViewModel.h"
 
 #include <array>
@@ -103,10 +104,11 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         try
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Pause all transfers?"));
-            dialog.Content(winrt::box_value(L"Every active and queued transfer will stay paused until you resume all."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Pause all transfers?",
+                L"Every active and queued transfer will stay paused until you resume all.");
             dialog.PrimaryButtonText(L"Pause all");
             dialog.CloseButtonText(L"Cancel");
             dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Primary);
@@ -124,10 +126,11 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         try
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Cancel transfer?"));
-            dialog.Content(winrt::box_value(L"The partial file and protected request will be removed from this device."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Cancel transfer?",
+                L"The partial file and protected request will be removed from this device.");
             dialog.PrimaryButtonText(L"Cancel transfer");
             dialog.CloseButtonText(L"Keep transfer");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
@@ -145,10 +148,11 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         try
         {
-            Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-            dialog.XamlRoot(XamlRoot());
-            dialog.Title(winrt::box_value(L"Delete from device?"));
-            dialog.Content(winrt::box_value(L"This permanently removes the video and its subtitle sidecar from this device."));
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Delete from device?",
+                L"This permanently removes the video and its subtitle sidecar from this device.");
             dialog.PrimaryButtonText(L"Delete");
             dialog.CloseButtonText(L"Cancel");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
@@ -187,10 +191,11 @@ namespace winrt::HaloDesktop::implementation
         {
             try
             {
-                Microsoft::UI::Xaml::Controls::ContentDialog dialog;
-                dialog.XamlRoot(XamlRoot());
-                dialog.Title(winrt::box_value(L"Folder could not be changed"));
-                dialog.Content(winrt::box_value(L"Choose an available local folder and try again."));
+                auto dialog = ::HaloDesktop::Views::MakeDialog(
+                    XamlRoot(),
+                    ActualTheme(),
+                    L"Folder could not be changed",
+                    L"Choose an available local folder and try again.");
                 dialog.CloseButtonText(L"Close");
                 co_await dialog.ShowAsync();
             }
