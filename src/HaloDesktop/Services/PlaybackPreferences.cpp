@@ -36,4 +36,14 @@ namespace HaloDesktop::Services
     {
         m_store->HardwareDecoding(value);
     }
+
+    bool PlaybackPreferences::DiscordPresenceEnabled() const noexcept
+    {
+        return m_store->DiscordPresence();
+    }
+
+    void PlaybackPreferences::DiscordPresenceEnabled(bool value)
+    {
+        m_store->DiscordPresence(value);
+    }
 }

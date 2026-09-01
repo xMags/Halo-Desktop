@@ -219,6 +219,8 @@
                 <local:SettingRow Label="Resume where I left off" Hint="Ignored under 30 seconds watched"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.ResumePlayback, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
                 <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
                 <local:SettingRow Label="Hardware decoding" Hint="mpv hwdec=d3d11va-copy"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.HardwareDecoding, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
+                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
+                <local:SettingRow Label="Discord Rich Presence" Hint="Shares the title and episode you are watching with Discord"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.DiscordPresence, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
               </StackPanel>
             </Border>
           </StackPanel>

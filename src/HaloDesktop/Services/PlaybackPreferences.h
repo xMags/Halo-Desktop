@@ -17,6 +17,8 @@ namespace HaloDesktop::Services
         void ResumeEnabled(bool value);
         [[nodiscard]] bool HardwareDecodingEnabled() const noexcept;
         void HardwareDecodingEnabled(bool value);
+        [[nodiscard]] bool DiscordPresenceEnabled() const noexcept;
+        void DiscordPresenceEnabled(bool value);
 
     private:
         std::shared_ptr<DevicePreferencesStore> m_store;

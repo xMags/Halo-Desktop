@@ -6,6 +6,7 @@
 #include "Playback/PlaybackSourceResolver.h"
 #include "Playback/WatchReporter.h"
 #include "Services/PlaybackPreferences.h"
+#include "Services/DiscordPresence.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/WatchStateService.h"
 
@@ -16,8 +17,8 @@
 
 namespace HaloDesktop::Playback
 {
-    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings,std::shared_ptr<Services::PlaybackPreferences>preferences,std::shared_ptr<IScrubPreviewSource>scrubPreview):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings)),m_preferences(std::move(preferences)),m_scrubPreview(std::move(scrubPreview))
-    {if(!m_engine||!m_watchState||!m_settings||!m_preferences||!m_scrubPreview)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
+    PlaybackSessionController::PlaybackSessionController(std::shared_ptr<IPlaybackEngine>engine,std::shared_ptr<Services::WatchStateService>watchState,std::shared_ptr<Services::SettingsSyncService>settings,std::shared_ptr<Services::PlaybackPreferences>preferences,std::shared_ptr<IScrubPreviewSource>scrubPreview,std::shared_ptr<Services::DiscordPresenceService>presence):m_engine(std::move(engine)),m_watchState(std::move(watchState)),m_settings(std::move(settings)),m_preferences(std::move(preferences)),m_scrubPreview(std::move(scrubPreview)),m_presence(std::move(presence))
+    {if(!m_engine||!m_watchState||!m_settings||!m_preferences||!m_scrubPreview||!m_presence)throw std::invalid_argument("PlaybackSessionController requires its dependencies.");}
     PlaybackSessionController::~PlaybackSessionController(){Stop();}
 
     concurrency::task<void> PlaybackSessionController::StartAsync(winrt::HaloDesktop::PlaybackRequest request)
@@ -42,13 +43,13 @@ namespace HaloDesktop::Playback
             // this start was abandoned while the source was being settled.
             if(version!=m_startVersion)co_return;
         }
-        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);
+        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel())});
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
         m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
         m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;
         RefreshPreferences();
-        try{m_scrubPreview->Open(source);m_engine->Open(std::move(source));m_engine->SetPaused(false);}
+        try{m_scrubPreview->Open(source);m_engine->Open(std::move(source));m_engine->SetPaused(false);m_presence->Update(m_engine->State());}
         catch(...){Stop();throw;}
         LoadWatchStateAsync(version).then([](concurrency::task<void>task){try{task.get();}catch(...){}});
         co_return;
@@ -71,6 +72,7 @@ namespace HaloDesktop::Playback
         if(m_engineToken){m_engine->RemoveChangedHandler(m_engineToken);m_engineToken=0;}
         m_reporter.reset();m_reportTask.reset();m_prior.reset();m_fileReady=false;
         m_scrubPreview->Close();
+        m_presence->Clear();
     }
 
     void PlaybackSessionController::SetErrorHandler(std::function<void()>handler){m_errorHandler=std::move(handler);}
@@ -98,7 +100,7 @@ namespace HaloDesktop::Playback
             ReportNow();
         }
         if(playing&&!wasPlaying&&m_reportTimer)m_reportTimer.Start();else if(!playing&&wasPlaying&&m_reportTimer)m_reportTimer.Stop();
-        ApplyAudioPreference();m_lastState=m_engine->State();
+        ApplyAudioPreference();m_lastState=m_engine->State();m_presence->Update(m_lastState);
     }
 
     void PlaybackSessionController::ReportNow()noexcept

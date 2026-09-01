@@ -15,6 +15,7 @@
 #include "Services/ContinueArtworkService.h"
 #include "Services/ContinueNextEpisodeService.h"
 #include "Services/DownloadService.h"
+#include "Services/DiscordPresence.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/TransferEngine.h"
 #include "Services/Auth/LocalAuthSession.h"
@@ -63,9 +64,12 @@ namespace winrt::HaloDesktop::implementation
             m_storagePaths->PreferencesFile());
         m_playbackPreferences = std::make_shared<::HaloDesktop::Services::PlaybackPreferences>(
             m_devicePreferences);
+        m_discordPresence = std::make_shared<::HaloDesktop::Services::DiscordPresenceService>(
+            m_playbackPreferences->DiscordPresenceEnabled());
         m_services.StoragePaths = m_storagePaths;
         m_services.DevicePreferences = m_devicePreferences;
         m_services.PlaybackPreferences = m_playbackPreferences;
+        m_services.DiscordPresence = m_discordPresence;
 
         m_httpExecutor = std::make_shared<::HaloDesktop::Api::HttpExecutor>();
         m_queryCache = std::make_shared<::HaloDesktop::Services::QueryCache>();
@@ -162,6 +166,7 @@ namespace winrt::HaloDesktop::implementation
         std::weak_ptr<::HaloDesktop::Services::SettingsSyncService> weakSettings = settingsSyncService;
         std::weak_ptr<::HaloDesktop::Services::SourceService> weakSources = sourceService;
         std::weak_ptr<::HaloDesktop::Services::DownloadService> weakDownloads = m_downloadService;
+        std::weak_ptr<::HaloDesktop::Services::DiscordPresenceService> weakPresence = m_discordPresence;
         m_sessionService->SetIdentityChangedHandler(
             [weakSession,
              queryCache = m_queryCache,
@@ -172,8 +177,10 @@ namespace winrt::HaloDesktop::implementation
              weakMetadata,
              weakSettings,
              weakSources,
-             weakDownloads]()
+             weakDownloads,
+             weakPresence]()
             {
+                if (auto const presence = weakPresence.lock()) presence->Clear();
                 queryCache->Clear();
                 if (auto const addons = weakAddons.lock()) addons->OnAccountChanged();
                 if (auto const library = weakLibrary.lock()) library->OnAccountChanged();

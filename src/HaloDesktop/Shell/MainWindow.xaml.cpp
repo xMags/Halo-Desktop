@@ -6,6 +6,7 @@
 
 #include "App.xaml.h"
 #include "Playback/IPlaybackEngine.h"
+#include "Services/DiscordPresence.h"
 #include "Views/PlayerPage.xaml.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/ThemeService.h"
@@ -143,6 +144,7 @@ namespace winrt::HaloDesktop::implementation
 
         try
         {
+            App::Services().DiscordPresence->Clear();
             App::Services().Playback->Stop();
             App::Services().Playback->DetachVideoWindow();
             App::Services().Downloads->Stop();

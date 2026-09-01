@@ -138,6 +138,7 @@ namespace
         DevicePreferencesStore second{ path };
         Require(first.Theme() == 2, "an invalid theme did not fall back to System");
         Require(first.ResumePlayback(), "an invalid resume value did not use its default");
+        Require(first.DiscordPresence(), "an invalid Discord presence value did not use its default");
 
         std::atomic_bool start{};
         std::jthread themeWriter([&]()
@@ -157,6 +158,9 @@ namespace
         DevicePreferencesStore verify{ path };
         Require(verify.Theme() == 1, "a concurrent preference write lost the theme key");
         Require(!verify.ResumePlayback(), "a concurrent preference write lost the resume key");
+        verify.DiscordPresence(false);
+        Require(!DevicePreferencesStore{ path }.DiscordPresence(),
+            "the Discord presence preference did not round-trip locally");
         verify.SearchHistory({ L"one", L"two" });
         Require(verify.SearchHistory().size() == 2, "valid search history did not round-trip");
     }

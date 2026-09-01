@@ -5,6 +5,7 @@
 #include "Api/Dto.h"
 #include "Api/JsonNumberPolicy.h"
 #include "Services/SettingsSyncPolicy.h"
+#include "Services/DiscordPresence.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Services/Downloads/DownloadPreparation.h"
@@ -17,12 +18,16 @@
 #include "StorageTests.h"
 
 #include <cstddef>
+#include <chrono>
+#include <condition_variable>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
 #include <limits>
+#include <memory>
+#include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -150,6 +155,177 @@ namespace
             "an equal-timestamp settings payload replaced the local document");
         Require(ShouldApplyLoadedSettings(101, 100, 0, 0),
             "a newer remote settings payload was rejected");
+    }
+
+    class FakeDiscordTransport final : public HaloDesktop::Services::IDiscordPresenceTransport
+    {
+    public:
+        [[nodiscard]] bool Send(
+            std::wstring const& applicationId,
+            std::string const& payload) noexcept override
+        {
+            std::scoped_lock const lock{ Mutex };
+            ApplicationIds.push_back(applicationId);
+            Payloads.push_back(payload);
+            Changed.notify_all();
+            if (FailuresRemaining > 0)
+            {
+                --FailuresRemaining;
+                return false;
+            }
+            return true;
+        }
+
+        [[nodiscard]] bool WaitForCount(std::size_t count)
+        {
+            std::unique_lock lock{ Mutex };
+            return Changed.wait_for(lock, std::chrono::seconds{ 2 }, [this, count]
+            {
+                return Payloads.size() >= count;
+            });
+        }
+
+        std::mutex Mutex;
+        std::condition_variable Changed;
+        std::vector<std::wstring> ApplicationIds;
+        std::vector<std::string> Payloads;
+        int FailuresRemaining{};
+    };
+
+    HaloDesktop::Playback::PlaybackState PresenceState()
+    {
+        return {
+            .PositionSeconds = 120.0,
+            .DurationSeconds = 3600.0,
+            .Speed = 1.0,
+            .FileSerial = 7,
+            .SeekSerial = 2,
+        };
+    }
+
+    void TestDiscordPresencePolicyAndService()
+    {
+        using HaloDesktop::Services::BuildPresenceActivity;
+        using HaloDesktop::Services::DiscordPresenceService;
+        using HaloDesktop::Services::PresenceMedia;
+        using HaloDesktop::Services::PresencePlaybackState;
+        using HaloDesktop::Services::SerializeClearActivity;
+        using HaloDesktop::Services::SerializeSetActivity;
+
+        auto const capturedAt = std::chrono::system_clock::time_point{ std::chrono::seconds{ 2'000 } };
+        auto state = PresenceState();
+        auto movie = BuildPresenceActivity({ L"Arrival", L"", L"" }, state, capturedAt);
+        Require(movie.has_value(), "a playing movie did not produce presence");
+        Require(movie->Details == L"Arrival" && movie->State == L"Movie",
+            "movie presence did not contain its title and media kind");
+        auto movieJson = SerializeSetActivity(*movie, 42);
+        Require(movieJson.find("\"start\":1880") != std::string::npos,
+            "elapsed playback time was not anchored to the captured position");
+        Require(movieJson.find("\"end\":5480") != std::string::npos,
+            "remaining playback time was not anchored to the captured duration");
+        Require(movieJson.find("halo") != std::string::npos,
+            "the configured Halo artwork key was absent");
+        Require(movieJson.find("\"type\":3") != std::string::npos,
+            "Discord presence was not identified as Watching");
+
+        auto episode = BuildPresenceActivity(
+            { L"The Ones Who Live", L"The Walking Dead", L"S01E06" }, state, capturedAt);
+        Require(episode.has_value(), "a playing episode did not produce presence");
+        Require(episode->Details == L"The Walking Dead"
+                && episode->State == L"S01E06 \u00b7 The Ones Who Live",
+            "episode presence did not contain the series, episode, and title");
+
+        state.Paused = true;
+        auto paused = BuildPresenceActivity({ L"Arrival", L"", L"" }, state, capturedAt);
+        Require(paused && paused->Playback == PresencePlaybackState::Paused,
+            "paused playback was not represented as paused");
+        auto pausedJson = SerializeSetActivity(*paused, 42);
+        Require(pausedJson.find("Paused") != std::string::npos
+                && pausedJson.find("timestamps") == std::string::npos,
+            "paused presence showed moving timestamps or omitted its state");
+
+        state.Paused = false;
+        state.Buffering = true;
+        auto buffering = BuildPresenceActivity({ L"Arrival", L"", L"" }, state, capturedAt);
+        auto bufferingJson = SerializeSetActivity(*buffering, 42);
+        Require(bufferingJson.find("Buffering") != std::string::npos
+                && bufferingJson.find("timestamps") == std::string::npos,
+            "buffering presence showed moving timestamps or omitted its state");
+
+        state = PresenceState();
+        std::wstring invalidTitle(200, L'x');
+        invalidTitle[2] = static_cast<wchar_t>(0xd800);
+        invalidTitle[3] = L'\n';
+        auto sanitized = BuildPresenceActivity({ invalidTitle, L"", L"" }, state, capturedAt);
+        Require(sanitized && winrt::to_string(winrt::hstring{ sanitized->Details }).size() <= 128,
+            "Discord text exceeded its UTF-8 byte limit");
+        auto sanitizedJson = SerializeSetActivity(*sanitized, 42);
+        Require(sanitizedJson.find("https://private.invalid") == std::string::npos
+                && sanitizedJson.find("Authorization") == std::string::npos
+                && sanitizedJson.find("addon-secret") == std::string::npos,
+            "presence serialization admitted data outside the display-safe contract");
+        Require(SerializeClearActivity(42).find("\"activity\":null") != std::string::npos,
+            "clearing presence did not send a null activity");
+
+        auto transport = std::make_shared<FakeDiscordTransport>();
+        {
+            DiscordPresenceService service{ false, transport, std::chrono::milliseconds{ 5 } };
+            service.SetMedia({ L"Arrival", L"", L"" });
+            service.Update(PresenceState());
+            Require(!transport->WaitForCount(1), "disabled Rich Presence published activity");
+            service.SetEnabled(true);
+            Require(transport->WaitForCount(1), "enabling Rich Presence did not publish current playback");
+            {
+                std::scoped_lock const lock{ transport->Mutex };
+                Require(transport->ApplicationIds.front() == L"1544266293249712128",
+                    "the Discord transport received the wrong Application ID");
+            }
+            service.SetEnabled(false);
+            Require(transport->WaitForCount(2), "disabling Rich Presence did not clear current playback");
+            {
+                std::scoped_lock const lock{ transport->Mutex };
+                Require(transport->Payloads.back().find("\"activity\":null") != std::string::npos,
+                    "disabling Rich Presence did not send a null activity");
+            }
+            service.SetEnabled(true);
+            service.Update(PresenceState());
+            Require(transport->WaitForCount(3), "re-enabling Rich Presence did not replay current playback");
+            service.Clear();
+            Require(transport->WaitForCount(4), "clearing Rich Presence did not reach the transport");
+            std::scoped_lock const lock{ transport->Mutex };
+            Require(transport->Payloads.back().find("\"activity\":null") != std::string::npos,
+                "the service clear operation did not send a null activity");
+        }
+
+        auto localFileTransport = std::make_shared<FakeDiscordTransport>();
+        {
+            DiscordPresenceService service{ true, localFileTransport, std::chrono::milliseconds{ 5 } };
+            service.SetMedia({ L"Spider-Man: No Way Home", L"", L"" });
+            auto loading = PresenceState();
+            loading.FileSerial = 0;
+            loading.Buffering = true;
+            service.Update(loading);
+            Require(!localFileTransport->WaitForCount(1),
+                "pre-load local playback published an invalid activity");
+            service.Update(PresenceState());
+            Require(localFileTransport->WaitForCount(1),
+                "a local file lost its metadata before FILE_LOADED");
+            std::scoped_lock const lock{ localFileTransport->Mutex };
+            Require(localFileTransport->Payloads.back().find("Spider-Man: No Way Home") != std::string::npos,
+                "local file presence did not publish its title");
+        }
+
+        auto retryTransport = std::make_shared<FakeDiscordTransport>();
+        retryTransport->FailuresRemaining = 1;
+        auto const shutdownStart = std::chrono::steady_clock::now();
+        {
+            DiscordPresenceService service{ true, retryTransport, std::chrono::milliseconds{ 5 } };
+            service.SetMedia({ L"Arrival", L"", L"" });
+            service.Update(PresenceState());
+            Require(retryTransport->WaitForCount(2), "a failed Discord connection was not retried");
+        }
+        Require(std::chrono::steady_clock::now() - shutdownStart < std::chrono::seconds{ 2 },
+            "Discord worker shutdown blocked application teardown");
     }
 
     void TestCatalogDirtySingleFlight()
@@ -634,6 +810,7 @@ int main()
         TestStreamVideoSizeValidation();
         TestNumericBoundaryValidation();
         TestSettingsLoadPolicy();
+        TestDiscordPresencePolicyAndService();
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
         TestFilteredFeaturedSelection();

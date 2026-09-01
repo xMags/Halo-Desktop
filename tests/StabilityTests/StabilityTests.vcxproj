@@ -83,6 +83,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\DevicePreferencesStore.cpp">
       <Link>DevicePreferencesStore.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\DiscordPresence.cpp">
+      <Link>DiscordPresence.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Security\ProtectedHttpHeaders.cpp">
       <Link>ProtectedHttpHeaders.cpp</Link>
     </ClCompile>

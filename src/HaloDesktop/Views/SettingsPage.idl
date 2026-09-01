@@ -64,6 +64,7 @@ namespace HaloDesktop
         Boolean SubtitleTrackStyling;
         Boolean ResumePlayback;
         Boolean HardwareDecoding;
+        Boolean DiscordPresence;
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();

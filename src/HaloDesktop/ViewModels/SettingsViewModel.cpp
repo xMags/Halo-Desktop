@@ -1,5 +1,7 @@
 #include "pch.h"
 #include "ViewModels/SettingsViewModel.h"
+#include "Services/DiscordPresence.h"
+#include "Playback/IPlaybackEngine.h"
 #if __has_include("AddonRowViewModel.g.cpp")
 #include "AddonRowViewModel.g.cpp"
 #endif
@@ -49,14 +51,17 @@ namespace winrt::HaloDesktop::implementation
           m_catalog(services.Catalog),
           m_settings(services.SettingsSync),
           m_playbackPreferences(services.PlaybackPreferences),
+          m_discordPresenceService(services.DiscordPresence),
+          m_playback(services.Playback),
           m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_playbackPreferences)
+        if (!m_playbackPreferences || !m_discordPresenceService || !m_playback)
         {
-            throw std::invalid_argument{ "SettingsViewModel requires playback preferences." };
+            throw std::invalid_argument{ "SettingsViewModel requires local integration preferences." };
         }
         m_resumePlayback=m_playbackPreferences->ResumeEnabled();
         m_hardwareDecoding=m_playbackPreferences->HardwareDecodingEnabled();
+        m_discordPresence=m_playbackPreferences->DiscordPresenceEnabled();
         Refresh();
     }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
@@ -167,10 +172,22 @@ namespace winrt::HaloDesktop::implementation
     void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; m_playbackPreferences->ResumeEnabled(value); Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
     void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; m_playbackPreferences->HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
+    bool SettingsViewModel::DiscordPresence() const noexcept { return m_discordPresence; }
+    void SettingsViewModel::DiscordPresence(bool value)
+    {
+        if (m_discordPresence == value) return;
+        m_discordPresence = value;
+        m_playbackPreferences->DiscordPresenceEnabled(value);
+        m_discordPresenceService->SetEnabled(value);
+        if (value) m_discordPresenceService->Update(m_playback->State());
+        Raise(L"DiscordPresence");
+    }
     void SettingsViewModel::Refresh()
     {
         m_accountNoticeVisible = false;
         m_accountNoticeText.clear();
+        m_discordPresence = m_playbackPreferences->DiscordPresenceEnabled();
+        m_discordPresenceService->SetEnabled(m_discordPresence);
         m_serverUrl = m_session->ServerUrl();
         m_userName = m_session->UserName();
         Raise(L"ServerUrl");
@@ -178,6 +195,7 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"DisplayName");
         Raise(L"SignedInLine");
         Raise(L"AccountRoleLine");
+        Raise(L"DiscordPresence");
         Raise(L"AccountNoticeText");
         Raise(L"AccountNoticeVisibility");
         static_cast<void>(LoadAsync());

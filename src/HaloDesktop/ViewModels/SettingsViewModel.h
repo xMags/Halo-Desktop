@@ -89,6 +89,8 @@ namespace winrt::HaloDesktop::implementation
         void ResumePlayback(bool value);
         [[nodiscard]] bool HardwareDecoding() const noexcept;
         void HardwareDecoding(bool value);
+        [[nodiscard]] bool DiscordPresence() const noexcept;
+        void DiscordPresence(bool value);
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();
@@ -130,6 +132,8 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
         std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
+        std::shared_ptr<::HaloDesktop::Services::DiscordPresenceService> m_discordPresenceService;
+        std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> m_playback;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_addons{ nullptr };
         winrt::hstring m_serverUrl;
         winrt::hstring m_userName;
@@ -150,6 +154,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_subtitleTrackStyling{ true };
         bool m_resumePlayback{ true };
         bool m_hardwareDecoding{};
+        bool m_discordPresence{ true };
         HealthState m_healthState{ HealthState::Checking };
         std::uint64_t m_loadVersion{};
         std::uint64_t m_healthRequestVersion{};

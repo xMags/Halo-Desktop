@@ -179,6 +179,7 @@
     <ClInclude Include="Controls\TagChip.xaml.h"><DependentUpon>TagChip.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Config\ServerConfig.h" />
     <ClInclude Include="Config\ServerConfig.example.h" />
+    <ClInclude Include="Config\DiscordConfig.h" />
     <ClInclude Include="Models\Models.h" />
     <ClInclude Include="Security\ProtectedHttpHeaders.h" />
     <ClInclude Include="Security\ProtectedRedirect.h" />
@@ -209,6 +210,7 @@
     <ClInclude Include="Services\ContinueNextEpisodeService.h" />
     <ClInclude Include="Services\ContinueArtworkService.h" />
     <ClInclude Include="Services\DevicePreferencesStore.h" />
+    <ClInclude Include="Services\DiscordPresence.h" />
     <ClInclude Include="Services\LibraryService.h" />
     <ClInclude Include="Services\MetadataService.h" />
     <ClInclude Include="Services\PlaybackPreferences.h" />
@@ -420,6 +422,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\DevicePreferencesStore.cpp" />
+    <ClCompile Include="Services\DiscordPresence.cpp" />
     <ClCompile Include="Services\LibraryService.cpp" />
     <ClCompile Include="Services\MetadataService.cpp" />
     <ClCompile Include="Services\PlaybackPreferences.cpp" />

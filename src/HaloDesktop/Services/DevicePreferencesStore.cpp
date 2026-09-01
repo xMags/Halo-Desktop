@@ -82,6 +82,7 @@ namespace
         result.SourceRankingTipDismissed = root.GetNamedBoolean(L"sourceRankingTipDismissed", false);
         result.ResumePlayback = root.GetNamedBoolean(L"resumePlayback", true);
         result.HardwareDecoding = root.GetNamedBoolean(L"hardwareDecoding", true);
+        result.DiscordPresence = root.GetNamedBoolean(L"discordPresence", true);
         return result;
     }
 
@@ -123,6 +124,7 @@ namespace
         root.Insert(L"sourceRankingTipDismissed", JsonValue::CreateBooleanValue(value.SourceRankingTipDismissed));
         root.Insert(L"resumePlayback", JsonValue::CreateBooleanValue(value.ResumePlayback));
         root.Insert(L"hardwareDecoding", JsonValue::CreateBooleanValue(value.HardwareDecoding));
+        root.Insert(L"discordPresence", JsonValue::CreateBooleanValue(value.DiscordPresence));
         return winrt::to_string(root.Stringify());
     }
 
@@ -240,6 +242,19 @@ namespace HaloDesktop::Services
         Mutate(m_path, m_mutex, [value](DevicePreferences& current)
         {
             current.HardwareDecoding = value;
+        });
+    }
+
+    bool DevicePreferencesStore::DiscordPresence() const noexcept
+    {
+        try { return Read().DiscordPresence; } catch (...) { return true; }
+    }
+
+    void DevicePreferencesStore::DiscordPresence(bool value)
+    {
+        Mutate(m_path, m_mutex, [value](DevicePreferences& current)
+        {
+            current.DiscordPresence = value;
         });
     }
 

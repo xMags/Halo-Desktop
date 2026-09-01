@@ -18,6 +18,7 @@ namespace HaloDesktop::Services
         bool SourceRankingTipDismissed{};
         bool ResumePlayback{ true };
         bool HardwareDecoding{ true };
+        bool DiscordPresence{ true };
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
@@ -43,6 +44,8 @@ namespace HaloDesktop::Services
         void ResumePlayback(bool value);
         [[nodiscard]] bool HardwareDecoding() const noexcept;
         void HardwareDecoding(bool value);
+        [[nodiscard]] bool DiscordPresence() const noexcept;
+        void DiscordPresence(bool value);
         // Zero until a transfer has been observed. Cached in memory after the
         // first read, because callers ask per rendered row.
         [[nodiscard]] double MeasuredLineMbps() const noexcept;

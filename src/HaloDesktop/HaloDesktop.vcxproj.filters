@@ -119,6 +119,7 @@
     <ClCompile Include="Services\ContinueNextEpisodeService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\ContinueShelfPolicy.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\DevicePreferencesStore.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\DiscordPresence.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\LibraryService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\MetadataService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\PlaybackPreferences.cpp"><Filter>Services</Filter></ClCompile>
@@ -206,6 +207,7 @@
     <ClInclude Include="Controls\TagChip.xaml.h"><Filter>Controls</Filter></ClInclude>
     <ClInclude Include="Config\ServerConfig.h"><Filter>Config</Filter></ClInclude>
     <ClInclude Include="Config\ServerConfig.example.h"><Filter>Config</Filter></ClInclude>
+    <ClInclude Include="Config\DiscordConfig.h"><Filter>Config</Filter></ClInclude>
     <ClInclude Include="Models\Models.h"><Filter>Models</Filter></ClInclude>
     <ClInclude Include="Playback\IPlaybackEngine.h"><Filter>Playback</Filter></ClInclude>
     <ClInclude Include="Playback\IScrubPreviewSource.h"><Filter>Playback</Filter></ClInclude>
@@ -228,6 +230,7 @@
     <ClInclude Include="Services\ContinueNextEpisodeService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\ContinueShelfPolicy.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\DevicePreferencesStore.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\DiscordPresence.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\LibraryService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\MetadataService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\PlaybackPreferences.h"><Filter>Services</Filter></ClInclude>

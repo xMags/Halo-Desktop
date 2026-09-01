@@ -42,7 +42,7 @@ The upstream project said native desktop apps would come later. One remaining br
 | Player | Native libmpv video, audio and subtitle tracks, seeking, speed, volume, resume, fullscreen, and up next |
 | Subtitles | Embedded tracks, addon subtitles, language preferences, styling, delay, and offline sidecars |
 | Downloads | Device-local transfers, pause and resume, progress, replacement safety, offline playback, and account isolation |
-| Settings | Synced playback preferences, addon management, theme, health status, and account controls |
+| Settings | Synced playback preferences, device-local Discord Rich Presence, addon management, theme, health status, and account controls |
 | Authentication | Local Halo accounts plus OIDC browser sign-in support |
 
 ## Native, because apparently I enjoy problems
@@ -70,6 +70,15 @@ You need:
 - Node.js 22 and Corepack only if you want to run the upstream fixture backend.
 
 The supported development target is **x64 Debug**.
+
+### Discord Rich Presence
+
+Halo publishes playback activity through the Discord desktop client's local IPC
+pipe. Discord must be running for the activity to appear. The application uses
+the public Discord Application ID `1544266293249712128` and the artwork asset key
+`halo`. Upload a Halo logo with that key in the Discord Developer Portal before
+testing or distributing a build. Halo never sends stream URLs, request headers,
+account identifiers, or addon metadata to Discord.
 
 ## Bring your own backend
 

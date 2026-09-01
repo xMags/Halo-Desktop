@@ -30,6 +30,7 @@ namespace HaloDesktop::Services
     class ISessionService;
     class ISourceService;
     class DevicePreferencesStore;
+    class DiscordPresenceService;
     class NavigationService;
     class PlaybackPreferences;
     class ThemeService;
@@ -53,6 +54,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<SettingsSyncService> SettingsSync;
         std::shared_ptr<LibraryService> Library;
         std::shared_ptr<WatchStateService> WatchState;
+        std::shared_ptr<DiscordPresenceService> DiscordPresence;
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> Playback;
         std::shared_ptr<::HaloDesktop::Playback::IScrubPreviewSource> ScrubPreview;
         std::shared_ptr<::HaloDesktop::Playback::SubtitleController> Subtitles;
