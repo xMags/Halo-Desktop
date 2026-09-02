@@ -109,16 +109,13 @@
         <Border Margin="0,18,0,0" Padding="14" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
           <StackPanel Spacing="9">
             <StackPanel Orientation="Horizontal" Spacing="8"><Image Width="20" Height="20" Source="ms-appx:///Assets/halo-mark.png" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" FontWeight="SemiBold" Text="Halo Desktop" /></StackPanel>
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloMonoData}" Text="v0.1.0 · WinUI 3" /><TextBlock Style="{StaticResource HaloMonoData}" Text="mpv 0.40 · WinAppSDK 2.4" /></StackPanel>
             <Button Padding="0,4" HorizontalAlignment="Left" Background="Transparent" BorderThickness="0" Click="OnCheckForUpdatesClick" Foreground="{ThemeResource HaloAccentBrush}" Content="Check for updates" ToolTipService.ToolTip="Opens the releases page on GitHub" />
             <!-- The card pads by 14, so the hairline pulls back out to sit edge to edge. -->
             <Rectangle Height="1" Margin="-14,0" Fill="{ThemeResource HaloDividerBrush}" />
             <!--
-              Fine print sits a step below the version data: same mono face, one size
-              smaller, so the card reads name, then build, then notice. It stays on the
-              readable end of the text ramp rather than the dimmest one, because a
-              notice nobody can read is not a notice. The holder and the license wording
-              track LICENSE and licenses/TERMS.txt.
+              The notice stays on the readable end of the text ramp rather than the
+              dimmest one. The holder and license wording track LICENSE and
+              licenses/TERMS.txt.
             -->
             <StackPanel Spacing="3">
               <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="© 2026 Last Projects" />
