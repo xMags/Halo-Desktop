@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Restores the pinned libmpv developer payload into external\mpv.
+    Restores the pinned libmpv developer payload for one architecture.
 
 .DESCRIPTION
     Halo redistributes libmpv-2.dll, so the payload is pinned to one upstream
@@ -9,23 +9,45 @@
     replaced, or tampered asset therefore fails loudly instead of silently
     changing what Halo ships.
 
-    Bumping libmpv is a deliberate act: update the three pinned values below,
-    run this script, then copy the printed hash and size into
-    external\manifest.json.
+    Bumping libmpv is a deliberate act: update the pinned values below, run
+    this script for both architectures, then copy the printed hashes and sizes
+    into the matching architecture manifest.
 #>
 [CmdletBinding()]
-param()
+param(
+    [ValidateSet('x64', 'ARM64')]
+    [string] $Platform = 'x64'
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $releaseTag = '2026-08-23-9f9f8c4dd4'
-$assetName = 'mpv-dev-lgpl-x86_64-20260823-git-9f9f8c4dd4.7z'
-$assetSha256 = '16B9AEAEF838A79C61D0299E410AB45604ECD6591A17DA7ECF7AEF6A6FDD1C17'
+$architecture = if ($Platform -eq 'ARM64') { 'arm64' } else { 'x64' }
+$assetName = if ($Platform -eq 'ARM64') {
+    'mpv-dev-lgpl-aarch64-20260823-git-9f9f8c4dd4.7z'
+}
+else {
+    'mpv-dev-lgpl-x86_64-20260823-git-9f9f8c4dd4.7z'
+}
+$assetSha256 = if ($Platform -eq 'ARM64') {
+    '2922EA39D2B0D1EB05267E0E0D525A31815313D2EF375A8EEA34ED11532C908D'
+}
+else {
+    '16B9AEAEF838A79C61D0299E410AB45604ECD6591A17DA7ECF7AEF6A6FDD1C17'
+}
+$libraryMachine = if ($Platform -eq 'ARM64') { 'arm64' } else { 'x64' }
+$manifestName = if ($Platform -eq 'ARM64') { 'external\manifest-arm64.json' } else { 'external\manifest.json' }
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$externalRoot = Join-Path $repositoryRoot 'external\mpv'
-$temporaryRoot = Join-Path $env:TEMP ("HaloDesktop-mpv-" + [guid]::NewGuid().ToString('N'))
+$sharedExternalRoot = Join-Path $repositoryRoot 'external\mpv'
+$externalRoot = if ($Platform -eq 'ARM64') {
+    Join-Path $sharedExternalRoot 'arm64'
+}
+else {
+    $sharedExternalRoot
+}
+$temporaryRoot = Join-Path $env:TEMP ("HaloDesktop-mpv-$architecture-" + [guid]::NewGuid().ToString('N'))
 
 function Assert-GeneratedPath {
     param(
@@ -34,7 +56,7 @@ function Assert-GeneratedPath {
     )
 
     $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $expectedPrefix = [System.IO.Path]::GetFullPath($externalRoot) + [System.IO.Path]::DirectorySeparatorChar
+    $expectedPrefix = [System.IO.Path]::GetFullPath($sharedExternalRoot) + [System.IO.Path]::DirectorySeparatorChar
     if (-not $fullPath.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to modify a path outside external\mpv: $fullPath"
     }
@@ -153,7 +175,7 @@ try {
 
     $lib = Get-VisualStudioTool -Name 'lib.exe'
     $libraryPath = Join-Path $libraryRoot 'mpv.lib'
-    & $lib /nologo "/def:$definitionPath" /name:libmpv-2.dll /machine:x64 "/out:$libraryPath"
+    & $lib /nologo "/def:$definitionPath" /name:libmpv-2.dll "/machine:$libraryMachine" "/out:$libraryPath"
     if ($LASTEXITCODE -ne 0) {
         throw "lib.exe failed with exit code $LASTEXITCODE."
     }
@@ -171,10 +193,10 @@ try {
     $dllHash = (Get-FileHash -LiteralPath $installedDll -Algorithm SHA256).Hash
     $dllSize = (Get-Item -LiteralPath $installedDll).Length
     Write-Host ''
-    Write-Host "libmpv $releaseTag is ready in external\mpv." -ForegroundColor Green
+    Write-Host "libmpv $releaseTag for $Platform is ready in $externalRoot." -ForegroundColor Green
     Write-Host "  sha256: $dllHash" -ForegroundColor White
     Write-Host "  size:   $dllSize" -ForegroundColor White
-    Write-Host 'If you changed the pin, copy these into external\manifest.json.' -ForegroundColor White
+    Write-Host "If you changed the pin, copy these into $manifestName." -ForegroundColor White
 }
 finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

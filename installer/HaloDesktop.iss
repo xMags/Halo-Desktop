@@ -16,8 +16,17 @@
 #define AppPublisher "lastprojects"
 #define AppWebsite "https://lastprojects.com"
 #define AppExeName "HaloDesktop.exe"
-#define SourceRoot "..\x64\Release\HaloDesktop"
 #define RepositoryRoot ".."
+
+#ifdef Arm64Build
+  #define SourceRoot "..\ARM64\Release\HaloDesktop"
+  #define InstallerArchitecture "arm64"
+  #define OutputArchitecture "-ARM64"
+#else
+  #define SourceRoot "..\x64\Release\HaloDesktop"
+  #define InstallerArchitecture "x64compatible"
+  #define OutputArchitecture ""
+#endif
 
 [Setup]
 ; Derived from Halo's existing package identity so upgrades keep finding the
@@ -45,8 +54,8 @@ DisableDirPage=auto
 PrivilegesRequired=lowest
 PrivilegesRequiredOverridesAllowed=dialog
 
-ArchitecturesAllowed=x64compatible
-ArchitecturesInstallIn64BitMode=x64compatible
+ArchitecturesAllowed={#InstallerArchitecture}
+ArchitecturesInstallIn64BitMode={#InstallerArchitecture}
 MinVersion=10.0.17763
 
 Compression=lzma2/max
@@ -54,7 +63,7 @@ SolidCompression=yes
 WizardStyle=modern
 
 OutputDir=Output
-OutputBaseFilename=HaloDesktop-{#AppVersion}-Setup
+OutputBaseFilename=HaloDesktop-{#AppVersion}{#OutputArchitecture}-Setup
 SetupIconFile={#RepositoryRoot}\src\HaloDesktop\Assets\Halo.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}

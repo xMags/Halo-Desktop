@@ -203,7 +203,7 @@ namespace winrt::HaloDesktop::implementation
             });
         m_services.Session = m_sessionService;
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>(m_devicePreferences);
-#if defined(_M_X64) && !defined(HALO_USE_NULL_PLAYBACK)
+#if (defined(_M_X64) || defined(_M_ARM64)) && !defined(HALO_USE_NULL_PLAYBACK)
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>(m_playbackPreferences);
         m_services.ScrubPreview = std::make_shared<::HaloDesktop::Playback::MpvScrubPreviewSource>();
 #else

@@ -3,7 +3,7 @@
     Verifies the pinned native payloads and the self-contained output folder.
 
 .DESCRIPTION
-    Two independent gates, both driven by external\manifest.json:
+    Two independent gates, both driven by the selected architecture manifest:
 
     1. Payload pinning. Every redistributed binary must match the manifest's
        SHA-256 and size. This is what catches a payload that drifted away from
@@ -28,9 +28,15 @@
 
 .PARAMETER SkipOutput
     Verify only the pinned payloads, for use before the app has been built.
+
+.PARAMETER Platform
+    Architecture to verify. Selects both the pinned manifest and default output
+    folder, and rejects binaries built for another CPU.
 #>
 [CmdletBinding()]
 param(
+    [ValidateSet('x64', 'ARM64')]
+    [string] $Platform = 'x64',
     [string] $OutputPath,
     [switch] $SkipOutput
 )
@@ -39,9 +45,11 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$manifestPath = Join-Path $repositoryRoot 'external\manifest.json'
+$expectedArchitecture = $Platform.ToLowerInvariant()
+$manifestName = if ($Platform -eq 'ARM64') { 'manifest-arm64.json' } else { 'manifest.json' }
+$manifestPath = Join-Path $repositoryRoot "external\$manifestName"
 if (-not $OutputPath) {
-    $OutputPath = Join-Path $repositoryRoot 'x64\Release\HaloDesktop'
+    $OutputPath = Join-Path $repositoryRoot "$Platform\Release\HaloDesktop"
 }
 
 function Get-VisualStudioTool {
@@ -92,6 +100,25 @@ function Get-Dependencies {
     }
 }
 
+function Get-BinaryArchitecture {
+    param(
+        [Parameter(Mandatory)]
+        [string] $DumpbinPath,
+        [Parameter(Mandatory)]
+        [string] $BinaryPath
+    )
+
+    $output = & $DumpbinPath /nologo /headers $BinaryPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "dumpbin failed on $BinaryPath with exit code $LASTEXITCODE."
+    }
+    $machine = $output | Select-String -Pattern '^\s+[0-9A-F]+ machine \(([^)]+)\)' | Select-Object -First 1
+    if (-not $machine -or $machine.Matches.Count -ne 1) {
+        throw "The PE architecture could not be read from $BinaryPath."
+    }
+    return $machine.Matches[0].Groups[1].Value.ToLowerInvariant()
+}
+
 if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
     throw "The dependency manifest is missing: $manifestPath"
 }
@@ -100,17 +127,23 @@ $manifest = Get-Content -LiteralPath $manifestPath -Raw | ConvertFrom-Json
 if ($manifest.schemaVersion -ne 1) {
     throw "Unsupported manifest schema version $($manifest.schemaVersion)."
 }
-if ($manifest.architecture -ne 'x64') {
-    throw "Unsupported manifest architecture $($manifest.architecture)."
+if ($manifest.architecture -ne $expectedArchitecture) {
+    throw "Manifest architecture $($manifest.architecture) does not match requested platform $Platform."
 }
 
 $failures = [System.Collections.Generic.List[string]]::new()
+$dumpbin = Get-VisualStudioTool -Name 'dumpbin.exe'
 
 foreach ($payload in $manifest.payloads) {
     $payloadPath = Join-Path $repositoryRoot $payload.path
     if (-not (Test-Path -LiteralPath $payloadPath -PathType Leaf)) {
         $failures.Add("$($payload.name): missing at $($payload.path). Run $($payload.restoreCommand).")
         continue
+    }
+
+    $payloadArchitecture = Get-BinaryArchitecture -DumpbinPath $dumpbin -BinaryPath $payloadPath
+    if ($payloadArchitecture -ne $expectedArchitecture) {
+        $failures.Add("$($payload.name): expected $expectedArchitecture, found $payloadArchitecture at $($payload.path).")
     }
 
     $actualHash = (Get-FileHash -LiteralPath $payloadPath -Algorithm SHA256).Hash
@@ -135,7 +168,6 @@ if (-not $SkipOutput) {
         throw "The application output folder was not found: $OutputPath"
     }
 
-    $dumpbin = Get-VisualStudioTool -Name 'dumpbin.exe'
     $binaries = @(
         Get-ChildItem -LiteralPath $OutputPath -Recurse -File |
             Where-Object { $_.Extension -in '.exe', '.dll' }
@@ -163,6 +195,10 @@ if (-not $SkipOutput) {
     $bannedPattern = '^(' + (($manifest.bannedDependencies | ForEach-Object { [regex]::Escape($_) }) -join '|') + ')'
 
     foreach ($binary in $binaries) {
+        $binaryArchitecture = Get-BinaryArchitecture -DumpbinPath $dumpbin -BinaryPath $binary.FullName
+        if ($binaryArchitecture -ne $expectedArchitecture) {
+            $failures.Add("$($binary.Name) is $binaryArchitecture, expected $expectedArchitecture.")
+        }
         foreach ($dependency in (Get-Dependencies -DumpbinPath $dumpbin -BinaryPath $binary.FullName)) {
             if ($dependency -match $bannedPattern) {
                 $failures.Add("$($binary.Name) imports the banned runtime $dependency.")

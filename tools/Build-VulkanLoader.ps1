@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Builds the pinned Khronos Vulkan loader into external\vulkan.
+    Builds the pinned Khronos Vulkan loader for one architecture.
 
 .DESCRIPTION
     libmpv-2.dll carries a static import of vulkan-1.dll, so the loader must be
@@ -19,7 +19,10 @@
     Vulkan-Headers and Vulkan-Loader must stay on the same SDK tag.
 #>
 [CmdletBinding()]
-param()
+param(
+    [ValidateSet('x64', 'ARM64')]
+    [string] $Platform = 'x64'
+)
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -27,10 +30,19 @@ $ErrorActionPreference = 'Stop'
 $sdkTag = 'vulkan-sdk-1.4.357.0'
 $headersRevision = 'e3b1eec08173d6b825cd3ac88c885a63b621504a'
 $loaderRevision = '5f157b62e333c63260d05d81bf66faa216ab0fb8'
+$cmakeArchitecture = if ($Platform -eq 'ARM64') { 'ARM64' } else { 'x64' }
+$architecture = if ($Platform -eq 'ARM64') { 'arm64' } else { 'x64' }
+$manifestName = if ($Platform -eq 'ARM64') { 'external\manifest-arm64.json' } else { 'external\manifest.json' }
 
 $repositoryRoot = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-$externalRoot = Join-Path $repositoryRoot 'external\vulkan'
-$temporaryRoot = Join-Path $env:TEMP ("HaloDesktop-vulkan-" + [guid]::NewGuid().ToString('N'))
+$sharedExternalRoot = Join-Path $repositoryRoot 'external\vulkan'
+$externalRoot = if ($Platform -eq 'ARM64') {
+    Join-Path $sharedExternalRoot 'arm64'
+}
+else {
+    $sharedExternalRoot
+}
+$temporaryRoot = Join-Path $env:TEMP ("HaloDesktop-vulkan-$architecture-" + [guid]::NewGuid().ToString('N'))
 
 function Assert-GeneratedPath {
     param(
@@ -39,7 +51,7 @@ function Assert-GeneratedPath {
     )
 
     $fullPath = [System.IO.Path]::GetFullPath($Path)
-    $expectedPrefix = [System.IO.Path]::GetFullPath($externalRoot) + [System.IO.Path]::DirectorySeparatorChar
+    $expectedPrefix = [System.IO.Path]::GetFullPath($sharedExternalRoot) + [System.IO.Path]::DirectorySeparatorChar
     if (-not $fullPath.StartsWith($expectedPrefix, [System.StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to modify a path outside external\vulkan: $fullPath"
     }
@@ -112,7 +124,7 @@ try {
         '-S', $headersSource,
         '-B', (Join-Path $temporaryRoot 'headers-build'),
         '-G', 'Visual Studio 18 2026',
-        '-A', 'x64',
+        '-A', $cmakeArchitecture,
         "-DCMAKE_INSTALL_PREFIX=$headersInstall"
     )
     Invoke-Checked -Description 'cmake install (headers)' -FilePath 'cmake' -Arguments @(
@@ -130,11 +142,11 @@ try {
     # /DEBUG:NONE keeps the build directory's absolute path out of the debug
     # directory. Together they make the output depend only on the pinned
     # sources, so the recorded hash survives a rebuild.
-    Invoke-Checked -Description 'cmake configure (loader)' -FilePath 'cmake' -Arguments @(
+    $configureArguments = @(
         '-S', $loaderSource,
         '-B', $loaderBuild,
         '-G', 'Visual Studio 18 2026',
-        '-A', 'x64',
+        '-A', $cmakeArchitecture,
         '-DUPDATE_DEPS=OFF',
         '-DBUILD_TESTS=OFF',
         "-DVULKAN_HEADERS_INSTALL_DIR=$headersInstall",
@@ -142,6 +154,20 @@ try {
         '-DCMAKE_SHARED_LINKER_FLAGS=/Brepro /DEBUG:NONE',
         '-DCMAKE_EXE_LINKER_FLAGS=/Brepro /DEBUG:NONE'
     )
+    if ($Platform -eq 'ARM64') {
+        # Force the loader's supported cross-compilation path so it parses
+        # generated assembly instead of executing an ARM64 helper on this x64 host.
+        $configureArguments += '-DCMAKE_SYSTEM_NAME=Windows'
+    }
+    # ARMASM writes a probe object into its current directory while CMake checks
+    # the compiler. Keep that generated object inside the disposable root.
+    Push-Location -LiteralPath $temporaryRoot
+    try {
+        Invoke-Checked -Description 'cmake configure (loader)' -FilePath 'cmake' -Arguments $configureArguments
+    }
+    finally {
+        Pop-Location
+    }
     Invoke-Checked -Description 'cmake build (loader)' -FilePath 'cmake' -Arguments @(
         '--build', $loaderBuild, '--config', 'Release', '--parallel'
     )
@@ -177,10 +203,10 @@ try {
     $loaderHash = (Get-FileHash -LiteralPath $installedLoader -Algorithm SHA256).Hash
     $loaderSize = (Get-Item -LiteralPath $installedLoader).Length
     Write-Host ''
-    Write-Host "Vulkan loader $sdkTag is ready in external\vulkan." -ForegroundColor Green
+    Write-Host "Vulkan loader $sdkTag for $Platform is ready in $externalRoot." -ForegroundColor Green
     Write-Host "  sha256: $loaderHash" -ForegroundColor White
     Write-Host "  size:   $loaderSize" -ForegroundColor White
-    Write-Host 'If you changed the pin, copy these into external\manifest.json.' -ForegroundColor White
+    Write-Host "If you changed the pin, copy these into $manifestName." -ForegroundColor White
 }
 finally {
     if (Test-Path -LiteralPath $temporaryRoot) {

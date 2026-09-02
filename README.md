@@ -13,7 +13,7 @@
   <img alt="C++" src="https://img.shields.io/badge/C%2B%2B-20-00599C?style=flat-square&logo=cplusplus&logoColor=white" />
   <img alt="WinUI 3" src="https://img.shields.io/badge/UI-WinUI%203-512BD4?style=flat-square" />
   <img alt="libmpv" src="https://img.shields.io/badge/playback-libmpv-691A99?style=flat-square" />
-  <img alt="Architecture" src="https://img.shields.io/badge/architecture-x64-brightgreen?style=flat-square" />
+  <img alt="Architecture" src="https://img.shields.io/badge/architecture-x64%20%7C%20ARM64-brightgreen?style=flat-square" />
   <img alt="Source available" src="https://img.shields.io/badge/license-source--available-C62828?style=flat-square" />
 </p>
 
@@ -24,7 +24,7 @@
 
 ## What is this thing?
 
-Halo Desktop is a packaged Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
+Halo Desktop is a native Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
 
 It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering through a DirectX composition swapchain into a XAML SwapChainPanel. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles. Downloads stay on the Windows device and remain available offline.
 
@@ -51,9 +51,9 @@ The desktop client deliberately uses native platform pieces where they make sens
 
 - **C++/WinRT and WinUI 3** for the application, navigation, controls, and Windows integration.
 - **libmpv** using its LGPL Windows build for playback of the formats browsers look at and quietly walk away from.
-- **Windows App SDK** for the packaged desktop runtime.
+- **Windows App SDK** for the self-contained desktop runtime.
 - **DPAPI** for protected local session and download-request storage.
-- **Native child-window video hosting** instead of piping frames through a browser or inventing a new GPU-shaped disaster.
+- **DirectX composition swapchain hosting** instead of piping frames through a browser or inventing a new GPU-shaped disaster.
 - **Windows audio sessions** so Halo behaves like an actual Windows media app in the Volume Mixer.
 
 No browser frontend is hidden in here. The only HTML involved is the kind GitHub uses to render this README and judge my life choices.
@@ -63,13 +63,12 @@ No browser frontend is hidden in here. The only HTML involved is the kind GitHub
 You need:
 
 - Windows 11.
-- Developer Mode enabled for loose MSIX registration.
 - Visual Studio 2026 with **Desktop development with C++** and **C++/WinRT**.
 - PowerShell 7.
 - Internet access for the pinned libmpv development payload.
 - Node.js 22 and Corepack only if you want to run the upstream fixture backend.
 
-The supported development target is **x64 Debug**.
+The primary local development target is **x64 Debug**. ARM64 Release cross-builds are also supported for native ARM Windows devices.
 
 ### Discord Rich Presence
 
@@ -135,18 +134,19 @@ $msbuild = & $vswhere `
 & ".\x64\Debug\HaloDesktop\HaloDesktop.exe"
 ```
 
-Halo is an unpackaged application, so it runs straight from the build output. There is no package to register, Developer Mode is not required, and `x64\Release\HaloDesktop` can be copied to another machine and run as is.
+Halo is an unpackaged application, so it runs straight from the build output. There is no package to register, Developer Mode is not required, and the matching `x64\Release\HaloDesktop` or `ARM64\Release\HaloDesktop` folder can be copied to another machine and run as is.
 
 Both restore scripts are safe to run again.
 
-`tools/fetch-mpv.ps1` downloads one pinned x64 LGPL developer archive, verifies it against a recorded SHA-256, creates the MSVC import library, and places the ignored payload under `external/mpv/`. It downloads a specific release rather than "latest", so the binary Halo links against does not change underneath you. See `external/mpv/CORRESPONDING-SOURCE.md` for the LGPL source pointer.
+`tools/fetch-mpv.ps1` downloads the pinned LGPL developer archive for x64 by default, or ARM64 with `-Platform ARM64`. It verifies the archive against a recorded SHA-256, creates the matching MSVC import library, and places the ignored payload under `external/mpv/`. It downloads a specific release rather than "latest", so the binary Halo links against does not change underneath you. See `external/mpv/CORRESPONDING-SOURCE.md` for the LGPL source pointer.
 
-`tools/Build-VulkanLoader.ps1` builds `vulkan-1.dll` from pinned Khronos sources into `external/vulkan/`. It is required because `libmpv-2.dll` statically imports the Vulkan loader, which ships with GPU drivers rather than with Windows; without it Halo cannot load libmpv on a machine that has no driver installed. Halo renders through D3D11 and does not otherwise use Vulkan.
+`tools/Build-VulkanLoader.ps1` builds `vulkan-1.dll` from pinned Khronos sources for x64 by default, or ARM64 with `-Platform ARM64`. It is required because `libmpv-2.dll` statically imports the Vulkan loader, which ships with GPU drivers rather than with Windows; without it Halo cannot load libmpv on a machine that has no driver installed. Halo renders through D3D11 and does not otherwise use Vulkan.
 
-`tools/Verify-Dependencies.ps1` checks both payloads against `external/manifest.json` and proves the Release output has no dependency outside its own folder and Windows itself. Run it before producing a release:
+`tools/Verify-Dependencies.ps1` checks the selected architecture against its pinned manifest and proves the Release output has the right PE machine type and no dependency outside its own folder and Windows itself. Run it before producing a release:
 
 ```powershell
 & ".\tools\Verify-Dependencies.ps1"
+& ".\tools\Verify-Dependencies.ps1" -Platform ARM64
 ```
 
 If you update `Assets/halo-mark.png`, regenerate the artwork and the application icon with:
@@ -159,9 +159,10 @@ If you update `Assets/halo-mark.png`, regenerate the artwork and the application
 
 ```powershell
 & ".\tools\Build-Installer.ps1" -Version 1.0.0
+& ".\tools\Build-Installer.ps1" -Version 1.0.0 -Platform ARM64
 ```
 
-This restores packages and the pinned native payloads, builds Release x64, verifies the payload hashes and the dependency closure, then compiles `installer/HaloDesktop.iss` with Inno Setup 6. The result is `installer/Output/HaloDesktop-<version>-Setup.exe`, and the script prints its SHA-256. Add `-SkipBuild` to package an existing Release output; the verification still runs, so an unverified folder can never be packaged.
+This restores packages and the pinned native payloads, builds the selected Release architecture, verifies every binary's PE architecture plus the payload hashes and dependency closure, then compiles `installer/HaloDesktop.iss` with Inno Setup 6. The results are `installer/Output/HaloDesktop-<version>-Setup.exe` for x64 and `installer/Output/HaloDesktop-<version>-ARM64-Setup.exe` for ARM64. The script prints each SHA-256. Add `-SkipBuild` to package an existing Release output; verification still runs, so an unverified folder can never be packaged.
 
 Inno Setup 6 must be installed. The script finds it through its registry entry, so either the per-user or the all-users installation works.
 
@@ -257,7 +258,7 @@ For commercial or other permissions, contact `info@lastprojects.com`.
 
 ## Project status
 
-This is an actively developed personal Windows client, not an official upstream desktop release. It currently targets Windows 11 x64 Debug builds and expects a separately running Halo backend.
+This is an actively developed personal Windows client, not an official upstream desktop release. It ships native Windows 11 x64 and ARM64 builds and expects a separately running Halo backend.
 
 Bug reports with exact reproduction steps are welcome. Code contributions are accepted only after a separate Contributor License Agreement is arranged, as required by the license. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
 

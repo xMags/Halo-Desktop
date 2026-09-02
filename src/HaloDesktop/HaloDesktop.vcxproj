@@ -117,12 +117,20 @@
       <AdditionalDependencies>bcrypt.lib;crypt32.lib;gdi32.lib;ole32.lib;shell32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Platform)'=='x64'">
+  <PropertyGroup Condition="'$(Platform)'=='x64'">
+    <HaloMpvRoot>$(SolutionDir)external\mpv</HaloMpvRoot>
+    <HaloVulkanRoot>$(SolutionDir)external\vulkan</HaloVulkanRoot>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Platform)'=='ARM64'">
+    <HaloMpvRoot>$(SolutionDir)external\mpv\arm64</HaloMpvRoot>
+    <HaloVulkanRoot>$(SolutionDir)external\vulkan\arm64</HaloVulkanRoot>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'">
     <ClCompile>
-      <AdditionalIncludeDirectories>$(SolutionDir)external\mpv\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(HaloMpvRoot)\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>$(SolutionDir)external\mpv\lib\mpv.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>$(HaloMpvRoot)\lib\mpv.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
@@ -384,13 +392,13 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Playback\MpvScrubPreviewSource.cpp">
-      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64' And '$(Platform)'!='ARM64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Playback\MpvClient.cpp">
-      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64' And '$(Platform)'!='ARM64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Playback\MpvCommand.cpp">
-      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64' And '$(Platform)'!='ARM64'">true</ExcludedFromBuild>
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Playback\PlaybackSessionController.cpp" />
@@ -405,10 +413,10 @@
     <ClCompile Include="Playback\UpNextResolver.cpp" />
     <ClCompile Include="Playback\WatchReporter.cpp" />
     <ClCompile Include="Playback\MpvEngine.cpp">
-      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64' And '$(Platform)'!='ARM64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Playback\WindowsAudioSession.cpp">
-      <ExcludedFromBuild Condition="'$(Platform)'!='x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Platform)'!='x64' And '$(Platform)'!='ARM64'">true</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="Services\DownloadService.cpp" />
     <ClCompile Include="Services\AddonService.cpp" />
@@ -653,9 +661,9 @@
     supplied by GPU drivers rather than by Windows, so without it in the app
     folder libmpv fails to load on a machine that has no driver installed.
   -->
-  <ItemGroup Condition="'$(Platform)'=='x64'">
-    <HaloNativePayload Include="$(SolutionDir)external\mpv\bin\libmpv-2.dll" />
-    <HaloNativePayload Include="$(SolutionDir)external\vulkan\bin\vulkan-1.dll" />
+  <ItemGroup Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'">
+    <HaloNativePayload Include="$(HaloMpvRoot)\bin\libmpv-2.dll" />
+    <HaloNativePayload Include="$(HaloVulkanRoot)\bin\vulkan-1.dll" />
   </ItemGroup>
   <PropertyGroup Condition="'$(DisableHasPackageAndPublishMenuAddedByProject)'!='true' and '$(EnableMsixTooling)'=='true'">
     <HasPackageAndPublishMenu>true</HasPackageAndPublishMenu>
@@ -704,11 +712,11 @@
     fails here with an actionable message instead of a link error or a runtime
     "libmpv-2.dll could not be loaded" much later.
   -->
-  <Target Name="VerifyHaloNativePayload" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64'">
-    <Error Condition="!Exists('$(SolutionDir)external\mpv\lib\mpv.lib') Or !Exists('$(SolutionDir)external\mpv\bin\libmpv-2.dll')" Text="The pinned libmpv payload is missing. Run tools\fetch-mpv.ps1 to restore external\mpv." />
-    <Error Condition="!Exists('$(SolutionDir)external\vulkan\bin\vulkan-1.dll')" Text="The pinned Vulkan loader is missing. Run tools\Build-VulkanLoader.ps1 to restore external\vulkan." />
+  <Target Name="VerifyHaloNativePayload" BeforeTargets="ClCompile" Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'">
+    <Error Condition="!Exists('$(HaloMpvRoot)\lib\mpv.lib') Or !Exists('$(HaloMpvRoot)\bin\libmpv-2.dll')" Text="The pinned $(Platform) libmpv payload is missing. Run tools\fetch-mpv.ps1 -Platform $(Platform)." />
+    <Error Condition="!Exists('$(HaloVulkanRoot)\bin\vulkan-1.dll')" Text="The pinned $(Platform) Vulkan loader is missing. Run tools\Build-VulkanLoader.ps1 -Platform $(Platform)." />
   </Target>
-  <Target Name="CopyHaloNativePayload" AfterTargets="Build" Condition="'$(Platform)'=='x64'" Inputs="@(HaloNativePayload)" Outputs="@(HaloNativePayload-&gt;'$(OutDir)%(Filename)%(Extension)')">
+  <Target Name="CopyHaloNativePayload" AfterTargets="Build" Condition="'$(Platform)'=='x64' Or '$(Platform)'=='ARM64'" Inputs="@(HaloNativePayload)" Outputs="@(HaloNativePayload-&gt;'$(OutDir)%(Filename)%(Extension)')">
     <Copy SourceFiles="@(HaloNativePayload)" DestinationFolder="$(OutDir)" SkipUnchangedFiles="true" UseHardlinksIfPossible="false" />
   </Target>
 </Project>

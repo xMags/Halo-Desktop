@@ -4,8 +4,8 @@
 
 namespace HaloDesktop::Playback
 {
-    // Stands in wherever libmpv is not linked (non-x64 builds and the null playback
-    // configuration). Previews are an enhancement, so absence is silent: the seek bar
+    // Stands in wherever libmpv is not linked (unsupported architectures and the null
+    // playback configuration). Previews are an enhancement, so absence is silent: the seek bar
     // still shows the timestamp, just never a picture.
     class NullScrubPreviewSource final : public IScrubPreviewSource
     {
