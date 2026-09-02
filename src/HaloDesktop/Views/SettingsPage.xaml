@@ -244,7 +244,7 @@
                   <Grid Margin="92,-4,44,0"><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="50" /><TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="100" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="200" /></Grid>
                   <Grid Margin="0,16,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Font" />
-                    <Border Grid.Column="1" Style="{StaticResource HaloSegmentedTrayStyle}">
+                    <Border x:Name="SubtitleFontTray" Grid.Column="1" Style="{StaticResource HaloSegmentedTrayStyle}">
                       <StackPanel Orientation="Horizontal">
                         <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsDefaultFont, Mode=OneWay}" Click="OnDefaultFontClick" Content="Default" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" ToolTipService.ToolTip="Leaves the face to the player" />
                         <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSystemFont, Mode=OneWay}" Click="OnSystemFontClick" Content="System" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
@@ -255,7 +255,7 @@
                   </Grid>
                   <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                     <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Outline" />
-                    <Border Grid.Column="1" Style="{StaticResource HaloSegmentedTrayStyle}">
+                    <Border Grid.Column="1" Width="{Binding ElementName=SubtitleFontTray, Path=ActualWidth}" Style="{StaticResource HaloSegmentedTrayStyle}">
                       <StackPanel Orientation="Horizontal">
                         <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsNoOutline, Mode=OneWay}" Click="OnNoOutlineClick" Content="None" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
                         <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsThinOutline, Mode=OneWay}" Click="OnThinOutlineClick" Content="Thin" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
@@ -270,7 +270,7 @@
                     row decides whether they also override a track that ships its own
                     styling, which is the only case where the two can disagree.
                   -->
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
+                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
                 </StackPanel>
               </Border>
               <!--
