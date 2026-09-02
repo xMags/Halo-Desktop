@@ -13,7 +13,8 @@
 #endif
 
 #define AppName "Halo"
-#define AppPublisher "Debashis"
+#define AppPublisher "lastprojects"
+#define AppWebsite "https://lastprojects.com"
 #define AppExeName "HaloDesktop.exe"
 #define SourceRoot "..\x64\Release\HaloDesktop"
 #define RepositoryRoot ".."
@@ -26,7 +27,11 @@ AppName={#AppName}
 AppVersion={#AppVersion}
 AppVerName={#AppName} {#AppVersion}
 AppPublisher={#AppPublisher}
+AppPublisherURL={#AppWebsite}
+AppSupportURL={#AppWebsite}
+AppUpdatesURL={#AppWebsite}
 VersionInfoVersion={#AppVersion}
+VersionInfoCompany={#AppPublisher}
 
 ; {autopf} resolves to Program Files for an all-users install and to
 ; %LOCALAPPDATA%\Programs for a per-user one, so a single line serves both.
