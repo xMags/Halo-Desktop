@@ -315,6 +315,8 @@ namespace
         using HaloDesktop::Shell::FullscreenTransitionOutcome;
         using HaloDesktop::Shell::FullscreenZOrder;
         using HaloDesktop::Shell::ResolveFullscreenState;
+        using HaloDesktop::Shell::ResolveFullscreenTopmost;
+        using HaloDesktop::Shell::WindowActivation;
 
         auto const unrelatedStyle = static_cast<LONG_PTR>(WS_VISIBLE | WS_CLIPCHILDREN);
         auto const unrelatedExtendedStyle = static_cast<LONG_PTR>(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
@@ -330,8 +332,15 @@ namespace
                 "fullscreen policy retained WS_EX_TOPMOST");
         Require((policy.ExtendedStyle & unrelatedExtendedStyle) == unrelatedExtendedStyle,
                 "fullscreen policy removed unrelated extended style bits");
-        Require(policy.ZOrder == FullscreenZOrder::ForegroundNonTopmost,
-                "fullscreen policy selected a popup-obscuring z-order");
+        // The shell's own fullscreen detection runs once, at the SetWindowPos
+        // that sizes the window, and is skipped when the window is not the
+        // foreground window at that instant. The z-order must not depend on it.
+        Require(policy.ZOrder == FullscreenZOrder::TopmostWhileActive,
+                "fullscreen policy relied on the shell's fullscreen detection");
+        Require(ResolveFullscreenTopmost(policy.ZOrder, WindowActivation::Active),
+                "an active fullscreen window was not placed above the taskbar");
+        Require(!ResolveFullscreenTopmost(policy.ZOrder, WindowActivation::Inactive),
+                "an inactive fullscreen window stayed above other applications");
 
         Require(ResolveFullscreenState(false, true, FullscreenTransitionOutcome::Succeeded),
                 "successful fullscreen entry did not commit fullscreen state");

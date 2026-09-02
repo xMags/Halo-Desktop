@@ -12,8 +12,20 @@ namespace HaloDesktop::Shell
             windowedExtendedStyle &
                 ~static_cast<LONG_PTR>(WS_EX_WINDOWEDGE) &
                 ~static_cast<LONG_PTR>(WS_EX_TOPMOST),
-            FullscreenZOrder::ForegroundNonTopmost,
+            FullscreenZOrder::TopmostWhileActive,
         };
+    }
+
+    bool ResolveFullscreenTopmost(
+        FullscreenZOrder zOrder,
+        WindowActivation activation) noexcept
+    {
+        switch (zOrder)
+        {
+        case FullscreenZOrder::TopmostWhileActive:
+            return activation == WindowActivation::Active;
+        }
+        return false;
     }
 
     bool ResolveFullscreenState(

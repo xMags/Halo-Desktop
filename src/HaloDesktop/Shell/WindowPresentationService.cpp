@@ -94,14 +94,28 @@ namespace
         return SUCCEEDED(taskbar->MarkFullscreenWindow(window, fullscreen ? TRUE : FALSE));
     }
 
-    [[nodiscard]] HWND FullscreenInsertAfter(HaloDesktop::Shell::FullscreenZOrder zOrder) noexcept
+    [[nodiscard]] HWND FullscreenInsertAfter(
+        HaloDesktop::Shell::FullscreenZOrder zOrder,
+        HaloDesktop::Shell::WindowActivation activation) noexcept
     {
-        switch (zOrder)
-        {
-        case HaloDesktop::Shell::FullscreenZOrder::ForegroundNonTopmost:
-            return HWND_TOP;
-        }
-        return HWND_TOP;
+        return HaloDesktop::Shell::ResolveFullscreenTopmost(zOrder, activation)
+            ? HWND_TOPMOST
+            : HWND_NOTOPMOST;
+    }
+
+    [[nodiscard]] bool TrySetFullscreenZOrder(
+        HWND window,
+        HaloDesktop::Shell::FullscreenZOrder zOrder,
+        HaloDesktop::Shell::WindowActivation activation) noexcept
+    {
+        return SetWindowPos(
+                   window,
+                   FullscreenInsertAfter(zOrder, activation),
+                   0,
+                   0,
+                   0,
+                   0,
+                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER) != FALSE;
     }
 
     [[nodiscard]] bool TrySetTitleBarHeight(
@@ -154,11 +168,13 @@ namespace
 
     [[nodiscard]] bool TryApplyFullscreenWindow(
         HWND window,
-        HaloDesktop::Shell::FullscreenWindowPolicy const& policy) noexcept
+        HaloDesktop::Shell::FullscreenWindowPolicy const& policy,
+        HaloDesktop::Shell::WindowActivation activation) noexcept
     {
         auto succeeded = TryWriteWindowStyle(window, GWL_STYLE, policy.Style);
         succeeded = TryWriteWindowStyle(window, GWL_EXSTYLE, policy.ExtendedStyle) && succeeded;
-        succeeded = TrySizeWindowToMonitor(window, FullscreenInsertAfter(policy.ZOrder)) && succeeded;
+        succeeded =
+            TrySizeWindowToMonitor(window, FullscreenInsertAfter(policy.ZOrder, activation)) && succeeded;
         return succeeded;
     }
 
@@ -201,9 +217,10 @@ namespace
     [[nodiscard]] bool TryApplyFullscreenPresentation(
         HWND window,
         HaloDesktop::Shell::FullscreenWindowPolicy const& policy,
-        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+        HaloDesktop::Shell::WindowActivation activation) noexcept
     {
-        auto const windowApplied = TryApplyFullscreenWindow(window, policy);
+        auto const windowApplied = TryApplyFullscreenWindow(window, policy, activation);
         auto const titleBarApplied = TrySetTitleBarHeight(
             titleBarRow,
             { 0.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
@@ -252,6 +269,7 @@ namespace HaloDesktop::Shell
 
         m_windowHandle = 0;
         m_titleBarRow = nullptr;
+        m_activation = WindowActivation::Active;
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };
         m_windowedBounds = {};
         m_windowedStyle = 0;
@@ -285,7 +303,7 @@ namespace HaloDesktop::Shell
 
             auto const fullscreenPolicy =
                 CalculateFullscreenWindowPolicy(windowed->Style, windowed->ExtendedStyle);
-            if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+            if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
             {
                 if (TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow))
                 {
@@ -295,7 +313,7 @@ namespace HaloDesktop::Shell
                         FullscreenTransitionOutcome::Failed);
                     return false;
                 }
-                if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+                if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
                 {
                     static_cast<void>(TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow));
                     m_fullscreen = ResolveFullscreenState(
@@ -335,7 +353,7 @@ namespace HaloDesktop::Shell
         {
             auto const fullscreenPolicy =
                 CalculateFullscreenWindowPolicy(windowed.Style, windowed.ExtendedStyle);
-            if (TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow))
+            if (TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
             {
                 RefreshFullscreenShellState();
                 m_fullscreen = ResolveFullscreenState(
@@ -346,7 +364,7 @@ namespace HaloDesktop::Shell
             }
             if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow))
             {
-                static_cast<void>(TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow));
+                static_cast<void>(TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation));
                 RefreshFullscreenShellState();
                 m_fullscreen = ResolveFullscreenState(
                     m_fullscreen,
@@ -372,6 +390,28 @@ namespace HaloDesktop::Shell
             fullscreen,
             FullscreenTransitionOutcome::Succeeded);
         return true;
+    }
+
+    void WindowPresentationService::SetWindowActivation(WindowActivation activation) noexcept
+    {
+        m_activation = activation;
+        if (m_windowHandle == 0 || !m_fullscreen)
+        {
+            return;
+        }
+        ApplyFullscreenZOrder();
+        if (activation == WindowActivation::Active)
+        {
+            RefreshFullscreenShellState();
+        }
+    }
+
+    void WindowPresentationService::ApplyFullscreenZOrder() noexcept
+    {
+        // A failed z-order change leaves the window where it is. Fullscreen
+        // state itself is unaffected, and the next activation retries it.
+        static_cast<void>(
+            TrySetFullscreenZOrder(NativeWindow(m_windowHandle), m_fullscreenZOrder, m_activation));
     }
 
     void WindowPresentationService::RefreshFullscreenShellState() noexcept

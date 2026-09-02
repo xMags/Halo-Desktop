@@ -42,12 +42,16 @@ namespace winrt::HaloDesktop::implementation
                 [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
                 Microsoft::UI::Xaml::WindowActivatedEventArgs const& args)
             {
-                if (args.WindowActivationState() == Microsoft::UI::Xaml::WindowActivationState::Deactivated)
+                auto const deactivated =
+                    args.WindowActivationState() == Microsoft::UI::Xaml::WindowActivationState::Deactivated;
+                App::Services().WindowPresentation->SetWindowActivation(
+                    deactivated ? ::HaloDesktop::Shell::WindowActivation::Inactive
+                                : ::HaloDesktop::Shell::WindowActivation::Active);
+                if (deactivated)
                 {
                     return;
                 }
 
-                App::Services().WindowPresentation->RefreshFullscreenShellState();
                 auto const self = weak.get();
                 if (!self)
                 {
