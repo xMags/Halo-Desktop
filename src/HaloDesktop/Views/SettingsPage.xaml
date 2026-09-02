@@ -93,7 +93,7 @@
         </VisualState>
       </VisualStateGroup>
     </VisualStateManager.VisualStateGroups>
-    <Grid x:Name="SettingsBody" Margin="24,4,24,32" ColumnSpacing="24">
+    <Grid x:Name="SettingsBody" Margin="24,4,24,0" ColumnSpacing="24">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
       <Grid>
         <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
