@@ -98,6 +98,10 @@
     keeps the design's height instead of reserving a label line.
   -->
   <Style x:Key="HaloToggleSwitchStyle" TargetType="ToggleSwitch">
+    <!-- The stock template reserves room for On/Off labels even when both are
+         null. Pin the control to its visible switch width so right-aligned
+         setting actions do not carry an invisible trailing column. -->
+    <Setter Property="Width" Value="52" />
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="OnContent" Value="{x:Null}" />
