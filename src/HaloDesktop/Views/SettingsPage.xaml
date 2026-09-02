@@ -270,7 +270,13 @@
                     row decides whether they also override a track that ships its own
                     styling, which is the only case where the two can disagree.
                   -->
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
+                  <Grid Margin="0,10,0,0" ColumnSpacing="16" RowSpacing="3">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Track styling" />
+                    <ToggleSwitch Grid.Column="1" HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
+                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" />
+                  </Grid>
                 </StackPanel>
               </Border>
               <!--
