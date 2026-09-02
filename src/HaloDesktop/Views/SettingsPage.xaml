@@ -93,11 +93,14 @@
         </VisualState>
       </VisualStateGroup>
     </VisualStateManager.VisualStateGroups>
-    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Settings" />
-    <Grid x:Name="SettingsBody" Grid.Row="1" Margin="24,4,24,32" ColumnSpacing="24">
+    <Grid x:Name="SettingsBody" Margin="24,4,24,32" ColumnSpacing="24">
       <Grid.ColumnDefinitions><ColumnDefinition x:Name="RailColumn" Width="216" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-      <StackPanel Spacing="2">
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <!-- Keep the page title over the rail instead of reserving its row across
+             the form. The form can then use the otherwise empty space beside it. -->
+        <local:SectionHeader ContentPadding="0,8,0,12" Title="Settings" />
+        <StackPanel Grid.Row="1" Spacing="2">
         <Button x:Name="AppearanceRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAppearanceRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Appearance" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Theme" /></StackPanel></Button>
         <Button x:Name="AddonsRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Addons" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
         <Button x:Name="PlaybackRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Playback" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
@@ -123,9 +126,10 @@
             </StackPanel>
           </StackPanel>
         </Border>
-      </StackPanel>
+        </StackPanel>
+      </Grid>
 
-      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" VerticalScrollBarVisibility="Hidden" ViewChanged="OnFormViewChanged">
+      <ScrollViewer x:Name="SettingsScroller" Grid.Column="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Hidden" ViewChanged="OnFormViewChanged">
         <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36" SizeChanged="OnFormSizeChanged">
           <StackPanel x:Name="AppearanceSection" Spacing="14">
             <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Appearance" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Choose how Halo looks. System follows your Windows setting." /></StackPanel>

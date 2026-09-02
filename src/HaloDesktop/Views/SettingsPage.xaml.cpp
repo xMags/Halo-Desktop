@@ -160,7 +160,15 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignOut(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
-        FindName(elementName).as<Microsoft::UI::Xaml::FrameworkElement>().StartBringIntoView();
+        auto const scroller = SettingsScroller();
+        auto const section = FindName(elementName).as<Microsoft::UI::Xaml::FrameworkElement>();
+        auto const top = section.TransformToVisual(scroller).TransformPoint({ 0.0f, 0.0f }).Y;
+        auto const targetOffset = scroller.VerticalOffset() + top;
+        scroller.ChangeView(
+            nullptr,
+            winrt::box_value(targetOffset).as<winrt::Windows::Foundation::IReference<double>>(),
+            nullptr,
+            true);
     }
     void SettingsPage::OnFormViewChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&)
     {
