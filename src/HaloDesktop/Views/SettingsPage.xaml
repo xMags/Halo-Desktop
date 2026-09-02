@@ -264,13 +264,13 @@
                       </StackPanel>
                     </Border>
                   </Grid>
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Shadow" /><ToggleSwitch Grid.Column="1" HorizontalAlignment="Left" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></Grid>
+                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Shadow" /><ToggleSwitch Grid.Column="1" HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></Grid>
                   <!--
                     The size and font choices above always reach a plain text track. This
                     row decides whether they also override a track that ships its own
                     styling, which is the only case where the two can disagree.
                   -->
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Left" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
+                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><StackPanel VerticalAlignment="Center"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Track styling" /></StackPanel><StackPanel Grid.Column="1" Spacing="3"><ToggleSwitch HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" /></StackPanel></Grid>
                 </StackPanel>
               </Border>
               <!--
