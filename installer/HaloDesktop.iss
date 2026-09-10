@@ -42,17 +42,27 @@ AppUpdatesURL={#AppWebsite}
 VersionInfoVersion={#AppVersion}
 VersionInfoCompany={#AppPublisher}
 
-; {autopf} resolves to Program Files for an all-users install and to
-; %LOCALAPPDATA%\Programs for a per-user one, so a single line serves both.
+; {autopf} follows PrivilegesRequired. With an all-users install below it is
+; always Program Files.
 DefaultDirName={autopf}\Halo Desktop
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableDirPage=auto
 
-; Per-user by default so no elevation prompt appears; the user can still choose
-; an all-users install from the privileges dialog.
-PrivilegesRequired=lowest
-PrivilegesRequiredOverridesAllowed=dialog
+; All-users only, deliberately.
+;
+; A per-user install drops an unsigned executable into a user-writable
+; directory, registers a Start Menu shortcut, and writes an uninstall key,
+; all without ever prompting. That combination is what Defender's
+; machine-learning heuristics score as an unwanted installer, and it did:
+; Trojan:Win32/Bearfoos.A!ml removed the executable, the shortcut, and the
+; uninstall key from a per-user install, which reads to the user as the app
+; crashing and its shortcut going dead. Installing under Program Files behind
+; an elevation prompt removes that signal. It is not a substitute for signing.
+;
+; PrivilegesRequiredOverridesAllowed is deliberately absent: offering the
+; per-user choice again would just restore the layout above.
+PrivilegesRequired=admin
 
 ArchitecturesAllowed={#InstallerArchitecture}
 ArchitecturesInstallIn64BitMode={#InstallerArchitecture}
@@ -101,9 +111,56 @@ Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExeName}"; AppUserModel
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExeName}"; Tasks: desktopicon; AppUserModelID: "HaloDesktop.App"
 
 [Run]
-Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent
+; runasoriginaluser matters now that setup is elevated: without it the app
+; inherits setup's administrator token, so it would run as administrator and
+; resolve {localappdata} to the elevating account, writing its sign-in and
+; downloads somewhere the user's own session will never read them again.
+Filename: "{app}\{#AppExeName}"; Description: "{cm:LaunchProgram,{#StringChange(AppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
+// Setup used to install per-user, which put the files under
+// %LOCALAPPDATA%\Programs and the uninstall entry in HKCU. Setup now runs
+// elevated, and Inno only looks for a previous version of itself in HKLM, so
+// that older install is invisible to this one: without this it survives as a
+// stale copy on disk and a Start Menu entry pointing into it, alongside the
+// new Program Files install. Remove it before laying the new one down.
+//
+// This GUID must stay in step with AppId above, which never changes.
+const
+  PerUserUninstallKey =
+    'Software\Microsoft\Windows\CurrentVersion\Uninstall\{56fcb18b-d21c-4111-93fb-bef0ffa36c43}_is1';
+
+procedure RemovePreviousPerUserInstall;
+var
+  UninstallCommand: String;
+  ResultCode: Integer;
+begin
+  // Setup is elevated, so HKCU is the elevating account's hive. That is the
+  // same account in the ordinary single-user case; setup has no reliable way
+  // to reach a different user's hive, so a per-user install belonging to
+  // someone else is left alone rather than guessed at.
+  if not RegQueryStringValue(HKEY_CURRENT_USER, PerUserUninstallKey,
+                             'UninstallString', UninstallCommand) then
+    Exit;
+
+  UninstallCommand := RemoveQuotes(UninstallCommand);
+  if not FileExists(UninstallCommand) then
+    Exit;
+
+  // SUPPRESSMSGBOXES is load-bearing, not tidiness: a silent uninstall makes
+  // UninstallSilent true, which is what stops CurUninstallStepChanged below
+  // from offering to delete the sign-in, settings and downloads that this
+  // upgrade exists to preserve.
+  Exec(UninstallCommand, '/SILENT /SUPPRESSMSGBOXES /NORESTART', '',
+       SW_SHOW, ewWaitUntilTerminated, ResultCode);
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+begin
+  if CurStep = ssInstall then
+    RemovePreviousPerUserInstall;
+end;
+
 // Halo's data lives outside {app}, so uninstall would otherwise leave it
 // behind silently. Ask, defaulting to keeping it: someone uninstalling to
 // reinstall a different build should not lose their sign-in and downloads,
@@ -120,6 +177,10 @@ begin
     if UninstallSilent then
       Exit;
 
+    // The uninstaller is elevated, so this is the elevating account's
+    // LocalAppData. That is the right directory whenever the person removing
+    // Halo is the person who used it, and there is no dependable way to find
+    // another account's data from here, so a mismatch keeps the data instead.
     DataDirectory := ExpandConstant('{localappdata}\Halo Desktop');
     if DirExists(DataDirectory) then
     begin
