@@ -383,7 +383,9 @@ namespace HaloDesktop::Playback
         return false;
     }
 
-    void MpvScrubPreviewSource::DecodeAndDeliver(mpv_handle* handle, PendingRequest const& request) noexcept
+    std::optional<ScrubPreviewFrame> MpvScrubPreviewSource::DecodeFrame(
+        mpv_handle* handle,
+        PendingRequest const& request) noexcept
     {
         // Anything still queued belongs to an earlier request, and a leftover restart
         // would end this one's wait before its own frame exists.
@@ -395,7 +397,7 @@ namespace HaloDesktop::Playback
             }
             if (pending->event_id == MPV_EVENT_SHUTDOWN)
             {
-                return;
+                return std::nullopt;
             }
         }
 
@@ -407,19 +409,19 @@ namespace HaloDesktop::Playback
         }
         catch (...)
         {
-            return;
+            return std::nullopt;
         }
 
         if (!AwaitSeekCompletion(handle, request.Id))
         {
-            return;
+            return std::nullopt;
         }
 
         NodeContents result;
         char const* arguments[] = { "screenshot-raw", "video", nullptr };
         if (mpv_command_ret(handle, arguments, &result.Value) < 0)
         {
-            return;
+            return std::nullopt;
         }
 
         auto const width = ReadInteger(result.Value, "w");
@@ -428,21 +430,21 @@ namespace HaloDesktop::Playback
         if (width <= 0 || height <= 0 || width > MaximumSourceWidth || height > MaximumSourceHeight
             || stride < width * 4)
         {
-            return;
+            return std::nullopt;
         }
         if (!IsSupportedFormat(ReadString(result.Value, "format")))
         {
-            return;
+            return std::nullopt;
         }
 
         auto const* data = FindMapValue(result.Value, "data");
         if (!data || data->format != MPV_FORMAT_BYTE_ARRAY || !data->u.ba || !data->u.ba->data)
         {
-            return;
+            return std::nullopt;
         }
         if (data->u.ba->size < static_cast<std::size_t>(stride) * static_cast<std::size_t>(height))
         {
-            return;
+            return std::nullopt;
         }
 
         try
@@ -458,15 +460,47 @@ namespace HaloDesktop::Playback
                 stride,
                 factor,
                 frame);
-            if (frame.Bgra.empty() || Superseded(request.Id))
+            if (frame.Bgra.empty())
             {
-                return;
+                return std::nullopt;
             }
-            Deliver(std::move(frame));
+            return frame;
         }
         catch (...)
         {
+            return std::nullopt;
         }
+    }
+
+    // Every request that is not superseded gets exactly one answer, so the card can tell
+    // a frame still coming from one that never will. A superseded request stays silent:
+    // the newer one behind it carries the answer.
+    void MpvScrubPreviewSource::DecodeAndDeliver(mpv_handle* handle, PendingRequest const& request) noexcept
+    {
+        auto frame = DecodeFrame(handle, request);
+        if (Superseded(request.Id))
+        {
+            return;
+        }
+        Deliver(frame ? std::move(*frame) : ScrubPreviewFrame{ .RequestId = request.Id, .Seconds = request.Seconds });
+    }
+
+    // Answers the latest request with no picture. Used when the source proves unopenable:
+    // that request would otherwise wait forever, and every later one is answered with its
+    // id from the UI thread, since Request returns the current id once disabled.
+    void MpvScrubPreviewSource::AnswerCurrentRequestEmpty() noexcept
+    {
+        ScrubPreviewFrame frame;
+        {
+            std::lock_guard const guard{ m_mutex };
+            if (m_stopping || m_currentRequestId == 0)
+            {
+                return;
+            }
+            frame.RequestId = m_currentRequestId;
+            frame.Seconds = m_lastIssuedSeconds;
+        }
+        Deliver(std::move(frame));
     }
 
     void MpvScrubPreviewSource::Deliver(ScrubPreviewFrame frame) noexcept
@@ -518,6 +552,7 @@ namespace HaloDesktop::Playback
         if (!handle)
         {
             Disable();
+            AnswerCurrentRequestEmpty();
             return;
         }
 
@@ -528,6 +563,7 @@ namespace HaloDesktop::Playback
         catch (...)
         {
             Disable();
+            AnswerCurrentRequestEmpty();
             DestroyHandle(handle);
             return;
         }
@@ -537,6 +573,7 @@ namespace HaloDesktop::Playback
             // The origin refused, timed out, or the player is closing. Either way this
             // instance stops asking: a hover must never retry against a dead URL.
             Disable();
+            AnswerCurrentRequestEmpty();
             DestroyHandle(handle);
             return;
         }

@@ -37,6 +37,10 @@ namespace HaloDesktop::Playback
         // supersedes it rather than queueing behind it. Returns the id of the request
         // now considered current, which is the previous one when this one was folded
         // into it as too small a movement to be worth decoding.
+        //
+        // Every request that is not superseded is answered exactly once through the frame
+        // handler: with a picture, or with an empty frame (no pixels) when none can be had.
+        // The card relies on this to tell a slow frame from one that will never come.
         virtual std::uint64_t Request(double seconds) = 0;
         virtual void SetFrameHandler(ScrubPreviewFrameHandler handler) = 0;
         virtual void ClearFrameHandler() noexcept = 0;

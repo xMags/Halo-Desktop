@@ -57,7 +57,11 @@ namespace HaloDesktop::Playback
         [[nodiscard]] bool Superseded(std::uint64_t requestId) const noexcept;
         [[nodiscard]] bool AwaitFirstFrame(mpv_handle* handle) noexcept;
         [[nodiscard]] bool AwaitSeekCompletion(mpv_handle* handle, std::uint64_t requestId) noexcept;
+        [[nodiscard]] std::optional<ScrubPreviewFrame> DecodeFrame(
+            mpv_handle* handle,
+            PendingRequest const& request) noexcept;
         void DecodeAndDeliver(mpv_handle* handle, PendingRequest const& request) noexcept;
+        void AnswerCurrentRequestEmpty() noexcept;
         void Deliver(ScrubPreviewFrame frame) noexcept;
 
         mutable std::mutex m_mutex;
