@@ -60,6 +60,11 @@ namespace HaloDesktop::Playback
         return std::abs(requestedSeconds - lastIssuedSeconds) >= ScrubPreviewMinimumDeltaSeconds;
     }
 
+    bool IsScrubPreviewLoading(std::uint64_t currentRequestId, std::uint64_t answeredRequestId) noexcept
+    {
+        return currentRequestId != 0 && currentRequestId != answeredRequestId;
+    }
+
     std::span<ScrubPreviewOption const> ScrubPreviewMpvOptions() noexcept
     {
         static constexpr std::array Options{

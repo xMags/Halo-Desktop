@@ -57,6 +57,8 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PreviewVisibility { get; };
         Microsoft.UI.Xaml.Media.Imaging.WriteableBitmap Image { get; };
         Microsoft.UI.Xaml.Visibility ImageVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SkeletonVisibility { get; };
+        Boolean SkeletonActive { get; };
         String TimeText { get; };
         Double OffsetX { get; };
         Double CardWidth { get; };

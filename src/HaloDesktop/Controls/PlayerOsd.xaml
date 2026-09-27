@@ -366,6 +366,43 @@
                     Source="{x:Bind ViewModel.ScrubPreview.Image, Mode=OneWay}"
                     Stretch="Uniform"
                     Visibility="{x:Bind ViewModel.ScrubPreview.ImageVisibility, Mode=OneWay}" />
+                  <!-- Shown once a frame is slow to arrive, as over a stream: a bright band
+                       sweeping the box, with the player's loading ring on a faint track so
+                       the card reads as loading whatever point the arc is at. The gradient
+                       is three boxes wide; sliding it from its last third to its first
+                       carries the band across. Code-behind runs the sweep only while the
+                       card is on screen, and a stopped sweep rests with the band centred. -->
+                  <Grid x:Name="ScrubPreviewSkeleton" Visibility="{x:Bind ViewModel.ScrubPreview.SkeletonVisibility, Mode=OneWay}">
+                    <Grid.Resources>
+                      <Storyboard x:Key="ScrubPreviewShimmer" RepeatBehavior="Forever">
+                        <DoubleAnimation
+                          EnableDependentAnimation="True"
+                          Storyboard.TargetName="ScrubPreviewShimmerTransform"
+                          Storyboard.TargetProperty="TranslateX"
+                          From="-2"
+                          To="0"
+                          Duration="0:0:1.1" />
+                      </Storyboard>
+                    </Grid.Resources>
+                    <Rectangle RadiusX="4" RadiusY="4">
+                      <Rectangle.Fill>
+                        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+                          <LinearGradientBrush.RelativeTransform>
+                            <CompositeTransform x:Name="ScrubPreviewShimmerTransform" ScaleX="3" TranslateX="-1" />
+                          </LinearGradientBrush.RelativeTransform>
+                          <GradientStop Offset="0.2" Color="#12FFFFFF" />
+                          <GradientStop Offset="0.5" Color="#42FFFFFF" />
+                          <GradientStop Offset="0.8" Color="#12FFFFFF" />
+                        </LinearGradientBrush>
+                      </Rectangle.Fill>
+                    </Rectangle>
+                    <ProgressRing
+                      Width="28"
+                      Height="28"
+                      Background="#33FFFFFF"
+                      Foreground="#FF60CDFF"
+                      IsActive="{x:Bind ViewModel.ScrubPreview.SkeletonActive, Mode=OneWay}" />
+                  </Grid>
                 </Grid>
                 <TextBlock
                   Margin="0,4,0,2"

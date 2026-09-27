@@ -47,6 +47,25 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
+        if (auto const dispatcher = Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread())
+        {
+            m_skeletonTimer = dispatcher.CreateTimer();
+            m_skeletonTimer.Interval(::HaloDesktop::Playback::ScrubPreviewSkeletonDelay);
+            m_skeletonTimer.IsRepeating(false);
+            m_skeletonTickRevoker = m_skeletonTimer.Tick(
+                winrt::auto_revoke,
+                [weak = get_weak()](
+                    [[maybe_unused]] Microsoft::UI::Dispatching::DispatcherQueueTimer const& timer,
+                    [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args) {
+                    if (auto const self = weak.get())
+                    {
+                        self->SetSkeleton(::HaloDesktop::Playback::IsScrubPreviewLoading(
+                            self->m_requestId,
+                            self->m_answeredId));
+                    }
+                });
+        }
+
         m_source->SetFrameHandler(
             [weak = get_weak()](::HaloDesktop::Playback::ScrubPreviewFrame frame) {
                 if (auto const self = weak.get())
@@ -62,6 +81,19 @@ namespace winrt::HaloDesktop::implementation
         {
             m_source->ClearFrameHandler();
         }
+        try
+        {
+            if (m_skeletonTimer)
+            {
+                m_skeletonTimer.Stop();
+            }
+        }
+        catch (...)
+        {
+        }
+        m_skeletonTickRevoker.revoke();
+        m_skeletonTimer = nullptr;
+        m_skeleton = false;
         m_open = false;
     }
 
@@ -77,7 +109,19 @@ namespace winrt::HaloDesktop::implementation
 
     Microsoft::UI::Xaml::Visibility ScrubPreviewViewModel::ImageVisibility() const noexcept
     {
-        return m_hasImage ? Visible : Collapsed;
+        // Once a wait is long enough to show the skeleton, the held picture is the old
+        // place's frame, which is no answer for the new place.
+        return m_hasImage && !m_skeleton ? Visible : Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility ScrubPreviewViewModel::SkeletonVisibility() const noexcept
+    {
+        return m_skeleton ? Visible : Collapsed;
+    }
+
+    bool ScrubPreviewViewModel::SkeletonActive() const noexcept
+    {
+        return m_open && m_skeleton;
     }
 
     winrt::hstring ScrubPreviewViewModel::TimeText() const
@@ -118,11 +162,7 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
-        if (!m_open)
-        {
-            m_open = true;
-            Raise(L"PreviewVisibility");
-        }
+        SetOpen(true);
 
         auto const offset = ::HaloDesktop::Playback::ClampScrubPreviewOffset(
             pointerX,
@@ -146,20 +186,15 @@ namespace winrt::HaloDesktop::implementation
         if (m_source)
         {
             m_requestId = m_source->Request(time.Seconds);
+            UpdateLoading();
         }
     }
 
     void ScrubPreviewViewModel::Hide()
     {
-        if (!m_open)
-        {
-            return;
-        }
-
-        m_open = false;
         // The decoded picture is deliberately kept. Re-entering the seek bar at the same
         // place then shows something immediately instead of an empty card.
-        Raise(L"PreviewVisibility");
+        SetOpen(false);
     }
 
     void ScrubPreviewViewModel::Reset()
@@ -168,6 +203,8 @@ namespace winrt::HaloDesktop::implementation
         // show the previous episode's frame under the new file's timestamps until the
         // first decode of the new source landed.
         m_requestId = 0;
+        m_answeredId = 0;
+        UpdateLoading();
         Hide();
         if (!m_hasImage)
         {
@@ -181,21 +218,40 @@ namespace winrt::HaloDesktop::implementation
 
     void ScrubPreviewViewModel::OnFrame(::HaloDesktop::Playback::ScrubPreviewFrame const& frame)
     {
-        if (frame.RequestId != m_requestId || frame.Width <= 0 || frame.Height <= 0)
+        // The source answers in request order, so the last answer is the newest one. An
+        // answer to an older request is still recorded: UpdateLoading compares it with
+        // the current id, so it ends no wait but the one it belongs to.
+        m_answeredId = frame.RequestId;
+        if (frame.RequestId == m_requestId)
         {
+            ShowFrame(frame);
+        }
+        UpdateLoading();
+    }
+
+    // Paints the answer to the card's own request. An answer with no picture, or one that
+    // cannot be copied, empties the box instead of leaving the previous place's frame
+    // under this place's time.
+    void ScrubPreviewViewModel::ShowFrame(::HaloDesktop::Playback::ScrubPreviewFrame const& frame)
+    {
+        if (frame.Width <= 0 || frame.Height <= 0 || frame.Bgra.empty())
+        {
+            ClearImage();
             return;
         }
 
-        auto reallocated = false;
         if (!m_bitmap || m_bitmap.PixelWidth() != frame.Width || m_bitmap.PixelHeight() != frame.Height)
         {
             m_bitmap = Microsoft::UI::Xaml::Media::Imaging::WriteableBitmap(frame.Width, frame.Height);
-            reallocated = true;
+            // Raised before the copy, so a copy that fails cannot leave the Image bound
+            // to the bitmap this one replaced.
+            Raise(L"Image");
         }
 
         auto const buffer = m_bitmap.PixelBuffer();
         if (buffer.Capacity() < frame.Bgra.size())
         {
+            ClearImage();
             return;
         }
 
@@ -203,19 +259,76 @@ namespace winrt::HaloDesktop::implementation
         std::uint8_t* pixels{};
         if (FAILED(access->Buffer(&pixels)) || !pixels)
         {
+            ClearImage();
             return;
         }
 
         std::memcpy(pixels, frame.Bgra.data(), frame.Bgra.size());
         m_bitmap.Invalidate();
 
-        if (reallocated)
-        {
-            Raise(L"Image");
-        }
         if (!m_hasImage)
         {
             m_hasImage = true;
+            Raise(L"ImageVisibility");
+        }
+    }
+
+    void ScrubPreviewViewModel::ClearImage()
+    {
+        if (!m_hasImage)
+        {
+            return;
+        }
+        m_hasImage = false;
+        Raise(L"ImageVisibility");
+    }
+
+    void ScrubPreviewViewModel::SetOpen(bool open)
+    {
+        if (open == m_open)
+        {
+            return;
+        }
+        m_open = open;
+        Raise(L"PreviewVisibility");
+        if (m_skeleton)
+        {
+            Raise(L"SkeletonActive");
+        }
+    }
+
+    void ScrubPreviewViewModel::UpdateLoading()
+    {
+        if (!::HaloDesktop::Playback::IsScrubPreviewLoading(m_requestId, m_answeredId))
+        {
+            if (m_skeletonTimer)
+            {
+                m_skeletonTimer.Stop();
+            }
+            SetSkeleton(false);
+            return;
+        }
+
+        // A newer request carries on the wait already being counted instead of
+        // restarting it, so a steady drag across a slow stream still reaches the skeleton.
+        if (m_skeleton || !m_skeletonTimer || m_skeletonTimer.IsRunning())
+        {
+            return;
+        }
+        m_skeletonTimer.Start();
+    }
+
+    void ScrubPreviewViewModel::SetSkeleton(bool shown)
+    {
+        if (shown == m_skeleton)
+        {
+            return;
+        }
+        m_skeleton = shown;
+        Raise(L"SkeletonVisibility");
+        Raise(L"SkeletonActive");
+        if (m_hasImage)
+        {
             Raise(L"ImageVisibility");
         }
     }

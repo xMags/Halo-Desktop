@@ -116,8 +116,12 @@ namespace winrt::HaloDesktop::implementation
         // against, and what the card's own transform is laid out inside.
         void UpdateScrubPreview(Microsoft::UI::Xaml::Controls::Slider const& slider,
                                 Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        // Runs the preview skeleton's sweep only while the skeleton is on screen, and not
+        // at all when the system asks for reduced motion.
+        void UpdateScrubPreviewShimmer();
 
         winrt::HaloDesktop::PlayerViewModel m_viewModel{ nullptr };
+        Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_scrubPreviewChangedRevoker{};
         std::optional<winrt::Windows::Foundation::Point> m_lastPointerPosition;
         std::uint32_t m_lastPointerId{};
         bool m_seekHandlersRegistered{};

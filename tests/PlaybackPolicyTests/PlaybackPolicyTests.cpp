@@ -86,6 +86,18 @@ namespace
             std::numeric_limits<double>::quiet_NaN(),10.0,true),"a position with no value is never issued");
     }
 
+    void TestScrubPreviewLoading()
+    {
+        using HaloDesktop::Playback::IsScrubPreviewLoading;
+        using HaloDesktop::Playback::ScrubPreviewSkeletonDelay;
+
+        Require(!IsScrubPreviewLoading(0,0),"a card that asked for nothing is not loading");
+        Require(IsScrubPreviewLoading(1,0),"an unanswered first request is loading");
+        Require(!IsScrubPreviewLoading(3,3),"an answered request, frame or empty, is not loading");
+        Require(IsScrubPreviewLoading(4,3),"a newer request than the last answer is loading");
+        Require(ScrubPreviewSkeletonDelay.count()>0,"the skeleton waits before it shows");
+    }
+
     void TestPlaybackTimeFormatting()
     {
         using HaloDesktop::Playback::FormatPlaybackTime;
@@ -528,6 +540,7 @@ int main()
         TestScrubPreviewMapping();
         TestScrubPreviewPlacement();
         TestScrubPreviewCoalescing();
+        TestScrubPreviewLoading();
         TestPlaybackTimeFormatting();
         TestReleaseFileMatching();
         TestTransferRateWindow();

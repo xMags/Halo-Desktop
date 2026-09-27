@@ -1,5 +1,7 @@
 #pragma once
 
+#include <chrono>
+#include <cstdint>
 #include <span>
 
 namespace HaloDesktop::Playback
@@ -45,6 +47,19 @@ namespace HaloDesktop::Playback
         double requestedSeconds,
         double lastIssuedSeconds,
         bool hasIssued) noexcept;
+
+    // How long a frame may take before the card shows its loading skeleton. A local
+    // file answers well inside this, so dragging over one never flickers; a stream
+    // opening its connection or seeking over the network does not.
+    inline constexpr std::chrono::milliseconds ScrubPreviewSkeletonDelay{ 150 };
+
+    // Whether the card is still waiting on its latest request. Ids start at one, so zero
+    // means nothing has been asked. The source answers every request that is not
+    // superseded exactly once, with a frame or with an empty one, so an answered id
+    // never goes back to loading.
+    [[nodiscard]] bool IsScrubPreviewLoading(
+        std::uint64_t currentRequestId,
+        std::uint64_t answeredRequestId) noexcept;
 
     // The libmpv configuration a preview instance runs under, kept here as plain data so
     // the integration test can prove the real option set against the shipped library

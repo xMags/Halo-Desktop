@@ -8,6 +8,8 @@
 #include "ViewModels/PlayerViewModel.h"
 
 #include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
+#include <winrt/Windows.UI.ViewManagement.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -65,6 +67,22 @@ namespace winrt::HaloDesktop::implementation
                               this, &PlayerOsd::OnSeekPointerExited
                           }),
                           true);
+        if (auto const preview = m_viewModel.ScrubPreview())
+        {
+            m_scrubPreviewChangedRevoker = preview.PropertyChanged(
+                winrt::auto_revoke,
+                [weak = get_weak()]([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+                                    Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args) {
+                    if (args.PropertyName() != L"SkeletonActive")
+                    {
+                        return;
+                    }
+                    if (auto const self = weak.get())
+                    {
+                        self->UpdateScrubPreviewShimmer();
+                    }
+                });
+        }
         m_seekHandlersRegistered = true;
     }
     void PlayerOsd::OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
@@ -110,6 +128,44 @@ namespace winrt::HaloDesktop::implementation
                                    [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_viewModel.SeekRelative(10.0);
+    }
+    void PlayerOsd::UpdateScrubPreviewShimmer()
+    {
+        auto const preview = m_viewModel.ScrubPreview();
+        auto const skeleton = FindName(L"ScrubPreviewSkeleton").try_as<Microsoft::UI::Xaml::FrameworkElement>();
+        if (!preview || !skeleton)
+        {
+            return;
+        }
+
+        auto const key = winrt::box_value(L"ScrubPreviewShimmer");
+        auto const resources = skeleton.Resources();
+        if (!resources.HasKey(key))
+        {
+            return;
+        }
+        auto const shimmer = resources.Lookup(key).try_as<Microsoft::UI::Xaml::Media::Animation::Storyboard>();
+        if (!shimmer)
+        {
+            return;
+        }
+
+        if (!preview.SkeletonActive() || !winrt::Windows::UI::ViewManagement::UISettings{}.AnimationsEnabled())
+        {
+            shimmer.Stop();
+            return;
+        }
+        try
+        {
+            shimmer.Begin();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // A sweep that cannot start is cosmetic, and this runs inside a property
+            // change raised from a timer or pointer handler, where a throw would take
+            // the player down. The band then rests centred, as under reduced motion.
+            shimmer.Stop();
+        }
     }
     void PlayerOsd::UpdateScrubPreview(
         Microsoft::UI::Xaml::Controls::Slider const& slider,
