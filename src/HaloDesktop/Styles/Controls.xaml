@@ -28,6 +28,14 @@
     <Setter Property="CornerRadius" Value="{StaticResource HaloOverlayCornerRadius}" />
   </Style>
 
+  <!-- Episode and aside cards on the detail page, tinted more heavily than the
+       normal card so the backdrop artwork stays visible without washing out the
+       card text. -->
+  <Style x:Key="HaloDetailCardButtonStyle" BasedOn="{StaticResource HaloCardButtonStyle}" TargetType="Button">
+    <Setter Property="Background" Value="{ThemeResource HaloDetailCardBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailCardStrokeBrush}" />
+  </Style>
+
   <Style x:Key="HaloAccentButtonStyle" TargetType="Button">
     <Setter Property="Background" Value="{ThemeResource HaloAccentAltBrush}" />
     <Setter Property="Foreground" Value="{ThemeResource HaloOnAccentBrush}" />

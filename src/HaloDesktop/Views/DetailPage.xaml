@@ -8,23 +8,38 @@
   Unloaded="OnUnloaded"
   NavigationCacheMode="Required">
   <Grid>
-  <!-- No section header: the hero backdrop runs to the top of the page and the back
-       button sits on it. Everything here overlaps in one cell, back button last so it
-       stays on top. -->
+  <!-- Full-page backdrop pinned behind the scroller: the art covers the entire page
+       and stays fixed while the content scrolls over it. Two scrims darken the image
+       enough for white text: vertical (bright hero, dark below) and horizontal
+       (left-heavy for title readability). Colors are hardcoded rather than themed
+       because the art is photography that can be any brightness. -->
+  <Grid Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+    <local:PlaceholderArt Caption="BACKDROP" />
+    <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Background, Mode=OneWay}" FallbackUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
+    <Rectangle>
+      <Rectangle.Fill>
+        <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
+          <GradientStop Offset="0" Color="#0D101012" />
+          <GradientStop Offset="0.28" Color="#40101012" />
+          <GradientStop Offset="0.55" Color="#80101012" />
+          <GradientStop Offset="1" Color="#B8101012" />
+        </LinearGradientBrush>
+      </Rectangle.Fill>
+    </Rectangle>
+    <Rectangle>
+      <Rectangle.Fill>
+        <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
+          <GradientStop Offset="0" Color="#80101012" />
+          <GradientStop Offset="0.45" Color="#26101012" />
+          <GradientStop Offset="1" Color="#00101012" />
+        </LinearGradientBrush>
+      </Rectangle.Fill>
+    </Rectangle>
+  </Grid>
+
   <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
-      <Grid Height="268">
-        <local:PlaceholderArt Caption="BACKDROP" />
-        <local:ArtworkImage SourceUrl="{x:Bind ViewModel.Background, Mode=OneWay}" FallbackUrl="{x:Bind ViewModel.Poster, Mode=OneWay}" />
-        <Rectangle VerticalAlignment="Bottom" Height="140">
-          <Rectangle.Fill>
-            <LinearGradientBrush StartPoint="0.5,0" EndPoint="0.5,1">
-              <GradientStop Offset="0" Color="#00202020" />
-              <GradientStop Offset="1" Color="{ThemeResource HaloDetailScrimColor}" />
-            </LinearGradientBrush>
-          </Rectangle.Fill>
-        </Rectangle>
-      </Grid>
+      <Grid Height="268" />
       <Grid Margin="24,-76,24,0" ColumnSpacing="20" RowSpacing="26">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="128" />
@@ -66,7 +81,7 @@
           <ItemsControl x:Name="EpisodeList">
             <ItemsControl.ItemTemplate>
               <DataTemplate x:DataType="local:DetailEpisodeViewModel">
-                <Button Margin="0,0,0,8" Padding="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloCardButtonStyle}" Tag="{x:Bind}">
+                <Button Margin="0,0,0,8" Padding="10" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Click="OnEpisodeClick" Style="{StaticResource HaloDetailCardButtonStyle}" Tag="{x:Bind}">
                   <Grid ColumnSpacing="12">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="118" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
                     <Grid Width="118" Height="66">
@@ -107,14 +122,14 @@
           HorizontalAlignment="Left"
           Orientation="{x:Bind ViewModel.AsideOrientation, Mode=OneWay}"
           Spacing="12">
-          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloDetailCardBrush}" BorderBrush="{ThemeResource HaloDetailCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
               <TextBlock Text="SYNOPSIS" Style="{StaticResource HaloMonoKicker}" />
               <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.Synopsis, Mode=OneWay}" />
               <ItemsControl x:Name="FactsList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" TextWrapping="Wrap" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>
             </StackPanel>
           </Border>
-          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+          <Border Width="{x:Bind ViewModel.AsideCardWidth, Mode=OneWay}" Padding="16" Background="{ThemeResource HaloDetailCardBrush}" BorderBrush="{ThemeResource HaloDetailCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
             <StackPanel Spacing="10">
               <TextBlock Text="AVAILABILITY" Style="{StaticResource HaloMonoKicker}" />
               <ItemsControl x:Name="AvailabilityList"><ItemsControl.ItemTemplate><DataTemplate><TextBlock Margin="0,4,0,0" Style="{StaticResource HaloMonoData}" Text="{Binding}" /></DataTemplate></ItemsControl.ItemTemplate></ItemsControl>

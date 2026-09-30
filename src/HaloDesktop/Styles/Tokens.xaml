@@ -44,6 +44,8 @@
       <Color x:Key="HaloHeroScrim1Color">#F518181A</Color>
       <Color x:Key="HaloHeroScrim2Color">#9E18181A</Color>
       <Color x:Key="HaloDetailScrimColor">#FA202020</Color>
+      <Color x:Key="HaloDetailCardColor">#A6141418</Color>
+      <Color x:Key="HaloDetailCardStrokeColor">#14FFFFFF</Color>
       <Color x:Key="HaloInfoBgColor">#1460CDFF</Color>
       <Color x:Key="HaloInfoStrokeColor">#4760CDFF</Color>
       <Color x:Key="HaloBadgeMutedFillColor">#1FFFFFFF</Color>
@@ -93,6 +95,8 @@
       <SolidColorBrush x:Key="HaloHeroScrim1Brush" Color="{StaticResource HaloHeroScrim1Color}" />
       <SolidColorBrush x:Key="HaloHeroScrim2Brush" Color="{StaticResource HaloHeroScrim2Color}" />
       <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
+      <SolidColorBrush x:Key="HaloDetailCardBrush" Color="{StaticResource HaloDetailCardColor}" />
+      <SolidColorBrush x:Key="HaloDetailCardStrokeBrush" Color="{StaticResource HaloDetailCardStrokeColor}" />
       <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
       <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedFillBrush" Color="{StaticResource HaloBadgeMutedFillColor}" />
@@ -163,6 +167,8 @@
       <Color x:Key="HaloHeroScrim1Color">#F7F3F3F3</Color>
       <Color x:Key="HaloHeroScrim2Color">#A8F3F3F3</Color>
       <Color x:Key="HaloDetailScrimColor">#FCF3F3F3</Color>
+      <Color x:Key="HaloDetailCardColor">#BFFFFFFF</Color>
+      <Color x:Key="HaloDetailCardStrokeColor">#14000000</Color>
       <Color x:Key="HaloInfoBgColor">#0F005FB8</Color>
       <Color x:Key="HaloInfoStrokeColor">#33005FB8</Color>
       <Color x:Key="HaloBadgeMutedFillColor">#14000000</Color>
@@ -212,6 +218,8 @@
       <SolidColorBrush x:Key="HaloHeroScrim1Brush" Color="{StaticResource HaloHeroScrim1Color}" />
       <SolidColorBrush x:Key="HaloHeroScrim2Brush" Color="{StaticResource HaloHeroScrim2Color}" />
       <SolidColorBrush x:Key="HaloDetailScrimBrush" Color="{StaticResource HaloDetailScrimColor}" />
+      <SolidColorBrush x:Key="HaloDetailCardBrush" Color="{StaticResource HaloDetailCardColor}" />
+      <SolidColorBrush x:Key="HaloDetailCardStrokeBrush" Color="{StaticResource HaloDetailCardStrokeColor}" />
       <SolidColorBrush x:Key="HaloInfoBgBrush" Color="{StaticResource HaloInfoBgColor}" />
       <SolidColorBrush x:Key="HaloInfoStrokeBrush" Color="{StaticResource HaloInfoStrokeColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedFillBrush" Color="{StaticResource HaloBadgeMutedFillColor}" />
