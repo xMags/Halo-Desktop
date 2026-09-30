@@ -145,8 +145,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] std::int32_t FilterIndex() const noexcept;
         [[nodiscard]] double StoredFraction() const noexcept;
         [[nodiscard]] double InFlightFraction() const noexcept;
-        [[nodiscard]] winrt::hstring DownloadDirectory() const;
-        [[nodiscard]] winrt::hstring FolderLine() const;
         void Select(winrt::hstring const& id);
         void SetFilter(std::int32_t index);
         void Pause(winrt::hstring const& id);

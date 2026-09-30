@@ -112,8 +112,6 @@ namespace HaloDesktop
         Int32 FilterIndex { get; };
         Double StoredFraction { get; };
         Double InFlightFraction { get; };
-        String DownloadDirectory { get; };
-        String FolderLine { get; };
         void Select(String id);
         void SetFilter(Int32 index);
         void Pause(String id);

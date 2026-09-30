@@ -287,11 +287,9 @@
                   <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Style="{StaticResource HaloMonoKicker}" CharacterSpacing="0" Foreground="{ThemeResource HaloAccentBrush}" Text="02" /><TextBlock Grid.Column="1" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Pick a source, then choose Save for offline instead of Play." TextWrapping="Wrap" /></Grid>
                   <Grid ColumnSpacing="10"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock Style="{StaticResource HaloMonoKicker}" CharacterSpacing="0" Foreground="{ThemeResource HaloAccentBrush}" Text="03" /><TextBlock Grid.Column="1" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Keep Halo open until the transfer finishes. It resumes if you close it." TextWrapping="Wrap" /></Grid>
                 </StackPanel>
-                <StackPanel Margin="0,22,0,0" Orientation="Horizontal" Spacing="8">
-                  <Button Height="32" Padding="16,0" Click="OnBrowseLibraryClick" Content="Browse library" Style="{StaticResource HaloAccentButtonStyle}" />
-                  <Button Height="32" Padding="16,0" Click="OnManageFolderClick" Content="Manage download folder" />
-                </StackPanel>
-                <TextBlock Margin="0,20,0,0" Style="{StaticResource HaloMonoData}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind ViewModel.FolderLine, Mode=OneWay}" TextWrapping="Wrap" />
+                <!-- The detail panel's folder card shows whenever this card does,
+                     so the folder action is not repeated here. -->
+                <Button Margin="0,22,0,0" Height="32" Padding="16,0" Click="OnBrowseLibraryClick" Content="Browse library" Style="{StaticResource HaloAccentButtonStyle}" />
               </StackPanel>
             </Grid>
           </Border>
@@ -405,7 +403,6 @@
           <Border Padding="20" VerticalAlignment="Top" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.FolderVisibility, Mode=OneWay}">
             <StackPanel>
               <TextBlock Style="{StaticResource HaloMonoKicker}" Text="DOWNLOAD FOLDER" />
-              <TextBlock Margin="0,10,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" LineHeight="20" Text="{x:Bind ViewModel.DownloadDirectory, Mode=OneWay}" TextWrapping="Wrap" />
               <Button Margin="0,14,0,0" Height="32" HorizontalAlignment="Stretch" Click="OnManageFolderClick" Content="Manage folder" />
             </StackPanel>
           </Border>

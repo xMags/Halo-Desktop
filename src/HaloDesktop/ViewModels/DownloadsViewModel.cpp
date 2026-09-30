@@ -445,21 +445,6 @@ namespace winrt::HaloDesktop::implementation
         auto const total = m_downloads->StoredBytes() + m_downloads->InFlightBytes() + m_downloads->FreeBytes().value_or(0);
         return total > 0 ? static_cast<double>(m_downloads->InFlightBytes()) / static_cast<double>(total) : 0.0;
     }
-    winrt::hstring DownloadsViewModel::DownloadDirectory() const
-    {
-        auto const directory = m_downloads->DownloadDirectory().wstring();
-        return directory.empty() ? winrt::hstring{ L"Folder unavailable" } : winrt::hstring{ directory };
-    }
-    winrt::hstring DownloadsViewModel::FolderLine() const
-    {
-        auto const free = m_downloads->FreeBytes();
-        auto line = std::wstring{ DownloadDirectory() };
-        std::transform(line.begin(), line.end(), line.begin(), [](wchar_t character)
-        {
-            return static_cast<wchar_t>(std::towupper(character));
-        });
-        return winrt::hstring{ free ? L"FOLDER · " + line + L" · " + std::wstring{ FormatBytes(*free) } + L" FREE" : L"FOLDER · " + line };
-    }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::DetailVisibility() const noexcept { return m_selected ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::FolderVisibility() const noexcept { return m_selected ? Collapsed : Visible; }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::SelectedTransferVisibility() const noexcept { return m_selected && !SelectedIsReady() ? Visible : Collapsed; }
@@ -699,7 +684,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"RateNormalVisibility", L"RateIdleVisibility", L"RatePausedVisibility", L"SelectedRow", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedPercentText", L"SelectedQualityLine", L"SelectedSize", L"SelectedSizeFactLabel", L"SelectedSubs", L"SelectedAdded", L"SelectedFileName", L"SelectedPoster", L"ReadyActionLabel", L"PaneNote", L"PaneNoteVisibility", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"StoredFraction", L"InFlightFraction", L"DownloadDirectory", L"FolderLine", L"DetailVisibility", L"FolderVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility", L"NoMatchesVisibility", L"NoMatchesLine", L"FilterAllCount", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex" })
+        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"RateNormalVisibility", L"RateIdleVisibility", L"RatePausedVisibility", L"SelectedRow", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedPercentText", L"SelectedQualityLine", L"SelectedSize", L"SelectedSizeFactLabel", L"SelectedSubs", L"SelectedAdded", L"SelectedFileName", L"SelectedPoster", L"ReadyActionLabel", L"PaneNote", L"PaneNoteVisibility", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"StoredFraction", L"InFlightFraction", L"DetailVisibility", L"FolderVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility", L"NoMatchesVisibility", L"NoMatchesLine", L"FilterAllCount", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex" })
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
     winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const
