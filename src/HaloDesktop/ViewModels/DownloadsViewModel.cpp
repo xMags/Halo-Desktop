@@ -529,6 +529,10 @@ namespace winrt::HaloDesktop::implementation
     {
         static_cast<void>(m_navigation->GoTo(::HaloDesktop::Services::Page::Library));
     }
+    std::filesystem::path DownloadsViewModel::CurrentDownloadDirectory() const
+    {
+        return m_downloads->DownloadDirectory();
+    }
     winrt::Windows::Foundation::IAsyncAction DownloadsViewModel::SetDownloadDirectoryAsync(
         std::filesystem::path directory)
     {

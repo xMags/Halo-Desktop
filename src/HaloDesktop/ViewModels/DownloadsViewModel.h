@@ -163,6 +163,8 @@ namespace winrt::HaloDesktop::implementation
         void OpenPlayer();
         void ChooseSource();
         void BrowseLibrary();
+        // Where downloads go now; empty until the download service reports it.
+        [[nodiscard]] std::filesystem::path CurrentDownloadDirectory() const;
         [[nodiscard]] winrt::Windows::Foundation::IAsyncAction SetDownloadDirectoryAsync(
             std::filesystem::path directory);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);

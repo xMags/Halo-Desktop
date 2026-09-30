@@ -11,8 +11,8 @@
 #include <array>
 #include <cstdint>
 #include <microsoft.ui.xaml.window.h>
-#include <shobjidl_core.h>
-#include <winrt/Windows.Storage.Pickers.h>
+#include <winrt/Microsoft.UI.Interop.h>
+#include <winrt/Microsoft.Windows.Storage.Pickers.h>
 
 namespace
 {
@@ -171,11 +171,20 @@ namespace winrt::HaloDesktop::implementation
         bool failed{};
         try
         {
-            winrt::Windows::Storage::Pickers::FolderPicker picker;
-            picker.FileTypeFilter().Append(L"*");
             HWND windowHandle{};
             winrt::check_hresult(App::Window().as<::IWindowNative>()->get_WindowHandle(&windowHandle));
-            winrt::check_hresult(picker.as<::IInitializeWithWindow>()->Initialize(windowHandle));
+            winrt::Microsoft::Windows::Storage::Pickers::FolderPicker picker{
+                winrt::Microsoft::UI::GetWindowIdFromWindow(windowHandle) };
+            // Open on the folder downloads go to now. Without a suggested
+            // folder Windows opens the picker wherever it was last, Documents
+            // at first, which reads as the current download location. The
+            // picker skips a suggested folder that no longer exists by itself;
+            // only an empty path is refused by the property, so it is not set.
+            auto const current = winrt::get_self<DownloadsViewModel>(m_viewModel)->CurrentDownloadDirectory();
+            if (!current.empty())
+            {
+                picker.SuggestedFolder(current.wstring());
+            }
             auto const folder = co_await picker.PickSingleFolderAsync();
             if (folder)
             {
