@@ -30,6 +30,7 @@ namespace HaloDesktop
         String SourceActionLabel { get; };
         String SeasonMeta { get; };
         String LibraryLabel { get; };
+        String LibraryGlyph { get; };
         Int32 SeasonIndex { get; };
         Object Episodes { get; };
         Object Facts { get; };
