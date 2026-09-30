@@ -379,6 +379,7 @@ namespace winrt::HaloDesktop::implementation
         RefreshAccountIdentity();
         RefreshJumpBackIn();
         SetJumpBackVisibility(true);
+        AccountLines().Visibility(Microsoft::UI::Xaml::Visibility::Visible);
     }
 
     void ShellPage::OnPaneClosing(
@@ -386,6 +387,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args)
     {
         SetJumpBackVisibility(false);
+        AccountLines().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
     }
 
     void ShellPage::SetJumpBackVisibility(bool visible)

@@ -147,7 +147,7 @@
               Source="ms-appx:///Assets/user-avatar.png"
               Stretch="UniformToFill" />
           </Border>
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
+          <StackPanel x:Name="AccountLines" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2" Visibility="Collapsed">
             <TextBlock x:Name="AccountName" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
             <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" />
           </StackPanel>
