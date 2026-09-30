@@ -40,7 +40,7 @@
   <ScrollViewer VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48">
       <Grid Height="268" />
-      <Grid Margin="24,-76,24,0" ColumnSpacing="20" RowSpacing="26">
+      <Grid Margin="24,-76,24,0" MaxWidth="1016" HorizontalAlignment="Left" ColumnSpacing="20" RowSpacing="26">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="128" />
           <ColumnDefinition Width="*" />
