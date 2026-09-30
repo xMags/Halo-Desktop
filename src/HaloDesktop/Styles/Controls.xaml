@@ -129,7 +129,6 @@
           <ContentPresenter
             Padding="{TemplateBinding Padding}"
             HorizontalAlignment="Left"
-            CharacterSpacing="160"
             Content="{TemplateBinding Content}"
             FontFamily="{StaticResource HaloMonoBoldFont}"
             FontSize="{StaticResource HaloFontCaption}"

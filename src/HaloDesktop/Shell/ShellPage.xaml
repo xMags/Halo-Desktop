@@ -26,7 +26,7 @@
     x:Name="Navigation"
     AlwaysShowHeader="False"
     Background="Transparent"
-    CompactPaneLength="48"
+    CompactPaneLength="{StaticResource HaloCompactPaneWidth}"
     IsBackButtonVisible="Collapsed"
     IsBackEnabled="False"
     IsSettingsVisible="False"
