@@ -216,6 +216,7 @@
     <ClInclude Include="Services\CatalogService.h" />
     <ClInclude Include="Services\CatalogRefreshPolicy.h" />
     <ClInclude Include="Services\ContinueShelfPolicy.h" />
+    <ClInclude Include="Services\WatchMarkPolicy.h" />
     <ClInclude Include="Services\ContinueNextEpisodeService.h" />
     <ClInclude Include="Services\ContinueArtworkService.h" />
     <ClInclude Include="Services\DownloadArtworkService.h" />
@@ -434,6 +435,9 @@
     <ClCompile Include="Services\DownloadArtworkService.cpp" />
     <ClCompile Include="Services\ContinueNextEpisodeService.cpp" />
     <ClCompile Include="Services\ContinueShelfPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\WatchMarkPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\DevicePreferencesStore.cpp" />

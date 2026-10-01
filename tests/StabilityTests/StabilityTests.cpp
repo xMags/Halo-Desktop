@@ -13,6 +13,7 @@
 #include "Services/Auth/LoopbackListener.h"
 #include "Services/StreamInfo.h"
 #include "Services/ContinueShelfPolicy.h"
+#include "Services/WatchMarkPolicy.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "DownloadTransferTest.h"
 #include "PlaybackSourceResolverTest.h"
@@ -854,6 +855,99 @@ namespace
         Require(capped.Cards[7].Name == L"Film 6", "the cap trimmed from the wrong end");
     }
 
+    HaloDesktop::Api::Dto::WatchEntry StoredWatchEntry(
+        wchar_t const* videoId,
+        double position,
+        double duration,
+        bool watched,
+        std::int64_t updatedAt)
+    {
+        HaloDesktop::Api::Dto::WatchEntry row;
+        row.VideoId = videoId;
+        row.ItemId = L"series:tt1";
+        row.PositionSec = position;
+        row.DurationSec = duration;
+        row.Watched = watched;
+        row.Name = winrt::hstring{ L"Stored name" };
+        row.Poster = winrt::hstring{ L"https://example.test/stored.jpg" };
+        row.UpdatedAt = updatedAt;
+        return row;
+    }
+
+    void TestWatchMarks()
+    {
+        using HaloDesktop::Services::EarlierEpisodes;
+        using HaloDesktop::Services::EpisodeSlot;
+        using HaloDesktop::Services::UnwatchedRow;
+        using HaloDesktop::Services::WatchedRow;
+        using HaloDesktop::Services::WatchedRowsInOrder;
+        using HaloDesktop::Services::WatchMarkTarget;
+
+        WatchMarkTarget const target{ L"tt1:1:2", L"series:tt1", L"Show", L"https://example.test/poster.jpg" };
+
+        // A measured length beats the addon's runtime, which beats nothing at all.
+        auto const measured = WatchedRow(target, StoredWatchEntry(L"tt1:1:2", 300.0, 2700.0, false, 10), 3000.0, 1000);
+        Require(measured.Watched && measured.DurationSec == 2700.0 && measured.PositionSec == 2700.0,
+                "marking watched replaced a measured length");
+        auto const estimated = WatchedRow(target, std::nullopt, 3000.0, 1000);
+        Require(estimated.DurationSec == 3000.0 && estimated.PositionSec == 3000.0,
+                "marking watched ignored the addon's runtime");
+        auto const unknown = WatchedRow(target, std::nullopt, 0.0, 1000);
+        Require(unknown.Watched && unknown.DurationSec == 0.0 && unknown.PositionSec == 0.0,
+                "marking watched invented a length");
+        Require(estimated.UpdatedAt == 1000, "a first mark was not stamped with the current time");
+        Require(estimated.Name && *estimated.Name == L"Show" && estimated.Poster
+                    && *estimated.Poster == L"https://example.test/poster.jpg",
+                "a mark lost the display fields it was given");
+
+        // A row from a device whose clock ran ahead still loses to the mark.
+        auto const ahead = WatchedRow(target, StoredWatchEntry(L"tt1:1:2", 300.0, 2700.0, false, 5000), 0.0, 1000);
+        Require(ahead.UpdatedAt == 5001, "a mark was not newer than the row it replaces");
+
+        auto const cleared = UnwatchedRow(target, StoredWatchEntry(L"tt1:1:2", 2700.0, 2700.0, true, 10), 1000);
+        Require(!cleared.Watched && cleared.PositionSec == 0.0 && cleared.DurationSec == 0.0,
+                "marking unwatched left progress behind");
+
+        WatchMarkTarget const bare{ L"tt1:1:2", L"series:tt1", L"", L"" };
+        auto const kept = UnwatchedRow(bare, StoredWatchEntry(L"tt1:1:2", 10.0, 2700.0, false, 10), 1000);
+        Require(kept.Name && *kept.Name == L"Stored name" && kept.Poster
+                    && *kept.Poster == L"https://example.test/stored.jpg",
+                "a mark without display fields dropped the stored ones");
+        auto const nameless = UnwatchedRow(bare, std::nullopt, 1000);
+        Require(!nameless.Name && !nameless.Poster, "a mark without a name sent an empty one");
+
+        WatchMarkTarget const longName{ L"tt1:1:2", L"series:tt1", winrt::hstring{ std::wstring(600, L'x') }, L"" };
+        Require(WatchedRow(longName, std::nullopt, 0.0, 1000).Name->size() == 512,
+                "a mark sent a name longer than the server accepts");
+
+        // Stamped strictly in the order given, even past rows written in the future.
+        std::vector<WatchMarkTarget> const run{
+            { L"tt1:1:1", L"series:tt1", L"Show", L"" },
+            { L"tt1:1:2", L"series:tt1", L"Show", L"" },
+            { L"tt1:1:3", L"series:tt1", L"Show", L"" },
+        };
+        auto const ordered = WatchedRowsInOrder(
+            run, { StoredWatchEntry(L"tt1:1:2", 100.0, 2700.0, false, 9000) }, 3000.0, 1000);
+        Require(ordered.size() == 3, "a run of marks lost a row");
+        Require(ordered[0].UpdatedAt == 1000 && ordered[1].UpdatedAt == 9001 && ordered[2].UpdatedAt == 9002,
+                "a run of marks was not stamped in order");
+        Require(ordered[1].DurationSec == 2700.0 && ordered[2].DurationSec == 3000.0,
+                "a run of marks did not keep each row's own length");
+
+        // Earlier seasons and earlier episodes of the same one, never the specials,
+        // first to last whatever order the addon listed them in.
+        std::vector<EpisodeSlot> const episodes{
+            { 2, 2 }, { 0, 1 }, { 1, 2 }, { 2, 3 }, { 1, 1 }, { 3, 1 }, { 0, 2 }, { 2, 1 },
+        };
+        auto const beforeS2E3 = EarlierEpisodes(episodes, 3);
+        Require(beforeS2E3 == std::vector<std::size_t>{ 4, 2, 7, 0 },
+                "the episodes before a regular episode were wrong");
+        Require(EarlierEpisodes(episodes, 6) == std::vector<std::size_t>{ 1 },
+                "a special counted something other than an earlier special");
+        Require(EarlierEpisodes(episodes, 4).empty(), "the first episode had something before it");
+        Require(EarlierEpisodes(episodes, episodes.size()).empty(), "an episode out of range had something before it");
+    }
+
 } // namespace
 
 int main()
@@ -871,6 +965,7 @@ int main()
         TestSelectFeaturedItems();
         TestOptionalSubtitleFallback();
         TestContinueShelf();
+        TestWatchMarks();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();
