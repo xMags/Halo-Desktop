@@ -9,6 +9,8 @@
 #include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <string_view>
+#include <unordered_map>
 #include <utility>
 
 namespace
@@ -150,36 +152,27 @@ namespace HaloDesktop::Services
             meta.Preview.Poster.value_or(L""),
             meta.Preview.Background.value_or(L""));
 
+        // Progress and the watched mark are left out here and read when the
+        // episodes are asked for, the way the download state is, so a mark made
+        // while the page is open shows without loading the title again.
         m_episodes.clear();
-        auto const watchRows = m_watch->Rows();
         for (auto const& video : meta.Videos)
         {
             auto const season = video.Season.value_or(0);
             auto const episode = video.Episode.value_or(0);
-            auto const found = std::find_if(watchRows.begin(), watchRows.end(), [&video](auto const& row)
-            {
-                return row.VideoId == video.Id;
-            });
-            double progress{};
-            bool watched{};
-            if (found != watchRows.end() && found->DurationSec > 0)
-            {
-                progress = found->PositionSec / found->DurationSec;
-                watched = found->Watched;
-            }
             m_episodes.push_back(winrt::make<winrt::HaloDesktop::implementation::Episode>(
                 Tag(season, episode),
                 video.Title,
                 video.Overview.value_or(L""),
                 meta.Runtime.value_or(L""),
                 video.Released.value_or(L""),
-                watched ? 0.0 : progress,
+                0.0,
                 false,
                 video.Id,
                 season,
                 episode,
                 video.Thumbnail.value_or(L""),
-                watched));
+                false));
         }
         std::sort(m_episodes.begin(), m_episodes.end(), [](auto const& left, auto const& right)
         {
@@ -203,6 +196,14 @@ namespace HaloDesktop::Services
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode>
         MetadataService::Episodes(std::int32_t season) const
     {
+        auto const watchRows = m_watch->Rows();
+        std::unordered_map<std::wstring_view, ::HaloDesktop::Api::Dto::WatchEntry const*> rowsByVideo;
+        rowsByVideo.reserve(watchRows.size());
+        for (auto const& row : watchRows)
+        {
+            rowsByVideo.insert_or_assign(std::wstring_view{ row.VideoId }, &row);
+        }
+
         std::vector<winrt::HaloDesktop::Episode> result;
         for (auto const& episode : m_episodes)
         {
@@ -210,19 +211,32 @@ namespace HaloDesktop::Services
             {
                 continue;
             }
+            // The watched mark stands on its own. A row marked watched from a menu
+            // carries no length when the addon gives no runtime, and it is still
+            // watched; only the progress fraction needs a length to divide by.
+            double progress{};
+            bool watched{};
+            if (auto const found = rowsByVideo.find(std::wstring_view{ episode.VideoId() }); found != rowsByVideo.end())
+            {
+                watched = found->second->Watched;
+                if (!watched && found->second->DurationSec > 0)
+                {
+                    progress = found->second->PositionSec / found->second->DurationSec;
+                }
+            }
             result.push_back(winrt::make<winrt::HaloDesktop::implementation::Episode>(
                 episode.Tag(),
                 episode.Title(),
                 episode.Blurb(),
                 episode.Runtime(),
                 episode.Aired(),
-                episode.Progress(),
+                progress,
                 m_downloads->HasCompleted(episode.VideoId()),
                 episode.VideoId(),
                 episode.Season(),
                 episode.Number(),
                 episode.Thumbnail(),
-                episode.Watched()));
+                watched));
         }
         return winrt::single_threaded_vector(std::move(result)).GetView();
     }
