@@ -78,16 +78,20 @@ namespace HaloDesktop::Services
             co_return;
         }
 
-        LandscapeArtworkSet artwork;
+        ResolvedMeta resolved;
         try
         {
             auto const meta = co_await m_apiClient->GetMetaAsync(item.Type(), item.MetaId());
-            artwork.Background = meta.Preview.Background.value_or(winrt::hstring{});
+            resolved.Artwork.Background = meta.Preview.Background.value_or(winrt::hstring{});
             for (auto const& video : meta.Videos)
             {
                 if (video.Thumbnail && !video.Thumbnail->empty())
                 {
-                    artwork.Thumbnails.insert_or_assign(std::wstring{ video.Id }, *video.Thumbnail);
+                    resolved.Artwork.Thumbnails.insert_or_assign(std::wstring{ video.Id }, *video.Thumbnail);
+                }
+                if (!video.Title.empty())
+                {
+                    resolved.EpisodeTitles.insert_or_assign(std::wstring{ video.Id }, video.Title);
                 }
             }
         }
@@ -101,22 +105,33 @@ namespace HaloDesktop::Services
         {
             co_return;
         }
-        auto const& stored = m_cache.insert_or_assign(key, std::move(artwork)).first->second;
+        auto const& stored = m_cache.insert_or_assign(key, std::move(resolved)).first->second;
         Apply(item, stored);
     }
 
     void ContinueArtworkService::Apply(
         winrt::HaloDesktop::ContinueItem const& item,
-        LandscapeArtworkSet const& artwork)
+        ResolvedMeta const& resolved)
     {
+        auto const implementation = winrt::get_self<winrt::HaloDesktop::implementation::ContinueItem>(item);
+        // A film's only video is the film, whose title is the show name the item
+        // already carries, so only an episode gets one.
+        if (item.Type() == L"series")
+        {
+            if (auto const title = resolved.EpisodeTitles.find(std::wstring{ item.VideoId() });
+                title != resolved.EpisodeTitles.end())
+            {
+                implementation->SetEpisodeTitle(title->second);
+            }
+        }
         // The episode still beats the backdrop: it is the frame from the episode the
         // viewer is partway through, not a picture of the show in general.
-        auto const still = SelectLandscapeArtwork(item.VideoId(), artwork);
+        auto const still = SelectLandscapeArtwork(item.VideoId(), resolved.Artwork);
         if (still.empty())
         {
             return;
         }
-        winrt::get_self<winrt::HaloDesktop::implementation::ContinueItem>(item)->SetStill(still);
+        implementation->SetStill(still);
     }
 
     void ContinueArtworkService::OnAccountChanged() noexcept

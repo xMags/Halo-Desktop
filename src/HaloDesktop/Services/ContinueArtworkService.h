@@ -24,6 +24,10 @@ namespace HaloDesktop::Services
     // landscape image lives on the item's meta instead: the episode still for a
     // series, the backdrop for a film.
     //
+    // The same meta names the episode, which watch state does not remember either,
+    // so the item takes its episode title from this lookup too. Opening the item
+    // then names the episode the way opening it from its title page does.
+    //
     // UI-thread-only, like the catalog aggregator that drives it. Requests run on
     // background threads; the cache and every item update happen on the UI thread.
     class ContinueArtworkService final : public std::enable_shared_from_this<ContinueArtworkService>
@@ -50,7 +54,14 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> FillItemAsync(
             winrt::HaloDesktop::ContinueItem item,
             std::uint64_t generation);
-        static void Apply(winrt::HaloDesktop::ContinueItem const& item, LandscapeArtworkSet const& artwork);
+        // What one title's meta gave the continue cards that point into it.
+        struct ResolvedMeta final
+        {
+            LandscapeArtworkSet Artwork;
+            std::unordered_map<std::wstring, winrt::hstring> EpisodeTitles;
+        };
+
+        static void Apply(winrt::HaloDesktop::ContinueItem const& item, ResolvedMeta const& resolved);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         // Results come back on a worker thread and are handed to items the shelf
@@ -61,7 +72,7 @@ namespace HaloDesktop::Services
         // Keyed by item id, which already carries the type and the meta id. Holds
         // failures as well as hits, so one unreachable addon cannot be retried on
         // every catalog refresh for the rest of the session.
-        std::unordered_map<std::wstring, LandscapeArtworkSet> m_cache;
+        std::unordered_map<std::wstring, ResolvedMeta> m_cache;
         std::uint64_t m_generation{};
     };
 }

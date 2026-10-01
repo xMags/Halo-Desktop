@@ -356,9 +356,14 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
+        [[nodiscard]] hstring EpisodeTitle() const;
+
         // Not projected: only the artwork service resolves a still, and the shelf
         // is already on screen by the time it does.
         void SetStill(hstring value);
+        // Not projected, and raises nothing: no card draws it. The sources sheet
+        // and the player read it when the item is opened.
+        void SetEpisodeTitle(hstring value);
 
     private:
         hstring m_name;
@@ -368,6 +373,7 @@ namespace winrt::HaloDesktop::implementation
         hstring m_itemId;
         hstring m_poster;
         hstring m_still;
+        hstring m_episodeTitle;
         hstring m_sub;
         hstring m_tag;
         hstring m_timeLeft;

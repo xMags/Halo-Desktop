@@ -67,8 +67,9 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_advancing=false;
         auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"",L"",L"");
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();winrt::get_self<PlayerOsd>(overlay)->TitleLabel(request.ShowName().empty()?request.Title():request.ShowName());
-        // A film's show name, when it has one, is its own title, so it gets no second line.
-        auto const episodeName=!request.ShowName().empty()&&request.Title()!=request.ShowName()?request.Title():winrt::hstring{};winrt::get_self<PlayerOsd>(overlay)->EpisodeLabel(request.EpisodeLabel(),episodeName);
+        // A film has no episode line: its show name, when it has one, is its own
+        // title, and the MOVIE a continue card resumes it with is the card's chip.
+        auto const film=request.MediaType()==L"movie";auto const episodeName=!film&&!request.ShowName().empty()&&request.Title()!=request.ShowName()?request.Title():winrt::hstring{};winrt::get_self<PlayerOsd>(overlay)->EpisodeLabel(film?winrt::hstring{}:request.EpisodeLabel(),episodeName);
         FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
         FindName(L"SubtitleNotice").as<Microsoft::UI::Xaml::Controls::InfoBar>().IsOpen(false);
 

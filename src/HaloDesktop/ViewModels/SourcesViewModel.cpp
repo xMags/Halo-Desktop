@@ -455,8 +455,8 @@ namespace winrt::HaloDesktop::implementation
         if (!m_parameters) return L"";
         // The kicker only carries what the heading below does not already say. A
         // movie's show name is its own title, and an entry resumed from Continue
-        // watching names the show rather than the episode, so in both cases
-        // repeating the show name would print the same words twice.
+        // watching before its meta has named the episode names the show instead,
+        // so in both cases repeating the show name would print the same words twice.
         auto const show = m_parameters.ShowName();
         auto const episode = m_parameters.EpisodeLabel();
         auto const redundant = show.empty() || show == m_parameters.Title();
@@ -662,12 +662,16 @@ namespace winrt::HaloDesktop::implementation
         {
             if (auto const item = parameter.try_as<winrt::HaloDesktop::ContinueItem>())
             {
+                // The episode's title once the item's meta has named it, which makes
+                // this the same sheet the title page opens for that episode. Until
+                // then the show name stands in, as it always did.
+                auto const title = item.EpisodeTitle().empty() ? item.Name() : item.EpisodeTitle();
                 m_parameters = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
                     item.Type(),
                     item.MetaId(),
                     item.VideoId(),
                     item.ItemId(),
-                    item.Name(),
+                    title,
                     item.Name(),
                     item.Tag(),
                     item.Poster());

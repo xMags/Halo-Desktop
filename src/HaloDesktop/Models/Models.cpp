@@ -399,6 +399,7 @@ namespace winrt::HaloDesktop::implementation
     hstring ContinueItem::Tag() const { return m_tag; }
     hstring ContinueItem::TimeLeft() const { return m_timeLeft; }
     double ContinueItem::Progress() const noexcept { return m_progress; }
+    hstring ContinueItem::EpisodeTitle() const { return m_episodeTitle; }
 
     winrt::event_token ContinueItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
     {
@@ -418,6 +419,11 @@ namespace winrt::HaloDesktop::implementation
         }
         m_still = std::move(value);
         m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"Art" });
+    }
+
+    void ContinueItem::SetEpisodeTitle(hstring value)
+    {
+        m_episodeTitle = std::move(value);
     }
 
     FeaturedItem::FeaturedItem(HaloDesktop::MediaSummary media, bool inLibrary, double titleSize)

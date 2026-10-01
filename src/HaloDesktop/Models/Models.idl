@@ -177,6 +177,9 @@ namespace HaloDesktop
         String Tag { get; };
         String TimeLeft { get; };
         Double Progress { get; };
+        // The episode's own title. Empty until the item's meta has been resolved,
+        // because watch state remembers only the show, and empty for a film.
+        String EpisodeTitle { get; };
     };
 
     // A card in the home carousel. Each one carries its own library state: the
