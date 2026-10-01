@@ -13,6 +13,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 #include <winrt/Windows.System.Threading.h>
 
 namespace
@@ -379,5 +380,38 @@ namespace HaloDesktop::Services
         {
             m_identityChanged();
         }
+        // Copied first: a listener is free to unsubscribe from inside itself.
+        std::vector<IdentityChangedHandler> listeners;
+        listeners.reserve(m_identityListeners.size());
+        for (auto const& entry : m_identityListeners)
+        {
+            listeners.push_back(entry.second);
+        }
+        for (auto const& listener : listeners)
+        {
+            try
+            {
+                listener();
+            }
+            catch (...)
+            {
+            }
+        }
+    }
+
+    IdentityChangedToken SessionService::AddIdentityChangedHandler(IdentityChangedHandler handler)
+    {
+        if (!handler)
+        {
+            return 0;
+        }
+        auto const token = m_nextIdentityToken++;
+        m_identityListeners.emplace(token, std::move(handler));
+        return token;
+    }
+
+    void SessionService::RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept
+    {
+        m_identityListeners.erase(token);
     }
 }

@@ -24,6 +24,7 @@ namespace winrt::HaloDesktop::implementation
 {
     HomeViewModel::HomeViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_layout(services.LayoutMetrics), m_catalog(services.Catalog), m_library(services.Library),
+          m_session(services.Session),
           m_navigation(services.Navigation),
           m_featured(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_continueItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -48,12 +49,20 @@ namespace winrt::HaloDesktop::implementation
             // buttons all show one or the other.
             m_userStateToken = m_catalog->AddUserStateChangedHandler([this]() { AdoptUserStateChange(); });
         }
+        // And for the account itself. Home is usually the page already on screen
+        // when a sign-in completes, often behind the sign-in page from launch, and
+        // landing on it again is no navigation, so nothing else would reload it.
+        if (m_session)
+        {
+            m_identityToken = m_session->AddIdentityChangedHandler([this]() { ReloadForAccount(); });
+        }
     }
     HomeViewModel::~HomeViewModel()
     {
         if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
         if (m_catalog && m_continueToken != 0) m_catalog->RemoveContinueChangedHandler(m_continueToken);
         if (m_catalog && m_userStateToken != 0) m_catalog->RemoveUserStateChangedHandler(m_userStateToken);
+        if (m_session && m_identityToken != 0) m_session->RemoveIdentityChangedHandler(m_identityToken);
         if (m_featuredTimer)
         {
             m_featuredTimer.Stop();
@@ -203,6 +212,19 @@ namespace winrt::HaloDesktop::implementation
         m_appliedVersion = m_catalog->SnapshotVersion();
         ApplyContinue();
         Rebuild();
+    }
+
+    // The services were reset for the new account before this runs. Off screen
+    // there is nothing to do: the next visit finds the catalog unloaded and loads
+    // it. Signed out, a load could only fail behind the sign-in page; the sign-in
+    // that follows raises this again.
+    void HomeViewModel::ReloadForAccount()
+    {
+        if (!m_active || !m_session->IsSignedIn())
+        {
+            return;
+        }
+        static_cast<void>(LoadAsync());
     }
 
     void HomeViewModel::ApplyContinue()

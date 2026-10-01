@@ -110,10 +110,32 @@ namespace winrt::HaloDesktop::implementation
                     self->RefreshJumpBackIn();
                 }
             });
+        // What was read above belongs to whoever was signed in at launch, often
+        // nobody, with the sign-in page over the shell.
+        m_identityChangedToken = App::Services().Session->AddIdentityChangedHandler(
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->OnIdentityChanged();
+                }
+            });
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
         RefreshJumpBackInAsync();
+    }
+
+    void ShellPage::OnIdentityChanged()
+    {
+        RefreshAccountIdentity();
+        // The account's services were reset before this runs, so this empties the
+        // rows of the account that left; the load refills them for the new one.
+        RefreshJumpBackIn();
+        if (App::Services().Session->IsSignedIn())
+        {
+            RefreshJumpBackInAsync();
+        }
     }
 
     void ShellPage::OnUnloaded(
@@ -134,6 +156,11 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().Catalog->RemoveUserStateChangedHandler(m_userStateChangedToken);
             m_userStateChangedToken = 0;
+        }
+        if (m_identityChangedToken != 0)
+        {
+            App::Services().Session->RemoveIdentityChangedHandler(m_identityChangedToken);
+            m_identityChangedToken = 0;
         }
         if (m_gettingFocusToken)
         {

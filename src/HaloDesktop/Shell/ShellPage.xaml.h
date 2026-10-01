@@ -85,6 +85,7 @@ namespace winrt::HaloDesktop::implementation
         void RefreshJumpBackIn();
         winrt::fire_and_forget RefreshJumpBackInAsync();
         void RefreshAccountIdentity();
+        void OnIdentityChanged();
 
         bool m_attached{ false };
         bool m_paneOpen{ true };
@@ -97,6 +98,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_continueChangedToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_userStateChangedToken{};
+        ::HaloDesktop::Services::IdentityChangedToken m_identityChangedToken{};
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

@@ -8,6 +8,7 @@
 #include <functional>
 #include <memory>
 #include <optional>
+#include <unordered_map>
 
 namespace HaloDesktop::Api
 {
@@ -56,11 +57,17 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<std::optional<std::chrono::milliseconds>>
             ProbeHealthAsync() override;
         [[nodiscard]] concurrency::task<void> SignOutAsync() override;
+        [[nodiscard]] IdentityChangedToken AddIdentityChangedHandler(
+            IdentityChangedHandler handler) override;
+        void RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept override;
 
         // True only when /auth/me hydrated the current signed-in generation.
         // Token establishment alone is not a usable account session.
         [[nodiscard]] concurrency::task<bool> RefreshIdentityAsync();
         void HandleSessionRejected();
+        // The composition root's reset of account-scoped services. It always runs
+        // before the handlers added through AddIdentityChangedHandler, so those
+        // find the services already reset.
         void SetIdentityChangedHandler(std::function<void()> handler);
 
     private:
@@ -76,6 +83,8 @@ namespace HaloDesktop::Services
         winrt::hstring m_userId;
         winrt::hstring m_userName;
         std::function<void()> m_identityChanged;
+        std::unordered_map<IdentityChangedToken, IdentityChangedHandler> m_identityListeners;
+        IdentityChangedToken m_nextIdentityToken{ 1 };
         AuthenticationMode m_mode{ AuthenticationMode::Unknown };
         std::atomic_uint64_t m_browserSignInVersion{};
         std::atomic_uint64_t m_pendingBrowserSessionGeneration{};

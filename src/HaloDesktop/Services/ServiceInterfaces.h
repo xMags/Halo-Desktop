@@ -38,6 +38,9 @@ namespace HaloDesktop::Services
     using CatalogChangedToken = std::uint64_t;
     using CatalogChangedHandler = std::function<void()>;
 
+    using IdentityChangedToken = std::uint64_t;
+    using IdentityChangedHandler = std::function<void()>;
+
     class ICatalogService
     {
     public:
@@ -215,5 +218,13 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual concurrency::task<std::optional<std::chrono::milliseconds>>
             ProbeHealthAsync() = 0;
         [[nodiscard]] virtual concurrency::task<void> SignOutAsync() = 0;
+        // Raised on the UI thread when a sign-in, a sign-out or a rejected session
+        // changes which account is signed in, after the services holding account
+        // data have been reset for it. A view showing account data reloads here:
+        // the page that was on screen when the account changed does not reload by
+        // being navigated to again.
+        [[nodiscard]] virtual IdentityChangedToken AddIdentityChangedHandler(
+            IdentityChangedHandler handler) = 0;
+        virtual void RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept = 0;
     };
 }

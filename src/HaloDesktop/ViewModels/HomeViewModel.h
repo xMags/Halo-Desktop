@@ -68,6 +68,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IAsyncAction ToggleFeaturedLibraryAsync(winrt::HaloDesktop::FeaturedItem item);
         void AdoptSnapshot();
         void AdoptUserStateChange();
+        void ReloadForAccount();
         void ApplyContinue();
         void Rebuild();
         void RebuildFeatured();
@@ -82,9 +83,11 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Shell::LayoutMetricsService> m_layout;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
         std::shared_ptr<::HaloDesktop::Services::LibraryService> m_library;
+        std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::uint64_t m_metricsToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_continueToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_userStateToken{};
+        ::HaloDesktop::Services::IdentityChangedToken m_identityToken{};
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_featured{ nullptr };
         Microsoft::UI::Xaml::DispatcherTimer m_featuredTimer{ nullptr };
