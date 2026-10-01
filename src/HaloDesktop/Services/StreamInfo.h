@@ -32,5 +32,4 @@ namespace HaloDesktop::Services
     [[nodiscard]] bool HasIdentifyingFilename(ParsedStreamInfo const& info) noexcept;
     [[nodiscard]] int CompareStreams(ParsedStreamInfo const& left, ParsedStreamInfo const& right) noexcept;
     [[nodiscard]] winrt::hstring FormatStreamSize(std::optional<std::uint64_t> bytes);
-    [[nodiscard]] winrt::hstring BuildSourceTagLine(ParsedStreamInfo const& info);
 }

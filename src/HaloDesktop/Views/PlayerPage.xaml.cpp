@@ -67,7 +67,8 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_advancing=false;
         auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"",L"",L"");
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();winrt::get_self<PlayerOsd>(overlay)->TitleLabel(request.ShowName().empty()?request.Title():request.ShowName());
-        auto line=request.EpisodeLabel();if(!line.empty()&&!request.SourceTagLine().empty())line=line+L" \x00B7 ";line=line+request.SourceTagLine();winrt::get_self<PlayerOsd>(overlay)->SourceLabel(line);
+        // A film's show name, when it has one, is its own title, so it gets no second line.
+        auto const episodeName=!request.ShowName().empty()&&request.Title()!=request.ShowName()?request.Title():winrt::hstring{};winrt::get_self<PlayerOsd>(overlay)->EpisodeLabel(request.EpisodeLabel(),episodeName);
         FindName(L"MediaPrompt").as<Microsoft::UI::Xaml::Controls::Border>().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
         FindName(L"SubtitleNotice").as<Microsoft::UI::Xaml::Controls::InfoBar>().IsOpen(false);
 

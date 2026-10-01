@@ -290,7 +290,16 @@
       <Grid Margin="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" VerticalAlignment="Top">
         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
         <Button Width="34" Height="34" Padding="0" AutomationProperties.Name="Back" Background="#80141418" BorderBrush="#1FFFFFFF" BorderThickness="1" Click="OnBackClick" CornerRadius="4"><FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="White" Glyph="&#xE72B;" /></Button>
-        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center"><TextBlock x:Name="TitleText" FontSize="{x:Bind ViewModel.TitleFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="White" Text="Halo" /><TextBlock x:Name="SourceLabelText" Margin="0,2,0,0" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#94FFFFFF" Text="SOURCE" /></StackPanel>
+        <!-- The show leads; the episode, its tag then its name, takes the line beneath.
+             A film has only its title. The column is star-sized, so long names trim. -->
+        <StackPanel Grid.Column="1" Margin="14,0,0,0" VerticalAlignment="Center">
+          <TextBlock x:Name="TitleText" FontSize="{x:Bind ViewModel.TitleFontSize, Mode=OneWay}" FontWeight="SemiBold" Foreground="White" Text="Halo" TextTrimming="CharacterEllipsis" />
+          <Grid x:Name="EpisodeLine" Margin="0,3,0,0" ColumnSpacing="8" Visibility="Collapsed">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+            <TextBlock x:Name="EpisodeTagText" VerticalAlignment="Center" CharacterSpacing="60" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="#94FFFFFF" />
+            <TextBlock x:Name="EpisodeNameText" Grid.Column="1" VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="#C7FFFFFF" TextTrimming="CharacterEllipsis" />
+          </Grid>
+        </StackPanel>
       </Grid>
 
       <Border Padding="26,14" HorizontalAlignment="Center" VerticalAlignment="Center" Background="#9E141418" BorderBrush="#24FFFFFF" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.PausedVisibility, Mode=OneWay}"><TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="White" Text="Paused" /></Border>

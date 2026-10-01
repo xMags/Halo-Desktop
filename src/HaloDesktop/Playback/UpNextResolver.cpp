@@ -103,7 +103,6 @@ namespace
             info.Filename,
             info.SizeBytes.value_or(0),
             stream.VideoHash.value_or(L""),
-            Services::BuildSourceTagLine(info),
             stream.RequestHeaders);
     }
 }

@@ -266,6 +266,5 @@ namespace HaloDesktop
         String Filename { get; };
         UInt64 VideoSize { get; };
         String VideoHash { get; };
-        String SourceTagLine { get; };
     };
 }

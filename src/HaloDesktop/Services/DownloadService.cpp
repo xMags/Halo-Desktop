@@ -1081,8 +1081,7 @@ namespace HaloDesktop::Services
                 winrt::hstring{ media.BingeGroup.value_or(L"") },
                 winrt::hstring{ record.FileName },
                 record.TotalBytes,
-                winrt::hstring{ media.VideoHash.value_or(L"") },
-                L"OFFLINE");
+                winrt::hstring{ media.VideoHash.value_or(L"") });
         }
         catch (...)
         {

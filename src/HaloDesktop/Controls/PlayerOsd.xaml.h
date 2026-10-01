@@ -13,7 +13,8 @@ namespace winrt::HaloDesktop::implementation
         PlayerOsd();
         [[nodiscard]] winrt::HaloDesktop::PlayerViewModel ViewModel() const;
         void TitleLabel(winrt::hstring const& value);
-        void SourceLabel(winrt::hstring const& value);
+        // An empty tag and name hide the line, which is what a film shows.
+        void EpisodeLabel(winrt::hstring const& tag, winrt::hstring const& name);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnOsdPointerMoved(winrt::Windows::Foundation::IInspectable const&,
                                Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);

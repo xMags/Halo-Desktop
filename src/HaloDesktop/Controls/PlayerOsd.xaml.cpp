@@ -21,9 +21,14 @@ namespace winrt::HaloDesktop::implementation
         return m_viewModel;
     }
     void PlayerOsd::TitleLabel(winrt::hstring const& value){FindName(L"TitleText").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(value);}
-    void PlayerOsd::SourceLabel(winrt::hstring const& value)
+    void PlayerOsd::EpisodeLabel(winrt::hstring const& tag, winrt::hstring const& name)
     {
-        FindName(L"SourceLabelText").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(value);
+        FindName(L"EpisodeTagText").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(tag);
+        FindName(L"EpisodeNameText").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(name);
+        FindName(L"EpisodeLine").as<Microsoft::UI::Xaml::FrameworkElement>().Visibility(
+            tag.empty() && name.empty()
+                ? Microsoft::UI::Xaml::Visibility::Collapsed
+                : Microsoft::UI::Xaml::Visibility::Visible);
     }
     void PlayerOsd::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                              [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
