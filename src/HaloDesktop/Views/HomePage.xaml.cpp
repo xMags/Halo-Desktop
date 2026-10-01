@@ -98,8 +98,16 @@ namespace
 namespace winrt::HaloDesktop::implementation
 {
     HomePage::HomePage()
-        : m_viewModel(winrt::make<HomeViewModel>(App::Services()))
+        : m_viewModel(winrt::make<HomeViewModel>(App::Services())),
+          m_titleMenu(App::Services())
     {
+    }
+
+    void HomePage::OnContextRequested(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        m_titleMenu.ShowForSubject(args);
     }
 
     winrt::HaloDesktop::HomeViewModel HomePage::ViewModel() const

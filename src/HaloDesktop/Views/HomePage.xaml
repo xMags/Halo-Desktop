@@ -6,6 +6,7 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
   Unloaded="OnUnloaded"
+  ContextRequested="OnContextRequested"
   NavigationCacheMode="Required">
   <Grid>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
@@ -79,8 +80,9 @@
               <!-- The wheel is taken here, on the card itself, because FlipView
                    handles PointerWheelChanged at control level: anything attached
                    to the FlipView or above it only runs after the flip already
-                   happened. See OnHeroPointerWheelChanged. -->
-              <Grid Background="Transparent" Loaded="OnHeroCardLoaded" PointerWheelChanged="OnHeroPointerWheelChanged">
+                   happened. See OnHeroPointerWheelChanged. The Tag is what a
+                   right-click anywhere on the banner opens the title's menu for. -->
+              <Grid Background="Transparent" Loaded="OnHeroCardLoaded" PointerWheelChanged="OnHeroPointerWheelChanged" Tag="{x:Bind}">
                 <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
                 <local:ArtworkImage SourceUrl="{x:Bind Background, Mode=OneWay}" />
                 <Rectangle>

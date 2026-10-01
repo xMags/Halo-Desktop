@@ -37,7 +37,15 @@ namespace
 
 namespace winrt::HaloDesktop::implementation
 {
-    SearchPage::SearchPage() : m_viewModel(winrt::make<SearchViewModel>(App::Services())) {}
+    SearchPage::SearchPage() : m_viewModel(winrt::make<SearchViewModel>(App::Services())), m_titleMenu(App::Services()) {}
+    // Opening a result from its menu records the search the way clicking it does.
+    void SearchPage::OnContextRequested([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        m_titleMenu.ShowForSubject(args, [viewModel = m_viewModel]()
+        {
+            winrt::get_self<SearchViewModel>(viewModel)->RecordQuery();
+        });
+    }
     winrt::HaloDesktop::SearchViewModel SearchPage::ViewModel() const { return m_viewModel; }
     void SearchPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

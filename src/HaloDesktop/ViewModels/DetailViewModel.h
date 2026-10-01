@@ -21,12 +21,16 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Controls::Orientation AsideOrientation()const noexcept;std::int32_t AsideColumn()const noexcept;std::int32_t AsideColumnSpan()const noexcept;double AsideCardWidth()const noexcept;
         void Load(winrt::Windows::Foundation::IInspectable const& parameter);void SelectSeason(std::int32_t index);void Retry();void ToggleLibrary();void OpenSources(winrt::Windows::Foundation::IInspectable const& episode);void OpenPrimarySource();void BrowseSources();void OpenDownloads();void GoBack();
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&);void PropertyChanged(winrt::event_token const&)noexcept;
+        // What an episode row's menu needs beyond the row: the title it belongs to
+        // and every season's episodes, which "earlier" is counted against.
+        [[nodiscard]] winrt::HaloDesktop::DetailNavParams Parameters()const noexcept{return m_params;}
+        [[nodiscard]] std::vector<winrt::HaloDesktop::Episode> AllEpisodes()const;
     private:
-        winrt::Windows::Foundation::IAsyncAction LoadAsync();winrt::Windows::Foundation::IAsyncAction ToggleLibraryAsync();void RebuildEpisodes();void UpdatePrimaryAction();void OpenEpisodeSources(winrt::HaloDesktop::Episode const& episode);void RaiseState();void Raise(wchar_t const*);
+        winrt::Windows::Foundation::IAsyncAction LoadAsync();winrt::Windows::Foundation::IAsyncAction ToggleLibraryAsync();void RebuildEpisodes();void ApplyUserStateChange();void UpdatePrimaryAction();void OpenEpisodeSources(winrt::HaloDesktop::Episode const& episode);void RaiseState();void Raise(wchar_t const*);
         std::shared_ptr<::HaloDesktop::Services::IMetadataService>m_metadata;std::shared_ptr<::HaloDesktop::Services::LibraryService>m_library;std::shared_ptr<::HaloDesktop::Services::ICatalogService>m_catalog;std::shared_ptr<::HaloDesktop::Services::NavigationService>m_navigation;std::shared_ptr<::HaloDesktop::Services::IDownloadService>m_downloads;std::shared_ptr<::HaloDesktop::Services::WatchStateService>m_watch;
         winrt::HaloDesktop::DetailNavParams m_params{nullptr};winrt::HaloDesktop::MediaDetail m_detail{nullptr};
         winrt::HaloDesktop::Episode m_primaryEpisode{nullptr};winrt::hstring m_primaryActionLabel;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>m_episodes{nullptr},m_facts{nullptr},m_availability{nullptr},m_seasons{nullptr};
-        std::vector<std::int32_t>m_seasonValues;std::int32_t m_seasonIndex{};std::uint32_t m_loadVersion{};::HaloDesktop::Services::DownloadChangedToken m_downloadToken{};bool m_loading{},m_error{},m_inLibrary{};winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler>m_propertyChanged;
+        std::vector<std::int32_t>m_seasonValues;std::int32_t m_seasonIndex{};std::uint32_t m_loadVersion{};::HaloDesktop::Services::DownloadChangedToken m_downloadToken{};::HaloDesktop::Services::CatalogChangedToken m_userStateToken{};bool m_loading{},m_error{},m_inLibrary{};winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler>m_propertyChanged;
     };
 }

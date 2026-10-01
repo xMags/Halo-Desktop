@@ -6,7 +6,8 @@
   xmlns:local="using:HaloDesktop"
   NavigationCacheMode="Disabled"
   Loaded="OnLoaded"
-  Unloaded="OnUnloaded">
+  Unloaded="OnUnloaded"
+  ContextRequested="OnContextRequested">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />

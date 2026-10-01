@@ -31,9 +31,11 @@ namespace HaloDesktop::Services
         if (accountVersion == m_accountVersion && version == m_requestVersion)
         {
             m_rows = std::move(rows);
+            m_loaded = true;
         }
     }
     std::vector<::HaloDesktop::Api::Dto::LibraryRow> LibraryService::Rows() const { return m_rows; }
+    bool LibraryService::HasLoaded() const noexcept { return m_loaded; }
     bool LibraryService::Contains(winrt::hstring type,winrt::hstring metaId)const{auto id=type+L":"+metaId;return std::any_of(m_rows.begin(),m_rows.end(),[&](auto const&r){return r.Id==id&&!r.RemovedAt;});}
     concurrency::task<bool> LibraryService::SetMembershipAsync(
         winrt::hstring type,
@@ -106,6 +108,7 @@ namespace HaloDesktop::Services
             if (accountVersion == m_accountVersion && version == m_requestVersion)
             {
                 m_rows = std::move(rows);
+                m_loaded = true;
                 mutationCompleted.set();
                 co_return true;
             }
@@ -125,5 +128,6 @@ namespace HaloDesktop::Services
         ++m_requestVersion;
         m_mutationTail.reset();
         m_rows.clear();
+        m_loaded = false;
     }
 }

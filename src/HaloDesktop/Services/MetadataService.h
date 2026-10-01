@@ -28,6 +28,9 @@ namespace HaloDesktop::Services
             winrt::hstring metaId) override;
         [[nodiscard]] winrt::HaloDesktop::MediaDetail Detail() const override;
         [[nodiscard]] std::int32_t RuntimeMinutes() const noexcept override;
+        [[nodiscard]] concurrency::task<std::int32_t> RuntimeMinutesForAsync(
+            winrt::hstring type,
+            winrt::hstring metaId) override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode>
             Episodes(std::int32_t season) const override;
         void OnAccountChanged();

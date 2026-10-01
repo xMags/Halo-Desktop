@@ -13,7 +13,10 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    ShellPage::ShellPage() = default;
+    ShellPage::ShellPage()
+        : m_titleMenu(App::Services())
+    {
+    }
 
     void ShellPage::OnLoaded(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
@@ -97,6 +100,16 @@ namespace winrt::HaloDesktop::implementation
                     self->RefreshJumpBackIn();
                 }
             });
+        // A right-click menu anywhere can mark one of these episodes watched,
+        // which moves its row on the way finishing it would.
+        m_userStateChangedToken = App::Services().Catalog->AddUserStateChangedHandler(
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->RefreshJumpBackIn();
+                }
+            });
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
@@ -116,6 +129,11 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().Catalog->RemoveContinueChangedHandler(m_continueChangedToken);
             m_continueChangedToken = 0;
+        }
+        if (m_userStateChangedToken != 0)
+        {
+            App::Services().Catalog->RemoveUserStateChangedHandler(m_userStateChangedToken);
+            m_userStateChangedToken = 0;
         }
         if (m_gettingFocusToken)
         {
@@ -308,6 +326,27 @@ namespace winrt::HaloDesktop::implementation
         }
 
         NavigateFromTag(winrt::unbox_value_or<winrt::hstring>(item.Tag(), L""));
+    }
+
+    void ShellPage::OnJumpContextRequested(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        auto const row = sender.try_as<Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+        if (!row)
+        {
+            return;
+        }
+        auto const tag = winrt::unbox_value_or<winrt::hstring>(row.Tag(), L"");
+        std::array<wchar_t const*, 3> const tags{ L"Jump0", L"Jump1", L"Jump2" };
+        for (std::size_t index = 0; index < tags.size(); ++index)
+        {
+            if (tag == tags[index] && m_jumpItems[index])
+            {
+                m_titleMenu.ShowForContinue(row, args, m_jumpItems[index]);
+                return;
+            }
+        }
     }
 
     void ShellPage::OnBackRequested(

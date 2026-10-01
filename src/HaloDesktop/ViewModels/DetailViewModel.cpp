@@ -20,7 +20,58 @@ namespace winrt::HaloDesktop::implementation
 {
     DetailEpisodeViewModel::DetailEpisodeViewModel(winrt::HaloDesktop::Episode e):m_episode(std::move(e)){}winrt::hstring DetailEpisodeViewModel::Tag()const{return m_episode.Tag();}winrt::hstring DetailEpisodeViewModel::Title()const{return m_episode.Title();}winrt::hstring DetailEpisodeViewModel::Blurb()const{return m_episode.Blurb();}winrt::hstring DetailEpisodeViewModel::Runtime()const{return m_episode.Runtime();}winrt::hstring DetailEpisodeViewModel::Aired()const{return m_episode.Aired();}winrt::hstring DetailEpisodeViewModel::VideoId()const{return m_episode.VideoId();}winrt::hstring DetailEpisodeViewModel::Thumbnail()const{return m_episode.Thumbnail();}double DetailEpisodeViewModel::Progress()const noexcept{return m_episode.Progress();}auto DetailEpisodeViewModel::SavedVisibility()const noexcept->Microsoft::UI::Xaml::Visibility{return m_episode.Downloaded()?Visible:Collapsed;}auto DetailEpisodeViewModel::WatchedVisibility()const noexcept->Microsoft::UI::Xaml::Visibility{return m_episode.Watched()?Visible:Collapsed;}auto DetailEpisodeViewModel::InProgressVisibility()const noexcept->Microsoft::UI::Xaml::Visibility{return !m_episode.Watched()&&m_episode.Progress()>0.02?Visible:Collapsed;}auto DetailEpisodeViewModel::IdleVisibility()const noexcept->Microsoft::UI::Xaml::Visibility{return m_episode.Watched()||m_episode.Progress()>0.02?Collapsed:Visible;}winrt::HaloDesktop::Episode DetailEpisodeViewModel::Episode()const{return m_episode;}
     DetailViewModel::DetailViewModel(::HaloDesktop::Services::AppServices const&s):m_metadata(s.Metadata),m_library(s.Library),m_catalog(s.Catalog),m_navigation(s.Navigation),m_downloads(s.Downloads),m_watch(s.WatchState),m_episodes(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_facts(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_availability(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_seasons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()){}
-    DetailViewModel::~DetailViewModel(){Deactivate();}void DetailViewModel::Activate(){if(m_downloadToken)return;m_downloadToken=m_downloads->AddChangedHandler([weak=get_weak()](){if(auto self=weak.get())self->RebuildEpisodes();});}void DetailViewModel::Deactivate()noexcept{if(!m_downloadToken)return;m_downloads->RemoveChangedHandler(m_downloadToken);m_downloadToken=0;}
+    DetailViewModel::~DetailViewModel(){Deactivate();}
+    void DetailViewModel::Activate()
+    {
+        if (!m_downloadToken)
+        {
+            m_downloadToken = m_downloads->AddChangedHandler([weak = get_weak()]()
+            {
+                if (auto self = weak.get()) self->RebuildEpisodes();
+            });
+        }
+        // A right-click menu can mark episodes or change the library while the
+        // page is up, from its own rows or from the pane.
+        if (!m_userStateToken)
+        {
+            m_userStateToken = m_catalog->AddUserStateChangedHandler([weak = get_weak()]()
+            {
+                if (auto self = weak.get()) self->ApplyUserStateChange();
+            });
+        }
+    }
+    void DetailViewModel::Deactivate() noexcept
+    {
+        if (m_downloadToken)
+        {
+            m_downloads->RemoveChangedHandler(m_downloadToken);
+            m_downloadToken = 0;
+        }
+        if (m_userStateToken)
+        {
+            m_catalog->RemoveUserStateChangedHandler(m_userStateToken);
+            m_userStateToken = 0;
+        }
+    }
+    void DetailViewModel::ApplyUserStateChange()
+    {
+        // Mid-load the title on screen is about to be replaced, and the load reads
+        // the same services.
+        if (!m_params || !m_detail || m_loading) return;
+        m_inLibrary = m_library->Contains(m_params.Type(), m_params.MetaId());
+        RebuildEpisodes();
+        UpdatePrimaryAction();
+        for (auto const name : { L"LibraryLabel", L"LibraryGlyph", L"PrimaryActionLabel" }) Raise(name);
+    }
+    std::vector<winrt::HaloDesktop::Episode> DetailViewModel::AllEpisodes() const
+    {
+        std::vector<winrt::HaloDesktop::Episode> episodes;
+        for (auto const season : m_seasonValues)
+        {
+            for (auto const& episode : m_metadata->Episodes(season)) episodes.push_back(episode);
+        }
+        return episodes;
+    }
     winrt::hstring DetailViewModel::Title()const{return m_detail?m_detail.Title():(m_params?m_params.Title():L"");}    // Empty once the hero is up, because the hero says it larger and better. The
     // loading and error states replace the hero wholesale, and those are exactly
     // when the header is the only thing naming what failed to load.

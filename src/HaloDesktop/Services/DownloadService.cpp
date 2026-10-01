@@ -11,12 +11,14 @@
 #include <chrono>
 #include <ctime>
 #include <shellapi.h>
+#include <shlobj_core.h>
 #include <iomanip>
 #include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
 #include <utility>
+#include <wil/resource.h>
 
 namespace
 {
@@ -473,6 +475,33 @@ namespace HaloDesktop::Services
             return false;
         }
         return true;
+    }
+
+    bool DownloadService::RevealInExplorer(winrt::hstring const& id)
+    {
+        auto const record = FindRecord(id);
+        if (!record || record->Status != DownloadStatus::Done || record->PendingDeletion)
+        {
+            return false;
+        }
+        std::filesystem::path video;
+        try
+        {
+            // The same resolution playback uses, which checks the file is still
+            // there and belongs to this account before anything is shown.
+            video = m_engine->FilesForPlayback(record->JobId).VideoPath;
+        }
+        catch (...)
+        {
+            return false;
+        }
+        PIDLIST_ABSOLUTE item{};
+        if (FAILED(::SHParseDisplayName(video.c_str(), nullptr, &item, 0, nullptr)) || !item)
+        {
+            return false;
+        }
+        auto const releaseItem = wil::scope_exit([item]() noexcept { ::ILFree(item); });
+        return SUCCEEDED(::SHOpenFolderAndSelectItems(item, 0, nullptr, 0));
     }
 
     concurrency::task<DownloadStartOutcome> DownloadService::StartDownloadAsync(

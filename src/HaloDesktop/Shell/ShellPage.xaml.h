@@ -4,6 +4,7 @@
 
 #include "Services/NavigationService.h"
 #include "Services/ServiceInterfaces.h"
+#include "Views/TitleMenu.h"
 
 #include <array>
 #include <optional>
@@ -56,6 +57,10 @@ namespace winrt::HaloDesktop::implementation
         void OnContentPointerEnded(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
+        // A Jump back in row opens the same menu as the continue card it mirrors.
+        void OnJumpContextRequested(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args);
 
     private:
         void SetJumpBackVisibility(bool visible);
@@ -91,6 +96,8 @@ namespace winrt::HaloDesktop::implementation
         std::array<winrt::HaloDesktop::ContinueItem, 3> m_jumpItems{ nullptr, nullptr, nullptr };
         ::HaloDesktop::Services::DownloadChangedToken m_downloadChangedToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_continueChangedToken{};
+        ::HaloDesktop::Services::CatalogChangedToken m_userStateChangedToken{};
+        ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };
 }

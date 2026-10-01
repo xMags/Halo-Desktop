@@ -188,6 +188,18 @@ namespace HaloDesktop::Services
 
     std::int32_t MetadataService::RuntimeMinutes() const noexcept { return m_runtimeMinutes; }
 
+    concurrency::task<std::int32_t> MetadataService::RuntimeMinutesForAsync(
+        winrt::hstring type,
+        winrt::hstring metaId)
+    {
+        if (m_detail && m_detail.Type() == type && m_detail.Id() == metaId)
+        {
+            co_return m_runtimeMinutes;
+        }
+        auto const meta = co_await m_api->GetMetaAsync(type, metaId);
+        co_return RuntimeMinutesFrom(meta.Runtime);
+    }
+
     winrt::HaloDesktop::MediaDetail MetadataService::Detail() const
     {
         return m_detail;

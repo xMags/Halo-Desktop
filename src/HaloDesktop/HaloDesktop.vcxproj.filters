@@ -145,6 +145,7 @@
     <ClCompile Include="Services\SourceService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\DownloadSourceMatch.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\StreamInfo.cpp"><Filter>Services</Filter></ClCompile>
+    <ClCompile Include="Services\TitleActions.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Services\WatchStateService.cpp"><Filter>Services</Filter></ClCompile>
     <ClCompile Include="Security\Dpapi.cpp"><Filter>Security</Filter></ClCompile>
     <ClCompile Include="Security\ProtectedHttpHeaders.cpp"><Filter>Security</Filter></ClCompile>
@@ -263,6 +264,7 @@
     <ClInclude Include="Services\SourceService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\DownloadSourceMatch.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\StreamInfo.h"><Filter>Services</Filter></ClInclude>
+    <ClInclude Include="Services\TitleActions.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Services\WatchStateService.h"><Filter>Services</Filter></ClInclude>
     <ClInclude Include="Security\Dpapi.h"><Filter>Security</Filter></ClInclude>
     <ClInclude Include="Security\ProtectedHttpHeaders.h"><Filter>Security</Filter></ClInclude>

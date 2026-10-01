@@ -2,7 +2,10 @@
 
 #include "CatalogPage.g.h"
 
+#include "Views/TitleMenu.h"
+
 #include <cstdint>
+#include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -23,10 +26,13 @@ namespace winrt::HaloDesktop::implementation
         void OnBackClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        // One handler for the page: every poster on it answers a right-click from here.
+        void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         void ApplyLayoutMetrics();
         winrt::HaloDesktop::CatalogViewModel m_viewModel{ nullptr };
+        ::HaloDesktop::Views::TitleMenu m_titleMenu;
         std::uint64_t m_metricsToken{};
     };
 }

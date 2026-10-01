@@ -42,12 +42,18 @@ namespace winrt::HaloDesktop::implementation
         if (m_catalog)
         {
             m_continueToken = m_catalog->AddContinueChangedHandler([this]() { ApplyContinue(); });
+            // Same reasoning once more. A title's right-click menu changes the
+            // library or the watch history from wherever it was opened, Home
+            // included, and the shelves, the continue row and the banner's library
+            // buttons all show one or the other.
+            m_userStateToken = m_catalog->AddUserStateChangedHandler([this]() { AdoptUserStateChange(); });
         }
     }
     HomeViewModel::~HomeViewModel()
     {
         if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
         if (m_catalog && m_continueToken != 0) m_catalog->RemoveContinueChangedHandler(m_continueToken);
+        if (m_catalog && m_userStateToken != 0) m_catalog->RemoveUserStateChangedHandler(m_userStateToken);
         if (m_featuredTimer)
         {
             m_featuredTimer.Stop();
@@ -180,6 +186,23 @@ namespace winrt::HaloDesktop::implementation
         m_appliedVersion = m_catalog->SnapshotVersion();
         Rebuild();
         RaiseState();
+    }
+
+    // The catalog has already rebuilt its projections; this takes them the way a
+    // banner library save does. Rebuild keeps an unchanged banner strip and its
+    // place, so a change made from a menu does not restart the carousel.
+    void HomeViewModel::AdoptUserStateChange()
+    {
+        // Nothing has been shown from a snapshot yet, and the load that shows one
+        // reads the same rebuilt state.
+        if (!m_sourceShelves)
+        {
+            return;
+        }
+        m_sourceShelves = m_catalog->Shelves();
+        m_appliedVersion = m_catalog->SnapshotVersion();
+        ApplyContinue();
+        Rebuild();
     }
 
     void HomeViewModel::ApplyContinue()

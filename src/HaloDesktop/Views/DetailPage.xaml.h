@@ -2,6 +2,10 @@
 
 #include "DetailPage.g.h"
 
+#include "Views/TitleMenu.h"
+
+#include <winrt/Microsoft.UI.Xaml.Input.h>
+
 namespace winrt::HaloDesktop::implementation
 {
     struct DetailPage : DetailPageT<DetailPage>
@@ -21,9 +25,12 @@ namespace winrt::HaloDesktop::implementation
         void OnBrowseSourcesClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnResumeClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnDownloadsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        // Episode rows answer a right-click from here.
+        void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         winrt::HaloDesktop::DetailViewModel m_viewModel{ nullptr };
+        ::HaloDesktop::Views::TitleMenu m_titleMenu;
     };
 }
 

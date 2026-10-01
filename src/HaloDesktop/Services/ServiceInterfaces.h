@@ -80,6 +80,14 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual CatalogChangedToken AddContinueChangedHandler(
             CatalogChangedHandler handler) = 0;
         virtual void RemoveContinueChangedHandler(CatalogChangedToken token) noexcept = 0;
+        // For a library or watch-history change made away from the page that shows
+        // it, such as from a title's right-click menu: rebuilds the projections the
+        // way RebuildLibrary does, then tells every subscriber, so the pages on
+        // screen and the pane re-read them. Synchronous and network free.
+        virtual void PublishUserStateChange() = 0;
+        [[nodiscard]] virtual CatalogChangedToken AddUserStateChangedHandler(
+            CatalogChangedHandler handler) = 0;
+        virtual void RemoveUserStateChangedHandler(CatalogChangedToken token) noexcept = 0;
     };
 
     class IMetadataService
@@ -91,6 +99,11 @@ namespace HaloDesktop::Services
         // Title-level runtime in whole minutes, zero when the addon gave none or
         // the value did not parse. Episodes of a series share the title's value.
         [[nodiscard]] virtual std::int32_t RuntimeMinutes() const noexcept = 0;
+        // The same figure for any title, without disturbing the loaded one: answered
+        // from it when it is the title asked about, otherwise from the server.
+        [[nodiscard]] virtual concurrency::task<std::int32_t> RuntimeMinutesForAsync(
+            winrt::hstring type,
+            winrt::hstring metaId) = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> Episodes(std::int32_t season) const = 0;
     };
 
@@ -127,6 +140,10 @@ namespace HaloDesktop::Services
         virtual bool DeleteReady(winrt::hstring const& id) = 0;
         virtual void RetryFailedTransfers() = 0;
         virtual bool OpenDownloadDirectory() = 0;
+        // Opens Explorer on a finished download's folder with its file selected.
+        // A failure is returned rather than left in ActionError, because the caller
+        // reports it where it happened instead of on the Downloads page.
+        [[nodiscard]] virtual bool RevealInExplorer(winrt::hstring const& id) = 0;
         [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
             Downloads::DownloadStartRequest request) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(

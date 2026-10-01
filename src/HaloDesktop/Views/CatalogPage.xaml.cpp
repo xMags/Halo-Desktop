@@ -12,8 +12,16 @@
 namespace winrt::HaloDesktop::implementation
 {
     CatalogPage::CatalogPage()
-        : m_viewModel(winrt::make<CatalogViewModel>(App::Services()))
+        : m_viewModel(winrt::make<CatalogViewModel>(App::Services())),
+          m_titleMenu(App::Services())
     {
+    }
+
+    void CatalogPage::OnContextRequested(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        m_titleMenu.ShowForSubject(args);
     }
 
     winrt::HaloDesktop::CatalogViewModel CatalogPage::ViewModel() const

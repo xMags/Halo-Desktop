@@ -16,4 +16,18 @@ namespace HaloDesktop::Views
         dialog.Content(winrt::box_value(body));
         return dialog;
     }
+
+    winrt::Microsoft::UI::Xaml::Controls::ContentDialog MakeDeleteFromDeviceDialog(
+        winrt::Microsoft::UI::Xaml::XamlRoot const& xamlRoot,
+        winrt::Microsoft::UI::Xaml::ElementTheme theme)
+    {
+        auto dialog = MakeDialog(
+            xamlRoot,
+            theme,
+            L"Delete from device?",
+            L"This permanently removes the video and its subtitle sidecar from this device.");
+        dialog.PrimaryButtonText(L"Delete");
+        dialog.CloseButtonText(L"Cancel");
+        return dialog;
+    }
 }

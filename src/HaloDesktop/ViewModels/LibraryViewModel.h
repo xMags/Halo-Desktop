@@ -11,6 +11,7 @@ namespace winrt::HaloDesktop::implementation
     struct LibraryViewModel : LibraryViewModelT<LibraryViewModel>
     {
         explicit LibraryViewModel(::HaloDesktop::Services::AppServices const& services);
+        ~LibraryViewModel();
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Items() const;
         [[nodiscard]] auto ItemsView() const { return m_items; }
         [[nodiscard]] std::int32_t FilterIndex() const noexcept;
@@ -31,8 +32,10 @@ namespace winrt::HaloDesktop::implementation
     private:
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
         void Rebuild(); void RaiseState(); void Raise(wchar_t const* name);
+        void ApplyUserStateChange();
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
+        ::HaloDesktop::Services::CatalogChangedToken m_userStateToken{};
         std::vector<winrt::HaloDesktop::MediaSummary> m_sourceItems;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };
         std::int32_t m_filterIndex{}; std::int32_t m_sortIndex{}; std::uint32_t m_loadVersion{};

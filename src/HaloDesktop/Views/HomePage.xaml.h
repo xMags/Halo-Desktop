@@ -2,6 +2,8 @@
 
 #include "HomePage.g.h"
 
+#include "Views/TitleMenu.h"
+
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
@@ -41,11 +43,15 @@ namespace winrt::HaloDesktop::implementation
         void OnContinueScrollRight(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShelfItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShelfSeeAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        // One handler for the page: the banner, the continue strip and every shelf
+        // poster all answer a right-click from here.
+        void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         void ScrollContinueBy(double direction);
 
         winrt::HaloDesktop::HomeViewModel m_viewModel{ nullptr };
+        ::HaloDesktop::Views::TitleMenu m_titleMenu;
         bool m_listsBound{};
     };
 }

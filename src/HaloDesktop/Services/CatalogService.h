@@ -58,6 +58,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] CatalogChangedToken AddContinueChangedHandler(
             CatalogChangedHandler handler) override;
         void RemoveContinueChangedHandler(CatalogChangedToken token) noexcept override;
+        void PublishUserStateChange() override;
+        [[nodiscard]] CatalogChangedToken AddUserStateChangedHandler(
+            CatalogChangedHandler handler) override;
+        void RemoveUserStateChangedHandler(CatalogChangedToken token) noexcept override;
         void OnAccountChanged();
 
     private:
@@ -90,6 +94,8 @@ namespace HaloDesktop::Services
         // these land rather than waiting on an addon before it can be shown.
         void BeginContinueNextFill(std::vector<ContinueNextRequest> requests);
         void NotifyContinueChanged();
+        static void InvokeHandlers(
+            std::unordered_map<CatalogChangedToken, CatalogChangedHandler> const& registered);
         void LoadRecentTerms();
         void SaveRecentTerms();
 
@@ -114,5 +120,7 @@ namespace HaloDesktop::Services
         std::uint64_t m_loadTaskAccountVersion{};
         std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_continueHandlers;
         CatalogChangedToken m_nextContinueToken{ 1 };
+        std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_userStateHandlers;
+        CatalogChangedToken m_nextUserStateToken{ 1 };
     };
 }

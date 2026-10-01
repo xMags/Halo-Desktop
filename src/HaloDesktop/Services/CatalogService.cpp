@@ -677,11 +677,17 @@ namespace HaloDesktop::Services
 
     void CatalogService::NotifyContinueChanged()
     {
+        InvokeHandlers(m_continueHandlers);
+    }
+
+    void CatalogService::InvokeHandlers(
+        std::unordered_map<CatalogChangedToken, CatalogChangedHandler> const& registered)
+    {
         // Copied first: a handler is free to unsubscribe from inside itself, which
         // would otherwise invalidate the iterator running it.
         std::vector<CatalogChangedHandler> handlers;
-        handlers.reserve(m_continueHandlers.size());
-        for (auto const& entry : m_continueHandlers)
+        handlers.reserve(registered.size());
+        for (auto const& entry : registered)
         {
             handlers.push_back(entry.second);
         }
@@ -695,6 +701,28 @@ namespace HaloDesktop::Services
             {
             }
         }
+    }
+
+    void CatalogService::PublishUserStateChange()
+    {
+        RebuildLibrary();
+        InvokeHandlers(m_userStateHandlers);
+    }
+
+    CatalogChangedToken CatalogService::AddUserStateChangedHandler(CatalogChangedHandler handler)
+    {
+        if (!handler)
+        {
+            return 0;
+        }
+        auto const token = m_nextUserStateToken++;
+        m_userStateHandlers.emplace(token, std::move(handler));
+        return token;
+    }
+
+    void CatalogService::RemoveUserStateChangedHandler(CatalogChangedToken token) noexcept
+    {
+        m_userStateHandlers.erase(token);
     }
 
     CatalogChangedToken CatalogService::AddContinueChangedHandler(CatalogChangedHandler handler)

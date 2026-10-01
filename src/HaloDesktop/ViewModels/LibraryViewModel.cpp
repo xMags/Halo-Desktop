@@ -11,7 +11,28 @@ namespace { auto const Visible=winrt::Microsoft::UI::Xaml::Visibility::Visible; 
 namespace winrt::HaloDesktop::implementation
 {
     LibraryViewModel::LibraryViewModel(::HaloDesktop::Services::AppServices const& services)
-        : m_catalog(services.Catalog), m_navigation(services.Navigation), m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()) {}
+        : m_catalog(services.Catalog), m_navigation(services.Navigation), m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+    {
+        // A poster's right-click menu can add or remove a title while the grid is
+        // on screen. Raw capture rather than a weak reference, because get_weak
+        // has nothing to hand out this early in construction; the destructor always
+        // removes the handler, and the catalog only calls it on this thread.
+        if (m_catalog) m_userStateToken = m_catalog->AddUserStateChangedHandler([this]() { ApplyUserStateChange(); });
+    }
+    LibraryViewModel::~LibraryViewModel()
+    {
+        if (m_catalog && m_userStateToken != 0) m_catalog->RemoveUserStateChangedHandler(m_userStateToken);
+    }
+    // The catalog has already rebuilt its library projection. A load in flight or
+    // a failed one owns what the page shows, and replaces it when it finishes.
+    void LibraryViewModel::ApplyUserStateChange()
+    {
+        if (m_loading || m_error) return;
+        m_sourceItems.clear();
+        for (auto const& item : m_catalog->LibraryItems()) m_sourceItems.push_back(item);
+        Rebuild();
+        RaiseState();
+    }
     winrt::Windows::Foundation::IInspectable LibraryViewModel::Items() const { return m_items; }
     std::int32_t LibraryViewModel::FilterIndex() const noexcept { return m_filterIndex; }
     std::int32_t LibraryViewModel::SortIndex() const noexcept { return m_sortIndex; }

@@ -148,13 +148,7 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         try
         {
-            auto dialog = ::HaloDesktop::Views::MakeDialog(
-                XamlRoot(),
-                ActualTheme(),
-                L"Delete from device?",
-                L"This permanently removes the video and its subtitle sidecar from this device.");
-            dialog.PrimaryButtonText(L"Delete");
-            dialog.CloseButtonText(L"Cancel");
+            auto dialog = ::HaloDesktop::Views::MakeDeleteFromDeviceDialog(XamlRoot(), ActualTheme());
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
             {
                 m_viewModel.DeleteSelected();

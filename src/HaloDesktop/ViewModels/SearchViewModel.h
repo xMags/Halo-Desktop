@@ -26,6 +26,8 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Visibility LoadingVisibility() const noexcept; Microsoft::UI::Xaml::Visibility ErrorVisibility() const noexcept; Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
         void SetFilter(std::int32_t index); void Submit(winrt::hstring const& query); void Clear(); void Retry(); void OpenDetail(winrt::Windows::Foundation::IInspectable const& item); void OpenTopMatch(); void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler); void PropertyChanged(winrt::event_token const& token) noexcept;
+        // Keeps the query among the recent terms, which opening any of its results does.
+        void RecordQuery();
     private:
         winrt::Windows::Foundation::IAsyncAction SearchAsync(bool deliberate);
         void Rebuild(); void LoadRecents(); void RaiseState(); void Raise(wchar_t const* name);

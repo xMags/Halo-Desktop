@@ -91,7 +91,7 @@
         selection. They are hidden with the pane, matching the design's expanded-only rule.
       -->
       <NavigationViewItemHeader x:Name="JumpHeader" Margin="0,14,0,0" Content="JUMP BACK IN" Style="{StaticResource HaloNavSectionHeaderStyle}" />
-      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Jump0">
+      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Jump0" ContextRequested="OnJumpContextRequested">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
@@ -104,7 +104,7 @@
           </StackPanel>
         </Grid>
       </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Jump1">
+      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Jump1" ContextRequested="OnJumpContextRequested">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />
@@ -117,7 +117,7 @@
           </StackPanel>
         </Grid>
       </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Jump2">
+      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Jump2" ContextRequested="OnJumpContextRequested">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="24" />

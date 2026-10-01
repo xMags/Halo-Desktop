@@ -22,4 +22,10 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Xaml::ElementTheme theme,
         winrt::hstring const& title,
         winrt::hstring const& body);
+
+    // The question asked before a finished download is deleted, wherever it is
+    // deleted from. Delete is the primary button.
+    [[nodiscard]] winrt::Microsoft::UI::Xaml::Controls::ContentDialog MakeDeleteFromDeviceDialog(
+        winrt::Microsoft::UI::Xaml::XamlRoot const& xamlRoot,
+        winrt::Microsoft::UI::Xaml::ElementTheme theme);
 }

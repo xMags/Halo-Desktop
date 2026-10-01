@@ -2,6 +2,10 @@
 
 #include "SearchPage.g.h"
 
+#include "Views/TitleMenu.h"
+
+#include <winrt/Microsoft.UI.Xaml.Input.h>
+
 namespace winrt::HaloDesktop::implementation
 {
     struct SearchPage : SearchPageT<SearchPage>
@@ -21,9 +25,12 @@ namespace winrt::HaloDesktop::implementation
         void OnShelfItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShelfSeeAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnRecentClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        // One handler for the page: every poster on it answers a right-click from here.
+        void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         winrt::HaloDesktop::SearchViewModel m_viewModel{ nullptr };
+        ::HaloDesktop::Views::TitleMenu m_titleMenu;
         bool m_focusQueryOnLoaded{ true };
     };
 }

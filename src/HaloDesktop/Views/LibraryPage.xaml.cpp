@@ -10,7 +10,11 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    LibraryPage::LibraryPage() : m_viewModel(winrt::make<LibraryViewModel>(App::Services())) {}
+    LibraryPage::LibraryPage() : m_viewModel(winrt::make<LibraryViewModel>(App::Services())), m_titleMenu(App::Services()) {}
+    void LibraryPage::OnContextRequested([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        m_titleMenu.ShowForSubject(args);
+    }
     winrt::HaloDesktop::LibraryViewModel LibraryPage::ViewModel() const { return m_viewModel; }
     void LibraryPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {

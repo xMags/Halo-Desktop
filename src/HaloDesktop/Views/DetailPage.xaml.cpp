@@ -10,8 +10,33 @@
 namespace winrt::HaloDesktop::implementation
 {
     DetailPage::DetailPage()
-        : m_viewModel(winrt::make<DetailViewModel>(App::Services()))
+        : m_viewModel(winrt::make<DetailViewModel>(App::Services())),
+          m_titleMenu(App::Services())
     {
+    }
+    void DetailPage::OnContextRequested([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        auto const subject = ::HaloDesktop::Views::TitleMenu::SubjectOf(args);
+        auto const row = subject ? subject->Item.try_as<winrt::HaloDesktop::DetailEpisodeViewModel>() : nullptr;
+        if (!row)
+        {
+            return;
+        }
+        auto const viewModel = winrt::get_self<DetailViewModel>(m_viewModel);
+        auto const parameters = viewModel->Parameters();
+        if (!parameters)
+        {
+            return;
+        }
+        ::HaloDesktop::Views::EpisodeMenuTarget target;
+        target.Type = parameters.Type();
+        target.MetaId = parameters.MetaId();
+        target.ShowName = m_viewModel.Title();
+        target.Poster = m_viewModel.Poster();
+        target.Episode = winrt::get_self<DetailEpisodeViewModel>(row)->Episode();
+        target.Episodes = viewModel->AllEpisodes();
+        target.Play = [owner = m_viewModel, row]() { owner.OpenSources(row); };
+        m_titleMenu.ShowForEpisode(subject->Anchor, args, std::move(target));
     }
     winrt::HaloDesktop::DetailViewModel DetailPage::ViewModel() const { return m_viewModel; }
     void DetailPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args){m_viewModel.Load(args.Parameter());}

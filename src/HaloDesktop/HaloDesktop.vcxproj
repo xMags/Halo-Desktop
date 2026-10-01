@@ -250,6 +250,7 @@
     <ClInclude Include="Services\SettingsSyncPolicy.h" />
     <ClInclude Include="Services\SourceService.h" />
     <ClInclude Include="Services\StreamInfo.h" />
+    <ClInclude Include="Services\TitleActions.h" />
     <ClInclude Include="Services\WatchStateService.h" />
     <ClInclude Include="Security\Dpapi.h" />
     <ClInclude Include="Storage\AppStoragePaths.h" />
@@ -293,6 +294,7 @@
       <DependentUpon>DownloadsPage.xaml</DependentUpon>
     </ClInclude>
     <ClInclude Include="Views\PageDialog.h" />
+    <ClInclude Include="Views\TitleMenu.h" />
     <ClInclude Include="Views\HomePage.xaml.h">
       <DependentUpon>HomePage.xaml</DependentUpon>
     </ClInclude>
@@ -469,6 +471,7 @@
     <ClCompile Include="Services\SettingsSyncPolicy.cpp" />
     <ClCompile Include="Services\SourceService.cpp" />
     <ClCompile Include="Services\StreamInfo.cpp" />
+    <ClCompile Include="Services\TitleActions.cpp" />
     <ClCompile Include="Services\WatchStateService.cpp" />
     <ClCompile Include="Security\Dpapi.cpp" />
     <ClCompile Include="Storage\AppStoragePaths.cpp" />
@@ -515,6 +518,7 @@
       <DependentUpon>DownloadsPage.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Views\PageDialog.cpp" />
+    <ClCompile Include="Views\TitleMenu.cpp" />
     <ClCompile Include="Views\HomePage.xaml.cpp">
       <DependentUpon>HomePage.xaml</DependentUpon>
     </ClCompile>

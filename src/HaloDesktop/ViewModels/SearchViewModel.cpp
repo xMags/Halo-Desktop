@@ -29,7 +29,8 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::SetFilter(std::int32_t index){if(index>=0&&index<=2&&index!=m_filterIndex){m_filterIndex=index;Rebuild();}}
     void SearchViewModel::Submit(winrt::hstring const&query){m_query=query;Raise(L"Query");m_debounceTimer.Stop();if(m_query.size()<2){++m_searchVersion;m_loading=false;m_error=false;m_results.Clear();m_topMatch=nullptr;m_movieCount=m_seriesCount=0;RaiseState();return;}static_cast<void>(SearchAsync(true));}
     void SearchViewModel::Clear(){Query(L"");}void SearchViewModel::Retry(){static_cast<void>(SearchAsync(false));}
-    void SearchViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const&item){if(item){m_catalog->RecordRecent(m_query);LoadRecents();auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));}}
+    void SearchViewModel::RecordQuery(){m_catalog->RecordRecent(m_query);LoadRecents();}
+    void SearchViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const&item){if(item){RecordQuery();auto media=item.as<winrt::HaloDesktop::MediaSummary>();m_navigation->GoTo(::HaloDesktop::Services::Page::Detail,winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(media.Type(),media.Id(),media.Title(),media.Poster()));}}
     void SearchViewModel::OpenTopMatch(){OpenDetail(m_topMatch);}winrt::event_token SearchViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const&h){return m_propertyChanged.add(h);}void SearchViewModel::PropertyChanged(winrt::event_token const&t)noexcept{m_propertyChanged.remove(t);}
     void SearchViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
     {
