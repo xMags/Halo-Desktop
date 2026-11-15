@@ -1,0 +1,36 @@
+namespace HaloDesktop
+{
+    // The medal's metal, one per picture tier: gold for 4K, silver for Full HD,
+    // bronze for HD and plain below that.
+    enum QualityMedalFinish
+    {
+        Gold,
+        Silver,
+        Bronze,
+        Plain,
+    };
+
+    // Small sits inline in a line of text, Medium heads a source row, Large the pick
+    // card and the fullscreen player.
+    enum QualityMedalSize
+    {
+        Small,
+        Medium,
+        Large,
+    };
+
+    // A quality as a medal: the resolution on a dark plate in the metal's own colour,
+    // and a tag cut into the metal beside it. Fixed width per size, so a column of
+    // them lines up whatever each one says.
+    [default_interface]
+    runtimeclass QualityMedal : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        QualityMedal();
+        String Plate;
+        // The tag beside the plate. Empty means no tag, and the plate then fills the
+        // medal. Not named Tag, which every FrameworkElement already has.
+        String TagText;
+        QualityMedalFinish Finish;
+        QualityMedalSize Size;
+    }
+}

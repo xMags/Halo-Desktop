@@ -1,3 +1,5 @@
+#include "Controls/HaloMarkGeometry.h"
+#include "ViewModels/QualityMedalPolicy.h"
 #include "Api/OpenSubtitlesHashPolicy.h"
 #include "Api/ResponseSizePolicy.h"
 #include "Playback/PlaybackPolicy.h"
@@ -10,7 +12,9 @@
 #include "Services/Downloads/TransferRateWindow.h"
 #include "Shell/WindowPresentationPolicy.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
@@ -19,6 +23,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace
@@ -364,6 +369,150 @@ namespace
                 "failed fullscreen exit changed presentation state");
     }
 
+    // Mirrors the reference's "medals are gold, silver and bronze by tier, tagged by
+    // range, and tagless below HD" (sources.test.ts).
+    void TestQualityMedals()
+    {
+        using HaloDesktop::ViewModels::Medal;
+        using HaloDesktop::ViewModels::MedalFinish;
+        using HaloDesktop::ViewModels::MedalFor;
+        auto const medal=[](std::wstring_view quality,std::wstring_view range=L"SDR")
+        {
+            return MedalFor(quality,range);
+        };
+
+        Require(medal(L"2160p",L"DV")==Medal{L"4K",L"DV",MedalFinish::Gold},"a Dolby Vision 4K source was not a gold DV medal");
+        Require(medal(L"2160p")==Medal{L"4K",L"UHD",MedalFinish::Gold},"a 4K source was not a gold UHD medal");
+        Require(medal(L"1080p",L"HDR10")==Medal{L"1080p",L"HDR",MedalFinish::Silver},"an HDR10 1080p source was not a silver HDR medal");
+        Require(medal(L"1440p")==Medal{L"1440p",L"QHD",MedalFinish::Silver},"a 1440p source was not a silver QHD medal");
+        Require(medal(L"720p")==Medal{L"720p",L"HD",MedalFinish::Bronze},"a 720p source was not a bronze HD medal");
+        Require(medal(L"480p")==Medal{L"480p",L"",MedalFinish::Plain},"a 480p source gained a tag or a metal");
+        // The reference prints an em dash; this repository uses an en dash for it.
+        Require(medal(L"UNKNOWN")==Medal{L"\x2013",L"",MedalFinish::Plain},"an unparsed quality was not a plain dash medal");
+
+        // Every range that is present and not SDR reads as HDR; an absent range is SDR.
+        Require(medal(L"2160p",L"HLG").Tag==L"HDR","an HLG source was not tagged HDR");
+        Require(medal(L"720p",L"HDR").Tag==L"HDR","an HDR source was not tagged HDR");
+        Require(medal(L"1080p",L"").Tag==L"FHD","a source without a range lost its tier tag");
+        Require(medal(L"SD",L"DV")==Medal{L"SD",L"DV",MedalFinish::Plain},"a Dolby Vision SD source lost its tag or gained a metal");
+    }
+
+    // Mirrors the reference's "quality is classified by pixels, and dynamic range
+    // replaces the qualifier" (playerLogic.test.ts).
+    void TestQualityMedalsFromPicture()
+    {
+        using HaloDesktop::Playback::VideoDynamicRange;
+        using HaloDesktop::Playback::VideoFormat;
+        using HaloDesktop::ViewModels::Medal;
+        using HaloDesktop::ViewModels::MedalFinish;
+        using HaloDesktop::ViewModels::MedalForPicture;
+        auto const video=[](std::int32_t width,std::int32_t height,VideoDynamicRange range=VideoDynamicRange::Standard)
+        {
+            return MedalForPicture(VideoFormat{width,height,range});
+        };
+
+        Require(video(3840,1600)==Medal{L"4K",L"UHD",MedalFinish::Gold},"a scope 4K master was not a gold UHD medal");
+        Require(video(1920,800)==Medal{L"1080p",L"FHD",MedalFinish::Silver},"a scope 1080p master was not a silver FHD medal");
+        Require(video(1280,720,VideoDynamicRange::Hdr)==Medal{L"720p",L"HDR",MedalFinish::Bronze},"a PQ 720p master was not a bronze HDR medal");
+        Require(video(3840,2160,VideoDynamicRange::DolbyVision)==Medal{L"4K",L"DV",MedalFinish::Gold},"a Dolby Vision 4K master was not a gold DV medal");
+        Require(video(720,480,VideoDynamicRange::Hlg)==Medal{L"SD",L"HLG",MedalFinish::Plain},"an HLG SD file was not a plain HLG medal");
+        Require(video(720,480)==Medal{L"SD",L"",MedalFinish::Plain},"an SD file gained a tag or a metal");
+        Require(!video(0,0).has_value(),"a file with no picture was given a medal");
+        Require(video(2560,1440)==Medal{L"1440p",L"QHD",MedalFinish::Silver},"a 1440p master was not a silver QHD medal");
+    }
+
+    // The mark's bars, cut by the front ring's clearance band, as HaloMark.tsx masks
+    // them: nothing of a bar is left inside the band, and the rest of each bar is.
+    void TestHaloMarkGeometry()
+    {
+        using HaloDesktop::Controls::HaloMarkBarPieces;
+        using HaloDesktop::Controls::HaloMarkFrontRingPoint;
+        using HaloDesktop::Controls::HaloMarkRingClearance;
+        using HaloDesktop::Controls::HaloMarkRingWidth;
+        using HaloDesktop::Controls::HaloMarkWeight;
+        using HaloDesktop::Controls::HaloMarkWeightFor;
+        using HaloDesktop::Controls::MarkPoint;
+        using HaloDesktop::Controls::MarkPolygon;
+
+        Require(HaloMarkWeightFor(16.0)==HaloMarkWeight::Small,"a 16px mark was not drawn heavier");
+        Require(HaloMarkWeightFor(24.0)==HaloMarkWeight::Small,"a 24px mark was not drawn heavier");
+        Require(HaloMarkWeightFor(25.0)==HaloMarkWeight::Regular,"a 25px mark was drawn heavier");
+        Require(HaloMarkRingWidth(HaloMarkWeight::Small)==7.0&&HaloMarkRingClearance(HaloMarkWeight::Small)==3.0,
+                "a small mark's ring is not 7 wide with 3 clearance");
+        Require(HaloMarkRingWidth(HaloMarkWeight::Regular)==5.0&&HaloMarkRingClearance(HaloMarkWeight::Regular)==5.0,
+                "a regular mark's ring is not 5 wide with 5 clearance");
+
+        auto const left=HaloMarkFrontRingPoint(0.0);
+        auto const right=HaloMarkFrontRingPoint(1.0);
+        // rotate(-16 32 34) applied to (5,34) and (59,34).
+        Require(std::abs(left.X-6.0459)<0.001&&std::abs(left.Y-41.4422)<0.001,"the front ring does not start at the tilted left end");
+        Require(std::abs(right.X-57.9541)<0.001&&std::abs(right.Y-26.5578)<0.001,"the front ring does not end at the tilted right end");
+
+        auto const distanceToRing=[](MarkPoint point)
+        {
+            auto best=(std::numeric_limits<double>::max)();
+            for(int index=0;index<=20000;++index)
+            {
+                auto const sample=HaloMarkFrontRingPoint(static_cast<double>(index)/20000.0);
+                best=(std::min)(best,std::hypot(point.X-sample.X,point.Y-sample.Y));
+            }
+            return best;
+        };
+        // Even-odd point-in-polygon.
+        auto const inside=[](MarkPolygon const& polygon,MarkPoint point)
+        {
+            bool result=false;
+            for(std::size_t i=0,j=polygon.size()-1;i<polygon.size();j=i++)
+            {
+                auto const& a=polygon[i];
+                auto const& b=polygon[j];
+                if((a.Y>point.Y)!=(b.Y>point.Y)
+                    &&point.X<(b.X-a.X)*(point.Y-a.Y)/(b.Y-a.Y)+a.X)
+                {
+                    result=!result;
+                }
+            }
+            return result;
+        };
+
+        for(auto const weight:{HaloMarkWeight::Regular,HaloMarkWeight::Small})
+        {
+            auto const half=(HaloMarkRingWidth(weight)+HaloMarkRingClearance(weight))/2.0;
+            auto const pieces=HaloMarkBarPieces(weight);
+            Require(pieces.size()==4,"the mark did not split each bar into a top and a bottom piece");
+            for(auto const& piece:pieces)
+            {
+                Require(piece.size()>=3,"a bar piece is not a polygon");
+                for(auto const& point:piece)
+                {
+                    auto const inLeftBar=point.X>=13.0-1e-9&&point.X<=25.0+1e-9;
+                    auto const inRightBar=point.X>=39.0-1e-9&&point.X<=51.0+1e-9;
+                    Require(inLeftBar||inRightBar,"a bar piece reaches outside its bar");
+                    Require(point.Y>=7.0-1e-9&&point.Y<=57.0+1e-9,"a bar piece reaches above or below its bar");
+                }
+            }
+            // A grid over both bars: a point inside a bar's rounded outline is drawn
+            // exactly when it stands clear of the band.
+            for(double barLeft:{13.0,39.0})
+            {
+                for(double x=barLeft+0.25;x<barLeft+12.0;x+=0.5)
+                {
+                    for(double y=7.25;y<57.0;y+=0.5)
+                    {
+                        auto const cx=barLeft+6.0;
+                        auto const cy=std::clamp(y,13.0,51.0);
+                        if(std::hypot(x-cx,y-cy)>6.0-0.05)continue;
+                        auto const distance=distanceToRing({x,y});
+                        if(std::abs(distance-half)<0.05)continue;
+                        auto drawn=false;
+                        for(auto const& piece:pieces)drawn=drawn||inside(piece,{x,y});
+                        Require(drawn==(distance>half),"a bar point was drawn inside the band, or cut outside it");
+                    }
+                }
+            }
+        }
+    }
+
     void TestVideoQualityBadges()
     {
         using HaloDesktop::Playback::ClassifyVideoQuality;
@@ -535,6 +684,9 @@ int main()
         TestResponseSizePolicy();
         TestWindowPresentationPolicy();
         TestVideoQualityBadges();
+        TestQualityMedals();
+        TestQualityMedalsFromPicture();
+        TestHaloMarkGeometry();
         TestAddonSelection();
         TestTemporaryFileCleanup();
         TestScrubPreviewMapping();

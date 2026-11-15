@@ -15,24 +15,35 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Canvas Grid.RowSpan="2" IsHitTestVisible="False">
-            <Ellipse Width="760" Height="520" Canvas.Left="-280" Canvas.Top="-340">
-                <Ellipse.Fill>
-                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                        <GradientStop Offset="0" Color="#2160CDFF" />
-                        <GradientStop Offset="1" Color="#0060CDFF" />
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-            <Ellipse Width="720" Height="500" Canvas.Left="880" Canvas.Top="-350">
-                <Ellipse.Fill>
-                    <RadialGradientBrush Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
-                        <GradientStop Offset="0" Color="#1AA878FF" />
-                        <GradientStop Offset="1" Color="#00A878FF" />
-                    </RadialGradientBrush>
-                </Ellipse.Fill>
-            </Ellipse>
-        </Canvas>
+        <!--
+            The window ground is painted, not left to the system backdrop: Mica tints
+            toward the desktop wallpaper, so the ground was never the palette's own
+            colour. A child rather than RootGrid.Background so it resolves under the
+            RequestedTheme the theme service sets on the root.
+        -->
+        <Border Grid.RowSpan="2" Background="{ThemeResource HaloMicaBrush}" IsHitTestVisible="False" />
+
+        <!--
+            Two ambient glows behind the shell, placed as the reference places them: the
+            first off the top-left corner, the second anchored to the right edge so it
+            follows the window as it widens.
+        -->
+        <Grid Grid.RowSpan="2" IsHitTestVisible="False">
+            <Ellipse
+                Width="760"
+                Height="520"
+                Margin="-280,-340,0,0"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Top"
+                Fill="{ThemeResource HaloGlowABrush}" />
+            <Ellipse
+                Width="720"
+                Height="500"
+                Margin="0,-350,-160,0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Fill="{ThemeResource HaloGlowBBrush}" />
+        </Grid>
 
         <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" />
         <Grid Grid.Row="1">

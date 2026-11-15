@@ -9,12 +9,14 @@
 #include "SubtitleAppearanceViewModel.g.h"
 #include "PlayerViewModel.g.h"
 #include "Services/AppServices.h"
+#include "ViewModels/QualityMedalPolicy.h"
 
 #include <chrono>
 #include <cstdint>
 #include <functional>
 #include <vector>
 #include <memory>
+#include <optional>
 #include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Windows.Foundation.Collections.h>
@@ -127,7 +129,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring QualityTierText() const;
         [[nodiscard]] winrt::hstring QualityDetailText() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility QualityBadgeVisibility() const noexcept;
-        [[nodiscard]] double QualityBadgeFontSize() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish QualityFinish() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalSize QualitySize() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleTracks() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AddonSubtitles()const;
@@ -245,7 +248,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Playback::PlaybackState m_state;
         // Classified once per format change rather than per notification: the engine
         // reports several times a second and the format holds for a whole file.
-        ::HaloDesktop::Playback::VideoQualityBadge m_qualityBadge;
+        std::optional<::HaloDesktop::ViewModels::Medal> m_qualityMedal;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_hideTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_upNextTimer{ nullptr };
         // One-shot, reused for both edges of the buffering indicator: it delays the

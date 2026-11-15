@@ -1,0 +1,12 @@
+namespace HaloDesktop
+{
+    // The Halo mark as vector geometry: the bars take the theme's accent fill and the
+    // ring its primary ink, so the mark follows the theme on its own.
+    [default_interface]
+    runtimeclass HaloMark : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        HaloMark();
+        // Edge length in pixels. At or below 24 the ring is drawn heavier.
+        Double Size;
+    }
+}

@@ -17,6 +17,7 @@
 #include "Playback/PlaybackPolicy.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/QualityMedalProjection.h"
 #include "ViewModels/ScrubPreviewViewModel.h"
 #include "ViewModels/SubtitlePreviewMetrics.h"
 
@@ -436,15 +437,25 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring PlayerViewModel::QualityTierText() const
     {
-        return winrt::hstring(m_qualityBadge.Tier);
+        return m_qualityMedal ? winrt::hstring(m_qualityMedal->Plate) : winrt::hstring{};
     }
     winrt::hstring PlayerViewModel::QualityDetailText() const
     {
-        return winrt::hstring(m_qualityBadge.Detail);
+        return m_qualityMedal ? winrt::hstring(m_qualityMedal->Tag) : winrt::hstring{};
+    }
+    winrt::HaloDesktop::QualityMedalFinish PlayerViewModel::QualityFinish() const noexcept
+    {
+        return m_qualityMedal ? ::HaloDesktop::ViewModels::ToQualityMedalFinish(m_qualityMedal->Finish)
+                              : winrt::HaloDesktop::QualityMedalFinish::Plain;
+    }
+    winrt::HaloDesktop::QualityMedalSize PlayerViewModel::QualitySize() const noexcept
+    {
+        return m_windowPresentation->IsFullscreen() ? winrt::HaloDesktop::QualityMedalSize::Large
+                                                    : winrt::HaloDesktop::QualityMedalSize::Medium;
     }
     Microsoft::UI::Xaml::Visibility PlayerViewModel::QualityBadgeVisibility() const noexcept
     {
-        // No tier means no video worth describing: an audio-only file, or a file
+        // No medal means no video worth describing: an audio-only file, or a file
         // whose first frame has not been decoded yet.
         //
         // An open panel hides it too. The panel puts its close button in the same
@@ -452,11 +463,7 @@ namespace winrt::HaloDesktop::implementation
         // other as one unreadable pile. The badge describes the stream the panel
         // exists to change, and it will still be there once the panel is shut, so
         // it is the one that gives way.
-        return (m_qualityBadge.Tier.empty() || m_panelIndex >= 0) ? Collapsed : Visible;
-    }
-    double PlayerViewModel::QualityBadgeFontSize() const noexcept
-    {
-        return m_windowPresentation->IsFullscreen() ? 12.5 : 10.5;
+        return (!m_qualityMedal || m_panelIndex >= 0) ? Collapsed : Visible;
     }
     winrt::Windows::Foundation::IInspectable PlayerViewModel::AudioTracks() const
     {
@@ -961,8 +968,8 @@ namespace winrt::HaloDesktop::implementation
         }
         if (videoChanged)
         {
-            m_qualityBadge = m_state.Video ? ::HaloDesktop::Playback::ClassifyVideoQuality(*m_state.Video)
-                                           : ::HaloDesktop::Playback::VideoQualityBadge{};
+            m_qualityMedal = m_state.Video ? ::HaloDesktop::ViewModels::MedalForPicture(*m_state.Video)
+                                           : std::nullopt;
         }
         RaisePlaybackState();
         ApplyBufferingState();
@@ -986,7 +993,7 @@ namespace winrt::HaloDesktop::implementation
                                      L"AudioSummary", L"SubtitleSummary", L"SubtitlesOffSelected",
                                      L"IsPaused", L"PausedVisibility", L"PlayingVisibility",
                                      L"BufferingLabelVisibility", L"BufferingRingSize",
-                                     L"QualityTierText", L"QualityDetailText", L"QualityBadgeVisibility",
+                                     L"QualityTierText", L"QualityDetailText", L"QualityFinish", L"QualityBadgeVisibility",
                                      L"IsVideoFilled", L"FitIconVisibility", L"FillIconVisibility" })
         {
             Raise(property);
@@ -1069,7 +1076,7 @@ namespace winrt::HaloDesktop::implementation
         for (auto const property : { L"IsFullscreen", L"EnterFullscreenIconVisibility",
                                      L"ExitFullscreenIconVisibility", L"PlayButtonSize", L"TransportButtonSize",
                                      L"HeaderPadding", L"TransportPadding", L"TitleFontSize",
-                                     L"BufferingRingSize", L"QualityBadgeFontSize" })
+                                     L"BufferingRingSize", L"QualitySize" })
         {
             Raise(property);
         }

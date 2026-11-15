@@ -195,6 +195,14 @@ namespace
         return winrt::hstring{ completed.front().JobId };
     }
 
+    // A destructive entry is drawn in the critical colour, as every control that
+    // removes something is.
+    enum class EntryTone
+    {
+        Standard,
+        Destructive,
+    };
+
     // One menu being put together: the services its entries act through, where
     // their dialogs open, and what runs ahead of any navigation they make.
     class MenuComposer final
@@ -214,7 +222,11 @@ namespace
         {
         }
 
-        void Item(winrt::hstring const& label, wchar_t const* glyph, std::function<void()> action)
+        void Item(
+            winrt::hstring const& label,
+            wchar_t const* glyph,
+            std::function<void()> action,
+            EntryTone tone = EntryTone::Standard)
         {
             if (m_separatorPending && m_flyout.Items().Size() > 0)
             {
@@ -226,6 +238,13 @@ namespace
             winrt::Microsoft::UI::Xaml::Controls::MenuFlyoutItem item;
             item.Text(label);
             item.Icon(icon);
+            if (tone == EntryTone::Destructive)
+            {
+                item.Style(winrt::Microsoft::UI::Xaml::Application::Current()
+                    .Resources()
+                    .Lookup(winrt::box_value(L"HaloDangerMenuFlyoutItemStyle"))
+                    .as<winrt::Microsoft::UI::Xaml::Style>());
+            }
             item.Click([action = std::move(action)](
                 winrt::Windows::Foundation::IInspectable const&,
                 winrt::Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -369,10 +388,14 @@ namespace
                     ReportFailure(host, DownloadFailedTitle, RevealFailedBody);
                 }
             });
-            Item(L"Delete from device", DeleteGlyph, [downloads = m_downloads, host = m_host, jobId = *job]()
-            {
-                DeleteFromDevice(downloads, jobId, host);
-            });
+            Item(
+                L"Delete from device",
+                DeleteGlyph,
+                [downloads = m_downloads, host = m_host, jobId = *job]()
+                {
+                    DeleteFromDevice(downloads, jobId, host);
+                },
+                EntryTone::Destructive);
         }
 
         // At the pointer for a click or a press-and-hold, under the element for the

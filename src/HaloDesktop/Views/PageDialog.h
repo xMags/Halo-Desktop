@@ -6,6 +6,15 @@
 
 namespace HaloDesktop::Views
 {
+    // What the primary button of a dialog does. A destructive primary is drawn as the
+    // filled danger button, so the action that removes something reads as such before
+    // it is pressed.
+    enum class DialogTone
+    {
+        Standard,
+        Destructive,
+    };
+
     // A ContentDialog is hosted in the XamlRoot's popup root, which is a sibling of the
     // content root rather than a descendant of it, so the RequestedTheme the theme
     // service sets on the shell never reaches one: a dialog raised from the dark app on
@@ -21,10 +30,11 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Xaml::XamlRoot const& xamlRoot,
         winrt::Microsoft::UI::Xaml::ElementTheme theme,
         winrt::hstring const& title,
-        winrt::hstring const& body);
+        winrt::hstring const& body,
+        DialogTone tone = DialogTone::Standard);
 
     // The question asked before a finished download is deleted, wherever it is
-    // deleted from. Delete is the primary button.
+    // deleted from. Delete is the primary button, drawn destructive.
     [[nodiscard]] winrt::Microsoft::UI::Xaml::Controls::ContentDialog MakeDeleteFromDeviceDialog(
         winrt::Microsoft::UI::Xaml::XamlRoot const& xamlRoot,
         winrt::Microsoft::UI::Xaml::ElementTheme theme);

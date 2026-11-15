@@ -12,6 +12,8 @@
 
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/QualityMedalPolicy.h"
+#include "ViewModels/QualityMedalProjection.h"
 #include "ViewModels/SourcePresentation.h"
 
 #include <algorithm>
@@ -125,6 +127,12 @@ namespace winrt::HaloDesktop::implementation
         if (previous.Progress() != m_item.Progress()) raise(L"Progress");
         if (previous.Detail() != m_item.Detail()) raise(L"Detail");
         if (previous.Quality() != m_item.Quality() || previous.Codec() != m_item.Codec()) raise(L"QualityLine");
+        if (previous.Quality() != m_item.Quality() || previous.Hdr() != m_item.Hdr())
+        {
+            raise(L"QualityBadgeTier");
+            raise(L"QualityBadgeDetail");
+            raise(L"QualityTone");
+        }
         if (previous.Size() != m_item.Size()) raise(L"Size");
         if (previous.Subs() != m_item.Subs())
         {
@@ -139,11 +147,6 @@ namespace winrt::HaloDesktop::implementation
             || previous.TotalBytes() != m_item.TotalBytes()) raise(L"DownloadedLine");
         if (previous.FileName() != m_item.FileName()) raise(L"FileName");
         if (previous.AddedLabel() != m_item.AddedLabel()) raise(L"AddedLabel");
-        if (previous.Hdr() != m_item.Hdr())
-        {
-            raise(L"QualityBadgeDetail");
-            raise(L"QualityTone");
-        }
         if (previous.State() != m_item.State())
         {
             // The badges and row actions are views of the one state field, so they move together.
@@ -233,13 +236,17 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring DownloadRowViewModel::FileName() const { return m_item.FileName(); }
     winrt::hstring DownloadRowViewModel::AddedLabel() const { return m_item.AddedLabel(); }
-    winrt::hstring DownloadRowViewModel::QualityBadgeTier() const { return Sources::BadgeTierLabel(Sources::TierOf(m_item.Quality())); }
-    winrt::hstring DownloadRowViewModel::QualityBadgeDetail() const { return m_item.Hdr() ? winrt::hstring{ L"HDR" } : winrt::hstring{}; }
-    winrt::HaloDesktop::QualityBadgeTone DownloadRowViewModel::QualityTone() const noexcept
+    // The item keeps only whether the release is HDR, not which range it names, so a
+    // Dolby Vision download is stamped HDR rather than DV.
+    ::HaloDesktop::ViewModels::Medal DownloadRowViewModel::MedalForItem() const
     {
-        return Sources::IsPremiumTier(Sources::TierOf(m_item.Quality()))
-            ? winrt::HaloDesktop::QualityBadgeTone::Gold
-            : winrt::HaloDesktop::QualityBadgeTone::Muted;
+        return ::HaloDesktop::ViewModels::MedalFor(m_item.Quality(), m_item.Hdr() ? L"HDR" : L"SDR");
+    }
+    winrt::hstring DownloadRowViewModel::QualityBadgeTier() const { return winrt::hstring{ MedalForItem().Plate }; }
+    winrt::hstring DownloadRowViewModel::QualityBadgeDetail() const { return winrt::hstring{ MedalForItem().Tag }; }
+    winrt::HaloDesktop::QualityMedalFinish DownloadRowViewModel::QualityTone() const
+    {
+        return ::HaloDesktop::ViewModels::ToQualityMedalFinish(MedalForItem().Finish);
     }
     winrt::event_token DownloadRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }

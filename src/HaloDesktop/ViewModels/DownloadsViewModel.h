@@ -5,6 +5,7 @@
 #include "DownloadsViewModel.g.h"
 #include "Services/AppServices.h"
 #include "Services/ServiceInterfaces.h"
+#include "ViewModels/QualityMedalPolicy.h"
 #include "ViewModels/SourcePresentation.h"
 
 #include <cstdint>
@@ -56,12 +57,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring AddedLabel() const;
         [[nodiscard]] winrt::hstring QualityBadgeTier() const;
         [[nodiscard]] winrt::hstring QualityBadgeDetail() const;
-        [[nodiscard]] winrt::HaloDesktop::QualityBadgeTone QualityTone() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish QualityTone() const;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
         void RaiseState();
+        [[nodiscard]] ::HaloDesktop::ViewModels::Medal MedalForItem() const;
         winrt::HaloDesktop::DownloadItem m_item{ nullptr };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };

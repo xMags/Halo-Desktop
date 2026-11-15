@@ -206,7 +206,7 @@
                       <TextBlock Style="{StaticResource RowDotStyle}" />
                       <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind DownloadedLine, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource RowDotStyle}" />
-                      <local:QualityBadge VerticalAlignment="Center" Detail="{x:Bind QualityBadgeDetail, Mode=OneWay}" Tier="{x:Bind QualityBadgeTier, Mode=OneWay}" Tone="{x:Bind QualityTone, Mode=OneWay}" />
+                      <local:QualityMedal VerticalAlignment="Center" Finish="{x:Bind QualityTone, Mode=OneWay}" Plate="{x:Bind QualityBadgeTier, Mode=OneWay}" Size="Small" TagText="{x:Bind QualityBadgeDetail, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource RowDotStyle}" />
                       <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
                         <Grid>
@@ -224,7 +224,7 @@
                     <Button Width="30" Height="30" MinWidth="0" Padding="0" Tag="{x:Bind Id}" Click="OnPauseRowClick" AutomationProperties.Name="Pause transfer" ToolTipService.ToolTip="Pause transfer" Visibility="{x:Bind PauseVisibility, Mode=OneWay}"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE769;" /></Button>
                     <Button Width="30" Height="30" MinWidth="0" Padding="0" Tag="{x:Bind Id}" Click="OnResumeRowClick" AutomationProperties.Name="Resume transfer" ToolTipService.ToolTip="Resume transfer" Visibility="{x:Bind ResumeVisibility, Mode=OneWay}"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE768;" /></Button>
                     <Button Width="30" Height="30" MinWidth="0" Padding="0" Tag="{x:Bind Id}" Click="OnRetryRowClick" AutomationProperties.Name="Retry this source" ToolTipService.ToolTip="Retry this source" Visibility="{x:Bind RetryVisibility, Mode=OneWay}"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE72C;" /></Button>
-                    <Button Width="30" Height="30" MinWidth="0" Padding="0" Tag="{x:Bind Id}" Click="OnCancelRowClick" AutomationProperties.Name="Cancel transfer" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE711;" /></Button>
+                    <Button Width="30" Height="30" MinWidth="0" Padding="0" Tag="{x:Bind Id}" Click="OnCancelRowClick" AutomationProperties.Name="Cancel transfer" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE74D;" /></Button>
                   </StackPanel>
                 </Grid>
               </DataTemplate>
@@ -253,7 +253,7 @@
                     <StackPanel Orientation="Horizontal" Spacing="10">
                       <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoData}" Text="{x:Bind DownloadedLine, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource RowDotStyle}" />
-                      <local:QualityBadge VerticalAlignment="Center" Detail="{x:Bind QualityBadgeDetail, Mode=OneWay}" Tier="{x:Bind QualityBadgeTier, Mode=OneWay}" Tone="{x:Bind QualityTone, Mode=OneWay}" />
+                      <local:QualityMedal VerticalAlignment="Center" Finish="{x:Bind QualityTone, Mode=OneWay}" Plate="{x:Bind QualityBadgeTier, Mode=OneWay}" Size="Small" TagText="{x:Bind QualityBadgeDetail, Mode=OneWay}" />
                       <TextBlock Style="{StaticResource RowDotStyle}" />
                       <Border VerticalAlignment="Center" Padding="7,2" Background="{ThemeResource HaloCtrlBrush}" BorderBrush="{ThemeResource HaloCtrlStrokeBrush}" BorderThickness="1" CornerRadius="3">
                         <Grid>
@@ -358,7 +358,7 @@
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="34" /></Grid.ColumnDefinitions>
                 <Button Height="34" HorizontalAlignment="Stretch" Click="OnPauseSelectedClick" Content="Pause transfer" Visibility="{x:Bind ViewModel.PauseVisibility, Mode=OneWay}" />
                 <Button Height="34" HorizontalAlignment="Stretch" Click="OnResumeSelectedClick" Content="Resume transfer" Visibility="{x:Bind ViewModel.ResumeVisibility, Mode=OneWay}" />
-                <Button Grid.Column="1" Width="34" Height="34" MinWidth="0" Padding="0" Click="OnCancelSelectedClick" AutomationProperties.Name="Cancel transfer" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE711;" /></Button>
+                <Button Grid.Column="1" Width="34" Height="34" MinWidth="0" Padding="0" Click="OnCancelSelectedClick" AutomationProperties.Name="Cancel transfer" ToolTipService.ToolTip="Cancel transfer"><FontIcon FontSize="{StaticResource HaloFontSmall}" Glyph="&#xE74D;" /></Button>
               </Grid>
               <Button Height="34" HorizontalAlignment="Stretch" Click="OnChooseSourceClick" Content="Choose source again" Visibility="{x:Bind ViewModel.ChooseSourceVisibility, Mode=OneWay}" />
             </StackPanel>

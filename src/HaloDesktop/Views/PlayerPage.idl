@@ -1,3 +1,6 @@
+// The medal finish and size are declared with the control that renders them.
+import "Controls/QualityMedal.idl";
+
 namespace HaloDesktop
 {
     [default_interface]
@@ -91,10 +94,13 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
         Microsoft.UI.Xaml.Thickness TransportPadding { get; };
         Double TitleFontSize { get; };
+        // The decoded picture's quality medal: plate, tag (empty for none), finish,
+        // and its size, large in fullscreen and medium in a window.
         String QualityTierText { get; };
         String QualityDetailText { get; };
+        QualityMedalFinish QualityFinish { get; };
+        QualityMedalSize QualitySize { get; };
         Microsoft.UI.Xaml.Visibility QualityBadgeVisibility { get; };
-        Double QualityBadgeFontSize { get; };
         Object AudioTracks { get; };
         Object SubtitleTracks { get; };
         Object AddonSubtitles { get; };

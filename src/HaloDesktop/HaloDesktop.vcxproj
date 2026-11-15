@@ -178,7 +178,6 @@
     </ClInclude>
     <ClInclude Include="Controls\MediaShelf.xaml.h"><DependentUpon>MediaShelf.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\ContinueCard.xaml.h"><DependentUpon>ContinueCard.xaml</DependentUpon></ClInclude>
-    <ClInclude Include="Controls\QualityBadge.xaml.h"><DependentUpon>QualityBadge.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\PosterCard.xaml.h"><DependentUpon>PosterCard.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Controls\SectionHeader.xaml.h">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
@@ -315,6 +314,11 @@
     <ClInclude Include="Views\SourcesPage.xaml.h">
       <DependentUpon>SourcesPage.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Controls\HaloMarkGeometry.h" />
+    <ClInclude Include="Controls\HaloMark.xaml.h"><DependentUpon>HaloMark.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Controls\QualityMedal.xaml.h"><DependentUpon>QualityMedal.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="ViewModels\QualityMedalPolicy.h" />
+    <ClInclude Include="ViewModels\QualityMedalProjection.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -324,7 +328,6 @@
     <Page Include="Controls\PlayerOsd.xaml" />
     <Page Include="Controls\VideoHostControl.xaml" />
     <Page Include="Controls\ContinueCard.xaml" />
-    <Page Include="Controls\QualityBadge.xaml" />
     <Page Include="Controls\PosterCard.xaml" />
     <Page Include="Controls\SectionHeader.xaml" />
     <Page Include="Controls\SettingRow.xaml" />
@@ -345,6 +348,8 @@
     <Page Include="Views\SearchPage.xaml" />
     <Page Include="Views\SettingsPage.xaml" />
     <Page Include="Views\SourcesPage.xaml" />
+    <Page Include="Controls\HaloMark.xaml" />
+    <Page Include="Controls\QualityMedal.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -374,7 +379,6 @@
       <DependentUpon>VideoHostControl.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="Controls\ContinueCard.xaml.cpp"><DependentUpon>ContinueCard.xaml</DependentUpon></ClCompile>
-    <ClCompile Include="Controls\QualityBadge.xaml.cpp"><DependentUpon>QualityBadge.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\PosterCard.xaml.cpp"><DependentUpon>PosterCard.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Controls\SectionHeader.xaml.cpp">
       <DependentUpon>SectionHeader.xaml</DependentUpon>
@@ -540,6 +544,14 @@
       <DependentUpon>SourcesPage.xaml</DependentUpon>
     </ClCompile>
     <ClCompile Include="$(GeneratedFilesDir)module.g.cpp" />
+    <ClCompile Include="Controls\HaloMarkGeometry.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Controls\HaloMark.xaml.cpp"><DependentUpon>HaloMark.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Controls\QualityMedal.xaml.cpp"><DependentUpon>QualityMedal.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="ViewModels\QualityMedalPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
@@ -552,7 +564,6 @@
     </Midl>
     <Midl Include="Controls\MediaShelf.idl"><SubType>Code</SubType><DependentUpon>MediaShelf.xaml</DependentUpon></Midl>
     <Midl Include="Controls\ContinueCard.idl"><SubType>Code</SubType><DependentUpon>ContinueCard.xaml</DependentUpon></Midl>
-    <Midl Include="Controls\QualityBadge.idl"><SubType>Code</SubType><DependentUpon>QualityBadge.xaml</DependentUpon></Midl>
     <Midl Include="Controls\PosterCard.idl"><SubType>Code</SubType><DependentUpon>PosterCard.xaml</DependentUpon></Midl>
     <Midl Include="Controls\SectionHeader.idl">
       <SubType>Code</SubType>
@@ -613,6 +624,8 @@
       <SubType>Code</SubType>
       <DependentUpon>SourcesPage.xaml</DependentUpon>
     </Midl>
+    <Midl Include="Controls\HaloMark.idl"><SubType>Code</SubType><DependentUpon>HaloMark.xaml</DependentUpon></Midl>
+    <Midl Include="Controls\QualityMedal.idl"><SubType>Code</SubType><DependentUpon>QualityMedal.xaml</DependentUpon></Midl>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\halo-mark.png" />

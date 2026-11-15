@@ -32,6 +32,8 @@
 #include "Services/WatchStateService.h"
 #include "Shell/LayoutMetricsService.h"
 #include "ViewModels/ObservableHelper.h"
+#include "ViewModels/QualityMedalPolicy.h"
+#include "ViewModels/QualityMedalProjection.h"
 
 #include <algorithm>
 #include <utility>
@@ -63,6 +65,17 @@ namespace
     bool IsOnDisk(Sources::SourceEntry const& entry) noexcept
     {
         return entry.Source && entry.Source.Status() == winrt::HaloDesktop::StreamStatus::OnDisk;
+    }
+
+    // The medal is stamped from the release's own quality and range tokens, so a
+    // Dolby Vision source says DV where the tier alone would only say HDR.
+    ::HaloDesktop::ViewModels::Medal MedalOf(Sources::SourceEntry const& entry)
+    {
+        if (!entry.Source)
+        {
+            return ::HaloDesktop::ViewModels::MedalFor(::HaloDesktop::ViewModels::NotParsedToken, {});
+        }
+        return ::HaloDesktop::ViewModels::MedalFor(entry.Source.Quality(), entry.Source.Range());
     }
 
     // 700 px at the shipped window size, 880 px once the content area is wide
@@ -289,15 +302,11 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SourceDisplayItemViewModel::ShowMoreLabel() const { return m_showMoreLabel; }
 
     winrt::hstring SourceDisplayItemViewModel::Key() const { return m_entry.Source ? m_entry.Source.Key() : L""; }
-    winrt::hstring SourceDisplayItemViewModel::QualityBadgeTier() const { return Sources::BadgeTierLabel(m_entry.Tier); }
-    // Only high dynamic range earns the qualifier. Standard range is the norm and
-    // stamping every other row with it would say nothing; the details panel still
-    // spells it out for anyone who opens a source.
-    winrt::hstring SourceDisplayItemViewModel::QualityBadgeDetail() const { return m_entry.Hdr ? winrt::hstring{ L"HDR" } : winrt::hstring{}; }
-    winrt::HaloDesktop::QualityBadgeTone SourceDisplayItemViewModel::QualityTone() const noexcept
+    winrt::hstring SourceDisplayItemViewModel::QualityBadgeTier() const { return winrt::hstring{ MedalOf(m_entry).Plate }; }
+    winrt::hstring SourceDisplayItemViewModel::QualityBadgeDetail() const { return winrt::hstring{ MedalOf(m_entry).Tag }; }
+    winrt::HaloDesktop::QualityMedalFinish SourceDisplayItemViewModel::QualityTone() const
     {
-        return Sources::IsPremiumTier(m_entry.Tier) ? winrt::HaloDesktop::QualityBadgeTone::Gold
-                                                    : winrt::HaloDesktop::QualityBadgeTone::Muted;
+        return ::HaloDesktop::ViewModels::ToQualityMedalFinish(MedalOf(m_entry).Finish);
     }
     winrt::hstring SourceDisplayItemViewModel::StatusLabel() const { return m_statusLabel; }
 
@@ -572,12 +581,12 @@ namespace winrt::HaloDesktop::implementation
     }
 
     Microsoft::UI::Xaml::Visibility SourcesViewModel::PickVisibility() const noexcept { return HasPick() ? Visible : Collapsed; }
-    winrt::hstring SourcesViewModel::PickQualityBadgeTier() const { return HasPick() ? Sources::BadgeTierLabel(m_pool.front().Tier) : winrt::hstring{}; }
-    winrt::hstring SourcesViewModel::PickQualityBadgeDetail() const { return HasPick() && m_pool.front().Hdr ? winrt::hstring{ L"HDR" } : winrt::hstring{}; }
-    winrt::HaloDesktop::QualityBadgeTone SourcesViewModel::PickQualityTone() const noexcept
+    winrt::hstring SourcesViewModel::PickQualityBadgeTier() const { return HasPick() ? winrt::hstring{ MedalOf(m_pool.front()).Plate } : winrt::hstring{}; }
+    winrt::hstring SourcesViewModel::PickQualityBadgeDetail() const { return HasPick() ? winrt::hstring{ MedalOf(m_pool.front()).Tag } : winrt::hstring{}; }
+    winrt::HaloDesktop::QualityMedalFinish SourcesViewModel::PickQualityTone() const
     {
-        return HasPick() && Sources::IsPremiumTier(m_pool.front().Tier) ? winrt::HaloDesktop::QualityBadgeTone::Gold
-                                                                       : winrt::HaloDesktop::QualityBadgeTone::Muted;
+        return HasPick() ? ::HaloDesktop::ViewModels::ToQualityMedalFinish(MedalOf(m_pool.front()).Finish)
+                         : winrt::HaloDesktop::QualityMedalFinish::Plain;
     }
     winrt::hstring SourcesViewModel::PickStatusLabel() const { return HasPick() ? Sources::StatusLabel(m_pool.front().Source.Status()) : L""; }
 

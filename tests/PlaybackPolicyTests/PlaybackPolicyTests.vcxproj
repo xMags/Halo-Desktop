@@ -81,6 +81,12 @@
     <ClCompile Include="..\..\src\HaloDesktop\Shell\WindowPresentationPolicy.cpp">
       <Link>WindowPresentationPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\QualityMedalPolicy.cpp">
+      <Link>QualityMedalPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Controls\HaloMarkGeometry.cpp">
+      <Link>HaloMarkGeometry.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

@@ -779,21 +779,23 @@
       The quality badge stays up for the whole file, so it sits outside OsdRoot with
       the buffering indicator instead of fading with the controls. Hit testing is off
       so it cannot swallow the press that wakes the OSD underneath it, and the row is
-      sized to the back button so the badge centres on the header rather than hanging
-      from the top of it.
+      at least the back button's height so the badge centres on the header rather than
+      hanging from the top of it. The fullscreen medal is 2px taller than the button,
+      so the row grows to it instead of clipping it.
     -->
     <Grid
-      Height="34"
+      MinHeight="34"
       Margin="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}"
       HorizontalAlignment="Right"
       VerticalAlignment="Top">
-      <local:QualityBadge
+      <local:QualityMedal
         HorizontalAlignment="Right"
         VerticalAlignment="Center"
-        Detail="{x:Bind ViewModel.QualityDetailText, Mode=OneWay}"
+        Finish="{x:Bind ViewModel.QualityFinish, Mode=OneWay}"
         IsHitTestVisible="False"
-        LabelSize="{x:Bind ViewModel.QualityBadgeFontSize, Mode=OneWay}"
-        Tier="{x:Bind ViewModel.QualityTierText, Mode=OneWay}"
+        Plate="{x:Bind ViewModel.QualityTierText, Mode=OneWay}"
+        Size="{x:Bind ViewModel.QualitySize, Mode=OneWay}"
+        TagText="{x:Bind ViewModel.QualityDetailText, Mode=OneWay}"
         Visibility="{x:Bind ViewModel.QualityBadgeVisibility, Mode=OneWay}" />
     </Grid>
   </Grid>

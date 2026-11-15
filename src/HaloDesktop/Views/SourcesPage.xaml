@@ -494,16 +494,16 @@
                     <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" />
                     <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="Halo picked this for you" />
                   </StackPanel>
-                  <!-- 104 rather than 78 so the widest badge, FULL HD beside HDR, still
-                       fits the column the rows below share with it. -->
+                  <!-- The column the rows below share with the pick, wide enough for a
+                       medium medal (96). -->
                   <Grid Margin="0,12,0,0" ColumnSpacing="20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <local:QualityBadge
+                    <local:QualityMedal
                       VerticalAlignment="Top"
-                      Detail="{x:Bind ViewModel.PickQualityBadgeDetail, Mode=OneWay}"
-                      LabelSize="13"
-                      Tier="{x:Bind ViewModel.PickQualityBadgeTier, Mode=OneWay}"
-                      Tone="{x:Bind ViewModel.PickQualityTone, Mode=OneWay}" />
+                      Finish="{x:Bind ViewModel.PickQualityTone, Mode=OneWay}"
+                      Plate="{x:Bind ViewModel.PickQualityBadgeTier, Mode=OneWay}"
+                      Size="Medium"
+                      TagText="{x:Bind ViewModel.PickQualityBadgeDetail, Mode=OneWay}" />
                     <StackPanel Grid.Column="1">
                       <TextBlock FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.PickWhy, Mode=OneWay}" TextWrapping="Wrap" />
                       <local:WrapPanel Margin="0,7,0,0" HorizontalSpacing="10" VerticalSpacing="5">
@@ -586,11 +586,12 @@
                               Tag="{x:Bind Key}">
                               <Grid ColumnSpacing="18">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="104" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                                <local:QualityBadge
+                                <local:QualityMedal
                                   VerticalAlignment="Center"
-                                  Detail="{x:Bind QualityBadgeDetail}"
-                                  Tier="{x:Bind QualityBadgeTier}"
-                                  Tone="{x:Bind QualityTone}" />
+                                  Finish="{x:Bind QualityTone}"
+                                  Plate="{x:Bind QualityBadgeTier}"
+                                  Size="Medium"
+                                  TagText="{x:Bind QualityBadgeDetail}" />
                                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                                   <StackPanel Orientation="Horizontal" Spacing="8">
                                     <Grid Width="6" Height="6" VerticalAlignment="Center">

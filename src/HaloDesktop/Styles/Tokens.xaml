@@ -5,54 +5,81 @@
 
   <ResourceDictionary.ThemeDictionaries>
     <ResourceDictionary x:Key="Default">
-      <Color x:Key="HaloMicaColor">#FF202020</Color>
-      <Color x:Key="HaloLayerColor">#4D3A3A3A</Color>
-      <Color x:Key="HaloCardColor">#0DFFFFFF</Color>
-      <Color x:Key="HaloCardStrokeColor">#15FFFFFF</Color>
-      <Color x:Key="HaloCtrlColor">#0FFFFFFF</Color>
-      <Color x:Key="HaloCtrlStrokeColor">#12FFFFFF</Color>
-      <Color x:Key="HaloCtrlHoverColor">#15FFFFFF</Color>
-      <Color x:Key="HaloSubtleColor">#0FFFFFFF</Color>
-      <Color x:Key="HaloText1Color">#FFFFFFFF</Color>
-      <Color x:Key="HaloText2Color">#C8FFFFFF</Color>
-      <Color x:Key="HaloText3Color">#8BFFFFFF</Color>
-      <Color x:Key="HaloText4Color">#5DFFFFFF</Color>
-      <Color x:Key="HaloAccentColor">#FF60CDFF</Color>
+      <!--
+        Both palettes are the reference desktop client's: the dark one is the mobile
+        app's blue-grey family on a #0A0C11 ground, the light one the same family in
+        daylight with the accent deepened until white text on it reads. Values are the
+        CSS rgba() tokens converted with alpha = round(a * 255).
+      -->
+      <Color x:Key="HaloMicaColor">#FF0A0C11</Color>
+      <Color x:Key="HaloLayerColor">#591C202A</Color>
+      <Color x:Key="HaloCardColor">#8C1E222E</Color>
+      <Color x:Key="HaloCardStrokeColor">#8C3C4456</Color>
+      <Color x:Key="HaloCtrlColor">#99282E3C</Color>
+      <Color x:Key="HaloCtrlStrokeColor">#803C4456</Color>
+      <Color x:Key="HaloCtrlHoverColor">#99343C4E</Color>
+      <Color x:Key="HaloSubtleColor">#80282E3C</Color>
+      <Color x:Key="HaloSubtlePressedColor">#59282E3C</Color>
+      <Color x:Key="HaloText1Color">#FFF4F6FB</Color>
+      <Color x:Key="HaloText2Color">#FFC7CDD9</Color>
+      <Color x:Key="HaloText3Color">#FF8B93A5</Color>
+      <Color x:Key="HaloText4Color">#FF6F7789</Color>
+      <Color x:Key="HaloAccentColor">#FF4CC2FF</Color>
       <Color x:Key="HaloAccentAltColor">#FF4CC2FF</Color>
       <Color x:Key="HaloOnAccentColor">#FF000000</Color>
-      <Color x:Key="HaloAccentTintColor">#2460CDFF</Color>
-      <Color x:Key="HaloSuccessColor">#FF6CCB5F</Color>
-      <Color x:Key="HaloSuccessTintColor">#246CCB5F</Color>
-      <Color x:Key="HaloSuccessStrokeColor">#476CCB5F</Color>
-      <Color x:Key="HaloCautionColor">#FFFCE100</Color>
-      <Color x:Key="HaloCautionTintColor">#21FCE100</Color>
-      <Color x:Key="HaloCautionStrokeColor">#3DFCE100</Color>
-      <Color x:Key="HaloCriticalColor">#FFFF99A4</Color>
-      <Color x:Key="HaloCriticalTintColor">#14FF99A4</Color>
-      <Color x:Key="HaloCriticalStrokeColor">#57FF99A4</Color>
+      <Color x:Key="HaloAccentTintColor">#290A84FF</Color>
+      <Color x:Key="HaloSuccessColor">#FF5DD39E</Color>
+      <Color x:Key="HaloSuccessTintColor">#1F5DD39E</Color>
+      <Color x:Key="HaloSuccessStrokeColor">#475DD39E</Color>
+      <Color x:Key="HaloCautionColor">#FFFFD479</Color>
+      <Color x:Key="HaloCautionTintColor">#1FFFD479</Color>
+      <Color x:Key="HaloCautionStrokeColor">#3DFFD479</Color>
+      <Color x:Key="HaloCriticalColor">#FFFF6B6B</Color>
+      <Color x:Key="HaloCriticalTintColor">#14FF6B6B</Color>
+      <Color x:Key="HaloCriticalStrokeColor">#57FF6B6B</Color>
+      <Color x:Key="HaloCriticalBackgroundColor">#FF2A161A</Color>
       <Color x:Key="HaloDangerFillColor">#FFC42B1C</Color>
       <Color x:Key="HaloDangerHoverColor">#FFD13A2A</Color>
       <Color x:Key="HaloTileTopColor">#0BFFFFFF</Color>
       <Color x:Key="HaloTileBottomColor">#06FFFFFF</Color>
-      <Color x:Key="HaloDividerColor">#15FFFFFF</Color>
-      <Color x:Key="HaloFlyoutColor">#FF2C2C2C</Color>
-      <Color x:Key="HaloNavSelColor">#2460CDFF</Color>
-      <Color x:Key="HaloPhTint1Color">#FF2A2B2F</Color>
-      <Color x:Key="HaloPhTint2Color">#FF232428</Color>
-      <Color x:Key="HaloChartDimColor">#4760CDFF</Color>
+      <Color x:Key="HaloDividerColor">#8C3C4456</Color>
+      <Color x:Key="HaloFlyoutColor">#FF1C202A</Color>
+      <Color x:Key="HaloNavSelColor">#330A84FF</Color>
+      <Color x:Key="HaloNavLayerColor">#5914161D</Color>
+      <Color x:Key="HaloNavStrokeColor">#33000000</Color>
+      <Color x:Key="HaloPhTint1Color">#FF1C202A</Color>
+      <Color x:Key="HaloPhTint2Color">#FF14161D</Color>
+      <Color x:Key="HaloChartDimColor">#520A84FF</Color>
       <Color x:Key="HaloPhTextColor">#57FFFFFF</Color>
-      <Color x:Key="HaloHeroScrim1Color">#F518181A</Color>
-      <Color x:Key="HaloHeroScrim2Color">#9E18181A</Color>
-      <Color x:Key="HaloDetailScrimColor">#FA202020</Color>
+      <Color x:Key="HaloHeroScrim1Color">#F50A0C11</Color>
+      <Color x:Key="HaloHeroScrim2Color">#9E0A0C11</Color>
+      <Color x:Key="HaloDetailScrimColor">#FA14161D</Color>
       <Color x:Key="HaloDetailCardColor">#A6141418</Color>
       <Color x:Key="HaloDetailCardStrokeColor">#14FFFFFF</Color>
-      <Color x:Key="HaloInfoBgColor">#1460CDFF</Color>
-      <Color x:Key="HaloInfoStrokeColor">#4760CDFF</Color>
+      <Color x:Key="HaloInfoBgColor">#1A0A84FF</Color>
+      <Color x:Key="HaloInfoStrokeColor">#520A84FF</Color>
       <Color x:Key="HaloBadgeMutedFillColor">#1FFFFFFF</Color>
-      <Color x:Key="HaloBadgeMutedPlateColor">#FF1B1B1F</Color>
+      <Color x:Key="HaloBadgeMutedPlateColor">#FF14161D</Color>
       <Color x:Key="HaloBadgeMutedTierColor">#C8FFFFFF</Color>
       <Color x:Key="HaloBadgeMutedInkColor">#9BFFFFFF</Color>
       <Color x:Key="HaloBadgeMutedStrokeColor">#26FFFFFF</Color>
+      <Color x:Key="HaloHoverCardStrokeColor">#4DFFFFFF</Color>
+      <Color x:Key="HaloHoverCardShadowColor">#99000000</Color>
+      <Color x:Key="HaloCtrlStrongStrokeColor">#8BFFFFFF</Color>
+      <Color x:Key="HaloCtrlElevationStrokeColor">#18FFFFFF</Color>
+      <Color x:Key="HaloTextBoxFocusFillColor">#BF0A0C11</Color>
+      <Color x:Key="HaloTextBoxPlaceholderColor">#C5FFFFFF</Color>
+      <Color x:Key="HaloTextBoxPlaceholderFocusedColor">#87FFFFFF</Color>
+      <Color x:Key="HaloCtrlDisabledColor">#0BFFFFFF</Color>
+      <Color x:Key="HaloCtrlAltSecondaryColor">#19000000</Color>
+      <Color x:Key="HaloCtrlAltTertiaryColor">#0BFFFFFF</Color>
+      <Color x:Key="HaloCtrlAltQuaternaryColor">#12FFFFFF</Color>
+      <Color x:Key="HaloCtrlStrongStrokeDisabledColor">#28FFFFFF</Color>
+      <Color x:Key="HaloAccentDisabledColor">#28FFFFFF</Color>
+      <Color x:Key="HaloOnAccentDisabledColor">#87FFFFFF</Color>
+      <Color x:Key="HaloCtrlSolidColor">#FF2A3040</Color>
+      <Color x:Key="HaloGlowAColor">#1F0A84FF</Color>
+      <Color x:Key="HaloGlowBColor">#1AA878FF</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
@@ -62,6 +89,7 @@
       <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
       <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
       <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloSubtlePressedBrush" Color="{StaticResource HaloSubtlePressedColor}" />
       <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
       <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />
       <SolidColorBrush x:Key="HaloText3Brush" Color="{StaticResource HaloText3Color}" />
@@ -79,15 +107,14 @@
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
       <SolidColorBrush x:Key="HaloCriticalStrokeBrush" Color="{StaticResource HaloCriticalStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCriticalBackgroundBrush" Color="{StaticResource HaloCriticalBackgroundColor}" />
       <SolidColorBrush x:Key="HaloDangerFillBrush" Color="{StaticResource HaloDangerFillColor}" />
       <SolidColorBrush x:Key="HaloDangerHoverBrush" Color="{StaticResource HaloDangerHoverColor}" />
-      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
-        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
-      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
       <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
       <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />
+      <SolidColorBrush x:Key="HaloNavLayerBrush" Color="{StaticResource HaloNavLayerColor}" />
+      <SolidColorBrush x:Key="HaloNavStrokeBrush" Color="{StaticResource HaloNavStrokeColor}" />
       <SolidColorBrush x:Key="HaloPhTint1Brush" Color="{StaticResource HaloPhTint1Color}" />
       <SolidColorBrush x:Key="HaloPhTint2Brush" Color="{StaticResource HaloPhTint2Color}" />
       <SolidColorBrush x:Key="HaloChartDimBrush" Color="{StaticResource HaloChartDimColor}" />
@@ -104,7 +131,33 @@
       <SolidColorBrush x:Key="HaloBadgeMutedTierBrush" Color="{StaticResource HaloBadgeMutedTierColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
-
+      <SolidColorBrush x:Key="HaloHoverCardStrokeBrush" Color="{StaticResource HaloHoverCardStrokeColor}" />
+      <SolidColorBrush x:Key="HaloHoverCardShadowBrush" Color="{StaticResource HaloHoverCardShadowColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrongStrokeBrush" Color="{StaticResource HaloCtrlStrongStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlElevationStrokeBrush" Color="{StaticResource HaloCtrlElevationStrokeColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxFocusFillBrush" Color="{StaticResource HaloTextBoxFocusFillColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxPlaceholderBrush" Color="{StaticResource HaloTextBoxPlaceholderColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxPlaceholderFocusedBrush" Color="{StaticResource HaloTextBoxPlaceholderFocusedColor}" />
+      <SolidColorBrush x:Key="HaloCtrlDisabledBrush" Color="{StaticResource HaloCtrlDisabledColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltSecondaryBrush" Color="{StaticResource HaloCtrlAltSecondaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltTertiaryBrush" Color="{StaticResource HaloCtrlAltTertiaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltQuaternaryBrush" Color="{StaticResource HaloCtrlAltQuaternaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrongStrokeDisabledBrush" Color="{StaticResource HaloCtrlStrongStrokeDisabledColor}" />
+      <SolidColorBrush x:Key="HaloAccentDisabledBrush" Color="{StaticResource HaloAccentDisabledColor}" />
+      <SolidColorBrush x:Key="HaloOnAccentDisabledBrush" Color="{StaticResource HaloOnAccentDisabledColor}" />
+      <SolidColorBrush x:Key="HaloCtrlSolidBrush" Color="{StaticResource HaloCtrlSolidColor}" />
+      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
+      </LinearGradientBrush>
+      <RadialGradientBrush x:Key="HaloGlowABrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloGlowAColor}" />
+        <GradientStop Offset="1" Color="#000A84FF" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="HaloGlowBBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloGlowBColor}" />
+        <GradientStop Offset="1" Color="#00A878FF" />
+      </RadialGradientBrush>
 
       <!--
         The stock dialog surface is a different grey from every other Halo overlay and
@@ -120,62 +173,75 @@
     </ResourceDictionary>
 
     <ResourceDictionary x:Key="Light">
-      <Color x:Key="HaloMicaColor">#FFF3F3F3</Color>
-      <Color x:Key="HaloLayerColor">#9EFFFFFF</Color>
-      <Color x:Key="HaloCardColor">#B3FFFFFF</Color>
-      <Color x:Key="HaloCardStrokeColor">#0F000000</Color>
-      <Color x:Key="HaloCtrlColor">#B3FFFFFF</Color>
-      <Color x:Key="HaloCtrlStrokeColor">#0F000000</Color>
-      <Color x:Key="HaloCtrlHoverColor">#0A000000</Color>
-      <Color x:Key="HaloSubtleColor">#0A000000</Color>
-      <Color x:Key="HaloText1Color">#E4000000</Color>
-      <!--
-        Lifted from #9B and #8B. Against this theme's page surface those
-        computed to 5.9:1 and 4.7:1, and Text3 is what every mono data label is
-        set in, so the palette's faintest colour was carrying its smallest type.
-        The dark theme reaches 5.4:1 with the same alpha because it is resolving
-        towards white rather than away from it. Both move so the step between
-        them survives.
-      -->
-      <Color x:Key="HaloText2Color">#B0000000</Color>
-      <Color x:Key="HaloText3Color">#95000000</Color>
-      <Color x:Key="HaloText4Color">#5C000000</Color>
-      <Color x:Key="HaloAccentColor">#FF005FB8</Color>
-      <Color x:Key="HaloAccentAltColor">#FF0067C0</Color>
+      <Color x:Key="HaloMicaColor">#FFF4F6FA</Color>
+      <Color x:Key="HaloLayerColor">#B3FFFFFF</Color>
+      <Color x:Key="HaloCardColor">#D1FFFFFF</Color>
+      <Color x:Key="HaloCardStrokeColor">#14101828</Color>
+      <Color x:Key="HaloCtrlColor">#D9FFFFFF</Color>
+      <Color x:Key="HaloCtrlStrokeColor">#17101828</Color>
+      <Color x:Key="HaloCtrlHoverColor">#0B101828</Color>
+      <Color x:Key="HaloSubtleColor">#09101828</Color>
+      <Color x:Key="HaloSubtlePressedColor">#06101828</Color>
+      <Color x:Key="HaloText1Color">#FF0E1220</Color>
+      <Color x:Key="HaloText2Color">#FF3B4354</Color>
+      <Color x:Key="HaloText3Color">#FF5D6577</Color>
+      <Color x:Key="HaloText4Color">#FF8A92A3</Color>
+      <Color x:Key="HaloAccentColor">#FF0070E0</Color>
+      <Color x:Key="HaloAccentAltColor">#FF0070E0</Color>
       <Color x:Key="HaloOnAccentColor">#FFFFFFFF</Color>
-      <Color x:Key="HaloAccentTintColor">#1A005FB8</Color>
-      <Color x:Key="HaloSuccessColor">#FF0F7B0F</Color>
-      <Color x:Key="HaloSuccessTintColor">#1A0F7B0F</Color>
-      <Color x:Key="HaloSuccessStrokeColor">#470F7B0F</Color>
-      <Color x:Key="HaloCautionColor">#FF9D5D00</Color>
-      <Color x:Key="HaloCautionTintColor">#219D5D00</Color>
-      <Color x:Key="HaloCautionStrokeColor">#3D9D5D00</Color>
-      <Color x:Key="HaloCriticalColor">#FFC42B1C</Color>
-      <Color x:Key="HaloCriticalTintColor">#14C42B1C</Color>
-      <Color x:Key="HaloCriticalStrokeColor">#57C42B1C</Color>
+      <Color x:Key="HaloAccentTintColor">#1A0070E0</Color>
+      <Color x:Key="HaloSuccessColor">#FF13875A</Color>
+      <Color x:Key="HaloSuccessTintColor">#1A13875A</Color>
+      <Color x:Key="HaloSuccessStrokeColor">#4713875A</Color>
+      <Color x:Key="HaloCautionColor">#FFA45F00</Color>
+      <Color x:Key="HaloCautionTintColor">#1FA45F00</Color>
+      <Color x:Key="HaloCautionStrokeColor">#3DA45F00</Color>
+      <Color x:Key="HaloCriticalColor">#FFD1343B</Color>
+      <Color x:Key="HaloCriticalTintColor">#14D1343B</Color>
+      <Color x:Key="HaloCriticalStrokeColor">#57D1343B</Color>
+      <Color x:Key="HaloCriticalBackgroundColor">#FFFDEAEA</Color>
       <Color x:Key="HaloDangerFillColor">#FFC42B1C</Color>
       <Color x:Key="HaloDangerHoverColor">#FFD13A2A</Color>
-      <Color x:Key="HaloTileTopColor">#0B000000</Color>
-      <Color x:Key="HaloTileBottomColor">#06000000</Color>
-      <Color x:Key="HaloDividerColor">#0F000000</Color>
-      <Color x:Key="HaloFlyoutColor">#FFF9F9F9</Color>
-      <Color x:Key="HaloNavSelColor">#1A005FB8</Color>
-      <Color x:Key="HaloPhTint1Color">#FFE4E4E8</Color>
-      <Color x:Key="HaloPhTint2Color">#FFEFEFF2</Color>
-      <Color x:Key="HaloChartDimColor">#3D005FB8</Color>
-      <Color x:Key="HaloPhTextColor">#61000000</Color>
-      <Color x:Key="HaloHeroScrim1Color">#F7F3F3F3</Color>
-      <Color x:Key="HaloHeroScrim2Color">#A8F3F3F3</Color>
-      <Color x:Key="HaloDetailScrimColor">#FCF3F3F3</Color>
+      <Color x:Key="HaloTileTopColor">#09101828</Color>
+      <Color x:Key="HaloTileBottomColor">#05101828</Color>
+      <Color x:Key="HaloDividerColor">#14101828</Color>
+      <Color x:Key="HaloFlyoutColor">#FFFAFBFD</Color>
+      <Color x:Key="HaloNavSelColor">#1A0070E0</Color>
+      <Color x:Key="HaloNavLayerColor">#8CFFFFFF</Color>
+      <Color x:Key="HaloNavStrokeColor">#0F101828</Color>
+      <Color x:Key="HaloPhTint1Color">#FFE6E9F0</Color>
+      <Color x:Key="HaloPhTint2Color">#FFEFF1F6</Color>
+      <Color x:Key="HaloChartDimColor">#3D0070E0</Color>
+      <Color x:Key="HaloPhTextColor">#61101828</Color>
+      <Color x:Key="HaloHeroScrim1Color">#F5F4F6FA</Color>
+      <Color x:Key="HaloHeroScrim2Color">#80F4F6FA</Color>
+      <Color x:Key="HaloDetailScrimColor">#FBF4F6FA</Color>
       <Color x:Key="HaloDetailCardColor">#BFFFFFFF</Color>
       <Color x:Key="HaloDetailCardStrokeColor">#14000000</Color>
-      <Color x:Key="HaloInfoBgColor">#0F005FB8</Color>
-      <Color x:Key="HaloInfoStrokeColor">#33005FB8</Color>
+      <Color x:Key="HaloInfoBgColor">#0F0070E0</Color>
+      <Color x:Key="HaloInfoStrokeColor">#380070E0</Color>
       <Color x:Key="HaloBadgeMutedFillColor">#14000000</Color>
       <Color x:Key="HaloBadgeMutedPlateColor">#FF4A4A52</Color>
       <Color x:Key="HaloBadgeMutedTierColor">#FFF4F4F6</Color>
       <Color x:Key="HaloBadgeMutedInkColor">#A8000000</Color>
       <Color x:Key="HaloBadgeMutedStrokeColor">#1F000000</Color>
+      <Color x:Key="HaloHoverCardStrokeColor">#33101828</Color>
+      <Color x:Key="HaloHoverCardShadowColor">#40101828</Color>
+      <Color x:Key="HaloCtrlStrongStrokeColor">#6B101828</Color>
+      <Color x:Key="HaloCtrlElevationStrokeColor">#24101828</Color>
+      <Color x:Key="HaloTextBoxFocusFillColor">#FFFFFFFF</Color>
+      <Color x:Key="HaloTextBoxPlaceholderColor">#99101828</Color>
+      <Color x:Key="HaloTextBoxPlaceholderFocusedColor">#70101828</Color>
+      <Color x:Key="HaloCtrlDisabledColor">#4DF9F9F9</Color>
+      <Color x:Key="HaloCtrlAltSecondaryColor">#06000000</Color>
+      <Color x:Key="HaloCtrlAltTertiaryColor">#0F000000</Color>
+      <Color x:Key="HaloCtrlAltQuaternaryColor">#18000000</Color>
+      <Color x:Key="HaloCtrlStrongStrokeDisabledColor">#37000000</Color>
+      <Color x:Key="HaloAccentDisabledColor">#37000000</Color>
+      <Color x:Key="HaloOnAccentDisabledColor">#FFFFFFFF</Color>
+      <Color x:Key="HaloCtrlSolidColor">#FFFFFFFF</Color>
+      <Color x:Key="HaloGlowAColor">#120070E0</Color>
+      <Color x:Key="HaloGlowBColor">#0D7850C8</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
@@ -185,6 +251,7 @@
       <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
       <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
       <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloSubtlePressedBrush" Color="{StaticResource HaloSubtlePressedColor}" />
       <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
       <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />
       <SolidColorBrush x:Key="HaloText3Brush" Color="{StaticResource HaloText3Color}" />
@@ -202,15 +269,14 @@
       <SolidColorBrush x:Key="HaloCriticalBrush" Color="{StaticResource HaloCriticalColor}" />
       <SolidColorBrush x:Key="HaloCriticalTintBrush" Color="{StaticResource HaloCriticalTintColor}" />
       <SolidColorBrush x:Key="HaloCriticalStrokeBrush" Color="{StaticResource HaloCriticalStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCriticalBackgroundBrush" Color="{StaticResource HaloCriticalBackgroundColor}" />
       <SolidColorBrush x:Key="HaloDangerFillBrush" Color="{StaticResource HaloDangerFillColor}" />
       <SolidColorBrush x:Key="HaloDangerHoverBrush" Color="{StaticResource HaloDangerHoverColor}" />
-      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
-        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
-      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloDividerBrush" Color="{StaticResource HaloDividerColor}" />
       <SolidColorBrush x:Key="HaloFlyoutBrush" Color="{StaticResource HaloFlyoutColor}" />
       <SolidColorBrush x:Key="HaloNavSelBrush" Color="{StaticResource HaloNavSelColor}" />
+      <SolidColorBrush x:Key="HaloNavLayerBrush" Color="{StaticResource HaloNavLayerColor}" />
+      <SolidColorBrush x:Key="HaloNavStrokeBrush" Color="{StaticResource HaloNavStrokeColor}" />
       <SolidColorBrush x:Key="HaloPhTint1Brush" Color="{StaticResource HaloPhTint1Color}" />
       <SolidColorBrush x:Key="HaloPhTint2Brush" Color="{StaticResource HaloPhTint2Color}" />
       <SolidColorBrush x:Key="HaloChartDimBrush" Color="{StaticResource HaloChartDimColor}" />
@@ -227,6 +293,33 @@
       <SolidColorBrush x:Key="HaloBadgeMutedTierBrush" Color="{StaticResource HaloBadgeMutedTierColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedInkBrush" Color="{StaticResource HaloBadgeMutedInkColor}" />
       <SolidColorBrush x:Key="HaloBadgeMutedStrokeBrush" Color="{StaticResource HaloBadgeMutedStrokeColor}" />
+      <SolidColorBrush x:Key="HaloHoverCardStrokeBrush" Color="{StaticResource HaloHoverCardStrokeColor}" />
+      <SolidColorBrush x:Key="HaloHoverCardShadowBrush" Color="{StaticResource HaloHoverCardShadowColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrongStrokeBrush" Color="{StaticResource HaloCtrlStrongStrokeColor}" />
+      <SolidColorBrush x:Key="HaloCtrlElevationStrokeBrush" Color="{StaticResource HaloCtrlElevationStrokeColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxFocusFillBrush" Color="{StaticResource HaloTextBoxFocusFillColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxPlaceholderBrush" Color="{StaticResource HaloTextBoxPlaceholderColor}" />
+      <SolidColorBrush x:Key="HaloTextBoxPlaceholderFocusedBrush" Color="{StaticResource HaloTextBoxPlaceholderFocusedColor}" />
+      <SolidColorBrush x:Key="HaloCtrlDisabledBrush" Color="{StaticResource HaloCtrlDisabledColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltSecondaryBrush" Color="{StaticResource HaloCtrlAltSecondaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltTertiaryBrush" Color="{StaticResource HaloCtrlAltTertiaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlAltQuaternaryBrush" Color="{StaticResource HaloCtrlAltQuaternaryColor}" />
+      <SolidColorBrush x:Key="HaloCtrlStrongStrokeDisabledBrush" Color="{StaticResource HaloCtrlStrongStrokeDisabledColor}" />
+      <SolidColorBrush x:Key="HaloAccentDisabledBrush" Color="{StaticResource HaloAccentDisabledColor}" />
+      <SolidColorBrush x:Key="HaloOnAccentDisabledBrush" Color="{StaticResource HaloOnAccentDisabledColor}" />
+      <SolidColorBrush x:Key="HaloCtrlSolidBrush" Color="{StaticResource HaloCtrlSolidColor}" />
+      <LinearGradientBrush x:Key="HaloTileBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
+      </LinearGradientBrush>
+      <RadialGradientBrush x:Key="HaloGlowABrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloGlowAColor}" />
+        <GradientStop Offset="1" Color="#000070E0" />
+      </RadialGradientBrush>
+      <RadialGradientBrush x:Key="HaloGlowBBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloGlowBColor}" />
+        <GradientStop Offset="1" Color="#007850C8" />
+      </RadialGradientBrush>
 
       <!--
         The stock dialog surface is a different grey from every other Halo overlay and
@@ -269,11 +362,13 @@
   <SolidColorBrush x:Key="HaloProgressTrackBrush" Color="#73000000" />
 
   <!--
-    Gold is a mark rather than a palette colour, so like the sheet scrim it sits
-    outside the theme dictionaries: the quality badge has to mean the same thing
-    stamped on a dark video frame and on the light sources sheet. Only the muted
-    variant, which has no meaning of its own beyond "not the top tier", follows
-    the theme.
+    The quality medal's metals are marks rather than palette colours, so like the
+    sheet scrim they sit outside the theme dictionaries: a medal has to mean the same
+    thing stamped on a dark video frame and on the light sources sheet. Only the plain
+    medal below HD (the HaloBadgeMuted tokens), which has no meaning of its own,
+    follows the theme. Per metal: the struck face (Brush), the plate lettering
+    (TierBrush) and the tag cut into the face (InkBrush). The dark plate and the frame
+    stroke are shared by all three metals, under their original gold names.
   -->
   <LinearGradientBrush x:Key="HaloBadgeGoldBrush" StartPoint="0.5,0" EndPoint="0.5,1">
     <GradientStop Offset="0" Color="#FFF8E7A6" />
@@ -285,9 +380,31 @@
     <GradientStop Offset="0" Color="#FFF8E7A6" />
     <GradientStop Offset="1" Color="#FFD3A63A" />
   </LinearGradientBrush>
-  <SolidColorBrush x:Key="HaloBadgeGoldPlateBrush" Color="#FF0A0A0C" />
+  <SolidColorBrush x:Key="HaloBadgeGoldPlateBrush" Color="#FF0B0B0D" />
   <SolidColorBrush x:Key="HaloBadgeGoldInkBrush" Color="#FF14100A" />
   <SolidColorBrush x:Key="HaloBadgeGoldStrokeBrush" Color="#59000000" />
+  <LinearGradientBrush x:Key="HaloBadgeSilverBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFF4F6F9" />
+    <GradientStop Offset="0.46" Color="#FFC9CFD8" />
+    <GradientStop Offset="0.54" Color="#FF959DAA" />
+    <GradientStop Offset="1" Color="#FFDDE2E8" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="HaloBadgeSilverTierBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFFFFFFF" />
+    <GradientStop Offset="1" Color="#FFAEB6C2" />
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="HaloBadgeSilverInkBrush" Color="#FF15181D" />
+  <LinearGradientBrush x:Key="HaloBadgeBronzeBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFF3CFAC" />
+    <GradientStop Offset="0.46" Color="#FFCF9468" />
+    <GradientStop Offset="0.54" Color="#FFA2663D" />
+    <GradientStop Offset="1" Color="#FFDDAA80" />
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="HaloBadgeBronzeTierBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FFF6D2AE" />
+    <GradientStop Offset="1" Color="#FFC08356" />
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="HaloBadgeBronzeInkBrush" Color="#FF1C120B" />
   <LinearGradientBrush x:Key="HaloSheetShadowBrush" StartPoint="0,0.5" EndPoint="1,0.5">
     <GradientStop Offset="0" Color="#00000000" />
     <GradientStop Offset="1" Color="#57000000" />

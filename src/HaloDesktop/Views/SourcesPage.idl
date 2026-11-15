@@ -1,7 +1,7 @@
-﻿// The badge tone is declared with the control that renders it. This is the one
+﻿// The medal finish is declared with the control that renders it. This is the one
 // type this sheet borrows from another file, so it is imported rather than
 // restated.
-import "Controls/QualityBadge.idl";
+import "Controls/QualityMedal.idl";
 
 namespace HaloDesktop
 {
@@ -82,9 +82,10 @@ namespace HaloDesktop
         String ShowMoreLabel { get; };
 
         String Key { get; };
+        // The quality medal: plate, tag (empty for none) and finish.
         String QualityBadgeTier { get; };
         String QualityBadgeDetail { get; };
-        QualityBadgeTone QualityTone { get; };
+        QualityMedalFinish QualityTone { get; };
         String StatusLabel { get; };
         Microsoft.UI.Xaml.Visibility InstantVisibility { get; };
         Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
@@ -149,7 +150,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PickVisibility { get; };
         String PickQualityBadgeTier { get; };
         String PickQualityBadgeDetail { get; };
-        QualityBadgeTone PickQualityTone { get; };
+        QualityMedalFinish PickQualityTone { get; };
         String PickStatusLabel { get; };
         Microsoft.UI.Xaml.Visibility PickInstantVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickOnDiskVisibility { get; };

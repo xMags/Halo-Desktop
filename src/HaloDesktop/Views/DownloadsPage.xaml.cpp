@@ -130,7 +130,8 @@ namespace winrt::HaloDesktop::implementation
                 XamlRoot(),
                 ActualTheme(),
                 L"Cancel transfer?",
-                L"The partial file and protected request will be removed from this device.");
+                L"The partial file and protected request will be removed from this device.",
+                ::HaloDesktop::Views::DialogTone::Destructive);
             dialog.PrimaryButtonText(L"Cancel transfer");
             dialog.CloseButtonText(L"Keep transfer");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)

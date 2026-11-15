@@ -1,4 +1,4 @@
-import "Controls/QualityBadge.idl";
+import "Controls/QualityMedal.idl";
 
 namespace HaloDesktop
 {
@@ -39,9 +39,11 @@ namespace HaloDesktop
         String DownloadedLine { get; };
         String FileName { get; };
         String AddedLabel { get; };
+        // The row's quality medal: plate, tag (empty for none) and finish. The names
+        // are the quality badge's it replaced, kept so the row bindings stay stable.
         String QualityBadgeTier { get; };
         String QualityBadgeDetail { get; };
-        QualityBadgeTone QualityTone { get; };
+        QualityMedalFinish QualityTone { get; };
     }
 
     [default_interface]

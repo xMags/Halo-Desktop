@@ -243,16 +243,6 @@ namespace HaloDesktop::Sources
         return L"Lower";
     }
 
-    winrt::hstring BadgeTierLabel(QualityTier tier)
-    {
-        return winrt::hstring{ Upper(TierLabel(tier)) };
-    }
-
-    bool IsPremiumTier(QualityTier tier) noexcept
-    {
-        return tier == QualityTier::UltraHd;
-    }
-
     StartSpeed SpeedOf(winrt::HaloDesktop::StreamStatus status) noexcept
     {
         switch (status)

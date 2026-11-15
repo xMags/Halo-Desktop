@@ -12,7 +12,6 @@
 #include "Services/ThemeService.h"
 #include "Shell/WindowPresentationService.h"
 
-#include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Windows.UI.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -23,7 +22,8 @@ namespace winrt::HaloDesktop::implementation
     {
         MainWindowT::InitializeComponent();
 
-        SystemBackdrop(Microsoft::UI::Xaml::Media::MicaBackdrop{});
+        // No system backdrop: RootGrid paints the palette's own ground edge to edge, so
+        // a Mica layer underneath would only cost composition without ever showing.
         ExtendsContentIntoTitleBar(true);
         SetTitleBar(AppTitleBarControl());
 

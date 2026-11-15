@@ -227,7 +227,8 @@ namespace winrt::HaloDesktop::implementation
                 L"Remove addon?",
                 viewModel->IsGlobalAddon(id)
                     ? L"This removes the addon for every user on this server."
-                    : L"This removes the addon from your account.");
+                    : L"This removes the addon from your account.",
+                ::HaloDesktop::Views::DialogTone::Destructive);
             dialog.PrimaryButtonText(L"Remove");
             dialog.CloseButtonText(L"Cancel");
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
