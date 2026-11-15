@@ -166,7 +166,7 @@ This restores packages and the pinned native payloads, builds the selected Relea
 
 Inno Setup 6 must be installed. The script finds it through its registry entry, so either the per-user or the all-users installation works.
 
-The installer is per-user by default and needs no administrator rights, installing to `%LOCALAPPDATA%\Programs\Halo Desktop`; choosing an all-users install from the privileges dialog puts it in Program Files instead. It creates a Start Menu shortcut, offers an optional desktop shortcut, and closes any running Halo during an upgrade through Restart Manager.
+The installer is all-users only: it asks for administrator rights and installs to `Program Files\Halo Desktop`. It creates a "Halo Desktop" Start Menu shortcut, offers an optional desktop shortcut, and closes any running Halo Desktop during an upgrade through Restart Manager. The name keeps "Desktop" because plain "Halo" is the cross-platform Halo app's Start Menu entry; an upgrade from a version that still used "Halo" removes those old shortcuts only when they point at this install.
 
 Application data lives separately in `%LOCALAPPDATA%\Halo Desktop` and is never touched by install or upgrade. An interactive uninstall asks whether to delete it and keeps it by default; a silent uninstall always keeps it.
 

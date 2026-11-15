@@ -1,4 +1,4 @@
-; Halo installer.
+; Halo Desktop installer.
 ;
 ; Build it with tools\Build-Installer.ps1 rather than by opening this file in
 ; the Inno Setup IDE. That script verifies the pinned native payloads and the
@@ -12,7 +12,9 @@
   #define AppVersion "1.0.0"
 #endif
 
-#define AppName "Halo"
+; "Halo" alone belongs to the cross-platform Halo app, which installs its own
+; "Halo" Start Menu entry. This one keeps "Desktop" so the two never collide.
+#define AppName "Halo Desktop"
 #define AppPublisher "lastprojects"
 #define AppWebsite "https://lastprojects.com"
 #define AppExeName "HaloDesktop.exe"
@@ -78,6 +80,13 @@ SetupIconFile={#RepositoryRoot}\src\HaloDesktop\Assets\Halo.ico
 UninstallDisplayIcon={app}\{#AppExeName}
 UninstallDisplayName={#AppName}
 LicenseFile={#RepositoryRoot}\LICENSE
+
+; Inno appends to an existing uninstall log by default, and the log from a
+; version installed before the rename still lists the old "Halo" shortcuts.
+; Those paths now belong to the cross-platform Halo app, so an appended log
+; would make uninstalling Halo Desktop delete Halo's shortcuts. Each install
+; lays down every file again, so a fresh log loses nothing that still ships.
+UninstallLogMode=overwrite
 
 ; Halo deliberately supports multiple instances, so there is no single-instance
 ; mutex to wait on. Restart Manager closes any running copies during an upgrade
@@ -155,10 +164,49 @@ begin
        SW_SHOW, ewWaitUntilTerminated, ResultCode);
 end;
 
+// Versions before the rename created "Halo" shortcuts. An upgrade creates
+// "Halo Desktop" ones instead, so without this the old ones would stay behind
+// beside the new. The cross-platform Halo app uses those same paths, so a
+// shortcut is removed only when it still points at this install's executable.
+function ShortcutTarget(const ShortcutPath: String): String;
+var
+  Shell: Variant;
+  Shortcut: Variant;
+begin
+  Result := '';
+  try
+    Shell := CreateOleObject('WScript.Shell');
+    Shortcut := Shell.CreateShortcut(ShortcutPath);
+    Result := Shortcut.TargetPath;
+  except
+    // An unreadable shortcut cannot be shown to be ours, so it is kept.
+    Result := '';
+  end;
+end;
+
+procedure RemoveShortcutIfOurs(const ShortcutPath: String);
+begin
+  if not FileExists(ShortcutPath) then
+    Exit;
+  if CompareText(ShortcutTarget(ShortcutPath),
+                 ExpandConstant('{app}\{#AppExeName}')) <> 0 then
+    Exit;
+  DeleteFile(ShortcutPath);
+end;
+
+procedure RemovePreRenameShortcuts;
+begin
+  RemoveShortcutIfOurs(ExpandConstant('{autoprograms}\Halo.lnk'));
+  RemoveShortcutIfOurs(ExpandConstant('{autodesktop}\Halo.lnk'));
+end;
+
 procedure CurStepChanged(CurStep: TSetupStep);
 begin
   if CurStep = ssInstall then
+  begin
     RemovePreviousPerUserInstall;
+    RemovePreRenameShortcuts;
+  end;
 end;
 
 // Halo's data lives outside {app}, so uninstall would otherwise leave it
@@ -184,9 +232,9 @@ begin
     DataDirectory := ExpandConstant('{localappdata}\Halo Desktop');
     if DirExists(DataDirectory) then
     begin
-      if MsgBox('Also remove your Halo data?' + #13#10 + #13#10 +
+      if MsgBox('Also remove your Halo Desktop data?' + #13#10 + #13#10 +
                 DataDirectory + #13#10 + #13#10 +
-                'This removes your sign-in, settings, watch history, and downloads in Halo''s default folder.' + #13#10 +
+                'This removes your sign-in, settings, watch history, and downloads in Halo Desktop''s default folder.' + #13#10 +
                 'Downloads in a folder you chose are kept.' + #13#10 +
                 'Choose No to keep it for a future reinstall.',
                 mbConfirmation, MB_YESNO or MB_DEFBUTTON2) = IDYES then

@@ -20,7 +20,7 @@
         VerticalAlignment="Center"
         FontSize="{StaticResource HaloFontLabel}"
         Foreground="{ThemeResource HaloText2Brush}"
-        Text="Halo" />
+        Text="Halo Desktop" />
     </StackPanel>
   </Grid>
 </UserControl>

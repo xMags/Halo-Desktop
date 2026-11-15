@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Produces the Halo installer from a verified Release build.
+    Produces the Halo Desktop installer from a verified Release build.
 
 .DESCRIPTION
     Runs the whole release path in order so an installer cannot be produced
