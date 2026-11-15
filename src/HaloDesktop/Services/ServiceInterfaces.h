@@ -98,7 +98,6 @@ namespace HaloDesktop::Services
         // Rebuilds the local library projections after a successful membership
         // mutation without refetching catalogs or any other server state.
         virtual void RebuildLibrary() = 0;
-        [[nodiscard]] virtual concurrency::task<void> SearchAsync(winrt::hstring query) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const = 0;
@@ -108,9 +107,6 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const = 0;
-        virtual void RecordRecent(winrt::hstring term) = 0;
         // Home's recently watched shelf: the last distinct titles played, newest
         // first, leaving out what the continue row already offers, following
         // the filter. Synchronous and network free.

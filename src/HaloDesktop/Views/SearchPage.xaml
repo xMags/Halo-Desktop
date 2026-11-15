@@ -5,81 +5,443 @@
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
+  Unloaded="OnUnloaded"
   ContextRequested="OnContextRequested"
   NavigationCacheMode="Required">
+  <Page.Resources>
+    <!-- A borderless row or pill part: no plate at rest, the subtle wash under the pointer. -->
+    <Style x:Key="SearchRowButtonStyle" TargetType="Button">
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Left" />
+      <Setter Property="Background" Value="Transparent" />
+      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="0" />
+    </Style>
+    <!-- `.top-match` and `.search-grid`'s shared poster template. -->
+    <DataTemplate x:Key="SearchPosterTemplate" x:DataType="local:MediaSummary">
+      <local:PosterCard
+        Title="{x:Bind Title}"
+        Meta="{x:Bind Meta}"
+        Poster="{x:Bind Poster}"
+        KindLabel="{x:Bind KindLabel}"
+        FillsColumn="True"
+        Tag="{x:Bind}"
+        Click="OnPosterClick"
+        PosterFailed="OnPosterFailed" />
+    </DataTemplate>
+  </Page.Resources>
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
     <local:SectionHeader Title="Search" />
-    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden">
-      <StackPanel Margin="24,8,24,40">
+    <ScrollViewer
+      Grid.Row="1"
+      HorizontalScrollBarVisibility="Disabled"
+      HorizontalScrollMode="Disabled"
+      VerticalScrollBarVisibility="Hidden">
+      <!-- The bottom 40 is `.search-foot`; the sides are the layout step's gutter. -->
+      <StackPanel x:Name="PageBody" Padding="24,0,24,40">
 
-        <AutoSuggestBox
-          x:Name="QueryBox"
-          Width="480"
-          Height="36"
-          HorizontalAlignment="Left"
-          FontSize="{StaticResource HaloFontEmphasis}"
-          PlaceholderText="Search movies and series"
-          QueryIcon="Find"
-          QuerySubmitted="OnQuerySubmitted"
-          Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-
-        <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
-          <RadioButton GroupName="SearchFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
-          <RadioButton GroupName="SearchFilter" Click="OnMoviesFilterClick" Content="Movies" Style="{StaticResource HaloChipRadioStyle}" />
-          <RadioButton GroupName="SearchFilter" Click="OnSeriesFilterClick" Content="Series" Style="{StaticResource HaloChipRadioStyle}" />
-        </StackPanel>
-
-        <Grid Margin="0,22,0,0" ColumnSpacing="16">
-          <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="232" /></Grid.ColumnDefinitions>
-          <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.TopMatchVisibility, Mode=OneWay}">
-            <TextBlock Text="TOP MATCH" Style="{StaticResource HaloMonoKicker}" />
-            <Button HorizontalContentAlignment="Stretch" Click="OnTopMatchClick" Style="{StaticResource HaloCardButtonStyle}">
-              <Grid>
-                <Grid.ColumnDefinitions><ColumnDefinition Width="92" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                <Grid Width="92" Height="138" VerticalAlignment="Top">
-                  <local:PlaceholderArt />
-                  <local:ArtworkImage SourceUrl="{x:Bind ViewModel.TopMatchPoster, Mode=OneWay}" />
-                </Grid>
-                <StackPanel Grid.Column="1" Margin="16,2,0,0" Spacing="7">
-                  <TextBlock FontSize="{StaticResource HaloFontShelf}" FontWeight="SemiBold" Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}" />
-                  <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.TopMatchMeta, Mode=OneWay}" />
-                  <TextBlock Style="{StaticResource HaloBodySmall}" Text="{x:Bind ViewModel.TopMatchSynopsis, Mode=OneWay}" />
-                </StackPanel>
-              </Grid>
-            </Button>
-          </StackPanel>
-          <StackPanel Grid.Column="1" Spacing="10" Visibility="{x:Bind ViewModel.RecentVisibility, Mode=OneWay}">
-            <TextBlock Text="RECENT" Style="{StaticResource HaloMonoKicker}" />
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-              <ItemsControl x:Name="RecentList">
+        <!--
+          `.search-head`: the box, the suggestions hanging from it over
+          whatever is below, and the kind chips. Drawn above the sections
+          after it, so the suggestions cover them.
+        -->
+        <StackPanel x:Name="SearchHead" Margin="0,8,0,0" Canvas.ZIndex="5">
+          <Grid Width="480" Height="36" MaxWidth="480" HorizontalAlignment="Left">
+            <TextBox
+              x:Name="QueryBox"
+              Height="36"
+              Padding="11,7,66,0"
+              VerticalContentAlignment="Center"
+              FontSize="{StaticResource HaloFontEmphasis}"
+              IsSpellCheckEnabled="False"
+              MaxLength="120"
+              PlaceholderText="Search movies and series"
+              Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+              GotFocus="OnQueryGotFocus"
+              KeyDown="OnQueryKeyDown"
+              Loaded="OnQueryBoxLoaded"
+              LostFocus="OnQueryLostFocus" />
+            <StackPanel Margin="0,0,4,0" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal">
+              <!-- Shown whenever there is text, not only while the box has the caret; pressing it keeps the caret in the box. -->
+              <Button
+                Width="28"
+                Height="28"
+                MinWidth="0"
+                Padding="0"
+                AllowFocusOnInteraction="False"
+                AutomationProperties.Name="Clear"
+                Background="Transparent"
+                BorderThickness="0"
+                Click="OnClearClick"
+                IsTabStop="False"
+                ToolTipService.ToolTip="Clear"
+                Visibility="{x:Bind ViewModel.ClearVisibility, Mode=OneWay}">
+                <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE894;" />
+              </Button>
+              <FontIcon Width="28" FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE721;" IsHitTestVisible="False" />
+            </StackPanel>
+          </Grid>
+          <!-- `.search-suggest`: 4 under the box, as wide as it; takes no room of its own. -->
+          <Canvas Height="0" Canvas.ZIndex="1">
+            <Border
+              Canvas.Top="4"
+              Width="480"
+              Background="{ThemeResource HaloFlyoutBrush}"
+              BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Visibility="{x:Bind ViewModel.SuggestionsVisibility, Mode=OneWay}">
+              <ItemsControl x:Name="SuggestionList" AutomationProperties.Name="Past searches" IsTabStop="False">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="local:RecentSearchViewModel">
-                    <Button Padding="12,9" HorizontalAlignment="Stretch" HorizontalContentAlignment="Stretch" Background="Transparent" BorderThickness="0" CornerRadius="0" Click="OnRecentClick" Tag="{x:Bind Term}">
-                      <Grid>
-                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
-                        <TextBlock Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Age}" />
-                      </Grid>
+                    <!-- Taken without moving the caret, so the box never loses focus to the list. -->
+                    <Button
+                      Padding="12,9"
+                      AllowFocusOnInteraction="False"
+                      BorderBrush="{ThemeResource HaloDividerBrush}"
+                      BorderThickness="0,0,0,1"
+                      Click="OnSuggestionClick"
+                      Style="{StaticResource SearchRowButtonStyle}"
+                      Tag="{x:Bind Term}">
+                      <StackPanel Orientation="Horizontal" Spacing="10">
+                        <FontIcon VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
+                        <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
                     </Button>
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
             </Border>
+          </Canvas>
+          <StackPanel Margin="0,14,0,0" Orientation="Horizontal" Spacing="8">
+            <RadioButton x:Name="AllChip" GroupName="SearchFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
+            <RadioButton x:Name="MoviesChip" GroupName="SearchFilter" Click="OnMoviesFilterClick" Content="Movies" Style="{StaticResource HaloChipRadioStyle}" />
+            <RadioButton x:Name="SeriesChip" GroupName="SearchFilter" Click="OnSeriesFilterClick" Content="Series" Style="{StaticResource HaloChipRadioStyle}" />
+          </StackPanel>
+        </StackPanel>
+
+        <!-- RECENT: up to six pills on one 34px line; whatever does not fit is clipped away. -->
+        <StackPanel Margin="0,26,0,0" Spacing="12" Visibility="{x:Bind ViewModel.RecentVisibility, Mode=OneWay}">
+          <Grid>
+            <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoKicker}" Text="RECENT" />
+            <Button
+              Padding="2,0"
+              HorizontalAlignment="Right"
+              Background="Transparent"
+              BorderThickness="0"
+              Click="OnClearRecentClick"
+              Content="Clear"
+              FontSize="{StaticResource HaloFontSmall}"
+              Foreground="{ThemeResource HaloAccentBrush}" />
+          </Grid>
+          <ItemsControl x:Name="RecentList" Height="34" IsTabStop="False">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <local:WrapPanel HorizontalSpacing="8" VerticalSpacing="8" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:RecentSearchViewModel">
+                <Border
+                  Height="34"
+                  MaxWidth="280"
+                  Background="{ThemeResource HaloCardBrush}"
+                  BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+                  BorderThickness="1"
+                  CornerRadius="16">
+                  <Grid>
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <Button
+                      Padding="12,6,4,6"
+                      VerticalAlignment="Stretch"
+                      Click="OnRecentClick"
+                      CornerRadius="16,0,0,16"
+                      Style="{StaticResource SearchRowButtonStyle}"
+                      Tag="{x:Bind Term}">
+                      <StackPanel Orientation="Horizontal" Spacing="8">
+                        <FontIcon VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
+                        <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Button>
+                    <Button
+                      Grid.Column="1"
+                      Width="22"
+                      Height="22"
+                      Margin="0,0,5,0"
+                      VerticalAlignment="Center"
+                      AutomationProperties.Name="{x:Bind RemoveLabel}"
+                      Background="Transparent"
+                      BorderThickness="0"
+                      Click="OnForgetClick"
+                      CornerRadius="11"
+                      Style="{StaticResource HaloDangerIconButtonStyle}"
+                      Tag="{x:Bind Term}"
+                      ToolTipService.ToolTip="Remove">
+                      <FontIcon FontSize="11" Glyph="&#xE74D;" />
+                    </Button>
+                  </Grid>
+                </Border>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+
+        <!-- POPULAR RIGHT NOW: Home's first films and series catalogs, taking turns. -->
+        <StackPanel Margin="0,26,0,0" Spacing="12" Visibility="{x:Bind ViewModel.PopularVisibility, Mode=OneWay}">
+          <TextBlock Style="{StaticResource HaloMonoKicker}" Text="POPULAR RIGHT NOW" />
+          <ItemsRepeater
+            x:Name="PopularGrid"
+            ElementPrepared="OnGridElementPrepared"
+            ItemTemplate="{StaticResource SearchPosterTemplate}"
+            Visibility="{x:Bind ViewModel.PopularGridVisibility, Mode=OneWay}">
+            <ItemsRepeater.Layout>
+              <UniformGridLayout x:Name="PopularLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
+            </ItemsRepeater.Layout>
+          </ItemsRepeater>
+          <StackPanel
+            x:Name="PopularSkeleton"
+            AutomationProperties.AccessibilityView="Raw"
+            IsHitTestVisible="False"
+            Visibility="{x:Bind ViewModel.PopularSkeletonVisibility, Mode=OneWay}">
+            <Grid Height="28" Margin="0,0,0,12">
+              <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+            </Grid>
+            <StackPanel Margin="0,-4,0,0" Orientation="Horizontal" Spacing="14">
+              <local:PosterSkeleton />
+              <local:PosterSkeleton />
+              <local:PosterSkeleton />
+              <local:PosterSkeleton />
+              <local:PosterSkeleton />
+              <local:PosterSkeleton />
+            </StackPanel>
+          </StackPanel>
+        </StackPanel>
+
+        <TextBlock
+          Margin="0,26,0,0"
+          FontSize="{StaticResource HaloFontSmall}"
+          Foreground="{ThemeResource HaloText3Brush}"
+          Text="{x:Bind ViewModel.FailureNote, Mode=OneWay}"
+          TextWrapping="Wrap"
+          Visibility="{x:Bind ViewModel.FailureNoteVisibility, Mode=OneWay}" />
+        <TextBlock
+          Margin="0,30,0,0"
+          HorizontalAlignment="Center"
+          FontSize="{StaticResource HaloFontBody}"
+          Foreground="{ThemeResource HaloText3Brush}"
+          Text="None of your addons can search. Add one that can, such as Cinemeta, in Settings."
+          TextAlignment="Center"
+          TextWrapping="Wrap"
+          Visibility="{x:Bind ViewModel.NoAddonsVisibility, Mode=OneWay}" />
+
+        <!--
+          `.top-match`: the title's art across the card under the hero's scrim,
+          its poster at the size of the cards below, and the two things a viewer
+          does next. Clicking anywhere else opens the title page; the Tag is
+          what a right-click opens the poster menu for.
+        -->
+        <Grid
+          x:Name="TopMatchCard"
+          Margin="0,26,0,0"
+          Background="Transparent"
+          CornerRadius="8"
+          PointerCanceled="OnTopMatchPointerExited"
+          PointerEntered="OnTopMatchPointerEntered"
+          PointerExited="OnTopMatchPointerExited"
+          Tag="{x:Bind ViewModel.TopMatch, Mode=OneWay}"
+          Tapped="OnTopMatchTapped"
+          Visibility="{x:Bind ViewModel.TopMatchVisibility, Mode=OneWay}">
+          <Grid IsHitTestVisible="False">
+            <Rectangle Fill="{ThemeResource HaloCardBrush}" />
+            <!-- No backdrop of its own: the poster, decoded tiny and stretched, so it reads as colour and light. -->
+            <local:ArtworkImage
+              Margin="-48"
+              DecodeWidth="16"
+              SourceUrl="{x:Bind ViewModel.TopMatchSoftBackdrop, Mode=OneWay}" />
+            <local:ArtworkImage SourceUrl="{x:Bind ViewModel.TopMatchBackdrop, Mode=OneWay}" />
+            <Rectangle Fill="{ThemeResource HaloTopMatchScrimBrush}" />
+          </Grid>
+          <Grid x:Name="TopMatchContent" Padding="26,22" ColumnSpacing="26">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition x:Name="TopMatchPosterColumn" Width="132" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid
+              x:Name="TopMatchPoster"
+              Height="198"
+              VerticalAlignment="Center"
+              BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="8">
+              <local:PlaceholderArt x:Name="TopMatchPlaceholder" />
+              <local:ArtworkImage
+                x:Name="TopMatchArtwork"
+                DecodeWidth="168"
+                MetaId="{x:Bind ViewModel.TopMatchMetaId, Mode=OneWay}"
+                SourceUrl="{x:Bind ViewModel.TopMatchPoster, Mode=OneWay}" />
+            </Grid>
+            <StackPanel Grid.Column="1" MaxWidth="640" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="9">
+              <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="TOP MATCH" />
+              <TextBlock
+                CharacterSpacing="-10"
+                FontFamily="Segoe UI Variable Display"
+                FontSize="28"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource HaloText1Brush}"
+                LineHeight="32"
+                Text="{x:Bind ViewModel.TopMatchTitle, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.TopMatchRating, Mode=OneWay}" Visibility="{x:Bind ViewModel.TopMatchRatingVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" Visibility="{x:Bind ViewModel.TopMatchRatingVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" CharacterSpacing="50" FontFamily="{StaticResource HaloMonoFont}" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.TopMatchKind, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" Visibility="{x:Bind ViewModel.TopMatchYearVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.TopMatchYear, Mode=OneWay}" Visibility="{x:Bind ViewModel.TopMatchYearVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="&#x00B7;" Visibility="{x:Bind ViewModel.TopMatchInLibraryVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="In library" Visibility="{x:Bind ViewModel.TopMatchInLibraryVisibility, Mode=OneWay}" />
+              </StackPanel>
+              <TextBlock
+                FontSize="{StaticResource HaloFontBody}"
+                Foreground="{ThemeResource HaloText1Brush}"
+                LineHeight="22"
+                MaxLines="3"
+                Text="{x:Bind ViewModel.TopMatchBlurb, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis"
+                TextWrapping="Wrap"
+                Visibility="{x:Bind ViewModel.TopMatchBlurbVisibility, Mode=OneWay}" />
+              <StackPanel Margin="0,18,0,0" Orientation="Horizontal" Spacing="10">
+                <Button Height="36" Padding="18,0" AutomationProperties.Name="{x:Bind ViewModel.TopMatchActionLabel, Mode=OneWay}" Click="OnTopMatchPlayClick" Style="{StaticResource HaloAccentButtonStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="9">
+                    <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
+                    <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.TopMatchActionLabel, Mode=OneWay}" />
+                  </StackPanel>
+                </Button>
+                <Button Height="36" Padding="18,0" Click="OnTopMatchDetailsClick" Content="Details" />
+              </StackPanel>
+            </StackPanel>
+          </Grid>
+          <!-- The 1px frame, and the stronger one under the pointer, crossfading as a poster card's do. -->
+          <Border BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8" IsHitTestVisible="False" />
+          <Border x:Name="TopMatchHoverRing" BorderBrush="{ThemeResource HaloText4Brush}" BorderThickness="1" CornerRadius="8" IsHitTestVisible="False" Opacity="0">
+            <Border.OpacityTransition>
+              <ScalarTransition Duration="0:0:0.12" />
+            </Border.OpacityTransition>
+          </Border>
+        </Grid>
+
+        <!-- `TopMatchSkeleton`: the card's frame, a poster frame and the body's bars. -->
+        <Grid
+          x:Name="TopMatchSkeleton"
+          Margin="0,26,0,0"
+          Padding="26,22"
+          AutomationProperties.AccessibilityView="Raw"
+          Background="{ThemeResource HaloCardBrush}"
+          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+          BorderThickness="1"
+          ColumnSpacing="26"
+          CornerRadius="8"
+          IsHitTestVisible="False"
+          Visibility="{x:Bind ViewModel.TopMatchSkeletonVisibility, Mode=OneWay}">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition x:Name="TopMatchSkeletonColumn" Width="132" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Border
+            x:Name="TopMatchSkeletonPoster"
+            Height="198"
+            VerticalAlignment="Center"
+            Background="{ThemeResource HaloSubtleBrush}"
+            BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+            BorderThickness="1"
+            CornerRadius="8" />
+          <StackPanel x:Name="TopMatchSkeletonBody" Grid.Column="1" MaxWidth="640" VerticalAlignment="Center" Spacing="9">
+            <Border Width="84" Height="12" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+            <Grid>
+              <Grid.ColumnDefinitions><ColumnDefinition Width="60*" /><ColumnDefinition Width="40*" /></Grid.ColumnDefinitions>
+              <Border MaxWidth="320" Height="30" HorizontalAlignment="Stretch" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+            </Grid>
+            <Border Width="200" Height="14" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+            <StackPanel Margin="0,4,0,0" Spacing="7">
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="92*" /><ColumnDefinition Width="8*" /></Grid.ColumnDefinitions>
+                <Border Height="14" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+              </Grid>
+              <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="70*" /><ColumnDefinition Width="30*" /></Grid.ColumnDefinitions>
+                <Border Height="14" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+              </Grid>
+            </StackPanel>
+            <Border Width="210" Height="36" Margin="0,10,0,0" HorizontalAlignment="Left" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
           </StackPanel>
         </Grid>
 
-        <ItemsControl x:Name="ResultsList" Margin="0,26,0,0" Visibility="{x:Bind ViewModel.ResultsVisibility, Mode=OneWay}">
-          <ItemsControl.ItemTemplate>
-            <DataTemplate x:DataType="local:SearchGroup">
-              <local:MediaShelf Margin="0,0,0,26" Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
-            </DataTemplate>
-          </ItemsControl.ItemTemplate>
-        </ItemsControl>
-        <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Searching addons…" /></StackPanel>
-        <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Search could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
-        <TextBlock Margin="0,30,0,0" HorizontalAlignment="Center" Text="No matching titles." Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}" />
+        <StackPanel Margin="0,26,0,0" Spacing="12" Visibility="{x:Bind ViewModel.LibraryVisibility, Mode=OneWay}">
+          <TextBlock Style="{StaticResource HaloMonoKicker}" Text="IN YOUR LIBRARY" />
+          <ItemsRepeater x:Name="LibraryGrid" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
+            <ItemsRepeater.Layout>
+              <UniformGridLayout x:Name="LibraryLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
+            </ItemsRepeater.Layout>
+          </ItemsRepeater>
+        </StackPanel>
+
+        <StackPanel Margin="0,26,0,0" Spacing="12" Visibility="{x:Bind ViewModel.ResultsVisibility, Mode=OneWay}">
+          <StackPanel Orientation="Horizontal" Spacing="6">
+            <TextBlock Style="{StaticResource HaloMonoKicker}" Text="RESULTS" />
+            <TextBlock Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.ResultCountText, Mode=OneWay}" />
+          </StackPanel>
+          <ItemsRepeater x:Name="ResultsGrid" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
+            <ItemsRepeater.Layout>
+              <UniformGridLayout x:Name="ResultsLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
+            </ItemsRepeater.Layout>
+          </ItemsRepeater>
+        </StackPanel>
+
+        <StackPanel
+          x:Name="ResultsSkeleton"
+          Margin="0,26,0,0"
+          AutomationProperties.AccessibilityView="Raw"
+          IsHitTestVisible="False"
+          Visibility="{x:Bind ViewModel.ResultsSkeletonVisibility, Mode=OneWay}">
+          <Grid Height="28" Margin="0,0,0,12">
+            <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
+          </Grid>
+          <StackPanel Margin="0,-4,0,0" Orientation="Horizontal" Spacing="14">
+            <local:PosterSkeleton />
+            <local:PosterSkeleton />
+            <local:PosterSkeleton />
+            <local:PosterSkeleton />
+            <local:PosterSkeleton />
+            <local:PosterSkeleton />
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Margin="0,26,0,0" Orientation="Horizontal" Spacing="8" Visibility="{x:Bind ViewModel.StillAskingVisibility, Mode=OneWay}">
+          <ProgressRing Width="12" Height="12" MinWidth="0" MinHeight="0" VerticalAlignment="Center" IsActive="{x:Bind ViewModel.StillAsking, Mode=OneWay}" />
+          <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.StillAskingText, Mode=OneWay}" />
+        </StackPanel>
+
+        <StackPanel Margin="0,30,0,0" HorizontalAlignment="Center" Orientation="Horizontal" Spacing="4" Visibility="{x:Bind ViewModel.FilteredEmptyVisibility, Mode=OneWay}">
+          <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.FilteredEmptyText, Mode=OneWay}" />
+          <Button
+            Padding="8,3"
+            VerticalAlignment="Center"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="OnShowAllResultsClick"
+            Content="Show all results"
+            FontSize="{StaticResource HaloFontBody}"
+            Foreground="{ThemeResource HaloAccentBrush}" />
+        </StackPanel>
+        <TextBlock
+          Margin="0,30,0,0"
+          HorizontalAlignment="Center"
+          FontSize="{StaticResource HaloFontBody}"
+          Foreground="{ThemeResource HaloText3Brush}"
+          Text="No matching titles."
+          Visibility="{x:Bind ViewModel.NothingFoundVisibility, Mode=OneWay}" />
       </StackPanel>
     </ScrollViewer>
   </Grid>

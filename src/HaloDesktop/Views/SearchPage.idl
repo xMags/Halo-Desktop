@@ -1,37 +1,78 @@
+// The top match is the shared MediaSummary model.
+import "Models/Models.idl";
+
 namespace HaloDesktop
 {
+    // A past search, as a recent pill or a suggestion under the box.
     [default_interface]
     runtimeclass RecentSearchViewModel
     {
         String Term { get; };
-        String Age { get; };
+        String RemoveLabel { get; };
     }
 
     runtimeclass SearchViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Query;
-        Object Results { get; };
+        Microsoft.UI.Xaml.Visibility ClearVisibility { get; };
+        Object Suggestions { get; };
         Object RecentItems { get; };
-        Int32 AllCount { get; };
-        Int32 MovieCount { get; };
-        Int32 SeriesCount { get; };
+        Object PopularItems { get; };
+        Object LibraryItems { get; };
+        Object ResultItems { get; };
+        Boolean ShowKindBadges { get; };
+        String ResultCountText { get; };
+        String FailureNote { get; };
+        String StillAskingText { get; };
+        Boolean StillAsking { get; };
+        String FilteredEmptyText { get; };
+
+        MediaSummary TopMatch { get; };
         String TopMatchTitle { get; };
-        String TopMatchMeta { get; };
-        String TopMatchSynopsis { get; };
+        String TopMatchRating { get; };
+        String TopMatchKind { get; };
+        String TopMatchYear { get; };
+        String TopMatchBlurb { get; };
         String TopMatchPoster { get; };
-        Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
+        String TopMatchMetaId { get; };
+        String TopMatchBackdrop { get; };
+        String TopMatchSoftBackdrop { get; };
+        String TopMatchActionLabel { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchRatingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchYearVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchInLibraryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchBlurbVisibility { get; };
+
+        Microsoft.UI.Xaml.Visibility SuggestionsVisibility { get; };
         Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
-        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PopularVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PopularGridVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PopularSkeletonVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FailureNoteVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NoAddonsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TopMatchSkeletonVisibility { get; };
+        Microsoft.UI.Xaml.Visibility LibraryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResultsSkeletonVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StillAskingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FilteredEmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NothingFoundVisibility { get; };
+
         void SetFilter(Int32 index);
-        void Submit(String query);
-        void Clear();
-        void Retry();
+        void SetBoxFocused(Boolean focused);
+        void Submit();
+        void ClearQuery();
+        void SearchAgain(String term);
+        void Forget(String term);
+        void ForgetAll();
+        void ShowAllResults();
         void OpenDetail(Object item);
         void OpenTopMatch();
-        void OpenCatalog(Object shelf);
+        void PlayTopMatch();
+        void ReportMissingArt(Object item);
+        void Arrive(String query);
+        void Shown();
     }
 
     [default_interface]

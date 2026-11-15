@@ -14,5 +14,8 @@ namespace HaloDesktop
         Boolean FillsColumn;
         Double CardWidth { get; };
         event Microsoft.UI.Xaml.RoutedEventHandler Click;
+        // The poster it was handed could not be loaded. Search counts such a
+        // title as artless; other hosts need not listen.
+        event Microsoft.UI.Xaml.RoutedEventHandler PosterFailed;
     }
 }

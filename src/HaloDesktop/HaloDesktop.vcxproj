@@ -346,6 +346,9 @@
     <ClInclude Include="Services\HomeShelfLoadPolicy.h" />
     <ClInclude Include="Controls\SkeletonPulse.h" />
     <ClInclude Include="Controls\PosterSkeleton.xaml.h"><DependentUpon>PosterSkeleton.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Services\SearchResultsPolicy.h" />
+    <ClInclude Include="Services\SearchHistoryPolicy.h" />
+    <ClInclude Include="Services\SearchService.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -636,6 +639,13 @@
     </ClCompile>
     <ClCompile Include="Controls\SkeletonPulse.cpp" />
     <ClCompile Include="Controls\PosterSkeleton.xaml.cpp"><DependentUpon>PosterSkeleton.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Services\SearchResultsPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\SearchHistoryPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\SearchService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

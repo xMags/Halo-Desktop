@@ -13,7 +13,8 @@ namespace
 {
     constexpr std::uint64_t MaximumPreferencesBytes = 1024u * 1024u;
     constexpr std::size_t MaximumHistoryItems = 20;
-    constexpr std::size_t MaximumHistoryItemLength = 120;
+    constexpr std::size_t MaximumHistoryItemLength = HaloDesktop::Services::SearchHistoryTermLimit;
+    constexpr double MaximumExactMilliseconds = 9007199254740992.0;
     constexpr std::size_t MaximumSubtitleMemoryCharacters = 512u * 1024u;
     // A residential line faster than this is not something the warning needs to
     // model, and it keeps a corrupted file from producing an absurd threshold.
@@ -53,15 +54,9 @@ namespace
             result.SearchHistory.reserve(count);
             for (std::uint32_t index{}; index < count; ++index)
             {
-                auto const entry = history.GetAt(index);
-                if (entry.ValueType() != JsonValueType::String)
+                if (auto entry = HaloDesktop::Services::ParseSearchHistoryEntry(history.GetAt(index)))
                 {
-                    continue;
-                }
-                auto const text = entry.GetString();
-                if (!text.empty() && text.size() <= MaximumHistoryItemLength)
-                {
-                    result.SearchHistory.push_back(text);
+                    result.SearchHistory.push_back(std::move(*entry));
                 }
             }
         }
@@ -101,11 +96,14 @@ namespace
             {
                 break;
             }
-            if (entry.empty() || entry.size() > MaximumHistoryItemLength)
+            if (entry.Term.empty() || entry.Term.size() > MaximumHistoryItemLength)
             {
                 continue;
             }
-            history.Append(JsonValue::CreateStringValue(entry));
+            JsonObject row;
+            row.Insert(L"term", JsonValue::CreateStringValue(entry.Term));
+            row.Insert(L"at", JsonValue::CreateNumberValue(static_cast<double>((std::max)(entry.At, std::int64_t{}))));
+            history.Append(row);
             ++count;
         }
         root.Insert(L"searchHistory", history);
@@ -154,6 +152,48 @@ namespace
 
 namespace HaloDesktop::Services
 {
+    std::optional<SearchHistoryEntry> ParseSearchHistoryEntry(
+        winrt::Windows::Data::Json::IJsonValue const& value)
+    {
+        if (!value)
+        {
+            return std::nullopt;
+        }
+        SearchHistoryEntry entry;
+        if (value.ValueType() == JsonValueType::String)
+        {
+            entry.Term = std::wstring{ value.GetString() };
+        }
+        else if (value.ValueType() == JsonValueType::Object)
+        {
+            auto const object = value.GetObject();
+            auto const term = object.TryLookup(L"term");
+            if (!term || term.ValueType() != JsonValueType::String)
+            {
+                return std::nullopt;
+            }
+            entry.Term = std::wstring{ term.GetString() };
+            if (auto const at = object.TryLookup(L"at"); at && at.ValueType() == JsonValueType::Number)
+            {
+                // Milliseconds since the epoch fit a double exactly up to 2^53.
+                auto const number = at.GetNumber();
+                if (std::isfinite(number) && number >= 0.0 && number <= MaximumExactMilliseconds)
+                {
+                    entry.At = static_cast<std::int64_t>(std::floor(number));
+                }
+            }
+        }
+        else
+        {
+            return std::nullopt;
+        }
+        if (entry.Term.empty() || entry.Term.size() > MaximumHistoryItemLength)
+        {
+            return std::nullopt;
+        }
+        return entry;
+    }
+
     DevicePreferencesStore::DevicePreferencesStore(std::filesystem::path path)
         : m_path(std::filesystem::absolute(std::move(path)).lexically_normal())
     {
@@ -176,12 +216,12 @@ namespace HaloDesktop::Services
         });
     }
 
-    std::vector<winrt::hstring> DevicePreferencesStore::SearchHistory() const
+    std::vector<SearchHistoryEntry> DevicePreferencesStore::SearchHistory() const
     {
         try { return Read().SearchHistory; } catch (...) { return {}; }
     }
 
-    void DevicePreferencesStore::SearchHistory(std::vector<winrt::hstring> value)
+    void DevicePreferencesStore::SearchHistory(std::vector<SearchHistoryEntry> value)
     {
         Mutate(m_path, m_mutex, [value = std::move(value)](DevicePreferences& current) mutable
         {

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Services/SearchHistoryPolicy.h"
+
 #include <cstdint>
 #include <filesystem>
 #include <mutex>
@@ -13,7 +15,9 @@ namespace HaloDesktop::Services
     struct DevicePreferences final
     {
         std::int32_t Theme{ 2 };
-        std::vector<winrt::hstring> SearchHistory;
+        // Written as `{ term, at }` objects. A file from an older build holds
+        // plain strings, which are read as terms searched at an unknown time.
+        std::vector<SearchHistoryEntry> SearchHistory;
         winrt::Windows::Data::Json::JsonObject SubtitleSelectionMemory;
         bool SourceRankingTipDismissed{};
         bool ResumePlayback{ true };
@@ -27,6 +31,12 @@ namespace HaloDesktop::Services
         double MeasuredLineMbps{};
     };
 
+    // One stored search-history row: a plain string (the older shape) or a
+    // `{ term, at }` object. Empty for anything else, or a term that is empty
+    // or longer than the box accepts. A missing or unusable `at` reads as zero.
+    [[nodiscard]] std::optional<SearchHistoryEntry> ParseSearchHistoryEntry(
+        winrt::Windows::Data::Json::IJsonValue const& value);
+
     // Thread-safe and process-safe typed storage for device-only choices. Every
     // setter reloads and changes one key under the named file lock, which avoids
     // lost updates when two Halo processes change different preferences.
@@ -37,8 +47,8 @@ namespace HaloDesktop::Services
 
         [[nodiscard]] std::int32_t Theme() const noexcept;
         void Theme(std::int32_t value);
-        [[nodiscard]] std::vector<winrt::hstring> SearchHistory() const;
-        void SearchHistory(std::vector<winrt::hstring> value);
+        [[nodiscard]] std::vector<SearchHistoryEntry> SearchHistory() const;
+        void SearchHistory(std::vector<SearchHistoryEntry> value);
         [[nodiscard]] winrt::Windows::Data::Json::JsonObject SubtitleSelectionMemory() const;
         void SubtitleSelectionMemory(winrt::Windows::Data::Json::JsonObject const& value);
         [[nodiscard]] bool SourceRankingTipDismissed() const noexcept;

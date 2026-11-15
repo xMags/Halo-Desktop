@@ -35,6 +35,8 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::event_token Click(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
         void Click(winrt::event_token const& token) noexcept;
+        winrt::event_token PosterFailed(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
+        void PosterFailed(winrt::event_token const& token) noexcept;
 
         void OnCardClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCardPointerEntered(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
@@ -47,6 +49,7 @@ namespace winrt::HaloDesktop::implementation
         void ApplyColumnWidth(double width);
         void ShowPlaceholder(bool visible);
         void SetHovered(bool hovered);
+        void RaisePosterFailed();
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
@@ -58,6 +61,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Controls::CardHoverShadow m_hoverShadow;
         std::uint64_t m_metricsToken{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
+        winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_posterFailed;
         Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_sizeChanged;
     };
 }

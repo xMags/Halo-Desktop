@@ -22,6 +22,7 @@
 #include "DownloadTransferTest.h"
 #include "HomeRowsTests.h"
 #include "HomeShelfLoadTests.h"
+#include "SearchResultsTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1334,6 +1335,7 @@ int main()
         TestContinueShelf();
         RunHomeRowsTests();
         RunHomeShelfLoadTests();
+        RunSearchResultsTests();
         TestWatchMarks();
         TestHistoryRemoval();
         TestEpisodePositionParsing();

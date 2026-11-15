@@ -164,8 +164,10 @@ namespace
         verify.DiscordPresence(false);
         Require(!DevicePreferencesStore{ path }.DiscordPresence(),
             "the Discord presence preference did not round-trip locally");
-        verify.SearchHistory({ L"one", L"two" });
-        Require(verify.SearchHistory().size() == 2, "valid search history did not round-trip");
+        verify.SearchHistory({ { L"one", 1700000000000 }, { L"two", 0 } });
+        Require(verify.SearchHistory() == std::vector<HaloDesktop::Services::SearchHistoryEntry>{
+                    { L"one", 1700000000000 }, { L"two", 0 } },
+            "valid search history did not round-trip with its times");
 
         // The pane state is merged like every other key: writing it keeps the
         // rest, and a later write of another key keeps it.
@@ -181,6 +183,50 @@ namespace
         auto const wrongPath = temporary.Path() / L"wrong-pane.json";
         HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");
         Require(!DevicePreferencesStore{ wrongPath }.NavPaneOpen(), "an invalid pane value did not fall back to closed");
+    }
+
+    // The history became `{ term, at }` rows. A file an older build wrote
+    // holds plain strings; the first run of this build must keep every one of
+    // them, and the two shapes may sit side by side in one list.
+    void TestSearchHistoryShapes()
+    {
+        using HaloDesktop::Services::SearchHistoryEntry;
+        TemporaryDirectory temporary;
+        auto const path = temporary.Path() / L"preferences.json";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(
+            path, R"({"version":1,"theme":1,"searchHistory":["dune","the office"],"resumePlayback":false})");
+        DevicePreferencesStore store{ path };
+        Require(store.SearchHistory() == std::vector<SearchHistoryEntry>{ { L"dune", 0 }, { L"the office", 0 } },
+            "an older build's plain search history was not read");
+
+        // Another key's write keeps the old list as it was, now in the new shape.
+        store.Theme(0);
+        Require(store.SearchHistory() == std::vector<SearchHistoryEntry>{ { L"dune", 0 }, { L"the office", 0 } },
+            "writing another preference lost the older search history");
+        auto const rewritten = HaloDesktop::Storage::ReadUtf8File(path, 1024u * 1024u);
+        Require(rewritten.find(R"("term":"dune")") != std::string::npos,
+            "the search history was not written as term objects");
+        Require(!store.ResumePlayback(), "reading the older history lost another key");
+
+        HaloDesktop::Storage::WriteUtf8FileAtomic(
+            path,
+            R"({"version":1,"searchHistory":["old",{"term":"new","at":1731600000000},{"term":"no time"},)"
+            R"({"term":"bad time","at":"soon"},{"term":"negative","at":-5},{"at":3},{"term":""},7,null,)"
+            R"({"term":"fraction","at":12.75}]})");
+        Require(DevicePreferencesStore{ path }.SearchHistory() == std::vector<SearchHistoryEntry>{
+                    { L"old", 0 },
+                    { L"new", 1731600000000 },
+                    { L"no time", 0 },
+                    { L"bad time", 0 },
+                    { L"negative", 0 },
+                    { L"fraction", 12 } },
+            "a mixed search history was not read row by row");
+
+        std::wstring const tooLong(121, L'x');
+        HaloDesktop::Storage::WriteUtf8FileAtomic(
+            path, R"({"version":1,"searchHistory":[")" + winrt::to_string(tooLong) + R"(",{"term":"kept","at":1}]})");
+        Require(DevicePreferencesStore{ path }.SearchHistory() == std::vector<SearchHistoryEntry>{ { L"kept", 1 } },
+            "a term longer than the box accepts was kept");
     }
 
     void TestMigrationNoSource()
@@ -209,7 +255,7 @@ namespace
         source->Value = LegacyPackageData{ .LocalState = legacy };
         source->Value->Preferences.Theme = 0;
         source->Value->Preferences.ResumePlayback = false;
-        source->Value->Preferences.SearchHistory = { L"Halo" };
+        source->Value->Preferences.SearchHistory = { { L"Halo", 0 } };
         PackagedDataMigrator migrator{ paths, source };
 
         Require(migrator.Migrate() == MigrationResult::RetryableFailure, "an interrupted migration was not retryable");
@@ -224,7 +270,7 @@ namespace
         DevicePreferencesStore preferences{ paths->PreferencesFile() };
         Require(preferences.Theme() == 0 && !preferences.ResumePlayback(),
             "known legacy preferences were not imported");
-        Require(preferences.SearchHistory() == std::vector<winrt::hstring>{ L"Halo" },
+        Require(preferences.SearchHistory() == std::vector<HaloDesktop::Services::SearchHistoryEntry>{ { L"Halo", 0 } },
             "legacy search history was not imported");
 
         WriteBytes(paths->LocalState() / L"auth-session.bin", { 4, 5, 6 });
@@ -662,6 +708,7 @@ void RunStandaloneStorageTests()
 {
     TestSavedIdentityProfile();
     TestPreferenceValidationAndConcurrentMerge();
+    TestSearchHistoryShapes();
     TestMigrationNoSource();
     TestMigrationSuccessRetryAndIdempotency();
     TestMigrationProtectsExistingTarget();

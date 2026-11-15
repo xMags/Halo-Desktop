@@ -22,7 +22,6 @@ namespace HaloDesktop::Services
     class AddonService;
     class ContinueArtworkService;
     class ContinueNextEpisodeService;
-    class DevicePreferencesStore;
     class LibraryService;
     class SettingsSyncService;
     class WatchStateService;
@@ -41,7 +40,6 @@ namespace HaloDesktop::Services
             std::shared_ptr<AddonService> addons,
             std::shared_ptr<LibraryService> library,
             std::shared_ptr<WatchStateService> watchState,
-            std::shared_ptr<DevicePreferencesStore> preferences,
             std::shared_ptr<ContinueArtworkService> artwork,
             std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
             std::shared_ptr<SettingsSyncService> settings);
@@ -57,7 +55,6 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> RefreshCatalogsIfDirtyAsync() override;
         void RefreshContinue() override;
         void RebuildLibrary() override;
-        [[nodiscard]] concurrency::task<void> SearchAsync(winrt::hstring query) override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const override;
@@ -65,15 +62,12 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
             RecentlyWatchedForFilter(std::int32_t filterIndex) const override;
         [[nodiscard]] concurrency::task<std::vector<winrt::HaloDesktop::MediaSummary>> FetchCatalogPageAsync(
             std::shared_ptr<CatalogPagingSource const> source,
             std::size_t skip) override;
 
-        void RecordRecent(winrt::hstring term) override;
         [[nodiscard]] CatalogChangedToken AddContinueChangedHandler(
             CatalogChangedHandler handler) override;
         void RemoveContinueChangedHandler(CatalogChangedToken token) noexcept override;
@@ -151,8 +145,6 @@ namespace HaloDesktop::Services
         void NotifyContinueChanged();
         static void InvokeHandlers(
             std::unordered_map<CatalogChangedToken, CatalogChangedHandler> const& registered);
-        void LoadRecentTerms();
-        void SaveRecentTerms();
         // The language the account currently asks language catalogs for.
         [[nodiscard]] std::optional<std::wstring> CurrentCatalogLanguage() const;
 
@@ -160,7 +152,6 @@ namespace HaloDesktop::Services
         std::shared_ptr<AddonService> m_addons;
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<WatchStateService> m_watchState;
-        std::shared_ptr<DevicePreferencesStore> m_preferences;
         std::shared_ptr<ContinueArtworkService> m_artwork;
         std::shared_ptr<ContinueNextEpisodeService> m_nextEpisodes;
         std::shared_ptr<SettingsSyncService> m_settings;
@@ -168,11 +159,8 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> m_libraryItems{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> m_searchResults{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> m_recentTerms{ nullptr };
         std::optional<concurrency::task<void>> m_loadTask;
         CatalogRefreshState m_refreshState;
-        std::uint64_t m_searchVersion{};
         std::uint64_t m_snapshotVersion{};
         std::uint64_t m_accountVersion{};
         std::uint64_t m_loadTaskAccountVersion{};

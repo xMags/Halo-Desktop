@@ -64,7 +64,11 @@ namespace winrt::HaloDesktop::implementation
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
         }
-        catch (...) { image.Source(nullptr); }
+        catch (...)
+        {
+            image.Source(nullptr);
+            RaisePosterFailed();
+        }
     }
     winrt::hstring PosterCard::KindLabel() const { return m_kindLabel; }
     void PosterCard::KindLabel(winrt::hstring const& value) { m_kindLabel = value; if (auto text = FindName(L"KindText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
@@ -169,6 +173,12 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::event_token PosterCard::Click(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_click.add(handler); }
     void PosterCard::Click(winrt::event_token const& token) noexcept { m_click.remove(token); }
+    winrt::event_token PosterCard::PosterFailed(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_posterFailed.add(handler); }
+    void PosterCard::PosterFailed(winrt::event_token const& token) noexcept { m_posterFailed.remove(token); }
+    void PosterCard::RaisePosterFailed()
+    {
+        if (!m_poster.empty()) m_posterFailed(*this, Microsoft::UI::Xaml::RoutedEventArgs{});
+    }
     void PosterCard::OnCardClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_click(*this, args); }
     void PosterCard::OnCardPointerEntered([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
@@ -211,5 +221,6 @@ namespace winrt::HaloDesktop::implementation
     void PosterCard::OnPosterFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
     {
         if (auto image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>()) image.Opacity(0);
+        RaisePosterFailed();
     }
 }

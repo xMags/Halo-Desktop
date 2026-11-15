@@ -99,6 +99,13 @@
         <GradientStop Offset="0.52" Color="{StaticResource HaloHeroScrim2Color}" />
         <GradientStop Offset="0.92" Color="{StaticResource HaloMicaClearColor}" />
       </LinearGradientBrush>
+      <!-- Search's top match: the hero's haze held longer, `90deg, hs1 0, hs1 38%, hs2 68%, transparent`. -->
+      <LinearGradientBrush x:Key="HaloTopMatchScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.38" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.68" Color="{StaticResource HaloHeroScrim2Color}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
       <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />
@@ -277,6 +284,13 @@
         <GradientStop Offset="0.24" Color="{StaticResource HaloHeroScrim1Color}" />
         <GradientStop Offset="0.46" Color="{StaticResource HaloHeroScrim2Color}" />
         <GradientStop Offset="0.68" Color="{StaticResource HaloMicaClearColor}" />
+      </LinearGradientBrush>
+      <!-- The light theme holds it further: `hs1 0, hs1 52%, hs2 76%, transparent`. -->
+      <LinearGradientBrush x:Key="HaloTopMatchScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.52" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.76" Color="{StaticResource HaloHeroScrim2Color}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
       </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />

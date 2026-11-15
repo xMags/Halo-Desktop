@@ -179,6 +179,13 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\HomeShelfLoadPolicy.cpp">
       <Link>HomeShelfLoadPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SearchResultsTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchResultsPolicy.cpp">
+      <Link>SearchResultsPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchHistoryPolicy.cpp">
+      <Link>SearchHistoryPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -187,6 +194,7 @@
     <ClInclude Include="ApiClientAuthTest.h" />
     <ClInclude Include="HomeRowsTests.h" />
     <ClInclude Include="HomeShelfLoadTests.h" />
+    <ClInclude Include="SearchResultsTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

@@ -33,6 +33,7 @@ namespace HaloDesktop::Services
     class DevicePreferencesStore;
     class DiscordPresenceService;
     class NavigationService;
+    class SearchService;
     class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
@@ -42,6 +43,7 @@ namespace HaloDesktop::Services
     struct AppServices final
     {
         std::shared_ptr<ICatalogService> Catalog;
+        std::shared_ptr<SearchService> Search;
         std::shared_ptr<IMetadataService> Metadata;
         std::shared_ptr<ISourceService> Sources;
         std::shared_ptr<IDownloadService> Downloads;

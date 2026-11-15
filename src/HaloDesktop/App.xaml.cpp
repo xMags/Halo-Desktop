@@ -14,6 +14,7 @@
 #include "Services/AccountPictureService.h"
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
+#include "Services/SearchService.h"
 #include "Services/ContinueArtworkService.h"
 #include "Services/ContinueNextEpisodeService.h"
 #include "Services/DownloadArtworkService.h"
@@ -147,11 +148,16 @@ namespace winrt::HaloDesktop::implementation
             addonService,
             m_services.Library,
             m_services.WatchState,
-            m_devicePreferences,
             continueArtworkService,
             continueNextEpisodeService,
             settingsSyncService);
         m_services.Catalog = catalogService;
+        auto searchService = std::make_shared<::HaloDesktop::Services::SearchService>(
+            m_apiClient,
+            addonService,
+            libraryService,
+            m_devicePreferences);
+        m_services.Search = searchService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState(),
             [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });
@@ -179,6 +185,7 @@ namespace winrt::HaloDesktop::implementation
         std::weak_ptr<::HaloDesktop::Services::LibraryService> weakLibrary = libraryService;
         std::weak_ptr<::HaloDesktop::Services::WatchStateService> weakWatchState = watchStateService;
         std::weak_ptr<::HaloDesktop::Services::CatalogService> weakCatalog = catalogService;
+        std::weak_ptr<::HaloDesktop::Services::SearchService> weakSearch = searchService;
         std::weak_ptr<::HaloDesktop::Services::MetadataService> weakMetadata = metadataService;
         std::weak_ptr<::HaloDesktop::Services::SettingsSyncService> weakSettings = settingsSyncService;
         std::weak_ptr<::HaloDesktop::Services::SourceService> weakSources = sourceService;
@@ -191,6 +198,7 @@ namespace winrt::HaloDesktop::implementation
              weakLibrary,
              weakWatchState,
              weakCatalog,
+             weakSearch,
              weakMetadata,
              weakSettings,
              weakSources,
@@ -205,6 +213,7 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const library = weakLibrary.lock()) library->OnAccountChanged();
                 if (auto const watchState = weakWatchState.lock()) watchState->OnAccountChanged();
                 if (auto const catalog = weakCatalog.lock()) catalog->OnAccountChanged();
+                if (auto const search = weakSearch.lock()) search->OnAccountChanged();
                 if (auto const metadata = weakMetadata.lock()) metadata->OnAccountChanged();
                 if (auto const sources = weakSources.lock()) sources->OnAccountChanged();
                 if (auto const settings = weakSettings.lock())

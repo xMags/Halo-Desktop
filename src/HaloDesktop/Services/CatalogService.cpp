@@ -5,11 +5,9 @@
 #include "Api/CatalogExtrasPolicy.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
-#include "Services/AddonSelectionPolicy.h"
 #include "Services/CatalogLanguagePolicy.h"
 #include "Services/ContinueArtworkService.h"
 #include "Services/ContinueNextEpisodeService.h"
-#include "Services/DevicePreferencesStore.h"
 #include "Services/HomeRowsPolicy.h"
 #include "Services/LibraryService.h"
 #include "Services/RatingPolicy.h"
@@ -19,11 +17,9 @@
 
 #include <algorithm>
 #include <cmath>
-#include <cwctype>
 #include <exception>
 #include <iomanip>
 #include <optional>
-#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -34,13 +30,6 @@
 
 namespace
 {
-    struct CatalogQuery final
-    {
-        winrt::hstring AddonId;
-        winrt::hstring AddonName;
-        ::HaloDesktop::Api::Dto::AddonRecord::Catalog Catalog;
-    };
-
     std::wstring RequestKey(
         winrt::hstring const& addonId,
         winrt::hstring const& type,
@@ -158,36 +147,6 @@ namespace
         output << L" LEFT";
         return winrt::hstring{ output.str() };
     }
-
-    // Collapses the global and user addon lists onto one row per addon before
-    // anything queries their catalogs. Without it an addon present in both lists
-    // contributes its shelves, or its search group, twice.
-    std::vector<::HaloDesktop::Api::Dto::AddonRecord> DistinctAddons(
-        std::vector<::HaloDesktop::Api::Dto::AddonRecord> records)
-    {
-        std::vector<::HaloDesktop::Services::AddonIdentity> identities;
-        identities.reserve(records.size());
-        for (auto const& record : records)
-        {
-            identities.push_back({ std::wstring{ record.ManifestId }, record.IsGlobal });
-        }
-
-        std::vector<::HaloDesktop::Api::Dto::AddonRecord> distinct;
-        distinct.reserve(records.size());
-        // The selected indices rise strictly, so every record is moved at most once.
-        for (auto const index : ::HaloDesktop::Services::SelectDistinctAddons(identities))
-        {
-            distinct.push_back(std::move(records[index]));
-        }
-        return distinct;
-    }
-
-    std::wstring Lower(winrt::hstring const& input)
-    {
-        std::wstring result{ input };
-        std::transform(result.begin(), result.end(), result.begin(), [](wchar_t value) { return static_cast<wchar_t>(std::towlower(value)); });
-        return result;
-    }
 }
 
 namespace HaloDesktop::Services
@@ -197,7 +156,6 @@ namespace HaloDesktop::Services
         std::shared_ptr<AddonService> addons,
         std::shared_ptr<LibraryService> library,
         std::shared_ptr<WatchStateService> watchState,
-        std::shared_ptr<DevicePreferencesStore> preferences,
         std::shared_ptr<ContinueArtworkService> artwork,
         std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
         std::shared_ptr<SettingsSyncService> settings)
@@ -205,12 +163,11 @@ namespace HaloDesktop::Services
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_watchState(std::move(watchState)),
-          m_preferences(std::move(preferences)),
           m_artwork(std::move(artwork)),
           m_nextEpisodes(std::move(nextEpisodes)),
           m_settings(std::move(settings))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences || !m_artwork ||
+        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_artwork ||
             !m_nextEpisodes || !m_settings)
         {
             throw std::invalid_argument{ "CatalogService requires all dependencies." };
@@ -219,8 +176,6 @@ namespace HaloDesktop::Services
         m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_libraryItems = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>().GetView();
-        m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
-        LoadRecentTerms();
     }
 
     concurrency::task<void> CatalogService::LoadAsync()
@@ -680,48 +635,6 @@ namespace HaloDesktop::Services
         m_homeHandlers.erase(token);
     }
 
-    concurrency::task<void> CatalogService::SearchAsync(winrt::hstring query)
-    {
-        auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_searchVersion;
-        std::wstring term{ query };
-        term.erase(term.begin(), std::find_if(term.begin(), term.end(), [](wchar_t value) { return std::iswspace(value) == 0; }));
-        term.erase(std::find_if(term.rbegin(), term.rend(), [](wchar_t value) { return std::iswspace(value) == 0; }).base(), term.end());
-        if (term.size() < 2)
-        {
-            m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
-            co_return;
-        }
-
-        co_await m_addons->LoadAsync();
-        co_await uiContext;
-        if (version != m_searchVersion)
-        {
-            co_return;
-        }
-
-        std::vector<CatalogQuery> queries;
-        auto const addons = DistinctAddons(m_addons->Records());
-        for (auto const& addon : addons) for (auto const& catalog : addon.Catalogs)
-            if (catalog.SupportsSearch) queries.push_back({ addon.Id, addon.Name, catalog });
-        std::vector<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> tasks;
-        for (auto const& item : queries) tasks.push_back(m_apiClient->GetCatalogAsync(item.AddonId, item.Catalog.Type, item.Catalog.Id, { { L"search", winrt::hstring{ term } } }));
-        std::vector<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> results;
-        for (auto& task : tasks) { try { results.push_back(co_await task); } catch (...) { results.emplace_back(); } }
-        co_await uiContext;
-        if (version != m_searchVersion) co_return;
-        std::vector<winrt::HaloDesktop::SearchGroup> groups;
-        for (std::size_t index = 0; index < queries.size(); ++index)
-        {
-            if (results[index].empty()) continue;
-            std::vector<winrt::HaloDesktop::MediaSummary> items;
-            for (auto const& item : results[index]) items.push_back(MakeMedia(item));
-            auto const title = queries[index].Catalog.Name.value_or(queries[index].AddonName);
-            groups.push_back(winrt::make<winrt::HaloDesktop::implementation::SearchGroup>(title, queries[index].AddonName, winrt::single_threaded_vector(std::move(items)).GetView()));
-        }
-        m_searchResults = winrt::single_threaded_vector(std::move(groups)).GetView();
-    }
-
     winrt::HaloDesktop::MediaSummary CatalogService::Hero() const
     {
         return FeaturedForFilter(0);
@@ -794,8 +707,6 @@ namespace HaloDesktop::Services
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> CatalogService::ContinueWatching() const { return m_continue; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> CatalogService::Shelves() const { return m_shelves; }
     winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> CatalogService::LibraryItems() const { return m_libraryItems; }
-    winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> CatalogService::SearchResults() const { return m_searchResults; }
-    winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> CatalogService::RecentTerms() const { return m_recentTerms; }
 
     bool CatalogService::HasLoaded() const { return m_refreshState.HasLoaded(); }
 
@@ -1186,74 +1097,9 @@ namespace HaloDesktop::Services
         m_continueHandlers.erase(token);
     }
 
-    void CatalogService::LoadRecentTerms()
-    {
-        std::vector<winrt::hstring> terms;
-        std::set<std::wstring> seen;
-        for (auto const& item : m_preferences->SearchHistory())
-        {
-            if (terms.size() == 20)
-            {
-                break;
-            }
-            std::wstring trimmed{ item };
-            trimmed.erase(trimmed.begin(), std::find_if(trimmed.begin(), trimmed.end(), [](wchar_t value)
-            {
-                return std::iswspace(value) == 0;
-            }));
-            trimmed.erase(std::find_if(trimmed.rbegin(), trimmed.rend(), [](wchar_t value)
-            {
-                return std::iswspace(value) == 0;
-            }).base(), trimmed.end());
-            if (trimmed.empty())
-            {
-                continue;
-            }
-            auto const term = winrt::hstring{ trimmed };
-            if (seen.insert(Lower(term)).second)
-            {
-                terms.push_back(term);
-            }
-        }
-        m_recentTerms = winrt::single_threaded_vector(std::move(terms)).GetView();
-    }
-
-    void CatalogService::RecordRecent(winrt::hstring term)
-    {
-        if (term.empty()) return;
-        std::vector<winrt::hstring> terms{ term };
-        auto const lowerTerm = Lower(term);
-        std::set<std::wstring> seen{ lowerTerm };
-        for (auto const& existing : m_recentTerms)
-        {
-            if (terms.size() == 20)
-            {
-                break;
-            }
-            if (seen.insert(Lower(existing)).second)
-            {
-                terms.push_back(existing);
-            }
-        }
-        m_recentTerms = winrt::single_threaded_vector(std::move(terms)).GetView();
-        SaveRecentTerms();
-    }
-
-    void CatalogService::SaveRecentTerms()
-    {
-        std::vector<winrt::hstring> terms;
-        terms.reserve(m_recentTerms.Size());
-        for (auto const& term : m_recentTerms)
-        {
-            terms.push_back(term);
-        }
-        m_preferences->SearchHistory(std::move(terms));
-    }
-
     void CatalogService::OnAccountChanged()
     {
         ++m_accountVersion;
-        ++m_searchVersion;
         m_loadTask.reset();
         m_refreshState.Reset();
         m_appliedLanguage.reset();
@@ -1267,7 +1113,6 @@ namespace HaloDesktop::Services
         m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_libraryItems = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>().GetView();
-        m_searchResults = winrt::single_threaded_vector<winrt::HaloDesktop::SearchGroup>().GetView();
         ++m_snapshotVersion;
         m_artwork->OnAccountChanged();
         m_nextEpisodes->OnAccountChanged();

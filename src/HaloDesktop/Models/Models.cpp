@@ -25,9 +25,6 @@
 #if __has_include("MediaSummary.g.cpp")
 #include "MediaSummary.g.cpp"
 #endif
-#if __has_include("SearchGroup.g.cpp")
-#include "SearchGroup.g.cpp"
-#endif
 #if __has_include("Shelf.g.cpp")
 #include "Shelf.g.cpp"
 #endif
@@ -634,18 +631,6 @@ namespace winrt::HaloDesktop::implementation
             m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ name });
         }
     }
-
-    SearchGroup::SearchGroup(
-        hstring title,
-        hstring sourceLabel,
-        Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> items)
-        : m_title(std::move(title)), m_sourceLabel(std::move(sourceLabel)), m_items(std::move(items))
-    {
-    }
-
-    hstring SearchGroup::Title() const { return m_title; }
-    hstring SearchGroup::SourceLabel() const { return m_sourceLabel; }
-    Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> SearchGroup::Items() const { return m_items; }
 
     Shelf::Shelf(
         hstring title,

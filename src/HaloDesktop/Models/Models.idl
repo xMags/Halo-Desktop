@@ -220,15 +220,6 @@ namespace HaloDesktop
     };
 
     [default_interface]
-    runtimeclass SearchGroup
-    {
-        SearchGroup();
-        String Title { get; };
-        String SourceLabel { get; };
-        Windows.Foundation.Collections.IVectorView<MediaSummary> Items { get; };
-    };
-
-    [default_interface]
     runtimeclass Shelf
     {
         Shelf();

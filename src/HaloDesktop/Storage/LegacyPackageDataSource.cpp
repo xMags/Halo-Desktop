@@ -18,7 +18,6 @@ namespace
     constexpr wchar_t HardwareDecodingKey[] = L"halo.hardwareDecoding.v1";
     constexpr wchar_t SubtitleMemoryKey[] = L"halo.subtitleMemory.v1";
     constexpr std::size_t MaximumHistoryItems = 20;
-    constexpr std::size_t MaximumHistoryLength = 120;
     constexpr std::size_t MaximumSubtitleMemoryCharacters = 512u * 1024u;
 
     template <typename Value>
@@ -50,17 +49,13 @@ namespace
             }
             auto const array = winrt::Windows::Data::Json::JsonArray::Parse(*raw);
             auto const count = (std::min)(array.Size(), static_cast<std::uint32_t>(MaximumHistoryItems));
+            // The packaged build's rows may be either shape the standalone
+            // file accepts: plain strings, or `{ term, at }` objects.
             for (std::uint32_t index{}; index < count; ++index)
             {
-                auto const value = array.GetAt(index);
-                if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String)
+                if (auto entry = HaloDesktop::Services::ParseSearchHistoryEntry(array.GetAt(index)))
                 {
-                    continue;
-                }
-                auto const text = value.GetString();
-                if (!text.empty() && text.size() <= MaximumHistoryLength)
-                {
-                    preferences.SearchHistory.push_back(text);
+                    preferences.SearchHistory.push_back(std::move(*entry));
                 }
             }
         }

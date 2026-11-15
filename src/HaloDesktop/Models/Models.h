@@ -8,7 +8,6 @@
 #include "FeaturedItem.g.h"
 #include "MediaDetail.g.h"
 #include "MediaSummary.g.h"
-#include "SearchGroup.g.h"
 #include "Shelf.g.h"
 #include "SourceGroup.g.h"
 #include "SourcesNavParams.g.h"
@@ -443,21 +442,6 @@ namespace winrt::HaloDesktop::implementation
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
-    struct SearchGroup : SearchGroupT<SearchGroup>
-    {
-        SearchGroup() = default;
-        SearchGroup(hstring title, hstring sourceLabel, Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> items);
-
-        [[nodiscard]] hstring Title() const;
-        [[nodiscard]] hstring SourceLabel() const;
-        [[nodiscard]] Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> Items() const;
-
-    private:
-        hstring m_title;
-        hstring m_sourceLabel;
-        Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_items{ nullptr };
-    };
-
     // Where a shelf's "See all" leads.
     enum class ShelfSeeAll
     {
@@ -545,7 +529,6 @@ namespace winrt::HaloDesktop::factory_implementation
     struct Addon : AddonT<Addon, implementation::Addon> {};
     struct ContinueItem : ContinueItemT<ContinueItem, implementation::ContinueItem> {};
     struct FeaturedItem : FeaturedItemT<FeaturedItem, implementation::FeaturedItem> {};
-    struct SearchGroup : SearchGroupT<SearchGroup, implementation::SearchGroup> {};
     struct Shelf : ShelfT<Shelf, implementation::Shelf> {};
     struct DetailNavParams : DetailNavParamsT<DetailNavParams, implementation::DetailNavParams> {};
     struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams, implementation::SourcesNavParams> {};
