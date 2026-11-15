@@ -1,0 +1,180 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.SourceDetailsPanel"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False">
+  <!--
+    `SourceDetailsPanel.tsx`: the full release name, any warning, the facts as a
+    grid of cells split by hairlines, then the actions. The hairlines are the
+    divider showing through 1 px gaps between cells drawn in the sheet's ground.
+    Nothing here takes a composition visual; the meter is a RenderTransform scale.
+  -->
+  <UserControl.Resources>
+    <DataTemplate x:Key="SourceFactCellTemplate" x:DataType="local:SourceFactViewModel">
+      <Border Padding="12,10,12,11" Background="{ThemeResource HaloMicaBrush}">
+        <StackPanel Spacing="4">
+          <TextBlock
+            CharacterSpacing="100"
+            FontFamily="{StaticResource HaloMonoFont}"
+            FontSize="11"
+            Foreground="{ThemeResource HaloText4Brush}"
+            Text="{x:Bind Label}" />
+          <TextBlock
+            FontSize="14"
+            FontWeight="Medium"
+            Foreground="{ThemeResource HaloText1Brush}"
+            Text="{x:Bind Value}"
+            TextTrimming="CharacterEllipsis"
+            ToolTipService.ToolTip="{x:Bind Value}"
+            Visibility="{x:Bind ValueVisibility}" />
+          <Grid ColumnSpacing="8" Visibility="{x:Bind ProviderVisibility}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+              VerticalAlignment="Center"
+              FontSize="14"
+              FontWeight="Medium"
+              Foreground="{ThemeResource HaloText1Brush}"
+              Text="{x:Bind Provider}"
+              TextTrimming="CharacterEllipsis" />
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" Visibility="{x:Bind CacheGoodVisibility}">
+              <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloSuccessBrush}" />
+              <TextBlock FontSize="12" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind CacheLabel}" />
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="6" Visibility="{x:Bind CacheNeutralVisibility}">
+              <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloText3Brush}" />
+              <TextBlock FontSize="12" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind CacheLabel}" />
+            </StackPanel>
+          </Grid>
+        </StackPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <StackPanel Spacing="12">
+    <!-- Two lines at most; the whole name is in the tooltip and one click away in Copy. -->
+    <TextBlock
+      FontFamily="{StaticResource HaloMonoFont}"
+      FontSize="12"
+      Foreground="{ThemeResource HaloText3Brush}"
+      LineHeight="18"
+      LineStackingStrategy="BlockLineHeight"
+      MaxLines="2"
+      Text="{x:Bind Details.FileName, Mode=OneWay}"
+      TextTrimming="CharacterEllipsis"
+      TextWrapping="Wrap"
+      ToolTipService.ToolTip="{x:Bind Details.FileName, Mode=OneWay}" />
+
+    <StackPanel Orientation="Horizontal" Spacing="7" Visibility="{x:Bind Details.WarningVisibility, Mode=OneWay}">
+      <FontIcon VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE7BA;" />
+      <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Details.Warning, Mode=OneWay}" TextWrapping="Wrap" />
+    </StackPanel>
+
+    <Border
+      Background="{ThemeResource HaloDividerBrush}"
+      BorderBrush="{ThemeResource HaloDividerBrush}"
+      BorderThickness="1"
+      CornerRadius="8">
+      <StackPanel Spacing="1">
+        <ItemsControl IsTabStop="False" ItemsSource="{x:Bind Details.FactLines, Mode=OneWay}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="1" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:SourceFactLineViewModel">
+              <Grid ColumnSpacing="1">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ContentControl
+                  Grid.ColumnSpan="{x:Bind LeftSpan}"
+                  HorizontalContentAlignment="Stretch"
+                  VerticalContentAlignment="Stretch"
+                  Content="{x:Bind Left}"
+                  ContentTemplate="{StaticResource SourceFactCellTemplate}"
+                  IsTabStop="False" />
+                <ContentControl
+                  Grid.Column="1"
+                  HorizontalContentAlignment="Stretch"
+                  VerticalContentAlignment="Stretch"
+                  Content="{x:Bind Right}"
+                  ContentTemplate="{StaticResource SourceFactCellTemplate}"
+                  IsTabStop="False"
+                  Visibility="{x:Bind RightVisibility}" />
+              </Grid>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <Border Padding="12,10,12,11" Background="{ThemeResource HaloMicaBrush}" Visibility="{x:Bind Details.BandwidthVisibility, Mode=OneWay}">
+          <StackPanel Spacing="4">
+            <TextBlock CharacterSpacing="100" FontFamily="{StaticResource HaloMonoFont}" FontSize="11" Foreground="{ThemeResource HaloText4Brush}" Text="BANDWIDTH" />
+            <Grid ColumnSpacing="8">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+              </Grid.ColumnDefinitions>
+              <TextBlock
+                VerticalAlignment="Center"
+                FontFamily="{StaticResource HaloMonoBoldFont}"
+                FontSize="14"
+                FontWeight="SemiBold"
+                Foreground="{ThemeResource HaloText1Brush}"
+                Text="{x:Bind Details.BandwidthLabel, Mode=OneWay}" />
+              <TextBlock
+                Grid.Column="1"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Center"
+                FontSize="12"
+                Foreground="{ThemeResource HaloText3Brush}"
+                Text="{x:Bind Details.BandwidthNote, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis"
+                Visibility="{x:Bind Details.BandwidthNoteVisibility, Mode=OneWay}" />
+            </Grid>
+            <!-- Measured against the viewer's own line; the warning's colour when over it. -->
+            <Grid
+              Height="4"
+              Margin="0,4,0,0"
+              Background="{ThemeResource HaloCtrlStrongStrokeBrush}"
+              CornerRadius="2"
+              Visibility="{x:Bind Details.MeterVisibility, Mode=OneWay}">
+              <Border Background="{ThemeResource HaloAccentBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind Details.MeterNormalVisibility, Mode=OneWay}">
+                <Border.RenderTransform>
+                  <ScaleTransform ScaleX="{x:Bind Details.MeterFraction, Mode=OneWay}" />
+                </Border.RenderTransform>
+              </Border>
+              <Border Background="{ThemeResource HaloCautionBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind Details.MeterOverVisibility, Mode=OneWay}">
+                <Border.RenderTransform>
+                  <ScaleTransform ScaleX="{x:Bind Details.MeterFraction, Mode=OneWay}" />
+                </Border.RenderTransform>
+              </Border>
+            </Grid>
+          </StackPanel>
+        </Border>
+      </StackPanel>
+    </Border>
+
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <local:SourceSaveButton Click="OnSaveClick" Save="{x:Bind Details.Save, Mode=OneWay}" Visibility="{x:Bind Details.SaveVisibility, Mode=OneWay}" />
+      <Button
+        AutomationProperties.Name="{x:Bind Details.CopyLabel, Mode=OneWay}"
+        Click="OnCopyClick"
+        Style="{StaticResource HaloSheetCopyButtonStyle}">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <Grid VerticalAlignment="Center">
+            <FontIcon FontSize="12" Glyph="&#xE8C8;" Visibility="{x:Bind Details.CopyGlyphVisibility, Mode=OneWay}" />
+            <FontIcon FontSize="12" Glyph="&#xE73E;" Visibility="{x:Bind Details.CopiedGlyphVisibility, Mode=OneWay}" />
+          </Grid>
+          <TextBlock VerticalAlignment="Center" Text="{x:Bind Details.CopyLabel, Mode=OneWay}" />
+        </StackPanel>
+      </Button>
+    </StackPanel>
+  </StackPanel>
+</UserControl>

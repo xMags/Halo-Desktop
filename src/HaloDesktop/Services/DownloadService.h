@@ -49,7 +49,7 @@ namespace HaloDesktop::Services
         void RetryFailedTransfers() override;
         bool OpenDownloadDirectory() override;
         [[nodiscard]] bool RevealInExplorer(winrt::hstring const& id) override;
-        [[nodiscard]] concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+        [[nodiscard]] concurrency::task<DownloadStartResult> StartDownloadAsync(
             Downloads::DownloadStartRequest request) override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(
             winrt::hstring const& id) const override;
@@ -63,6 +63,8 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool IsPausedAll() const noexcept override;
         [[nodiscard]] bool HasCompleted(winrt::hstring const& videoId) const noexcept override;
         [[nodiscard]] std::vector<Downloads::CompletedDownloadSource> CompletedFor(
+            winrt::hstring const& videoId) const override;
+        [[nodiscard]] std::vector<Downloads::VideoDownload> DownloadsFor(
             winrt::hstring const& videoId) const override;
         [[nodiscard]] std::int32_t ActiveCount() const noexcept override;
         [[nodiscard]] double AggregateRate() const noexcept override;

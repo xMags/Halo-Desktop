@@ -1,18 +1,25 @@
 ﻿#pragma once
 
+#include "ViewModels/QualityMedalPolicy.h"
+
+#include <cstddef>
 #include <cstdint>
 #include <optional>
-#include <string>
-#include <utility>
+#include <string_view>
 #include <vector>
-#include <winrt/HaloDesktop.h>
-#include <winrt/Windows.Foundation.Collections.h>
+#include <winrt/base.h>
 
 namespace HaloDesktop::Sources
 {
-    // How the sheet talks about picture. Deliberately coarser than the parsed
-    // resolution: the panel never says "2160p" to the user, and the filters and
-    // the "best picture" sort both compare on this rather than on the raw string.
+    // How the sources sheet talks about a source, the reference's
+    // `sourcePresentation.ts`: pure functions over already-parsed fields, so it
+    // compiles without XAML or generated WinRT types and the tests include it.
+    //
+    // The field vocabulary is the parser's: quality is `2160p` ... `SD`, range is
+    // `SDR`/`DV`/`HDR10`/`HLG`/`HDR`, and anything the parser could not identify
+    // is the literal `UNKNOWN`, which the sheet leaves out rather than guess at.
+
+    // How the sheet talks about picture: coarser than the parsed resolution.
     enum class QualityTier
     {
         UltraHd,
@@ -21,8 +28,7 @@ namespace HaloDesktop::Sources
         Lower,
     };
 
-    // The only thing a viewer actually has to decide between: can I press play
-    // now, do I wait a moment, or does this have to come down first.
+    // The only thing a viewer has to decide between.
     enum class StartSpeed
     {
         Immediate,
@@ -30,127 +36,99 @@ namespace HaloDesktop::Sources
         NeedsDownload,
     };
 
-    // Everything the sheet knows about this device that a single source cannot
-    // tell it. Assembled once per rebuild rather than per row, because reading
-    // the preference file is a locked file read.
-    struct DeviceContext final
+    // `Caching` is kept so the palette stays complete, but no resolver assigns it:
+    // addons only say cached, not cached, or nothing. A file already saved on this
+    // device is not a source; the sheet offers it on a card of its own.
+    enum class SourceStatus
     {
-        std::optional<winrt::hstring> PreferredSubtitleLanguage;
-        // Highest download rate this device has been measured at, megabits per
-        // second. Zero means never measured, and suppresses the bitrate warning.
-        double LineMbps{};
-        // Runtime of the thing being played, seconds. Zero means unknown, and a
-        // bitrate cannot be derived without it.
-        double DurationSeconds{};
-        // Position and duration of the viewer's progress, seconds. Both zero when
-        // the title has never been opened.
-        double WatchedSeconds{};
-        double WatchedDurationSeconds{};
+        Instant,
+        Caching,
+        Uncached,
+        Unknown,
     };
 
-    // A source flattened out of its addon group with everything the sheet sorts,
-    // groups and filters on already decided, so no comparator ever re-parses a
-    // display string.
+    // The parser's placeholder for anything it could not identify.
+    inline constexpr std::wstring_view NotParsed = L"UNKNOWN";
+
+    // A source flattened out of its addon group with every decision already made.
     struct SourceEntry final
     {
-        winrt::HaloDesktop::StreamSource Source{ nullptr };
-        // Native grouping identity. It is deliberately not projected to XAML,
-        // because the sheet only needs the sanitized provider name.
+        winrt::hstring Key;
+        // Grouping identity; never shown.
         winrt::hstring ProviderId;
+        // Sanitized provider name.
         winrt::hstring Provider;
+        SourceStatus Status{ SourceStatus::Unknown };
+        winrt::hstring Quality;
+        winrt::hstring Range;
+        winrt::hstring Codec;
+        winrt::hstring Audio;
+        // Language tokens joined by " \x00B7 ", or UNKNOWN.
+        winrt::hstring Languages;
+        // `8.42 GB`, or UNKNOWN.
+        winrt::hstring Size;
+        winrt::hstring File;
+        std::vector<winrt::hstring> SubtitleLanguages;
         QualityTier Tier{ QualityTier::Lower };
         StartSpeed Speed{ StartSpeed::NeedsDownload };
-        bool Hdr{};
-        bool Surround{};
+        // Zero when unknown.
         std::uint64_t SizeBytes{};
         std::int32_t Rank{};
-        // Megabits per second this file needs to play without stalling. Zero when
-        // either the size or the runtime is unknown.
+        // Megabits per second the file needs; zero when size or runtime is unknown.
         double NeededMbps{};
     };
 
-    using SpecRow = std::pair<winrt::hstring, winrt::hstring>;
+    // What the sheet knows about this device that no single source can say.
+    struct DeviceContext final
+    {
+        // Measured line speed in Mbps; zero means never measured.
+        double LineMbps{};
+        // Runtime in seconds; zero means unknown.
+        double DurationSeconds{};
+    };
 
-    struct DetailChipData final
+    // One fact in a source's details: a short label, then what the release says.
+    struct DetailRow final
     {
         winrt::hstring Label;
-        bool Muted{};
+        winrt::hstring Value;
+
+        bool operator==(DetailRow const&) const = default;
     };
 
-    // The compact strip under the headline on a collapsed card: mono, upper
-    // case, and separated by middots. The subtitle count sits beside it in its
-    // own plate rather than inside the strip, so it can carry its own ink.
-    struct MetaLineData final
+    struct BandwidthDetail final
     {
-        winrt::hstring Line;
-        winrt::hstring Subtitles;
-        bool HasSubtitles{};
+        winrt::hstring Label;
+        winrt::hstring Note;
+        // Zero to one of the viewer's own line; zero when the line is unmeasured.
+        double Fraction{};
     };
 
-    struct SourceDetailsData final
+    // A source's details as a short list. A fact the release does not name is
+    // left out rather than spelled out as "not listed".
+    struct SourceDetails final
     {
-        winrt::hstring Resolution;
-        winrt::hstring Picture;
-        winrt::hstring Codec;
-        winrt::hstring Sound;
-        winrt::hstring Channels;
-        std::vector<DetailChipData> AudioLanguages;
-        std::vector<DetailChipData> Subtitles;
+        std::vector<DetailRow> Rows;
         winrt::hstring Provider;
+        // `Cached`, `Caching now`, `Not cached`, or empty when the addon did not say.
         winrt::hstring CacheLabel;
         bool CacheGood{};
-        winrt::hstring LineLabel;
-        winrt::hstring MbpsLabel;
-        winrt::hstring Headroom;
-        double MeterFraction{};
+        // Empty when the size or runtime is missing, so nothing could be measured.
+        std::optional<BandwidthDetail> Bandwidth;
     };
 
-    [[nodiscard]] SourceEntry MakeEntry(
-        winrt::HaloDesktop::StreamSource const& source,
-        winrt::hstring const& providerId,
-        winrt::hstring const& provider,
-        double durationSeconds);
-
-    [[nodiscard]] QualityTier TierOf(winrt::hstring const& quality) noexcept;
+    [[nodiscard]] QualityTier TierOf(std::wstring_view quality) noexcept;
     [[nodiscard]] winrt::hstring TierLabel(QualityTier tier);
-    [[nodiscard]] StartSpeed SpeedOf(winrt::HaloDesktop::StreamStatus status) noexcept;
-    [[nodiscard]] winrt::hstring StatusLabel(winrt::HaloDesktop::StreamStatus status);
-    [[nodiscard]] winrt::hstring RangeLabel(winrt::hstring const& range);
-    [[nodiscard]] bool IsHdr(winrt::hstring const& range) noexcept;
-    [[nodiscard]] bool IsSurround(winrt::hstring const& audio) noexcept;
-    [[nodiscard]] winrt::hstring SoundLabel(winrt::hstring const& audio);
-    [[nodiscard]] winrt::hstring SizeLabel(winrt::hstring const& size);
+    [[nodiscard]] StartSpeed SpeedOf(SourceStatus status) noexcept;
+    [[nodiscard]] winrt::hstring StatusLabel(SourceStatus status);
+    [[nodiscard]] bool IsHdr(std::wstring_view range) noexcept;
     [[nodiscard]] winrt::hstring LanguageName(winrt::hstring const& code);
-    [[nodiscard]] winrt::hstring AudioLanguageLine(winrt::hstring const& languages);
-    [[nodiscard]] winrt::hstring SubtitleStatement(
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> const& tracks,
-        std::optional<winrt::hstring> const& preferred);
+    // The phone's medal for a source: plate, tag and metal from its quality and range.
+    [[nodiscard]] ViewModels::Medal MedalOf(SourceEntry const& entry);
     [[nodiscard]] winrt::hstring BitrateWarning(SourceEntry const& entry, double lineMbps);
-    [[nodiscard]] winrt::hstring Ordinal(std::int32_t position);
-    [[nodiscard]] winrt::hstring ReasonFor(
-        SourceEntry const& entry,
-        SourceEntry const* pick,
-        bool isSmallest);
-    // The single sentence under the quality plate on the recommended pick.
-    [[nodiscard]] winrt::hstring PickHeadline(SourceEntry const& entry, bool alone);
-    // The recommended pick names its dynamic range, because it is the one card
-    // arguing for itself; the rows below it leave that to the quality plate.
-    // The preferred language decides what the subtitle plate can promise: a
-    // count means nothing to someone who only reads one of them.
-    [[nodiscard]] MetaLineData MetaLineFor(
-        SourceEntry const& entry,
-        bool includeRange,
-        std::optional<winrt::hstring> const& preferredSubtitleLanguage);
-    [[nodiscard]] bool HasWatchProgress(DeviceContext const& device) noexcept;
-    [[nodiscard]] winrt::hstring WatchNote(DeviceContext const& device);
-    [[nodiscard]] std::vector<SpecRow> SpecsFor(
-        SourceEntry const& entry,
-        DeviceContext const& device);
-    [[nodiscard]] SourceDetailsData DetailsFor(
-        SourceEntry const& entry,
-        DeviceContext const& device,
-        double maximumNeededMbps);
-    [[nodiscard]] winrt::hstring OutcomeGroupName(StartSpeed speed);
-    [[nodiscard]] winrt::hstring OutcomeGroupNote(StartSpeed speed);
+    // The one mono line a card prints beside its medal: codec, sound and size,
+    // each left out when the release did not name it, upper case.
+    [[nodiscard]] winrt::hstring MetaLine(SourceEntry const& entry);
+    [[nodiscard]] SourceDetails DetailsFor(SourceEntry const& entry, DeviceContext const& device);
     [[nodiscard]] winrt::hstring CountLabel(std::size_t count, wchar_t const* singular, wchar_t const* plural);
 }

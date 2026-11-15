@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.SourcesSheetFooter"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False">
+  <!--
+    `SheetFooter.tsx`: behind "How this list was built", the resolve laid bare,
+    who answered, what quality came back, and the rules that chose.
+  -->
+  <UserControl.Resources>
+    <DataTemplate x:Key="SourceProviderTemplate" x:DataType="local:SourceProviderItemViewModel">
+      <Grid Margin="0,0,0,8" ColumnSpacing="8">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="6" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloSuccessBrush}" Visibility="{x:Bind AnsweredVisibility}" />
+        <Ellipse Width="6" Height="6" VerticalAlignment="Center" Fill="{ThemeResource HaloCriticalBrush}" Visibility="{x:Bind FailedVisibility}" />
+        <TextBlock Grid.Column="1" VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Value}" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SourceQualityTemplate" x:DataType="local:SourceQualityItemViewModel">
+      <Grid Margin="0,0,0,9" ColumnSpacing="10">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="52" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Label}" />
+        <Grid Grid.Column="1" Height="3" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="2">
+          <Border Background="{ThemeResource HaloAccentBrush}" CornerRadius="1.5" RenderTransformOrigin="0,0.5" Visibility="{x:Bind TopTierVisibility}">
+            <Border.RenderTransform><ScaleTransform ScaleX="{x:Bind Share}" /></Border.RenderTransform>
+          </Border>
+          <Border Background="{ThemeResource HaloChartDimBrush}" CornerRadius="1.5" RenderTransformOrigin="0,0.5" Visibility="{x:Bind MidTierVisibility}">
+            <Border.RenderTransform><ScaleTransform ScaleX="{x:Bind Share}" /></Border.RenderTransform>
+          </Border>
+          <Border Background="{ThemeResource HaloText4Brush}" CornerRadius="1.5" RenderTransformOrigin="0,0.5" Visibility="{x:Bind LowTierVisibility}">
+            <Border.RenderTransform><ScaleTransform ScaleX="{x:Bind Share}" /></Border.RenderTransform>
+          </Border>
+        </Grid>
+        <TextBlock Grid.Column="2" VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="{x:Bind Count}" />
+      </Grid>
+    </DataTemplate>
+
+    <DataTemplate x:Key="SourcePickerRuleTemplate" x:DataType="local:SourcePickerRuleViewModel">
+      <Grid Margin="0,0,0,7" ColumnSpacing="12">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <TextBlock FontSize="14" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Name}" TextWrapping="Wrap" />
+        <TextBlock Grid.Column="1" FontSize="14" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Value}" />
+      </Grid>
+    </DataTemplate>
+  </UserControl.Resources>
+
+  <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,1,0,0">
+    <StackPanel>
+      <Button
+        Padding="32,13"
+        HorizontalAlignment="Stretch"
+        HorizontalContentAlignment="Stretch"
+        AutomationProperties.Name="How this list was built"
+        Click="OnToggleClick"
+        CornerRadius="0"
+        Style="{StaticResource HaloSheetQuietButtonStyle}">
+        <Grid ColumnSpacing="14">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="14" /></Grid.ColumnDefinitions>
+          <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloAccentBrush}" Text="How this list was built" />
+          <Grid Grid.Column="2" HorizontalAlignment="Center" VerticalAlignment="Center">
+            <FontIcon FontSize="12" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xE70D;" Visibility="{x:Bind ViewModel.InfoOpenGlyphVisibility, Mode=OneWay}" />
+            <FontIcon FontSize="12" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xE70E;" Visibility="{x:Bind ViewModel.InfoClosedGlyphVisibility, Mode=OneWay}" />
+          </Grid>
+        </Grid>
+      </Button>
+
+      <Grid Padding="32,4,32,22" ColumnSpacing="28" Visibility="{x:Bind ViewModel.InfoVisibility, Mode=OneWay}">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+        <StackPanel>
+          <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="Providers" />
+          <ItemsControl IsTabStop="False" ItemTemplate="{StaticResource SourceProviderTemplate}" ItemsSource="{x:Bind ViewModel.ProviderItems, Mode=OneWay}" />
+        </StackPanel>
+        <StackPanel Grid.Column="1">
+          <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="Quality mix" />
+          <ItemsControl IsTabStop="False" ItemTemplate="{StaticResource SourceQualityTemplate}" ItemsSource="{x:Bind ViewModel.QualityItems, Mode=OneWay}" />
+        </StackPanel>
+        <StackPanel Grid.Column="2">
+          <TextBlock Margin="0,0,0,10" FontSize="13" Foreground="{ThemeResource HaloText4Brush}" Text="How Halo chose" />
+          <ItemsControl IsTabStop="False" ItemTemplate="{StaticResource SourcePickerRuleTemplate}" ItemsSource="{x:Bind ViewModel.PickerRules, Mode=OneWay}" />
+          <Button
+            Margin="0,6,0,0"
+            HorizontalAlignment="Left"
+            Click="OnEditPlaybackClick"
+            Content="Change these in Playback"
+            Foreground="{ThemeResource HaloAccentBrush}"
+            Style="{StaticResource HaloSheetQuietButtonStyle}" />
+        </StackPanel>
+      </Grid>
+    </StackPanel>
+  </Border>
+</UserControl>

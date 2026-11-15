@@ -5,42 +5,69 @@ import "Controls/QualityMedal.idl";
 
 namespace HaloDesktop
 {
-    [default_interface]
-    runtimeclass SourceSpecItemViewModel
+    // What saving one source means right now, shared by the pick's Save, a row's
+    // details and the row's own saved or saving mark. Updated in place as the
+    // download moves, so the list is not rebuilt on every progress tick.
+    runtimeclass SourceSaveViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Key { get; };
-        String Value { get; };
+        String Label { get; };
+        Boolean IsReady { get; };
+        Microsoft.UI.Xaml.Visibility ButtonVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ArrowVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CheckVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ReadyLabelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SavingLabelVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SavedLabelVisibility { get; };
     }
 
+    // One cell of the details' fact grid. The From cell carries the provider and
+    // its cache dot instead of a plain value.
     [default_interface]
-    runtimeclass SourceDetailChipViewModel
+    runtimeclass SourceFactViewModel
     {
         String Label { get; };
-        Microsoft.UI.Xaml.Visibility NormalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility MutedVisibility { get; };
+        String Value { get; };
+        Microsoft.UI.Xaml.Visibility ValueVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProviderVisibility { get; };
+        String Provider { get; };
+        String CacheLabel { get; };
+        Microsoft.UI.Xaml.Visibility CacheGoodVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CacheNeutralVisibility { get; };
+    }
+
+    // Two cells side by side, or one across the whole line when it is the odd one out.
+    [default_interface]
+    runtimeclass SourceFactLineViewModel
+    {
+        SourceFactViewModel Left { get; };
+        SourceFactViewModel Right { get; };
+        Int32 LeftSpan { get; };
+        Microsoft.UI.Xaml.Visibility RightVisibility { get; };
     }
 
     runtimeclass SourceDetailsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Key { get; };
-        String Resolution { get; };
-        String Picture { get; };
-        String Codec { get; };
-        String Sound { get; };
-        String Channels { get; };
-        Object AudioLanguageChips { get; };
-        Object SubtitleChips { get; };
-        String Provider { get; };
-        String CacheLabel { get; };
-        Microsoft.UI.Xaml.Visibility CacheGoodVisibility { get; };
-        Microsoft.UI.Xaml.Visibility CacheNeutralVisibility { get; };
-        String LineLabel { get; };
-        String MbpsLabel { get; };
-        String Headroom { get; };
-        Double MeterFraction { get; };
         String FileName { get; };
+        String Warning { get; };
+        Microsoft.UI.Xaml.Visibility WarningVisibility { get; };
+        Object FactLines { get; };
+        Microsoft.UI.Xaml.Visibility BandwidthVisibility { get; };
+        String BandwidthLabel { get; };
+        String BandwidthNote { get; };
+        Microsoft.UI.Xaml.Visibility BandwidthNoteVisibility { get; };
+        Double MeterFraction { get; };
+        Microsoft.UI.Xaml.Visibility MeterVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MeterNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MeterOverVisibility { get; };
+        // The pick has its own Save on the card, so its details carry none.
+        SourceSaveViewModel Save { get; };
+        Microsoft.UI.Xaml.Visibility SaveVisibility { get; };
         String CopyLabel { get; };
-        void SetCopyLabel(String value);
+        Microsoft.UI.Xaml.Visibility CopyGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CopiedGlyphVisibility { get; };
     }
 
     [default_interface]
@@ -77,35 +104,29 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility ShowMoreVisibility { get; };
 
         String GroupName { get; };
-        String GroupNote { get; };
         String GroupCount { get; };
         String ShowMoreLabel { get; };
 
         String Key { get; };
-        // The quality medal: plate, tag (empty for none) and finish.
-        String QualityBadgeTier { get; };
-        String QualityBadgeDetail { get; };
-        QualityMedalFinish QualityTone { get; };
+        String MedalPlate { get; };
+        String MedalTag { get; };
+        QualityMedalFinish MedalFinish { get; };
         String StatusLabel { get; };
         Microsoft.UI.Xaml.Visibility InstantVisibility { get; };
-        Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
         Microsoft.UI.Xaml.Visibility CachingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ColdVisibility { get; };
         String MetaLine { get; };
-        String SubsChip { get; };
-        Microsoft.UI.Xaml.Visibility SubsOnVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SubsOffVisibility { get; };
-        String Warning { get; };
-        Microsoft.UI.Xaml.Visibility WarningVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SaveVisibility { get; };
-        String FileName { get; };
-        String Reason { get; };
-        Object Specs { get; };
+        Microsoft.UI.Xaml.Visibility MetaVisibility { get; };
+        // What Narrator reads for the row, which is the Play button.
+        String PlayName { get; };
+        SourceSaveViewModel Save { get; };
         SourceDetailsViewModel Details { get; };
 
         Microsoft.UI.Xaml.Visibility ExpandedVisibility { get; };
         Microsoft.UI.Xaml.Visibility ExpandGlyphVisibility { get; };
         Microsoft.UI.Xaml.Visibility CollapseGlyphVisibility { get; };
+        String ChevronName { get; };
+        String ChevronTip { get; };
         Microsoft.UI.Xaml.Visibility SelectionVisibility { get; };
     }
 
@@ -116,18 +137,23 @@ namespace HaloDesktop
         Object QualityItems { get; };
         Object PickerRules { get; };
 
-        Double SheetWidth { get; };
-
         String Kicker { get; };
         Microsoft.UI.Xaml.Visibility KickerVisibility { get; };
         String Heading { get; };
         String CountLine { get; };
 
+        Microsoft.UI.Xaml.Visibility OfflineVisibility { get; };
+        Microsoft.UI.Xaml.Visibility OfflineMedalVisibility { get; };
+        String OfflinePlate { get; };
+        String OfflineTag { get; };
+        QualityMedalFinish OfflineFinish { get; };
+        String OfflineMeta { get; };
+
         String AllFilterCount { get; };
-        String PlaysNowFilterCount { get; };
         String UltraHdFilterCount { get; };
         String FullHdFilterCount { get; };
         String HdFilterCount { get; };
+        // "Sort: Recommended", the sort button's tooltip and name.
         String SortLabel { get; };
         Int32 FilterIndex { get; };
         Int32 SortIndex { get; };
@@ -148,33 +174,31 @@ namespace HaloDesktop
         String BannerAction { get; };
 
         Microsoft.UI.Xaml.Visibility PickVisibility { get; };
-        String PickQualityBadgeTier { get; };
-        String PickQualityBadgeDetail { get; };
-        QualityMedalFinish PickQualityTone { get; };
+        String PickPlate { get; };
+        String PickTag { get; };
+        QualityMedalFinish PickFinish { get; };
         String PickStatusLabel { get; };
         Microsoft.UI.Xaml.Visibility PickInstantVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PickOnDiskVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickCachingVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickColdVisibility { get; };
-        String PickWhy { get; };
         String PickMetaLine { get; };
-        String PickSubsChip { get; };
-        Microsoft.UI.Xaml.Visibility PickSubsOnVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PickSubsOffVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PickMetaVisibility { get; };
         String PickFileName { get; };
-        String PickWatchNote { get; };
-        Microsoft.UI.Xaml.Visibility PickWatchNoteVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PickSelectionVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PickSaveVisibility { get; };
+        SourceSaveViewModel PickSave { get; };
         SourceDetailsViewModel PickDetails { get; };
+        Microsoft.UI.Xaml.Visibility PickSelectionVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickExpandedVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickExpandGlyphVisibility { get; };
         Microsoft.UI.Xaml.Visibility PickCollapseGlyphVisibility { get; };
+        String PickChevronName { get; };
+        String PickChevronTip { get; };
 
         Microsoft.UI.Xaml.Visibility InfoVisibility { get; };
-        Microsoft.UI.Xaml.Visibility InfoExpandGlyphVisibility { get; };
-        Microsoft.UI.Xaml.Visibility InfoCollapseGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InfoOpenGlyphVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InfoClosedGlyphVisibility { get; };
 
+        // Index into Items of the selected row, or -1 while the pick holds the
+        // selection. The page uses it to scroll the selection into view.
         Int32 SelectedIndex { get; };
 
         void Load(Object parameter);
@@ -192,10 +216,42 @@ namespace HaloDesktop
         void RevealCold();
         void PlaySelected();
         void OpenPlayer(String key);
+        // False when the saved copy is no longer on this device.
+        Boolean PlayOffline();
         void OpenSettings();
         void Close();
         String FileNameFor(String key);
         void MarkCopied(String key);
+    }
+
+    // The expanded read-out under a card. View behaviour only: Save and Copy are
+    // handed to the sheet, which owns the dialogs and the clipboard.
+    [default_interface]
+    runtimeclass SourceDetailsPanel : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SourceDetailsPanel();
+        SourceDetailsViewModel Details;
+        event Microsoft.UI.Xaml.RoutedEventHandler SaveClick;
+        event Microsoft.UI.Xaml.RoutedEventHandler CopyClick;
+    }
+
+    // Save for offline, as it stands for one source. Prominent is the pick's 44 px
+    // size beside its Play; the details panel's is 34 px.
+    [default_interface]
+    runtimeclass SourceSaveButton : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SourceSaveButton();
+        SourceSaveViewModel Save;
+        Boolean Prominent;
+        event Microsoft.UI.Xaml.RoutedEventHandler Click;
+    }
+
+    // "How this list was built", and the resolve laid bare behind it.
+    [default_interface]
+    runtimeclass SourcesSheetFooter : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SourcesSheetFooter();
+        SourcesViewModel ViewModel;
     }
 
     [default_interface]

@@ -1,112 +1,133 @@
 ﻿#pragma once
 
-#include "SourceDetailChipViewModel.g.h"
 #include "SourceDetailsViewModel.g.h"
 #include "SourceDisplayItemViewModel.g.h"
+#include "SourceFactLineViewModel.g.h"
+#include "SourceFactViewModel.g.h"
+#include "SourcePickerRuleViewModel.g.h"
 #include "SourceProviderItemViewModel.g.h"
 #include "SourceQualityItemViewModel.g.h"
-#include "SourcePickerRuleViewModel.g.h"
-#include "SourceSpecItemViewModel.g.h"
+#include "SourceSaveViewModel.g.h"
 #include "SourcesViewModel.g.h"
 #include "Services/AppServices.h"
 #include "Services/ServiceInterfaces.h"
 #include "ViewModels/SourcePresentation.h"
+#include "ViewModels/SourcesModel.h"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
+#include <unordered_map>
 #include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 
 namespace winrt::HaloDesktop::implementation
 {
-    // One labelled row of the expander's specification grid.
-    struct SourceSpecItemViewModel : SourceSpecItemViewModelT<SourceSpecItemViewModel>
+    struct SourceSaveViewModel : SourceSaveViewModelT<SourceSaveViewModel>
     {
-        SourceSpecItemViewModel(winrt::hstring key, winrt::hstring value);
+        SourceSaveViewModel(winrt::hstring key, ::HaloDesktop::Sources::SaveState state);
         [[nodiscard]] winrt::hstring Key() const;
-        [[nodiscard]] winrt::hstring Value() const;
+        [[nodiscard]] winrt::hstring Label() const;
+        [[nodiscard]] bool IsReady() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ButtonVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ArrowVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CheckVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ReadyLabelVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SavingLabelVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SavedLabelVisibility() const noexcept;
+        [[nodiscard]] ::HaloDesktop::Sources::SaveState const& State() const noexcept;
+        // Raises only what changed, so a progress tick redraws one label.
+        void SetState(::HaloDesktop::Sources::SaveState state);
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
         winrt::hstring m_key;
-        winrt::hstring m_value;
+        ::HaloDesktop::Sources::SaveState m_state;
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
-    struct SourceDetailChipViewModel : SourceDetailChipViewModelT<SourceDetailChipViewModel>
+    struct SourceFactViewModel : SourceFactViewModelT<SourceFactViewModel>
     {
-        SourceDetailChipViewModel(winrt::hstring label, bool muted = false);
+        // A plain fact.
+        SourceFactViewModel(winrt::hstring label, winrt::hstring value);
+        // The From cell.
+        SourceFactViewModel(winrt::hstring provider, winrt::hstring cacheLabel, bool cacheGood);
         [[nodiscard]] winrt::hstring Label() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility NormalVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility MutedVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring Value() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ValueVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ProviderVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring Provider() const;
+        [[nodiscard]] winrt::hstring CacheLabel() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheGoodVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheNeutralVisibility() const noexcept;
 
     private:
         winrt::hstring m_label;
-        bool m_muted{};
+        winrt::hstring m_value;
+        bool m_from{};
+        winrt::hstring m_provider;
+        winrt::hstring m_cacheLabel;
+        bool m_cacheGood{};
+    };
+
+    struct SourceFactLineViewModel : SourceFactLineViewModelT<SourceFactLineViewModel>
+    {
+        SourceFactLineViewModel(winrt::HaloDesktop::SourceFactViewModel left, winrt::HaloDesktop::SourceFactViewModel right);
+        [[nodiscard]] winrt::HaloDesktop::SourceFactViewModel Left() const;
+        [[nodiscard]] winrt::HaloDesktop::SourceFactViewModel Right() const;
+        [[nodiscard]] std::int32_t LeftSpan() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RightVisibility() const noexcept;
+
+    private:
+        winrt::HaloDesktop::SourceFactViewModel m_left{ nullptr };
+        winrt::HaloDesktop::SourceFactViewModel m_right{ nullptr };
     };
 
     struct SourceDetailsViewModel : SourceDetailsViewModelT<SourceDetailsViewModel>
     {
         SourceDetailsViewModel(
             winrt::hstring key,
-            winrt::hstring resolution,
-            winrt::hstring picture,
-            winrt::hstring codec,
-            winrt::hstring sound,
-            winrt::hstring channels,
-            std::vector<::HaloDesktop::Sources::DetailChipData> audioLanguages,
-            std::vector<::HaloDesktop::Sources::DetailChipData> subtitles,
-            winrt::hstring provider,
-            winrt::hstring cacheLabel,
-            bool cacheGood,
-            winrt::hstring lineLabel,
-            winrt::hstring mbpsLabel,
-            winrt::hstring headroom,
-            double meterFraction,
-            winrt::hstring fileName);
+            winrt::hstring fileName,
+            winrt::hstring warning,
+            ::HaloDesktop::Sources::SourceDetails const& details,
+            winrt::HaloDesktop::SourceSaveViewModel save);
         [[nodiscard]] winrt::hstring Key() const;
-        [[nodiscard]] winrt::hstring Resolution() const;
-        [[nodiscard]] winrt::hstring Picture() const;
-        [[nodiscard]] winrt::hstring Codec() const;
-        [[nodiscard]] winrt::hstring Sound() const;
-        [[nodiscard]] winrt::hstring Channels() const;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable AudioLanguageChips() const;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable SubtitleChips() const;
-        [[nodiscard]] winrt::hstring Provider() const;
-        [[nodiscard]] winrt::hstring CacheLabel() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheGoodVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility CacheNeutralVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring LineLabel() const;
-        [[nodiscard]] winrt::hstring MbpsLabel() const;
-        [[nodiscard]] winrt::hstring Headroom() const;
-        [[nodiscard]] double MeterFraction() const noexcept;
         [[nodiscard]] winrt::hstring FileName() const;
+        [[nodiscard]] winrt::hstring Warning() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility WarningVisibility() const noexcept;
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable FactLines() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility BandwidthVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring BandwidthLabel() const;
+        [[nodiscard]] winrt::hstring BandwidthNote() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility BandwidthNoteVisibility() const noexcept;
+        [[nodiscard]] double MeterFraction() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MeterVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MeterNormalVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MeterOverVisibility() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SourceSaveViewModel Save() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SaveVisibility() const noexcept;
         [[nodiscard]] winrt::hstring CopyLabel() const;
-        void SetCopyLabel(winrt::hstring value);
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CopyGlyphVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CopiedGlyphVisibility() const noexcept;
+        void SetCopied(bool copied);
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
         winrt::hstring m_key;
-        winrt::hstring m_resolution;
-        winrt::hstring m_picture;
-        winrt::hstring m_codec;
-        winrt::hstring m_sound;
-        winrt::hstring m_channels;
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_audioLanguages{ nullptr };
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_subtitles{ nullptr };
-        winrt::hstring m_provider;
-        winrt::hstring m_cacheLabel;
-        bool m_cacheGood{};
-        winrt::hstring m_lineLabel;
-        winrt::hstring m_mbpsLabel;
-        winrt::hstring m_headroom;
-        double m_meterFraction{};
         winrt::hstring m_fileName;
-        winrt::hstring m_copyLabel{ L"Copy file name" };
+        winrt::hstring m_warning;
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_factLines{ nullptr };
+        std::optional<::HaloDesktop::Sources::BandwidthDetail> m_bandwidth;
+        winrt::HaloDesktop::SourceSaveViewModel m_save{ nullptr };
+        bool m_copied{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
-    // One addon, in the resolving list and again in the footer's provider column.
+    // One addon in the footer's provider column.
     struct SourceProviderItemViewModel : SourceProviderItemViewModelT<SourceProviderItemViewModel>
     {
         SourceProviderItemViewModel(winrt::hstring name, winrt::hstring value, bool answered);
@@ -123,7 +144,7 @@ namespace winrt::HaloDesktop::implementation
 
     struct SourceQualityItemViewModel : SourceQualityItemViewModelT<SourceQualityItemViewModel>
     {
-        SourceQualityItemViewModel(::HaloDesktop::Sources::QualityTier tier, std::int32_t count, std::int32_t total);
+        SourceQualityItemViewModel(::HaloDesktop::Sources::QualityTier tier, std::size_t count, double share);
         [[nodiscard]] winrt::hstring Label() const;
         [[nodiscard]] winrt::hstring Count() const;
         // 0..1 of the whole pool, so the three bars read as shares of one list.
@@ -134,8 +155,8 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         ::HaloDesktop::Sources::QualityTier m_tier{};
-        std::int32_t m_count{};
-        std::int32_t m_total{};
+        std::size_t m_count{};
+        double m_share{};
     };
 
     struct SourcePickerRuleViewModel : SourcePickerRuleViewModelT<SourcePickerRuleViewModel>
@@ -154,25 +175,9 @@ namespace winrt::HaloDesktop::implementation
     // take share one item type and switch on visibility.
     struct SourceDisplayItemViewModel : SourceDisplayItemViewModelT<SourceDisplayItemViewModel>
     {
-        enum class Kind
-        {
-            GroupHeader,
-            Row,
-            ShowMore,
-        };
-
-        // Group header.
-        SourceDisplayItemViewModel(winrt::hstring name, winrt::hstring note, winrt::hstring count);
-        // Dashed reveal row for the collapsed cold group.
-        explicit SourceDisplayItemViewModel(winrt::hstring showMoreLabel);
-        // Source row.
         SourceDisplayItemViewModel(
-            ::HaloDesktop::Sources::SourceEntry entry,
-            winrt::hstring statusLabel,
-            ::HaloDesktop::Sources::MetaLineData meta,
-            winrt::hstring warning,
-            winrt::hstring reason,
-            std::vector<::HaloDesktop::Sources::SpecRow> specs,
+            ::HaloDesktop::Sources::ListItem const& item,
+            winrt::HaloDesktop::SourceSaveViewModel save,
             winrt::HaloDesktop::SourceDetailsViewModel details);
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility HeaderVisibility() const noexcept;
@@ -180,40 +185,31 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ShowMoreVisibility() const noexcept;
 
         [[nodiscard]] winrt::hstring GroupName() const;
-        [[nodiscard]] winrt::hstring GroupNote() const;
         [[nodiscard]] winrt::hstring GroupCount() const;
         [[nodiscard]] winrt::hstring ShowMoreLabel() const;
 
         [[nodiscard]] winrt::hstring Key() const;
-        [[nodiscard]] winrt::hstring QualityBadgeTier() const;
-        [[nodiscard]] winrt::hstring QualityBadgeDetail() const;
-        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish QualityTone() const;
+        [[nodiscard]] winrt::hstring MedalPlate() const;
+        [[nodiscard]] winrt::hstring MedalTag() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish MedalFinish() const;
         [[nodiscard]] winrt::hstring StatusLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InstantVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility OnDiskVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility CachingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ColdVisibility() const noexcept;
         [[nodiscard]] winrt::hstring MetaLine() const;
-        [[nodiscard]] winrt::hstring SubsChip() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsOnVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility SubsOffVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring Warning() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility WarningVisibility() const noexcept;
-        // Hidden on a file already saved: offering to save it again is an action
-        // with nothing behind it.
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility SaveVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring FileName() const;
-        [[nodiscard]] winrt::hstring Reason() const;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable Specs() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MetaVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring PlayName() const;
+        [[nodiscard]] winrt::HaloDesktop::SourceSaveViewModel Save() const;
         [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel Details() const;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExpandedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ExpandGlyphVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility CollapseGlyphVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring ChevronName() const;
+        [[nodiscard]] winrt::hstring ChevronTip() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectionVisibility() const noexcept;
 
         [[nodiscard]] bool IsRow() const noexcept;
-        [[nodiscard]] ::HaloDesktop::Sources::SourceEntry const& Entry() const noexcept;
         void SetExpanded(bool value);
         void SetSelected(bool value);
 
@@ -223,17 +219,17 @@ namespace winrt::HaloDesktop::implementation
     private:
         void Raise(wchar_t const* property);
 
-        Kind m_kind{ Kind::Row };
+        ::HaloDesktop::Sources::ListItem::Kind m_kind{ ::HaloDesktop::Sources::ListItem::Kind::Row };
         winrt::hstring m_groupName;
-        winrt::hstring m_groupNote;
         winrt::hstring m_groupCount;
         winrt::hstring m_showMoreLabel;
-        ::HaloDesktop::Sources::SourceEntry m_entry;
+        winrt::hstring m_key;
+        ::HaloDesktop::ViewModels::Medal m_medal;
+        ::HaloDesktop::Sources::SourceStatus m_status{ ::HaloDesktop::Sources::SourceStatus::Unknown };
         winrt::hstring m_statusLabel;
-        ::HaloDesktop::Sources::MetaLineData m_meta;
-        winrt::hstring m_warning;
-        winrt::hstring m_reason;
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_specs{ nullptr };
+        winrt::hstring m_meta;
+        winrt::hstring m_playName;
+        winrt::HaloDesktop::SourceSaveViewModel m_save{ nullptr };
         winrt::HaloDesktop::SourceDetailsViewModel m_details{ nullptr };
         bool m_expanded{};
         bool m_selected{};
@@ -253,14 +249,19 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable PickerRules() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ItemsView() const;
 
-        [[nodiscard]] double SheetWidth() const noexcept;
         [[nodiscard]] winrt::hstring Kicker() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility KickerVisibility() const noexcept;
         [[nodiscard]] winrt::hstring Heading() const;
         [[nodiscard]] winrt::hstring CountLine() const;
 
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility OfflineVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility OfflineMedalVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring OfflinePlate() const;
+        [[nodiscard]] winrt::hstring OfflineTag() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish OfflineFinish() const;
+        [[nodiscard]] winrt::hstring OfflineMeta() const;
+
         [[nodiscard]] winrt::hstring AllFilterCount() const;
-        [[nodiscard]] winrt::hstring PlaysNowFilterCount() const;
         [[nodiscard]] winrt::hstring UltraHdFilterCount() const;
         [[nodiscard]] winrt::hstring FullHdFilterCount() const;
         [[nodiscard]] winrt::hstring HdFilterCount() const;
@@ -272,7 +273,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ListVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResolvingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
-
         [[nodiscard]] winrt::hstring EmptyTitle() const;
         [[nodiscard]] winrt::hstring EmptyBody() const;
 
@@ -284,37 +284,29 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring BannerAction() const;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring PickQualityBadgeTier() const;
-        [[nodiscard]] winrt::hstring PickQualityBadgeDetail() const;
-        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish PickQualityTone() const;
+        [[nodiscard]] winrt::hstring PickPlate() const;
+        [[nodiscard]] winrt::hstring PickTag() const;
+        [[nodiscard]] winrt::HaloDesktop::QualityMedalFinish PickFinish() const;
         [[nodiscard]] winrt::hstring PickStatusLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickInstantVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickOnDiskVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickCachingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickColdVisibility() const noexcept;
-        [[nodiscard]] winrt::hstring PickWhy() const;
         [[nodiscard]] winrt::hstring PickMetaLine() const;
-        [[nodiscard]] winrt::hstring PickSubsChip() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSubsOnVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSubsOffVisibility() const noexcept;
-        // Built once per rebuild alongside the pick's details, rather than on
-        // each of the four getters the card binds to it.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickMetaVisibility() const noexcept;
         [[nodiscard]] winrt::hstring PickFileName() const;
-        [[nodiscard]] winrt::hstring PickWatchNote() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickWatchNoteVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSelectionVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSaveVisibility() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SourceSaveViewModel PickSave() const;
         [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel PickDetails() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PickSelectionVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickExpandedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickExpandGlyphVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PickCollapseGlyphVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring PickChevronName() const;
+        [[nodiscard]] winrt::hstring PickChevronTip() const;
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoExpandGlyphVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoCollapseGlyphVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoOpenGlyphVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility InfoClosedGlyphVisibility() const noexcept;
 
-        // Index into Items of the selected row, or -1 while the pick block holds
-        // the selection. The page uses it to scroll the selection into view.
         [[nodiscard]] std::int32_t SelectedIndex() const noexcept;
 
         void Load(winrt::Windows::Foundation::IInspectable const& parameter);
@@ -332,16 +324,18 @@ namespace winrt::HaloDesktop::implementation
         void RevealCold();
         void PlaySelected();
         void OpenPlayer(winrt::hstring const& key);
+        bool PlayOffline();
         void OpenSettings();
         void Close();
         [[nodiscard]] winrt::hstring FileNameFor(winrt::hstring const& key) const;
         void MarkCopied(winrt::hstring const& key);
 
-        [[nodiscard]] concurrency::task<::HaloDesktop::Services::DownloadStartOutcome> StartDownloadAsync(
+        // Marks a source as starting to save (its Save reads "Saving") until the
+        // start answers; empty clears it.
+        void SetStartingKey(winrt::hstring const& key);
+        [[nodiscard]] concurrency::task<::HaloDesktop::Services::DownloadStartResult> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting);
-        // Key of the selected row, empty while the pick block holds the selection.
-        [[nodiscard]] winrt::hstring SelectedKey() const;
         [[nodiscard]] winrt::hstring PickKey() const;
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
@@ -351,25 +345,30 @@ namespace winrt::HaloDesktop::implementation
         // The first resolve adopts the title page's request for the same video; Retry asks again.
         [[nodiscard]] winrt::Windows::Foundation::IAsyncAction LoadAsync(::HaloDesktop::Services::StreamReuse reuse);
         void AdoptResolve();
+        void ReadDownloads();
         void Rebuild();
         void RebuildFooter();
+        void RefreshSaveStates();
         void ApplySelection();
+        void ApplyExpansion();
+        void ResetView();
         void RaiseState();
+        void RaisePick();
+        void RaiseOffline();
         void Raise(wchar_t const* property);
-        void ApplyLayoutMetrics();
-        [[nodiscard]] std::vector<::HaloDesktop::Sources::SourceEntry> Filtered(std::int32_t filterIndex) const;
-        [[nodiscard]] bool Matches(::HaloDesktop::Sources::SourceEntry const& entry, std::int32_t filterIndex) const noexcept;
-        [[nodiscard]] winrt::HaloDesktop::SourceDisplayItemViewModel RowFor(
-            ::HaloDesktop::Sources::SourceEntry const& entry,
-            ::HaloDesktop::Sources::SourceEntry const* pick,
-            double maximumNeededMbps) const;
+        [[nodiscard]] ::HaloDesktop::Sources::SaveState SaveStateOf(winrt::hstring const& key) const;
+        [[nodiscard]] winrt::HaloDesktop::SourceSaveViewModel SaveFor(winrt::hstring const& key);
         [[nodiscard]] winrt::HaloDesktop::SourceDetailsViewModel DetailsFor(
             ::HaloDesktop::Sources::SourceEntry const& entry,
-            double maximumNeededMbps) const;
-        [[nodiscard]] double MaximumNeededMbps() const noexcept;
-        void ResetCopyState();
+            winrt::hstring const& warning,
+            ::HaloDesktop::Sources::SourceDetails const& details,
+            bool withSave);
+        [[nodiscard]] SourceDisplayItemViewModel* RowAt(std::uint32_t index) const;
         [[nodiscard]] std::int32_t IndexOfKey(winrt::hstring const& key) const;
         [[nodiscard]] bool HasPick() const noexcept;
+        [[nodiscard]] winrt::hstring SelectedKey() const;
+        [[nodiscard]] bool PoolEmpty() const noexcept;
+        [[nodiscard]] bool FilteredEmpty() const noexcept;
 
         std::shared_ptr<::HaloDesktop::Services::ISourceService> m_sources;
         std::shared_ptr<::HaloDesktop::Services::IMetadataService> m_metadata;
@@ -378,29 +377,32 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::IDownloadService> m_downloads;
         std::shared_ptr<::HaloDesktop::Services::DevicePreferencesStore> m_devicePreferences;
         std::shared_ptr<::HaloDesktop::Services::WatchStateService> m_watch;
-        std::shared_ptr<::HaloDesktop::Shell::LayoutMetricsService> m_layout;
 
         winrt::HaloDesktop::SourcesNavParams m_parameters{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_sourceGroups{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_providerItems{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_qualityItems{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_pickerRules{ nullptr };
 
-        // The whole resolve, decorated once, in the service's ranking order. Every
-        // filter and sort is a view over this rather than a fresh derivation.
-        std::vector<::HaloDesktop::Sources::SourceEntry> m_pool;
+        // The whole resolve, ranked once per load. Every filter and sort is a
+        // listing built over it rather than a fresh derivation.
+        ::HaloDesktop::Sources::Resolve m_resolve;
         ::HaloDesktop::Sources::DeviceContext m_device;
-        std::uint64_t m_smallestBytes{};
-        double m_maximumNeededMbps{};
+        ::HaloDesktop::Sources::Listing m_listing;
+        ::HaloDesktop::Sources::FilterCounts m_counts;
+        // This video's downloads as last read: the finished one (the saved copy
+        // card) and the one that decides save states.
+        ::HaloDesktop::Sources::VideoDownloads m_videoDownloads;
+        std::optional<::HaloDesktop::Sources::OfflineCopy> m_offline;
+        // Rebuilt only when the finished download itself changes, since parsing
+        // its release name is regex work and progress ticks are frequent.
+        std::wstring m_offlineSignature;
+        // One per key for the life of a listing, so a download moving updates the
+        // label in place instead of rebuilding the list.
+        std::unordered_map<std::wstring, winrt::HaloDesktop::SourceSaveViewModel> m_saves;
+        winrt::HaloDesktop::SourceSaveViewModel m_pickSave{ nullptr };
         winrt::HaloDesktop::SourceDetailsViewModel m_pickDetails{ nullptr };
-        ::HaloDesktop::Sources::MetaLineData m_pickMeta;
-        // How many entries at the head of m_pool are files on this device. They are
-        // pushed first and rank first, so the count doubles as their extent.
-        std::size_t m_localCount{};
-        std::int32_t m_answeredProviders{};
-        std::int32_t m_failedProviders{};
-        winrt::hstring m_firstFailure;
+        winrt::hstring m_startingKey;
 
         std::int32_t m_filterIndex{};
         std::int32_t m_sortIndex{};
@@ -413,8 +415,6 @@ namespace winrt::HaloDesktop::implementation
         std::uint32_t m_loadVersion{};
         bool m_loading{ true };
         bool m_error{};
-        double m_sheetWidth{ 700.0 };
-        std::uint64_t m_layoutToken{};
         ::HaloDesktop::Services::DownloadChangedToken m_downloadToken{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };

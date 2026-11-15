@@ -697,10 +697,14 @@ namespace winrt::HaloDesktop::implementation
         using ::HaloDesktop::Services::Page;
 
         // A title page keeps the section it was opened from lit, as the
-        // reference does.
-        auto const section = page == Page::Detail
-            ? App::Services().Navigation->SectionBehindCurrentPage()
-            : page;
+        // reference does. The sources sheet is a sheet over whatever page is
+        // showing, so that page's section stays lit too (the reference lights the
+        // stack's root, which a sheet never changes).
+        auto section = page == Page::Sources ? App::Services().Navigation->CurrentPage() : page;
+        if (section == Page::Detail || section == Page::Sources)
+        {
+            section = App::Services().Navigation->SectionBehindCurrentPage();
+        }
         Microsoft::UI::Xaml::Controls::NavigationViewItem selectedItem{ nullptr };
         switch (section)
         {
@@ -720,7 +724,6 @@ namespace winrt::HaloDesktop::implementation
             }
             break;
         case Page::Library:
-        case Page::Sources:
             selectedItem = NavigationItem(L"LibraryItem");
             break;
         case Page::History:

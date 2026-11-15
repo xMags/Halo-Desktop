@@ -9,20 +9,45 @@
 #include "Services/NavigationService.h"
 #include "ViewModels/SourcesViewModel.h"
 
+#include <algorithm>
+#include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Windows.ApplicationModel.DataTransfer.h>
 
 namespace
 {
-    // How much of the sheet has to be above or below a selected card before the
-    // list scrolls to bring it back, plus the lead it leaves once it does.
+    // How much of the sheet a selected card may leave before the list follows it,
+    // and the lead it keeps above it once it does: the reference's 12 and 28.
     constexpr double SelectionMargin = 12.0;
     constexpr double SelectionLead = 28.0;
+
+    // The content's own margin above and below the column, which the minimum
+    // height that lets the empty state centre itself must leave room for.
+    constexpr double ListVerticalMargin = 2.0 + 26.0;
+
+    // The filter pills and sort entries, in the view model's index order.
+    constexpr std::int32_t FilterAll = 0;
+    constexpr std::int32_t FilterUltraHd = 1;
+    constexpr std::int32_t FilterFullHd = 2;
+    constexpr std::int32_t FilterHd = 3;
+    constexpr std::int32_t SortRecommended = 0;
+    constexpr std::int32_t SortBestPicture = 1;
+    constexpr std::int32_t SortSmallestFile = 2;
+    constexpr std::int32_t SortFastestStart = 3;
+
+    constexpr wchar_t const* GenericStartFailure = L"Check the source, free storage, and download folder, then try again.";
 
     winrt::hstring TagOf(winrt::Windows::Foundation::IInspectable const& sender)
     {
         auto const element = sender.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>();
         return element ? winrt::unbox_value_or<winrt::hstring>(element.Tag(), L"") : winrt::hstring{};
+    }
+
+    winrt::hstring DetailsKeyOf(winrt::Windows::Foundation::IInspectable const& sender)
+    {
+        auto const panel = sender.try_as<winrt::HaloDesktop::SourceDetailsPanel>();
+        auto const details = panel ? panel.Details() : nullptr;
+        return details ? details.Key() : winrt::hstring{};
     }
 }
 
@@ -48,20 +73,16 @@ namespace winrt::HaloDesktop::implementation
         m_downloadOperation.Loaded();
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
         viewModel->Activate();
-        FindName(L"SourceList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->ItemsView());
-        FindName(L"ProviderList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->ProviderItems());
-        FindName(L"QualityList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->QualityItems());
-        FindName(L"PickerRuleList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->PickerRules());
+        SourceList().ItemsSource(viewModel->ItemsView());
 
-        AttachKeyHandler();
+        AttachKeyHandlers();
         // The sheet owns the arrow keys while it is open, which only works if the
         // focus is inside it when it appears.
-        auto const root = FindName(L"SheetRoot").as<Microsoft::UI::Xaml::Controls::Grid>();
-        root.IsTabStop(true);
-        static_cast<void>(root.Focus(Microsoft::UI::Xaml::FocusState::Programmatic));
+        SheetRoot().IsTabStop(true);
+        static_cast<void>(SheetRoot().Focus(Microsoft::UI::Xaml::FocusState::Programmatic));
 
-        FindName(L"EnterStoryboard").as<Microsoft::UI::Xaml::Media::Animation::Storyboard>().Begin();
-        FindName(L"SkeletonStoryboard").as<Microsoft::UI::Xaml::Media::Animation::Storyboard>().Begin();
+        EnterStoryboard().Begin();
+        SkeletonStoryboard().Begin();
     }
 
     void SourcesPage::OnUnloaded(
@@ -69,17 +90,26 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_downloadOperation.Unloaded();
-        DetachKeyHandler();
-        try { FindName(L"SkeletonStoryboard").as<Microsoft::UI::Xaml::Media::Animation::Storyboard>().Stop(); }
-        catch (...) {}
+        DetachKeyHandlers();
+        try { SkeletonStoryboard().Stop(); }
+        catch (winrt::hresult_error const&) {}
         winrt::get_self<SourcesViewModel>(m_viewModel)->Deactivate();
     }
 
-    void SourcesPage::AttachKeyHandler()
+    void SourcesPage::AttachKeyHandlers()
     {
         if (m_keyDownHandler) return;
-        // Registered with handledEventsToo, because XAML's own directional focus
-        // navigation marks the arrow keys handled before they reach the page.
+        // The arrows are taken on the way down, before the list's scroller or a
+        // radio group can claim them for scrolling or focus moves; the sheet
+        // gives them its own meaning. Enter and Escape are taken on the way back
+        // up, so a focused button keeps its own Enter.
+        m_previewKeyDownHandler = winrt::box_value(Microsoft::UI::Xaml::Input::KeyEventHandler{
+            [weak = get_weak()](
+                winrt::Windows::Foundation::IInspectable const& sender,
+                Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+            {
+                if (auto const self = weak.get()) self->OnSheetPreviewKeyDown(sender, args);
+            } });
         m_keyDownHandler = winrt::box_value(Microsoft::UI::Xaml::Input::KeyEventHandler{
             [weak = get_weak()](
                 winrt::Windows::Foundation::IInspectable const& sender,
@@ -87,49 +117,37 @@ namespace winrt::HaloDesktop::implementation
             {
                 if (auto const self = weak.get()) self->OnSheetKeyDown(sender, args);
             } });
-        FindName(L"SheetRoot")
-            .as<Microsoft::UI::Xaml::UIElement>()
-            .AddHandler(Microsoft::UI::Xaml::UIElement::KeyDownEvent(), m_keyDownHandler, true);
+        SheetRoot().AddHandler(Microsoft::UI::Xaml::UIElement::PreviewKeyDownEvent(), m_previewKeyDownHandler, false);
+        SheetRoot().AddHandler(Microsoft::UI::Xaml::UIElement::KeyDownEvent(), m_keyDownHandler, true);
     }
 
-    void SourcesPage::DetachKeyHandler() noexcept
+    void SourcesPage::DetachKeyHandlers() noexcept
     {
-        if (!m_keyDownHandler) return;
         try
         {
-            FindName(L"SheetRoot")
-                .as<Microsoft::UI::Xaml::UIElement>()
-                .RemoveHandler(Microsoft::UI::Xaml::UIElement::KeyDownEvent(), m_keyDownHandler);
+            if (m_previewKeyDownHandler)
+            {
+                SheetRoot().RemoveHandler(Microsoft::UI::Xaml::UIElement::PreviewKeyDownEvent(), m_previewKeyDownHandler);
+            }
+            if (m_keyDownHandler)
+            {
+                SheetRoot().RemoveHandler(Microsoft::UI::Xaml::UIElement::KeyDownEvent(), m_keyDownHandler);
+            }
         }
         catch (...)
         {
         }
+        m_previewKeyDownHandler = nullptr;
         m_keyDownHandler = nullptr;
     }
 
-    void SourcesPage::OnSheetKeyDown(
+    void SourcesPage::OnSheetPreviewKeyDown(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
     {
         using winrt::Windows::System::VirtualKey;
-        auto const key = args.Key();
-        // Enter and Escape belong to whatever already claimed them: a focused
-        // button, or an open flyout. The arrows are taken back on purpose, because
-        // the only thing that claims them is XAML's directional focus navigation,
-        // which is not what the sheet wants them to mean.
-        if (args.Handled() && key != VirtualKey::Up && key != VirtualKey::Down
-            && key != VirtualKey::Left && key != VirtualKey::Right)
+        switch (args.Key())
         {
-            return;
-        }
-        switch (key)
-        {
-        case VirtualKey::Escape:
-            BeginClose();
-            break;
-        case VirtualKey::Enter:
-            m_viewModel.PlaySelected();
-            break;
         case VirtualKey::Up:
             m_viewModel.MoveSelection(-1);
             RevealSelection();
@@ -150,9 +168,35 @@ namespace winrt::HaloDesktop::implementation
         args.Handled(true);
     }
 
+    void SourcesPage::OnSheetKeyDown(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        using winrt::Windows::System::VirtualKey;
+        switch (args.Key())
+        {
+        case VirtualKey::Escape:
+            BeginClose();
+            args.Handled(true);
+            return;
+        case VirtualKey::Enter:
+            // Enter on a focused button is that button's: a row plays itself, a
+            // chevron opens its details, Save saves. The sheet plays otherwise.
+            if (args.Handled() || args.OriginalSource().try_as<Microsoft::UI::Xaml::Controls::Primitives::ButtonBase>())
+            {
+                return;
+            }
+            m_viewModel.PlaySelected();
+            args.Handled(true);
+            return;
+        default:
+            return;
+        }
+    }
+
     void SourcesPage::RevealSelection()
     {
-        auto const scroller = FindName(L"ListScroller").try_as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
+        auto const scroller = ListScroller();
         if (!scroller) return;
 
         auto const index = m_viewModel.SelectedIndex();
@@ -162,26 +206,33 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
-        auto const list = FindName(L"SourceList").try_as<Microsoft::UI::Xaml::Controls::ItemsControl>();
-        if (!list) return;
-        auto const container = list.ContainerFromIndex(index).try_as<Microsoft::UI::Xaml::FrameworkElement>();
+        auto const container = SourceList().ContainerFromIndex(index).try_as<Microsoft::UI::Xaml::FrameworkElement>();
         if (!container) return;
 
         auto const transform = container.TransformToVisual(scroller);
-        auto const top = transform.TransformPoint(winrt::Windows::Foundation::Point{ 0.0f, 0.0f }).Y;
-        auto const bottom = top + static_cast<float>(container.ActualHeight());
-        auto const viewport = static_cast<float>(scroller.ViewportHeight());
+        auto const top = static_cast<double>(transform.TransformPoint(winrt::Windows::Foundation::Point{ 0.0f, 0.0f }).Y);
+        auto const bottom = top + container.ActualHeight();
+        auto const viewport = scroller.ViewportHeight();
         if (top >= SelectionMargin && bottom <= viewport - SelectionMargin) return;
 
-        auto const offset = scroller.VerticalOffset() + top - SelectionLead;
+        auto const offset = (std::max)(0.0, scroller.VerticalOffset() + top - SelectionLead);
         scroller.ChangeView(nullptr, winrt::box_value(offset).as<winrt::Windows::Foundation::IReference<double>>(), nullptr);
+    }
+
+    void SourcesPage::OnScrollerSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        // The column is at least as tall as the scroller, so an empty state can
+        // sit in the middle of it as the reference's does.
+        ListContent().MinHeight((std::max)(0.0, static_cast<double>(args.NewSize().Height) - ListVerticalMargin));
     }
 
     void SourcesPage::BeginClose()
     {
         if (m_closing) return;
         m_closing = true;
-        FindName(L"ExitStoryboard").as<Microsoft::UI::Xaml::Media::Animation::Storyboard>().Begin();
+        ExitStoryboard().Begin();
     }
 
     // Queued rather than called straight from the animation callback: closing tears
@@ -227,152 +278,89 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.OpenSettings();
     }
 
-    void SourcesPage::OnEditPlaybackClick(
+    void SourcesPage::OnPlayOfflineClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.OpenSettings();
+        if (!m_viewModel.PlayOffline()) ShowOfflineMissingAsync();
     }
 
-    void SourcesPage::OnToggleInfoClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.ToggleInfo();
-    }
-
-    void SourcesPage::OnAllFilterClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetFilter(0);
-    }
-    void SourcesPage::OnPlaysNowFilterClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetFilter(1);
-    }
-    void SourcesPage::OnUltraHdFilterClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetFilter(2);
-    }
-    void SourcesPage::OnFullHdFilterClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetFilter(3);
-    }
-    void SourcesPage::OnHdFilterClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetFilter(4);
-    }
-
-    void SourcesPage::OnRecommendedSortClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetSort(0);
-    }
-    void SourcesPage::OnBestPictureSortClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetSort(1);
-    }
-    void SourcesPage::OnSmallestFileSortClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetSort(2);
-    }
-    void SourcesPage::OnFastestStartSortClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.SetSort(3);
-    }
+    void SourcesPage::OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterAll); }
+    void SourcesPage::OnUltraHdFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterUltraHd); }
+    void SourcesPage::OnFullHdFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterFullHd); }
+    void SourcesPage::OnHdFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterHd); }
+    void SourcesPage::OnRecommendedSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetSort(SortRecommended); }
+    void SourcesPage::OnBestPictureSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetSort(SortBestPicture); }
+    void SourcesPage::OnSmallestFileSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetSort(SortSmallestFile); }
+    void SourcesPage::OnFastestStartSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetSort(SortFastestStart); }
 
     // A retry resets the sort and the filter, so the two selector controls have to
     // be told; they own their own checked state, not the view model.
     void SourcesPage::SyncSelectors()
     {
-        if (auto const pill = FindName(L"AllFilter").try_as<Microsoft::UI::Xaml::Controls::RadioButton>())
-        {
-            pill.IsChecked(true);
-        }
-        if (auto const sort = FindName(L"RecommendedSort")
-                .try_as<Microsoft::UI::Xaml::Controls::RadioMenuFlyoutItem>())
-        {
-            sort.IsChecked(true);
-        }
+        AllFilter().IsChecked(true);
+        RecommendedSort().IsChecked(true);
     }
 
-    void SourcesPage::OnCardClick(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.ToggleExpanded(TagOf(sender));
-    }
-
-    void SourcesPage::OnPickDetailsClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    void SourcesPage::OnPickDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_viewModel.TogglePickExpanded();
     }
 
-    void SourcesPage::OnRevealColdClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.RevealCold();
-    }
-
-    void SourcesPage::OnPlayPickClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    void SourcesPage::OnPlayPickClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_viewModel.SelectPick();
-        m_viewModel.PlaySelected();
+        m_viewModel.OpenPlayer(winrt::get_self<SourcesViewModel>(m_viewModel)->PickKey());
     }
 
-    void SourcesPage::OnPlaySourceClick(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        m_viewModel.OpenPlayer(TagOf(sender));
-    }
-
-    void SourcesPage::OnDownloadPickClick(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    void SourcesPage::OnPickSaveClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         StartDownload(winrt::get_self<SourcesViewModel>(m_viewModel)->PickKey());
     }
 
-    void SourcesPage::OnDownloadSourceClick(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    void SourcesPage::OnRevealColdClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        StartDownload(TagOf(sender));
+        m_viewModel.RevealCold();
     }
 
-    void SourcesPage::OnCopyFileNameClick(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    void SourcesPage::OnRowPlayClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        auto const name = m_viewModel.FileNameFor(TagOf(sender));
+        m_viewModel.OpenPlayer(TagOf(sender));
+    }
+
+    void SourcesPage::OnRowChevronClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.ToggleExpanded(TagOf(sender));
+    }
+
+    void SourcesPage::OnRowFocused(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.SelectKey(TagOf(sender));
+    }
+
+    void SourcesPage::OnDetailsSaveClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        StartDownload(DetailsKeyOf(sender));
+    }
+
+    void SourcesPage::OnDetailsCopyClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const key = DetailsKeyOf(sender);
+        auto const name = m_viewModel.FileNameFor(key);
         if (name.empty()) return;
-        winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
-        package.RequestedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Copy);
-        package.SetText(name);
-        winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
-        m_viewModel.MarkCopied(TagOf(sender));
+        try
+        {
+            winrt::Windows::ApplicationModel::DataTransfer::DataPackage package;
+            package.RequestedOperation(winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Copy);
+            package.SetText(name);
+            winrt::Windows::ApplicationModel::DataTransfer::Clipboard::SetContent(package);
+            m_viewModel.MarkCopied(key);
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // Another app holding the clipboard; the label simply stays "Copy file name".
+            m_viewModel.MarkCopied(L"");
+        }
     }
 
     winrt::fire_and_forget SourcesPage::StartDownload(winrt::hstring key)
@@ -389,6 +377,9 @@ namespace winrt::HaloDesktop::implementation
             co_return;
         }
         auto const uiContext = winrt::apartment_context{};
+        auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
+        // The source reads "Saving" while its start is in flight, as the reference's does.
+        viewModel->SetStartingKey(key);
         try
         {
             co_await StartDownloadCore(std::move(key), *ticket);
@@ -400,6 +391,7 @@ namespace winrt::HaloDesktop::implementation
         try
         {
             co_await uiContext;
+            viewModel->SetStartingKey(L"");
             m_downloadOperation.Complete(*ticket);
         }
         catch (...)
@@ -413,10 +405,10 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const uiContext = winrt::apartment_context{};
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
-        auto outcome = ::HaloDesktop::Services::DownloadStartOutcome::Failed;
+        ::HaloDesktop::Services::DownloadStartResult result;
         try
         {
-            outcome = co_await viewModel->StartDownloadAsync(key, false);
+            result = co_await viewModel->StartDownloadAsync(key, false);
         }
         catch (...)
         {
@@ -427,7 +419,8 @@ namespace winrt::HaloDesktop::implementation
             co_return;
         }
 
-        if (outcome == ::HaloDesktop::Services::DownloadStartOutcome::ReplacementRequired)
+        // One download per video: swapping the source has to be deliberate.
+        if (result.Outcome == ::HaloDesktop::Services::DownloadStartOutcome::ReplacementRequired)
         {
             auto replace = false;
             try
@@ -444,10 +437,10 @@ namespace winrt::HaloDesktop::implementation
                 co_return;
             }
 
-            outcome = ::HaloDesktop::Services::DownloadStartOutcome::Failed;
+            result = {};
             try
             {
-                outcome = co_await viewModel->StartDownloadAsync(key, true);
+                result = co_await viewModel->StartDownloadAsync(key, true);
             }
             catch (...)
             {
@@ -458,8 +451,8 @@ namespace winrt::HaloDesktop::implementation
                 co_return;
             }
         }
-        if (outcome == ::HaloDesktop::Services::DownloadStartOutcome::Started
-            || outcome == ::HaloDesktop::Services::DownloadStartOutcome::AlreadyExists)
+        if (result.Outcome == ::HaloDesktop::Services::DownloadStartOutcome::Started
+            || result.Outcome == ::HaloDesktop::Services::DownloadStartOutcome::AlreadyExists)
         {
             // The sheet is over the page the viewer came from, and the transfer they
             // just started is on another one, so the sheet gets out of the way.
@@ -467,7 +460,8 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Downloads);
             co_return;
         }
-        co_await ShowDownloadFailureAsync();
+        viewModel->SetStartingKey(L"");
+        co_await ShowDownloadFailureAsync(std::move(result.Reason));
     }
 
     winrt::Windows::Foundation::IAsyncOperation<bool> SourcesPage::ConfirmReplacementAsync()
@@ -484,14 +478,36 @@ namespace winrt::HaloDesktop::implementation
             == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary;
     }
 
-    winrt::Windows::Foundation::IAsyncAction SourcesPage::ShowDownloadFailureAsync()
+    winrt::Windows::Foundation::IAsyncAction SourcesPage::ShowDownloadFailureAsync(std::wstring reason)
     {
+        // The engine's own reason names what to fix ("Sign in before downloading.",
+        // "There is not enough free space for this video."); anything without one
+        // gets the general advice.
         auto dialog = ::HaloDesktop::Views::MakeDialog(
             XamlRoot(),
             ActualTheme(),
             L"Download could not start",
-            L"Check the source, free storage, and download folder, then try again.");
+            reason.empty() ? winrt::hstring{ GenericStartFailure } : winrt::hstring{ reason });
         dialog.CloseButtonText(L"Close");
         co_await dialog.ShowAsync();
+    }
+
+    winrt::fire_and_forget SourcesPage::ShowOfflineMissingAsync()
+    {
+        auto lifetime = get_strong();
+        try
+        {
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Download action failed",
+                L"This download is no longer on this device.");
+            dialog.CloseButtonText(L"Close");
+            co_await dialog.ShowAsync();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // Another dialog is already open; the card has gone by then anyway.
+        }
     }
 }

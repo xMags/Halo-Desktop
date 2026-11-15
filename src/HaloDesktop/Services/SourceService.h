@@ -1,15 +1,18 @@
 #pragma once
 
+#include "Services/AddonNamePolicy.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/StreamInfo.h"
+#include "ViewModels/SourcesModel.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <vector>
+#include <utility>
 
 namespace HaloDesktop::Api
 {
@@ -20,24 +23,8 @@ namespace HaloDesktop::Services
 {
     class SettingsSyncService;
 
-    struct ResolvedSourceRecord final
-    {
-        winrt::hstring Key;
-        winrt::hstring AddonId;
-        Api::Dto::StreamRecord Stream;
-        ParsedStreamInfo Info;
-        winrt::HaloDesktop::SourcesNavParams Navigation{ nullptr };
-        // Position in the whole resolve's ranking, ascending. Assigned after every
-        // addon has answered, so it is comparable across addon groups.
-        std::int32_t Rank{};
-        // Set when this record is a file already on the device. Such a record is
-        // played from disk; its Stream carries an addon's URL only when one also
-        // returned the same release, as a fallback if the file has since gone.
-        std::optional<winrt::hstring> DownloadJobId;
-    };
-
-    // UI-thread-only facade. Raw third-party URLs and request headers remain in
-    // m_records and never enter observable or XAML-bound collections.
+    // UI-thread-only facade. Raw third-party URLs and request headers stay in the
+    // parsed resolve and never enter observable or XAML-bound collections.
     class SourceService final : public ISourceService
     {
     public:
@@ -52,27 +39,20 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<StreamFetch> RequestStreamsAsync(
             winrt::hstring type,
             winrt::hstring videoId) override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const override;
+        [[nodiscard]] std::shared_ptr<Sources::ParsedResolve const> Current() const override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const override;
-        [[nodiscard]] concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+        [[nodiscard]] concurrency::task<DownloadStartResult> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting) override;
-        [[nodiscard]] winrt::hstring ResolveSummary() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> LocalSources() const override;
-        void RefreshDownloadStates() override;
 
-        [[nodiscard]] std::optional<ResolvedSourceRecord> NativeRecord(winrt::hstring const& key) const;
         void OnAccountChanged();
 
     private:
-        // Projects the retained resolve plus whatever is currently on disk into the
-        // records, groups, local sources and ranking the sheet reads. Split out of
-        // LoadAsync because a download finishing or being deleted has to reproduce
-        // exactly this state without asking the providers again.
-        void ApplyResolve();
-        // Drops the retained resolve and everything projected from it. Used wherever
-        // the service must stop answering for the title it last loaded.
+        // Drops the current resolve. Used wherever the service must stop answering
+        // for the title it last loaded.
         void ClearResolve();
+        void Adopt(winrt::HaloDesktop::SourcesNavParams parameters, std::shared_ptr<Sources::ParsedResolve const> parsed);
+        [[nodiscard]] Sources::ParsedStream const* Find(winrt::hstring const& key, winrt::hstring* addonId) const;
         // The one /streams request per video the title page and the sheet share:
         // the request already made for this video when it is still waiting or
         // answered recently, else a new one that replaces it.
@@ -93,20 +73,11 @@ namespace HaloDesktop::Services
         std::shared_ptr<Api::ApiClient> m_api;
         std::shared_ptr<IDownloadService> m_downloads;
         std::shared_ptr<SettingsSyncService> m_settings;
-        // The resolve is retained so ApplyResolve can run again without a second
-        // request. Raw URLs and headers live here and in m_records only.
+        // The parameters the current resolve answered for; null while none does.
         winrt::HaloDesktop::SourcesNavParams m_parameters{ nullptr };
-        Api::Dto::StreamsPayload m_payload;
-        // One key per retained stream, in payload order. Minted once per resolve so
-        // that a rebuild does not renumber the rows underneath an open sheet and
-        // discard the viewer's selection.
-        std::vector<std::vector<winrt::hstring>> m_streamKeys;
-        double m_elapsedSeconds{};
-        std::unordered_map<std::wstring, ResolvedSourceRecord> m_records;
-        std::vector<winrt::hstring> m_orderedKeys;
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> m_groups{ nullptr };
-        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> m_localSources{ nullptr };
-        winrt::hstring m_summary;
+        std::shared_ptr<Sources::ParsedResolve const> m_current;
+        // Stream key to its group and position in m_current.
+        std::unordered_map<std::wstring, std::pair<std::size_t, std::size_t>> m_index;
         std::uint64_t m_requestVersion{};
 
         struct SharedFetch final
@@ -124,7 +95,4 @@ namespace HaloDesktop::Services
         std::optional<SharedFetch> m_fetch;
         std::uint64_t m_fetchSerial{};
     };
-
-    [[nodiscard]] winrt::hstring SanitizeAddonName(std::optional<winrt::hstring> const& name);
-    [[nodiscard]] winrt::hstring AddonFailureCopy(std::optional<winrt::hstring> const& code);
 }

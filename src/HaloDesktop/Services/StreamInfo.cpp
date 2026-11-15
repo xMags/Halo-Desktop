@@ -40,8 +40,44 @@ namespace
         return std::regex_search(text, std::wregex(pattern, flags));
     }
 
-    std::optional<winrt::hstring> MatchQuality(std::wstring const& text)
+    bool IsLineEnd(wchar_t value) noexcept
     {
+        return value == L'\n' || value == L'\r' || value == L'\x2028' || value == L'\x2029';
+    }
+
+    // Tokens that read as a quality but are not: the DTS-HD audio codec ("HD"
+    // would claim 720p) and a `.ts` file extension ending a line ("TS" would
+    // claim a telesync). The reference writes this as one multiline regex,
+    // /\bdts[-. ]?hd\b|\.ts$/gim. MSVC's ECMAScript grammar has no portable
+    // multiline flag, so the `.ts` half is matched by hand at every line end
+    // (the same terminators JavaScript's `m` flag honours) instead of trusting
+    // what `$` means there.
+    std::wstring WithoutQualityLookalikes(std::wstring const& source)
+    {
+        static std::wregex const dtsHd(LR"(\bdts[-. ]?hd\b)", std::regex_constants::ECMAScript | std::regex_constants::icase);
+        auto text = std::regex_replace(source, dtsHd, L" ");
+        std::wstring result;
+        result.reserve(text.size());
+        for (std::size_t index{}; index < text.size(); ++index)
+        {
+            auto const endsHere = index + 3 == text.size() || (index + 3 < text.size() && IsLineEnd(text[index + 3]));
+            if (endsHere
+                && text[index] == L'.'
+                && std::towlower(text[index + 1]) == L't'
+                && std::towlower(text[index + 2]) == L's')
+            {
+                result.push_back(L' ');
+                index += 2;
+                continue;
+            }
+            result.push_back(text[index]);
+        }
+        return result;
+    }
+
+    std::optional<winrt::hstring> MatchQuality(std::wstring const& source)
+    {
+        auto const text = WithoutQualityLookalikes(source);
         if (Matches(text, LR"(\b(2160p?|4k|uhd)\b)")) return L"2160p";
         if (Matches(text, LR"(\b1440p\b)")) return L"1440p";
         if (Matches(text, LR"(\b1080p?\b|\bfullhd\b)")) return L"1080p";
@@ -72,6 +108,7 @@ namespace
 
     winrt::hstring WithChannels(std::wstring const& text, wchar_t const* codec)
     {
+        // No leading \b: the channel count is usually glued to the codec ("DDP5.1").
         std::wsmatch match;
         if (std::regex_search(text, match, std::wregex(LR"(([2578])[ .]([01])(?!\d))")))
         {
@@ -80,17 +117,20 @@ namespace
         return codec;
     }
 
+    // Each codec ends at anything but a letter rather than at a word break: the
+    // channel count is usually glued on (`DDP5.1`, `AAC2.0`), and a digit after
+    // the name is no break at all. `DD+` is how many releases spell DDP.
     std::optional<winrt::hstring> MatchAudio(std::wstring const& text)
     {
-        if (Matches(text, LR"(\batmos\b)")) return L"ATMOS";
-        if (Matches(text, LR"(\btrue[ .]?hd\b)")) return L"TRUEHD";
-        if (Matches(text, LR"(\bdts[ .-]?hd\b)")) return L"DTS-HD";
-        if (Matches(text, LR"(\bdts\b)")) return L"DTS";
-        if (Matches(text, LR"(\b(ddp|eac3|e-ac-3)\b)")) return WithChannels(text, L"DDP");
-        if (Matches(text, LR"(\b(dd|ac3)\b)")) return WithChannels(text, L"DD");
-        if (Matches(text, LR"(\baac\b)")) return WithChannels(text, L"AAC");
-        if (Matches(text, LR"(\bopus\b)")) return L"OPUS";
-        if (Matches(text, LR"(\bflac\b)")) return L"FLAC";
+        if (Matches(text, LR"(\batmos(?![A-Za-z]))")) return L"ATMOS";
+        if (Matches(text, LR"(\btrue[ .]?hd(?![A-Za-z]))")) return L"TRUEHD";
+        if (Matches(text, LR"(\bdts[ .-]?hd(?![A-Za-z]))")) return L"DTS-HD";
+        if (Matches(text, LR"(\bdts(?![A-Za-z]))")) return L"DTS";
+        if (Matches(text, LR"(\b(ddp|dd\+|eac3|e-ac-3)(?![A-Za-z]))")) return WithChannels(text, L"DDP");
+        if (Matches(text, LR"(\b(dd|ac3)(?![A-Za-z]))")) return WithChannels(text, L"DD");
+        if (Matches(text, LR"(\baac(?![A-Za-z]))")) return WithChannels(text, L"AAC");
+        if (Matches(text, LR"(\bopus(?![A-Za-z]))")) return L"OPUS";
+        if (Matches(text, LR"(\bflac(?![A-Za-z]))")) return L"FLAC";
         return std::nullopt;
     }
 
@@ -102,18 +142,10 @@ namespace
         std::replace(number.begin(), number.end(), L',', L'.');
         try
         {
-            auto const value = std::stold(number);
+            auto const value = std::stod(number);
             if (!std::isfinite(value) || value <= 0) return std::nullopt;
-            auto const multiplier = std::towupper(match[2].str()[0]) == L'G' ? 1024.0L * 1024.0L * 1024.0L : 1024.0L * 1024.0L;
-            auto const bytes = value * multiplier;
-            // long double is double precision on MSVC, so compare against an
-            // exclusive 2^64 ceiling instead of a rounded uint64_t maximum.
-            constexpr long double Uint64ExclusiveUpperBound = 18446744073709551616.0L;
-            if (!std::isfinite(bytes) || bytes <= 0 || bytes >= Uint64ExclusiveUpperBound)
-            {
-                return std::nullopt;
-            }
-            return static_cast<std::uint64_t>(bytes);
+            auto const multiplier = std::towupper(match[2].str()[0]) == L'G' ? 1024.0 * 1024.0 * 1024.0 : 1024.0 * 1024.0;
+            return HaloDesktop::Services::WholeBytes(value * multiplier);
         }
         catch (...)
         {
@@ -208,6 +240,17 @@ namespace
 
 namespace HaloDesktop::Services
 {
+    std::optional<std::uint64_t> WholeBytes(double value) noexcept
+    {
+        // An exclusive 2^64 ceiling rather than a rounded uint64_t maximum, which
+        // a double cannot hold exactly.
+        constexpr double Uint64ExclusiveUpperBound = 18446744073709551616.0;
+        if (!std::isfinite(value) || value <= 0.0) return std::nullopt;
+        auto const rounded = std::round(value);
+        if (rounded <= 0.0 || rounded >= Uint64ExclusiveUpperBound) return std::nullopt;
+        return static_cast<std::uint64_t>(rounded);
+    }
+
     int QualityRank(std::optional<winrt::hstring> const& quality) noexcept
     {
         static std::array<wchar_t const*, 6> const order{ L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" };
@@ -236,7 +279,8 @@ namespace HaloDesktop::Services
         result.DynamicRange = MatchDynamicRange(text);
         result.Codec = MatchCodec(text);
         result.Audio = MatchAudio(text);
-        result.SizeBytes = stream.VideoSize ? stream.VideoSize : MatchSize(text);
+        // A hint of zero says nothing, so the text gets its turn.
+        result.SizeBytes = stream.VideoSize && *stream.VideoSize > 0 ? stream.VideoSize : MatchSize(text);
         result.Cached = MatchCached(text);
         result.Languages = MatchLanguages(text);
         result.Detail = DetailLine(stream, filename);

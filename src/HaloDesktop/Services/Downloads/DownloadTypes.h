@@ -130,6 +130,26 @@ namespace HaloDesktop::Services::Downloads
         std::uint64_t SizeBytes{};
     };
 
+    // One download of a video, whatever its state, as the sources sheet reads it:
+    // what decides the saved copy card and which source wears a save state. No
+    // path, URL or header.
+    struct VideoDownload final
+    {
+        std::wstring JobId;
+        // The release file name the download was saved under: the addon's name
+        // when the download started, else the sanitized on-disk name.
+        std::wstring ReleaseName;
+        // The stream's own name and title, which can say what the file name does not.
+        std::optional<std::wstring> StreamName;
+        std::optional<std::wstring> StreamTitle;
+        DownloadStatus Status{ DownloadStatus::Queued };
+        std::uint64_t SizeBytes{};
+        // Zero to one, or empty while the size is unknown.
+        std::optional<double> Fraction;
+        // The subtitle saved beside it, if any.
+        std::optional<std::wstring> SubtitleLanguage;
+    };
+
     struct ContentRange final
     {
         std::uint64_t Start{};

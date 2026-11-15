@@ -658,10 +658,13 @@
   </Style>
 
   <!--
-    The whole collapsed row of a source card is one hit target for expanding it.
-    Borderless and transparent because the card around it already draws the frame,
-    and a second border inside the first is one line too many.
+    The sources sheet's flat buttons. Each is a transparent frame with a hover fill
+    that only changes opacity in a visual state: nothing here takes a composition
+    visual or a property transition. They differ only in the fill (`sbp` on the
+    row, `sb` on the icon buttons, `cth` on the quiet ones, `ct` on Copy) and
+    in whether the ink brightens under the pointer.
   -->
+  <!-- `.sx-card-main`: the whole compact row is its Play button. -->
   <Style x:Key="HaloSheetRowButtonStyle" TargetType="Button">
     <Setter Property="MinWidth" Value="0" />
     <Setter Property="MinHeight" Value="0" />
@@ -670,7 +673,312 @@
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root" Background="Transparent">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtlePressedBrush}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.8" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- `.sx-sort` and `.sx-chevron`: a glyph in Text3 that brightens over a `sb` fill. -->
+  <Style x:Key="HaloSheetIconButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Width" Value="36" />
+    <Setter Property="Height" Value="36" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloText3Brush}" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    `.sx-close`, `.sx-link`, `.sx-reveal` and the footer toggle: no fill until the
+    pointer is over it, then `cth`. The ink is whatever the caller sets.
+  -->
+  <Style x:Key="HaloSheetQuietButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloCtrlHoverBrush}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- `.sx-copy`: Text2 on nothing, Text1 on `ct` under the pointer. -->
+  <Style x:Key="HaloSheetCopyButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="34" />
+    <Setter Property="Padding" Value="12,0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloText2Brush}" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloCtrlBrush}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    `.btn.sx-btn.sx-save`: the standard control fill and stroke, `cth` under the
+    pointer. Saving and Saved are disabled but stay at full strength, because they
+    report rather than offer; their ink is set by the content.
+  -->
+  <Style x:Key="HaloSheetSaveButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="Background" Value="{ThemeResource HaloCtrlBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloCtrlStrokeBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root">
+            <Border
+              Background="{TemplateBinding Background}"
+              BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}"
+              CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloCtrlHoverBrush}" CornerRadius="{TemplateBinding CornerRadius}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="{TemplateBinding FontWeight}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.8" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    `.sx-play-offline`: the one solid button, Text1 with the ground's colour for
+    ink, a touch darker under the pointer (the reference's brightness 0.92).
+  -->
+  <Style x:Key="HaloSheetSolidButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="44" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="Background" Value="{ThemeResource HaloText1Brush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloMicaBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="CornerRadius" Value="6" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root">
+            <Border Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}" />
+            <Border x:Name="HoverLayer" Background="#14000000" CornerRadius="{TemplateBinding CornerRadius}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="Center"
+              VerticalContentAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="{TemplateBinding FontWeight}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.8" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <!-- The card frame itself. Selection is drawn as a separate ring on top. -->

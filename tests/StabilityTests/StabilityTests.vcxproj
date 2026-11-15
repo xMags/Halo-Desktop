@@ -206,6 +206,19 @@
     <ClCompile Include="..\..\src\HaloDesktop\Views\DetailLayoutPolicy.cpp">
       <Link>DetailLayoutPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SourcesSheetTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\SourcePresentation.cpp">
+      <Link>SourcePresentation.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\SourcesModel.cpp">
+      <Link>SourcesModel.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AddonNamePolicy.cpp">
+      <Link>AddonNamePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadSourceMatch.cpp">
+      <Link>DownloadSourceMatch.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -217,6 +230,7 @@
     <ClInclude Include="SearchResultsTests.h" />
     <ClInclude Include="HistoryRowsTests.h" />
     <ClInclude Include="DetailPageTests.h" />
+    <ClInclude Include="SourcesSheetTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

@@ -25,6 +25,7 @@
 #include "SearchResultsTests.h"
 #include "HistoryRowsTests.h"
 #include "DetailPageTests.h"
+#include "SourcesSheetTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -88,8 +89,16 @@ namespace
 
         Require(parseSize(L"123456") == 123456,
             "a valid stream size was not retained");
-        Require(!parseSize(L"1.5"),
-            "a fractional stream size was truncated into an integer");
+        // The reference's wholeBytes rounds an addon's fractional figure rather than
+        // dropping it, and reads zero as unknown.
+        Require(parseSize(L"1.5") == 2,
+            "a fractional stream size was not rounded to whole bytes");
+        Require(parseSize(L"1234.6") == 1235,
+            "a fractional stream size was not rounded to the nearest byte");
+        Require(!parseSize(L"0"),
+            "a zero stream size was kept as a size");
+        Require(!parseSize(L"0.4"),
+            "a stream size rounding to zero was kept as a size");
         Require(!parseSize(L"1e300"),
             "an out-of-range stream size reached an integer conversion");
         Require(!parseSize(L"18446744073709551616"),
@@ -1342,6 +1351,7 @@ int main()
         TestHistoryRemoval();
         RunHistoryRowsTests();
         RunDetailPageTests();
+        RunSourcesSheetTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

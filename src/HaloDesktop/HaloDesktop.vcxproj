@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.props" Condition="Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.10.0.28000.2526\build\Microsoft.Windows.SDK.BuildTools.props')" />
   <Import Project="..\..\packages\Microsoft.Windows.CppWinRT.3.0.260818.1\build\native\Microsoft.Windows.CppWinRT.props" Condition="Exists('..\..\packages\Microsoft.Windows.CppWinRT.3.0.260818.1\build\native\Microsoft.Windows.CppWinRT.props')" />
@@ -364,6 +364,11 @@
     <ClInclude Include="Views\DetailEpisodeRow.xaml.h"><DependentUpon>DetailEpisodeRow.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\DetailCreditCard.xaml.h"><DependentUpon>DetailCreditCard.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\DetailSimilarCard.xaml.h"><DependentUpon>DetailSimilarCard.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Services\AddonNamePolicy.h" />
+    <ClInclude Include="ViewModels\SourcesModel.h" />
+    <ClInclude Include="Views\SourceDetailsPanel.xaml.h"><DependentUpon>SourceDetailsPanel.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\SourceSaveButton.xaml.h"><DependentUpon>SourceSaveButton.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\SourcesSheetFooter.xaml.h"><DependentUpon>SourcesSheetFooter.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -405,6 +410,9 @@
     <Page Include="Views\DetailEpisodeRow.xaml" />
     <Page Include="Views\DetailCreditCard.xaml" />
     <Page Include="Views\DetailSimilarCard.xaml" />
+    <Page Include="Views\SourceDetailsPanel.xaml" />
+    <Page Include="Views\SourceSaveButton.xaml" />
+    <Page Include="Views\SourcesSheetFooter.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -694,6 +702,11 @@
     <ClCompile Include="Views\DetailEpisodeRow.xaml.cpp"><DependentUpon>DetailEpisodeRow.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Views\DetailCreditCard.xaml.cpp"><DependentUpon>DetailCreditCard.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Views\DetailSimilarCard.xaml.cpp"><DependentUpon>DetailSimilarCard.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Services\AddonNamePolicy.cpp" />
+    <ClCompile Include="ViewModels\SourcesModel.cpp" />
+    <ClCompile Include="Views\SourceDetailsPanel.xaml.cpp"><DependentUpon>SourceDetailsPanel.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\SourceSaveButton.xaml.cpp"><DependentUpon>SourceSaveButton.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\SourcesSheetFooter.xaml.cpp"><DependentUpon>SourcesSheetFooter.xaml</DependentUpon></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.SourceSaveButton"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  IsTabStop="False">
+  <!--
+    `SaveButton.tsx`: the filled download arrow, a progress ring while saving, a
+    check once saved. Only a ready one takes a click; Saving reads in Text2 and
+    Saved in the success colour, both at full strength. Nothing here takes a
+    composition visual.
+  -->
+  <Button
+    x:Name="SaveButtonControl"
+    Height="34"
+    HorizontalAlignment="Stretch"
+    AutomationProperties.Name="{x:Bind Save.Label, Mode=OneWay}"
+    Click="OnClick"
+    IsEnabled="{x:Bind Save.IsReady, Mode=OneWay}"
+    Style="{StaticResource HaloSheetSaveButtonStyle}"
+    Visibility="{x:Bind Save.ButtonVisibility, Mode=OneWay}">
+    <StackPanel Orientation="Horizontal" Spacing="8">
+      <Grid VerticalAlignment="Center">
+        <!-- The phone's filled arrow over its bar; Segoe has only the outlined tray. -->
+        <Viewbox Width="16" Height="16" Visibility="{x:Bind Save.ArrowVisibility, Mode=OneWay}">
+          <Path Data="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z" Fill="{ThemeResource HaloText1Brush}" Width="24" Height="24" />
+        </Viewbox>
+        <ProgressRing
+          Width="14"
+          Height="14"
+          MinWidth="0"
+          MinHeight="0"
+          IsActive="True"
+          IsIndeterminate="True"
+          Foreground="{ThemeResource HaloText2Brush}"
+          Visibility="{x:Bind Save.RingVisibility, Mode=OneWay}" />
+        <FontIcon FontSize="15" Foreground="{ThemeResource HaloSuccessBrush}" Glyph="&#xE73E;" Visibility="{x:Bind Save.CheckVisibility, Mode=OneWay}" />
+      </Grid>
+      <Grid VerticalAlignment="Center">
+        <TextBlock Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Save.Label, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind Save.ReadyLabelVisibility, Mode=OneWay}" />
+        <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Save.Label, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind Save.SavingLabelVisibility, Mode=OneWay}" />
+        <TextBlock Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind Save.Label, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind Save.SavedLabelVisibility, Mode=OneWay}" />
+      </Grid>
+    </StackPanel>
+  </Button>
+</UserControl>

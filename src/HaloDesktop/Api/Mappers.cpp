@@ -417,11 +417,13 @@ namespace
             auto const field = hints.GetNamedValue(L"videoSize");
             if (field.ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
             {
+                // Whole bytes, as the reference's wholeBytes: a fractional figure
+                // is rounded rather than dropped, and zero means unknown.
                 auto const value = field.GetNumber();
-                if (std::isfinite(value) && value > 0 && std::floor(value) == value
-                    && value < Uint64ExclusiveUpperBound)
+                auto const rounded = std::isfinite(value) ? std::round(value) : 0.0;
+                if (rounded > 0 && rounded < Uint64ExclusiveUpperBound)
                 {
-                    record.VideoSize = static_cast<std::uint64_t>(value);
+                    record.VideoSize = static_cast<std::uint64_t>(rounded);
                 }
             }
         }

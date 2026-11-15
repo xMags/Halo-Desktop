@@ -13,9 +13,14 @@
 #include <shellapi.h>
 #include <shlobj_core.h>
 #include <iomanip>
+#include <exception>
 #include <limits>
+#include <new>
+#include <optional>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <system_error>
 #include <tuple>
 #include <utility>
 #include <wil/resource.h>
@@ -504,7 +509,7 @@ namespace HaloDesktop::Services
         return SUCCEEDED(::SHOpenFolderAndSelectItems(item, 0, nullptr, 0));
     }
 
-    concurrency::task<DownloadStartOutcome> DownloadService::StartDownloadAsync(
+    concurrency::task<DownloadStartResult> DownloadService::StartDownloadAsync(
         Downloads::DownloadStartRequest request)
     {
         auto const server = std::wstring{ m_session->ServerUrl().c_str() };
@@ -512,7 +517,7 @@ namespace HaloDesktop::Services
         auto const accountVersion = m_accountVersion.load();
         if (server.empty() || userId.empty())
         {
-            co_return DownloadStartOutcome::Failed;
+            co_return DownloadStartResult{};
         }
         auto const videoId = request.Media.VideoId;
         auto const fingerprint = Downloads::Sha256Hex(request.Request.Url);
@@ -523,13 +528,13 @@ namespace HaloDesktop::Services
             std::scoped_lock const accountLock{ m_accountMutex };
             if (accountVersion != m_accountVersion.load())
             {
-                co_return DownloadStartOutcome::Failed;
+                co_return DownloadStartResult{};
             }
             m_engine->SetAccount(server, userId);
             if (accountVersion != m_accountVersion.load())
             {
                 m_engine->ClearAccount();
-                co_return DownloadStartOutcome::Failed;
+                co_return DownloadStartResult{};
             }
             m_boundAccountVersion.store(accountVersion);
             auto const before = m_engine->List();
@@ -542,28 +547,53 @@ namespace HaloDesktop::Services
                 && existing->Status != Downloads::DownloadStatus::Failed)
             {
                 RequestSynchronize();
-                co_return DownloadStartOutcome::AlreadyExists;
+                co_return DownloadStartResult{ DownloadStartOutcome::AlreadyExists, {} };
             }
             if (existing != before.end()
                 && !replacing
                 && (existing->SourceFingerprint != fingerprint
                     || (existing->Failure && Downloads::RequiresNewSource(*existing->Failure))))
             {
-                co_return DownloadStartOutcome::ReplacementRequired;
+                co_return DownloadStartResult{ DownloadStartOutcome::ReplacementRequired, {} };
             }
-            static_cast<void>(m_engine->Start(std::move(request)));
+            // The engine refuses a start with a sentence written for the viewer
+            // ("There is not enough free space for this video."), which is passed
+            // on unchanged. Operating system and allocation failures carry text
+            // that is not, so they are reported without one.
+            std::optional<std::wstring> refusal;
+            try
+            {
+                static_cast<void>(m_engine->Start(std::move(request)));
+            }
+            catch (std::system_error const&)
+            {
+                throw;
+            }
+            catch (std::bad_alloc const&)
+            {
+                throw;
+            }
+            catch (std::exception const& error)
+            {
+                refusal = std::wstring{ winrt::to_hstring(error.what()).c_str() };
+            }
+            if (refusal)
+            {
+                RequestSynchronize();
+                co_return DownloadStartResult{ DownloadStartOutcome::Failed, std::move(*refusal) };
+            }
             if (accountVersion != m_accountVersion.load())
             {
                 m_engine->ClearAccount();
-                co_return DownloadStartOutcome::Failed;
+                co_return DownloadStartResult{};
             }
             RequestSynchronize();
-            co_return DownloadStartOutcome::Started;
+            co_return DownloadStartResult{ DownloadStartOutcome::Started, {} };
         }
         catch (...)
         {
             RequestSynchronize();
-            co_return DownloadStartOutcome::Failed;
+            co_return DownloadStartResult{};
         }
     }
 
@@ -699,6 +729,38 @@ namespace HaloDesktop::Services
                 .JobId = record.JobId,
                 .ReleaseName = record.Media.FileName.value_or(record.FileName),
                 .SizeBytes = record.TotalBytes > 0 ? record.TotalBytes : record.DownloadedBytes });
+        }
+        return result;
+    }
+
+    std::vector<Downloads::VideoDownload> DownloadService::DownloadsFor(winrt::hstring const& videoId) const
+    {
+        std::vector<Downloads::VideoDownload> result;
+        if (videoId.empty())
+        {
+            return result;
+        }
+        for (auto const& record : m_records)
+        {
+            if (record.PendingDeletion || record.Media.VideoId != videoId.c_str())
+            {
+                continue;
+            }
+            auto const total = record.TotalBytes;
+            result.push_back(Downloads::VideoDownload{
+                .JobId = record.JobId,
+                .ReleaseName = record.Media.FileName && !record.Media.FileName->empty()
+                    ? *record.Media.FileName
+                    : record.FileName,
+                .StreamName = record.Media.StreamName,
+                .StreamTitle = record.Media.StreamTitle,
+                .Status = record.Status,
+                .SizeBytes = (std::max)(total, record.DownloadedBytes),
+                .Fraction = total > 0
+                    ? std::optional<double>{ (std::min)(1.0, static_cast<double>(record.DownloadedBytes) / static_cast<double>(total)) }
+                    : std::nullopt,
+                .SubtitleLanguage = record.SubtitleLanguage,
+            });
         }
         return result;
     }

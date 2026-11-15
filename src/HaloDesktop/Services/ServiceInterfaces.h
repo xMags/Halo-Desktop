@@ -13,10 +13,16 @@
 #include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
+#include <string>
 #include <vector>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.Foundation.Collections.h>
+
+namespace HaloDesktop::Sources
+{
+    struct ParsedResolve;
+}
 
 namespace HaloDesktop::Services
 {
@@ -36,6 +42,16 @@ namespace HaloDesktop::Services
         AlreadyExists,
         ReplacementRequired,
         Failed,
+    };
+
+    // How a download start went, and for a start the engine refused, its own
+    // sentence saying why ("Sign in before downloading.", "There is not enough
+    // free space for this video."). The reason is empty for anything that did not
+    // come with one, and the caller then says something general.
+    struct DownloadStartResult final
+    {
+        DownloadStartOutcome Outcome{ DownloadStartOutcome::Failed };
+        std::wstring Reason;
     };
 
     using CatalogChangedToken = std::uint64_t;
@@ -192,7 +208,9 @@ namespace HaloDesktop::Services
         virtual ~ISourceService() = default;
         // Resolves the sheet's sources. With StreamReuse::Recent it adopts the
         // request a title page already made for the same video, finished or still
-        // waiting, rather than asking the addons a second time.
+        // waiting, rather than asking the addons a second time. Release names are
+        // parsed off the UI thread. A failed resolve still completes the clear: the
+        // previous title's answer is dropped before the failure is rethrown.
         [[nodiscard]] virtual concurrency::task<void> LoadAsync(
             winrt::HaloDesktop::SourcesNavParams const& parameters,
             StreamReuse reuse) = 0;
@@ -201,18 +219,16 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual concurrency::task<StreamFetch> RequestStreamsAsync(
             winrt::hstring type,
             winrt::hstring videoId) = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const = 0;
+        // What the last LoadAsync answered, parsed: never null, empty before the
+        // first answer and after a failure or an account change. Shared and
+        // immutable, so the sheet can rank it without a copy.
+        [[nodiscard]] virtual std::shared_ptr<::HaloDesktop::Sources::ParsedResolve const> Current() const = 0;
+        // Null for a key the current resolve does not hold. Request headers travel
+        // with the request, never into a bound collection.
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const = 0;
-        [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+        [[nodiscard]] virtual concurrency::task<DownloadStartResult> StartDownloadAsync(
             winrt::hstring key,
             bool replaceExisting) = 0;
-        [[nodiscard]] virtual winrt::hstring ResolveSummary() const = 0;
-        // The files already on this device for the resolve just loaded. Kept apart
-        // from Groups() because a download is not a provider: it answered nothing,
-        // and counting it as one would make the failure banner misreport how many
-        // providers were reached.
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> LocalSources() const = 0;
-        virtual void RefreshDownloadStates() = 0;
     };
 
     class IDownloadService
@@ -233,7 +249,7 @@ namespace HaloDesktop::Services
         // A failure is returned rather than left in ActionError, because the caller
         // reports it where it happened instead of on the Downloads page.
         [[nodiscard]] virtual bool RevealInExplorer(winrt::hstring const& id) = 0;
-        [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(
+        [[nodiscard]] virtual concurrency::task<DownloadStartResult> StartDownloadAsync(
             Downloads::DownloadStartRequest request) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(
             winrt::hstring const& id) const = 0;
@@ -249,6 +265,11 @@ namespace HaloDesktop::Services
         // Every finished download of this video, so the sources sheet can offer a
         // local copy without depending on an addon returning the same release again.
         [[nodiscard]] virtual std::vector<Downloads::CompletedDownloadSource> CompletedFor(
+            winrt::hstring const& videoId) const = 0;
+        // Every download of this video in any state, in index order, leaving out
+        // one being deleted. What the sources sheet's saved copy card and save
+        // states read.
+        [[nodiscard]] virtual std::vector<Downloads::VideoDownload> DownloadsFor(
             winrt::hstring const& videoId) const = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
         [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
