@@ -7,6 +7,7 @@
 #include "Services/WatchStateService.h"
 
 #include <chrono>
+#include <exception>
 #include <functional>
 #include <optional>
 #include <set>
@@ -118,6 +119,37 @@ namespace HaloDesktop::Services
             result.push_back(earlier);
         }
         return result;
+    }
+
+    std::size_t TitleActions::HistoryRowCount(winrt::hstring const& itemId) const
+    {
+        return HistoryRowsOf(m_watchState->Rows(), itemId).size();
+    }
+
+    concurrency::task<void> TitleActions::RemoveFromHistoryAsync(winrt::hstring itemId)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const generation = m_session->Generation();
+        std::exception_ptr failure;
+        try
+        {
+            co_await m_watchState->RemoveItemAsync(std::move(itemId));
+        }
+        catch (...)
+        {
+            failure = std::current_exception();
+        }
+        co_await uiContext;
+        // Published after a failure too: the history was read again, and a batch
+        // that landed before the failure did remove its rows.
+        if (m_session->Generation() == generation)
+        {
+            m_catalog->PublishUserStateChange();
+        }
+        if (failure)
+        {
+            std::rethrow_exception(failure);
+        }
     }
 
     concurrency::task<void> TitleActions::SetWatchedAsync(WatchMarkTarget target, bool watched)

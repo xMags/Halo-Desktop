@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.HistoryPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <local:SectionHeader Title="History" />
+  </Grid>
+</Page>

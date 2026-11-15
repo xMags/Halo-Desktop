@@ -1,0 +1,10 @@
+namespace HaloDesktop
+{
+    // The watch history. A placeholder for now: the page exists so the rail and
+    // navigation can reach it; its rows arrive in a later change.
+    [default_interface]
+    runtimeclass HistoryPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        HistoryPage();
+    }
+}

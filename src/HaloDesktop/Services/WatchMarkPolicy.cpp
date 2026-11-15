@@ -2,10 +2,13 @@
 
 #include <algorithm>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
+#include <utility>
 
 namespace HaloDesktop::Services
 {
@@ -138,6 +141,75 @@ namespace HaloDesktop::Services
             rows.push_back(std::move(row));
         }
         return rows;
+    }
+
+    std::vector<Api::Dto::WatchEntry> RemovedRows(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::int64_t now)
+    {
+        std::vector<Api::Dto::WatchEntry> removed;
+        removed.reserve(rows.size());
+        for (auto const& row : rows)
+        {
+            auto tombstone = row;
+            auto const stamp = NewerThan(row, now);
+            tombstone.RemovedAt = stamp;
+            tombstone.UpdatedAt = stamp;
+            removed.push_back(std::move(tombstone));
+        }
+        return removed;
+    }
+
+    std::vector<Api::Dto::WatchEntry> HistoryRowsOf(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        winrt::hstring const& itemId)
+    {
+        std::vector<Api::Dto::WatchEntry> result;
+        if (itemId.empty())
+        {
+            return result;
+        }
+        for (auto const& row : rows)
+        {
+            if (row.ItemId == itemId && !row.RemovedAt)
+            {
+                result.push_back(row);
+            }
+        }
+        return result;
+    }
+
+    std::vector<std::vector<Api::Dto::WatchEntry>> ChunkRows(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::size_t size)
+    {
+        auto const step = size == 0 ? std::size_t{ 1 } : size;
+        std::vector<std::vector<Api::Dto::WatchEntry>> chunks;
+        chunks.reserve((rows.size() + step - 1) / step);
+        for (std::size_t start = 0; start < rows.size(); start += step)
+        {
+            auto const end = start + (std::min)(step, rows.size() - start);
+            chunks.emplace_back(
+                rows.begin() + static_cast<std::ptrdiff_t>(start),
+                rows.begin() + static_cast<std::ptrdiff_t>(end));
+        }
+        return chunks;
+    }
+
+    bool EchoesRemovedRows(
+        std::vector<Api::Dto::WatchEntry> const& stored,
+        std::vector<Api::Dto::WatchEntry> const& removed)
+    {
+        std::unordered_set<std::wstring_view> removedIds;
+        removedIds.reserve(removed.size());
+        for (auto const& row : removed)
+        {
+            removedIds.insert(std::wstring_view{ row.VideoId });
+        }
+        return std::any_of(stored.begin(), stored.end(), [&removedIds](Api::Dto::WatchEntry const& row)
+        {
+            return !row.RemovedAt && removedIds.contains(std::wstring_view{ row.VideoId });
+        });
     }
 
     std::vector<std::size_t> EarlierEpisodes(

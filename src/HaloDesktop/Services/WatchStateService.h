@@ -6,10 +6,22 @@
 #include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
+#include <stdexcept>
 #include <vector>
 namespace HaloDesktop::Api { class ApiClient; }
 namespace HaloDesktop::Services
 {
+    // Thrown by a history removal when the server stored the removed rows and sent
+    // them back: it is too old to know removals. Nothing was lost.
+    class HistoryRemovalUnsupported final : public std::runtime_error
+    {
+    public:
+        HistoryRemovalUnsupported()
+            : std::runtime_error{ "Your Halo server cannot remove history yet. Nothing was lost; it needs updating first." }
+        {
+        }
+    };
+
     // UI-thread-only watch-state snapshot repository.
     class WatchStateService final
     {
@@ -20,17 +32,36 @@ namespace HaloDesktop::Services
         // Several rows in one request, so a run of marks lands together and in the
         // order its timestamps give it, or not at all.
         [[nodiscard]] concurrency::task<void> PutRowsAsync(std::vector<::HaloDesktop::Api::Dto::WatchEntry> rows);
+        // Forgets every video of `itemId` in the watch history by writing
+        // tombstones, in batches, then reads the history again whatever happened,
+        // so a batch that failed partway leaves the snapshot showing what was
+        // actually removed. Throws HistoryRemovalUnsupported when the server sends
+        // the removed rows back, and the request's own error when a write fails.
+        // A removal that outlives the account it began under stops writing and
+        // returns quietly.
+        [[nodiscard]] concurrency::task<void> RemoveItemAsync(winrt::hstring itemId);
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::WatchEntry> Rows() const;
         [[nodiscard]] std::optional<::HaloDesktop::Api::Dto::WatchEntry> Find(winrt::hstring const& videoId) const;
         // True once the account's rows have arrived. Before that an empty Rows()
         // means "not known yet" rather than "nothing watched".
         [[nodiscard]] bool HasLoaded() const noexcept;
+        // A write stamp strictly later than every stamp this service has issued
+        // or written, and never earlier than `now`. The player's progress reports
+        // and the history removal draw from it, so a report made after a removal
+        // always outranks the tombstone and a removal always outranks every
+        // report made before it, whatever order the requests arrive in.
+        [[nodiscard]] std::int64_t IssueTimestamp(std::int64_t now) noexcept;
         void OnAccountChanged() noexcept;
     private:
+        void NoteTimestamp(std::int64_t stamp) noexcept;
+
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::vector<::HaloDesktop::Api::Dto::WatchEntry> m_rows;
         std::uint64_t m_writeVersion{};
         std::uint64_t m_loadVersion{};
+        std::uint64_t m_accountEpoch{};
+        // Deliberately kept across account changes: stamps only ever move forward.
+        std::int64_t m_lastTimestamp{};
         bool m_loaded{};
     };
 }

@@ -29,6 +29,7 @@
     CompactPaneLength="{StaticResource HaloCompactPaneWidth}"
     IsBackButtonVisible="Collapsed"
     IsBackEnabled="False"
+    IsPaneOpen="False"
     IsSettingsVisible="False"
     ItemInvoked="OnItemInvoked"
     BackRequested="OnBackRequested"
@@ -62,6 +63,11 @@
       <NavigationViewItem x:Name="LibraryItem" Content="Library" Tag="Library">
         <NavigationViewItem.Icon>
           <FontIcon Glyph="&#xE8F1;" />
+        </NavigationViewItem.Icon>
+      </NavigationViewItem>
+      <NavigationViewItem x:Name="HistoryItem" Content="History" Tag="History">
+        <NavigationViewItem.Icon>
+          <FontIcon Glyph="&#xE823;" />
         </NavigationViewItem.Icon>
       </NavigationViewItem>
       <NavigationViewItem x:Name="DownloadsItem" Tag="Downloads">
@@ -133,7 +139,7 @@
     </NavigationView.MenuItems>
 
     <NavigationView.PaneFooter>
-      <Button Click="OnAccountClick" Style="{StaticResource HaloPaneRowButtonStyle}">
+      <Button x:Name="AccountButton" Click="OnAccountClick" Style="{StaticResource HaloPaneRowButtonStyle}" ToolTipService.ToolTip="Server &amp; account">
         <Grid>
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="28" />
@@ -143,7 +149,10 @@
             Width="28"
             Height="28"
             CornerRadius="14">
+            <!-- The account's own picture when it has one, set from the code-behind;
+                 the stock avatar otherwise. -->
             <Image
+              x:Name="AccountAvatar"
               Source="ms-appx:///Assets/user-avatar.png"
               Stretch="UniformToFill" />
           </Border>

@@ -79,6 +79,16 @@ namespace HaloDesktop::Services
         return m_isAdmin;
     }
 
+    std::optional<winrt::hstring> SessionService::Plan() const
+    {
+        return m_plan;
+    }
+
+    std::optional<winrt::hstring> SessionService::AvatarVersion() const
+    {
+        return m_avatarVersion;
+    }
+
     AuthenticationMode SessionService::Mode() const noexcept
     {
         return m_mode;
@@ -103,6 +113,7 @@ namespace HaloDesktop::Services
             m_userId = identity->UserId;
             m_userName = identity->Username;
             NotifyIdentityChanged();
+            NotifyProfileChanged();
         }
     }
 
@@ -323,12 +334,23 @@ namespace HaloDesktop::Services
             co_return false;
         }
         auto const accountChanged = m_userId != me.Id;
+        auto const profileChanged = accountChanged
+            || m_userName != me.Username
+            || m_isAdmin != me.IsAdmin
+            || m_plan != me.Plan
+            || m_avatarVersion != me.AvatarVersion;
         m_userName = me.Username;
         m_userId = me.Id;
         m_isAdmin = me.IsAdmin;
+        m_plan = me.Plan;
+        m_avatarVersion = me.AvatarVersion;
         if (accountChanged)
         {
             NotifyIdentityChanged();
+        }
+        if (profileChanged)
+        {
+            NotifyProfileChanged();
         }
         try
         {
@@ -365,12 +387,23 @@ namespace HaloDesktop::Services
     void SessionService::ClearIdentity()
     {
         auto const accountChanged = !m_userId.empty();
+        auto const profileChanged = accountChanged
+            || !m_userName.empty()
+            || m_isAdmin
+            || m_plan.has_value()
+            || m_avatarVersion.has_value();
         m_userName.clear();
         m_userId.clear();
         m_isAdmin = false;
+        m_plan.reset();
+        m_avatarVersion.reset();
         if (accountChanged)
         {
             NotifyIdentityChanged();
+        }
+        if (profileChanged)
+        {
+            NotifyProfileChanged();
         }
     }
 
@@ -413,5 +446,42 @@ namespace HaloDesktop::Services
     void SessionService::RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept
     {
         m_identityListeners.erase(token);
+    }
+
+    IdentityChangedToken SessionService::AddProfileChangedHandler(IdentityChangedHandler handler)
+    {
+        if (!handler)
+        {
+            return 0;
+        }
+        auto const token = m_nextProfileToken++;
+        m_profileListeners.emplace(token, std::move(handler));
+        return token;
+    }
+
+    void SessionService::RemoveProfileChangedHandler(IdentityChangedToken token) noexcept
+    {
+        m_profileListeners.erase(token);
+    }
+
+    void SessionService::NotifyProfileChanged()
+    {
+        // Copied first: a listener is free to unsubscribe from inside itself.
+        std::vector<IdentityChangedHandler> listeners;
+        listeners.reserve(m_profileListeners.size());
+        for (auto const& entry : m_profileListeners)
+        {
+            listeners.push_back(entry.second);
+        }
+        for (auto const& listener : listeners)
+        {
+            try
+            {
+                listener();
+            }
+            catch (...)
+            {
+            }
+        }
     }
 }

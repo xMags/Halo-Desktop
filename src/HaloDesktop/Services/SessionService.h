@@ -44,6 +44,8 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::hstring UserName() const override;
         [[nodiscard]] bool IsSignedIn() const noexcept override;
         [[nodiscard]] bool IsAdmin() const noexcept override;
+        [[nodiscard]] std::optional<winrt::hstring> Plan() const override;
+        [[nodiscard]] std::optional<winrt::hstring> AvatarVersion() const override;
         [[nodiscard]] AuthenticationMode Mode() const noexcept override;
         [[nodiscard]] std::uint64_t Generation() const noexcept override;
         [[nodiscard]] concurrency::task<void> RestoreAsync() override;
@@ -60,6 +62,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] IdentityChangedToken AddIdentityChangedHandler(
             IdentityChangedHandler handler) override;
         void RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept override;
+        [[nodiscard]] IdentityChangedToken AddProfileChangedHandler(
+            IdentityChangedHandler handler) override;
+        void RemoveProfileChangedHandler(IdentityChangedToken token) noexcept override;
 
         // True only when /auth/me hydrated the current signed-in generation.
         // Token establishment alone is not a usable account session.
@@ -73,6 +78,7 @@ namespace HaloDesktop::Services
     private:
         void ClearIdentity();
         void NotifyIdentityChanged();
+        void NotifyProfileChanged();
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<Auth::SessionController> m_controller;
@@ -85,6 +91,10 @@ namespace HaloDesktop::Services
         std::function<void()> m_identityChanged;
         std::unordered_map<IdentityChangedToken, IdentityChangedHandler> m_identityListeners;
         IdentityChangedToken m_nextIdentityToken{ 1 };
+        std::unordered_map<IdentityChangedToken, IdentityChangedHandler> m_profileListeners;
+        IdentityChangedToken m_nextProfileToken{ 1 };
+        std::optional<winrt::hstring> m_plan;
+        std::optional<winrt::hstring> m_avatarVersion;
         AuthenticationMode m_mode{ AuthenticationMode::Unknown };
         std::atomic_uint64_t m_browserSignInVersion{};
         std::atomic_uint64_t m_pendingBrowserSessionGeneration{};

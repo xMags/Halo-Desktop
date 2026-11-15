@@ -5,6 +5,7 @@
 #include "Views/CatalogPage.xaml.h"
 #include "Views/DetailPage.xaml.h"
 #include "Views/DownloadsPage.xaml.h"
+#include "Views/HistoryPage.xaml.h"
 #include "Views/HomePage.xaml.h"
 #include "Views/LibraryPage.xaml.h"
 #include "Views/LoginPage.xaml.h"
@@ -32,6 +33,8 @@ namespace
             return winrt::xaml_typename<winrt::HaloDesktop::SearchPage>();
         case Page::Library:
             return winrt::xaml_typename<winrt::HaloDesktop::LibraryPage>();
+        case Page::History:
+            return winrt::xaml_typename<winrt::HaloDesktop::HistoryPage>();
         case Page::Catalog:
             return winrt::xaml_typename<winrt::HaloDesktop::CatalogPage>();
         case Page::Detail:
@@ -75,6 +78,10 @@ namespace
         if (type.Name == PageType(Page::Library).Name)
         {
             return Page::Library;
+        }
+        if (type.Name == PageType(Page::History).Name)
+        {
+            return Page::History;
         }
         if (type.Name == PageType(Page::Catalog).Name)
         {

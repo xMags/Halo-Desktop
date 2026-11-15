@@ -105,6 +105,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\AddonListPolicy.cpp">
       <Link>AddonListPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Shell\ShellChromePolicy.cpp">
+      <Link>ShellChromePolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

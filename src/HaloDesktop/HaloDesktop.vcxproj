@@ -332,6 +332,9 @@
     <ClInclude Include="Services\LanguagePolicy.h" />
     <ClInclude Include="Services\RatingPolicy.h" />
     <ClInclude Include="Shell\WindowReveal.h" />
+    <ClInclude Include="Shell\ShellChromePolicy.h" />
+    <ClInclude Include="Services\AccountPictureService.h" />
+    <ClInclude Include="Views\HistoryPage.xaml.h"><DependentUpon>HistoryPage.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -363,6 +366,7 @@
     <Page Include="Views\SourcesPage.xaml" />
     <Page Include="Controls\HaloMark.xaml" />
     <Page Include="Controls\QualityMedal.xaml" />
+    <Page Include="Views\HistoryPage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -592,6 +596,11 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Shell\WindowReveal.cpp" />
+    <ClCompile Include="Shell\ShellChromePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\AccountPictureService.cpp" />
+    <ClCompile Include="Views\HistoryPage.xaml.cpp"><DependentUpon>HistoryPage.xaml</DependentUpon></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
@@ -666,6 +675,7 @@
     </Midl>
     <Midl Include="Controls\HaloMark.idl"><SubType>Code</SubType><DependentUpon>HaloMark.xaml</DependentUpon></Midl>
     <Midl Include="Controls\QualityMedal.idl"><SubType>Code</SubType><DependentUpon>QualityMedal.xaml</DependentUpon></Midl>
+    <Midl Include="Views\HistoryPage.idl"><SubType>Code</SubType><DependentUpon>HistoryPage.xaml</DependentUpon></Midl>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\halo-mark.png" />

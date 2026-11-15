@@ -7,10 +7,12 @@
 #include "Views/TitleMenu.h"
 
 #include <array>
+#include <cstdint>
 #include <optional>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Microsoft.UI.Xaml.Navigation.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -19,6 +21,9 @@ namespace winrt::HaloDesktop::implementation
     struct ShellPage : ShellPageT<ShellPage>
     {
         ShellPage();
+        // Restores the pane the way it was left before the first layout, so a
+        // launch never animates it open or closed.
+        void InitializeComponent();
 
         void OnLoaded(
             winrt::Windows::Foundation::IInspectable const& sender,
@@ -85,10 +90,29 @@ namespace winrt::HaloDesktop::implementation
         void RefreshJumpBackIn();
         winrt::fire_and_forget RefreshJumpBackInAsync();
         void RefreshAccountIdentity();
+        void UpdateAccountToolTip();
+        winrt::fire_and_forget RefreshAccountPictureAsync();
+        void ShowStockAvatar();
         void OnIdentityChanged();
+        void ApplyPaneState(bool open);
+        void UpdatePaneToggleOffset();
+        void RememberPaneState(bool open);
+        winrt::fire_and_forget WritePaneStateAsync();
 
         bool m_attached{ false };
-        bool m_paneOpen{ true };
+        bool m_paneOpen{};
+        // The pane state last handed to the preference store, and whether a write
+        // of it is running. Both are touched on the UI thread only.
+        bool m_storedPaneOpen{};
+        bool m_paneWriteRunning{};
+        // Advances with every picture request, so a slower earlier one never
+        // replaces what a later one showed.
+        std::uint64_t m_pictureRequest{};
+        winrt::hstring m_shownPictureVersion;
+        winrt::hstring m_shownPictureUser;
+        Microsoft::UI::Xaml::Media::ImageSource m_stockAvatar{ nullptr };
+        // Part of the NavigationView's template, found once it has loaded.
+        Microsoft::UI::Xaml::FrameworkElement m_paneToggle{ nullptr };
         std::optional<std::uint32_t> m_nonTextPointerId;
         winrt::Windows::Foundation::IInspectable m_pointerPressedHandler{ nullptr };
         winrt::Windows::Foundation::IInspectable m_pointerEndedHandler{ nullptr };
@@ -99,6 +123,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::CatalogChangedToken m_continueChangedToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_userStateChangedToken{};
         ::HaloDesktop::Services::IdentityChangedToken m_identityChangedToken{};
+        ::HaloDesktop::Services::IdentityChangedToken m_profileChangedToken{};
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

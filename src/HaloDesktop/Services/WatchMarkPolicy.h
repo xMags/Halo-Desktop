@@ -50,6 +50,45 @@ namespace HaloDesktop::Services
         double runtimeSeconds,
         std::int64_t now);
 
+    // The tombstones that remove videos from the watch history, which forgets
+    // where they stopped and whether they were watched. Sync is last write wins,
+    // so a removal is a newer row rather than a deletion; servers keep it, never
+    // send it back, and a later play writes a newer row that brings the video
+    // back. The row otherwise stays as it was: a server too old to know RemovedAt
+    // drops the field and stores the row, and must not then wipe the progress of
+    // a video it goes on showing.
+    //
+    // RemovedAt and UpdatedAt are both `now`, or one past a row stamped later by
+    // a device whose clock ran ahead, so every tombstone is strictly newer than
+    // the row it replaces.
+    [[nodiscard]] std::vector<Api::Dto::WatchEntry> RemovedRows(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::int64_t now);
+
+    // Every row of the history that belongs to `itemId`, tombstones left out.
+    // Removing a title from Continue watching forgets all of them: the shelf
+    // shows a show by its latest episode, so forgetting that one alone would
+    // only bring the one before it back.
+    [[nodiscard]] std::vector<Api::Dto::WatchEntry> HistoryRowsOf(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        winrt::hstring const& itemId);
+
+    // Consecutive runs of at most `size` rows (a size of 0 counts as 1), so a
+    // long removal is not one huge request.
+    [[nodiscard]] std::vector<std::vector<Api::Dto::WatchEntry>> ChunkRows(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::size_t size);
+
+    // The batch size the history removal writes in, as the reference client does.
+    inline constexpr std::size_t WatchRemovalChunkSize = 500;
+
+    // True when the server answered a removal with one of the removed videos
+    // still in the history: a server that does not know RemovedAt stores the row
+    // and sends it straight back. A row that comes back as a tombstone is not one.
+    [[nodiscard]] bool EchoesRemovedRows(
+        std::vector<Api::Dto::WatchEntry> const& stored,
+        std::vector<Api::Dto::WatchEntry> const& removed);
+
     // Where an episode sits in its show. Season 0 holds the specials, and also
     // every episode of an addon that has no seasons at all.
     struct EpisodeSlot final

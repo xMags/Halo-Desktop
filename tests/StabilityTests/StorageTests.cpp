@@ -139,6 +139,7 @@ namespace
         Require(first.Theme() == 2, "an invalid theme did not fall back to System");
         Require(first.ResumePlayback(), "an invalid resume value did not use its default");
         Require(first.DiscordPresence(), "an invalid Discord presence value did not use its default");
+        Require(!first.NavPaneOpen(), "the navigation pane did not start closed");
 
         std::atomic_bool start{};
         std::jthread themeWriter([&]()
@@ -163,6 +164,21 @@ namespace
             "the Discord presence preference did not round-trip locally");
         verify.SearchHistory({ L"one", L"two" });
         Require(verify.SearchHistory().size() == 2, "valid search history did not round-trip");
+
+        // The pane state is merged like every other key: writing it keeps the
+        // rest, and a later write of another key keeps it.
+        verify.NavPaneOpen(true);
+        Require(DevicePreferencesStore{ path }.NavPaneOpen(), "the open navigation pane did not round-trip");
+        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing the pane state lost other keys");
+        second.HardwareDecoding(false);
+        Require(verify.NavPaneOpen(), "another preference write lost the pane state");
+        verify.NavPaneOpen(false);
+        Require(!DevicePreferencesStore{ path }.NavPaneOpen(), "the closed navigation pane did not round-trip");
+
+        // A value of the wrong kind falls back to closed rather than opening it.
+        auto const wrongPath = temporary.Path() / L"wrong-pane.json";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");
+        Require(!DevicePreferencesStore{ wrongPath }.NavPaneOpen(), "an invalid pane value did not fall back to closed");
     }
 
     void TestMigrationNoSource()

@@ -28,7 +28,9 @@ namespace HaloDesktop::Playback
         if(state.DurationSeconds<60.0||state.PositionSeconds<5.0)co_return;
         auto const position=std::floor(state.PositionSeconds),duration=std::floor(state.DurationSeconds);
         if(duration<=0)co_return;
-        auto const timestamp=(std::max)(NowMilliseconds(),m_lastTimestamp+1);m_lastTimestamp=timestamp;
+        // Drawn from the watch-state service, so a report is stamped after any
+        // history removal made before it and a later removal outranks it.
+        auto const timestamp=m_watchState->IssueTimestamp((std::max)(NowMilliseconds(),m_lastTimestamp+1));m_lastTimestamp=timestamp;
         auto name=m_request.ShowName().empty()?m_request.Title():m_request.ShowName();if(name.size()>512)name=winrt::hstring{name.c_str(),512};
         std::optional<winrt::hstring>poster;if(!m_request.Poster().empty())poster=m_request.Poster();
         co_await m_watchState->PutAsync({m_request.VideoId(),m_request.ItemId(),position,duration,position/duration>=0.9,name,poster,timestamp});

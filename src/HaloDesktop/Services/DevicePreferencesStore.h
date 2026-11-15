@@ -19,6 +19,9 @@ namespace HaloDesktop::Services
         bool ResumePlayback{ true };
         bool HardwareDecoding{ true };
         bool DiscordPresence{ true };
+        // The navigation pane is expanded. Closed until the viewer first opens
+        // it, then as they last left it.
+        bool NavPaneOpen{};
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
@@ -46,6 +49,8 @@ namespace HaloDesktop::Services
         void HardwareDecoding(bool value);
         [[nodiscard]] bool DiscordPresence() const noexcept;
         void DiscordPresence(bool value);
+        [[nodiscard]] bool NavPaneOpen() const noexcept;
+        void NavPaneOpen(bool value);
         // Zero until a transfer has been observed. Cached in memory after the
         // first read, because callers ask per rendered row.
         [[nodiscard]] double MeasuredLineMbps() const noexcept;

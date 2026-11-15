@@ -45,6 +45,14 @@
                 Fill="{ThemeResource HaloGlowBBrush}" />
         </Grid>
 
+        <!-- The player's ground behind the title bar while the player is up. A
+             literal rather than a token: the player is pinned dark in both themes. -->
+        <Border
+            x:Name="PlayerTitleBarGround"
+            Grid.Row="0"
+            Background="#FF050507"
+            IsHitTestVisible="False"
+            Visibility="Collapsed" />
         <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" />
         <Grid Grid.Row="1">
             <local:ShellPage x:Name="ShellLayer" />

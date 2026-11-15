@@ -11,6 +11,7 @@
 #include "Playback/NullScrubPreviewSource.h"
 #include "Playback/SubtitleController.h"
 #include "Playback/UpNextResolver.h"
+#include "Services/AccountPictureService.h"
 #include "Services/AddonService.h"
 #include "Services/CatalogService.h"
 #include "Services/ContinueArtworkService.h"
@@ -168,6 +169,9 @@ namespace winrt::HaloDesktop::implementation
             m_services.Downloads,
             m_services.SettingsSync);
         m_services.Sources = sourceService;
+        auto accountPictureService = std::make_shared<::HaloDesktop::Services::AccountPictureService>(m_apiClient);
+        m_services.AccountPicture = accountPictureService;
+        std::weak_ptr<::HaloDesktop::Services::AccountPictureService> weakAccountPicture = accountPictureService;
         std::weak_ptr<::HaloDesktop::Services::AddonService> weakAddons = addonService;
         std::weak_ptr<::HaloDesktop::Services::LibraryService> weakLibrary = libraryService;
         std::weak_ptr<::HaloDesktop::Services::WatchStateService> weakWatchState = watchStateService;
@@ -188,9 +192,11 @@ namespace winrt::HaloDesktop::implementation
              weakSettings,
              weakSources,
              weakDownloads,
-             weakPresence]()
+             weakPresence,
+             weakAccountPicture]()
             {
                 if (auto const presence = weakPresence.lock()) presence->Clear();
+                if (auto const picture = weakAccountPicture.lock()) picture->OnAccountChanged();
                 queryCache->Clear();
                 if (auto const addons = weakAddons.lock()) addons->OnAccountChanged();
                 if (auto const library = weakLibrary.lock()) library->OnAccountChanged();

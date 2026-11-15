@@ -207,6 +207,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
         [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
         [[nodiscard]] virtual bool IsAdmin() const noexcept = 0;
+        // The account's tier from a server that has tiers, and the fingerprint of
+        // its profile picture. Both are empty until /auth/me has answered for the
+        // signed-in account.
+        [[nodiscard]] virtual std::optional<winrt::hstring> Plan() const = 0;
+        [[nodiscard]] virtual std::optional<winrt::hstring> AvatarVersion() const = 0;
         [[nodiscard]] virtual AuthenticationMode Mode() const noexcept = 0;
         [[nodiscard]] virtual std::uint64_t Generation() const noexcept = 0;
         [[nodiscard]] virtual concurrency::task<void> RestoreAsync() = 0;
@@ -228,5 +233,12 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual IdentityChangedToken AddIdentityChangedHandler(
             IdentityChangedHandler handler) = 0;
         virtual void RemoveIdentityChangedHandler(IdentityChangedToken token) noexcept = 0;
+        // Raised on the UI thread whenever what the account card shows (name,
+        // admin flag, tier, picture fingerprint) changes, including when /auth/me
+        // refreshes the same account, which raises no identity change. Raised
+        // after the identity handlers when both apply.
+        [[nodiscard]] virtual IdentityChangedToken AddProfileChangedHandler(
+            IdentityChangedHandler handler) = 0;
+        virtual void RemoveProfileChangedHandler(IdentityChangedToken token) noexcept = 0;
     };
 }

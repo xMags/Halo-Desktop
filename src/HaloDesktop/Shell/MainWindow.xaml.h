@@ -25,6 +25,9 @@ namespace winrt::HaloDesktop::implementation
         void PrepareForWindowClose() noexcept;
         winrt::fire_and_forget FinishOrderedPlayerClose();
         void UpdateCaptionButtonColors();
+        // Follows the navigation layers: the dark palette on title pages and the
+        // player's title bar while the player is up.
+        void ApplyShellChrome();
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
         std::shared_ptr<::HaloDesktop::Shell::WindowReveal> m_reveal;
@@ -35,6 +38,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_closePrepared{};
         bool m_playerClosePending{};
         bool m_windowCloseApproved{};
+        bool m_playerTitleBar{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

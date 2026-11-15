@@ -23,6 +23,7 @@ namespace HaloDesktop::Storage
 
 namespace HaloDesktop::Services
 {
+    class AccountPictureService;
     class IAddonService;
     class ICatalogService;
     class IDownloadService;
@@ -46,6 +47,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<IDownloadService> Downloads;
         std::shared_ptr<IAddonService> Addons;
         std::shared_ptr<ISessionService> Session;
+        std::shared_ptr<AccountPictureService> AccountPicture;
         std::shared_ptr<NavigationService> Navigation;
         std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> StoragePaths;
         std::shared_ptr<DevicePreferencesStore> DevicePreferences;

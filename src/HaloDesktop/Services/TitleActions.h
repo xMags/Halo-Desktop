@@ -2,6 +2,7 @@
 
 #include "Services/WatchMarkPolicy.h"
 
+#include <cstddef>
 #include <memory>
 #include <pplawait.h>
 #include <ppltasks.h>
@@ -51,7 +52,16 @@ namespace HaloDesktop::Services
             std::vector<winrt::HaloDesktop::Episode> const& episodes,
             winrt::HaloDesktop::Episode const& episode) const;
 
+        // How many videos of the title the watch history holds, which is how
+        // many "Remove from Continue watching" forgets.
+        [[nodiscard]] std::size_t HistoryRowCount(winrt::hstring const& itemId) const;
+
         [[nodiscard]] concurrency::task<void> SetWatchedAsync(WatchMarkTarget target, bool watched);
+        // Forgets every video of the title in the watch history, read when this
+        // runs, so a row removed since the menu opened is not written again. The
+        // pages and the pane re-read the history afterwards whether it worked or
+        // not. Throws HistoryRemovalUnsupported for a server too old to remove.
+        [[nodiscard]] concurrency::task<void> RemoveFromHistoryAsync(winrt::hstring itemId);
         // Marks the targets watched in one write, stamped in the order given. What
         // is watched is read again when this runs, so an episode marked since the
         // menu opened is not written a second time.

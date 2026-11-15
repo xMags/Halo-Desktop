@@ -1224,6 +1224,58 @@ namespace
         Require(EarlierEpisodes(episodes, episodes.size()).empty(), "an episode out of range had something before it");
     }
 
+    // Mirrors "a removal keeps the row as it was, stamped removed and updated now"
+    // in apps/desktop/tests/watchMarks.test.ts, plus the batching, the item
+    // selection and the old-server echo check the removal is built from.
+    void TestHistoryRemoval()
+    {
+        using HaloDesktop::Services::ChunkRows;
+        using HaloDesktop::Services::EchoesRemovedRows;
+        using HaloDesktop::Services::HistoryRowsOf;
+        using HaloDesktop::Services::RemovedRows;
+
+        auto const row = StoredWatchEntry(L"tt1:1:2", 90.0, 1200.0, false, 100);
+        auto const removed = RemovedRows({ row }, 500);
+        Require(removed.size() == 1, "a removal lost a row");
+        auto const& tombstone = removed.front();
+        Require(tombstone.RemovedAt && *tombstone.RemovedAt == 500 && tombstone.UpdatedAt == 500,
+                "a removal was not stamped removed and updated now");
+        Require(tombstone.VideoId == row.VideoId && tombstone.ItemId == row.ItemId
+                    && tombstone.PositionSec == 90.0 && tombstone.DurationSec == 1200.0 && !tombstone.Watched
+                    && tombstone.Name == row.Name && tombstone.Poster == row.Poster,
+                "a removal changed the row it removes");
+
+        // A row from a device whose clock ran ahead still loses to the removal.
+        auto const ahead = RemovedRows({ StoredWatchEntry(L"tt1:1:3", 0.0, 0.0, false, 9000) }, 500);
+        Require(ahead.front().UpdatedAt == 9001 && ahead.front().RemovedAt && *ahead.front().RemovedAt == 9001,
+                "a removal was not newer than the row it replaces");
+
+        // Every live row of the title, and only those.
+        auto other = StoredWatchEntry(L"tt2", 10.0, 6000.0, false, 50);
+        other.ItemId = L"movie:tt2";
+        auto gone = StoredWatchEntry(L"tt1:1:1", 10.0, 1200.0, false, 40);
+        gone.RemovedAt = 40;
+        std::vector<HaloDesktop::Api::Dto::WatchEntry> const history{
+            row, other, gone, StoredWatchEntry(L"tt1:1:3", 0.0, 0.0, true, 60) };
+        auto const ofShow = HistoryRowsOf(history, L"series:tt1");
+        Require(ofShow.size() == 2 && ofShow[0].VideoId == L"tt1:1:2" && ofShow[1].VideoId == L"tt1:1:3",
+                "the rows of a title were not every live row of it");
+        Require(HistoryRowsOf(history, L"").empty(), "an empty item id matched rows");
+
+        // 500 rows a request, the last batch holding the rest.
+        std::vector<HaloDesktop::Api::Dto::WatchEntry> many(1001, row);
+        auto const chunks = ChunkRows(many, HaloDesktop::Services::WatchRemovalChunkSize);
+        Require(chunks.size() == 3 && chunks[0].size() == 500 && chunks[1].size() == 500 && chunks[2].size() == 1,
+                "a long removal was not split into batches of 500");
+        Require(ChunkRows({}, 500).empty(), "an empty removal made a request");
+        Require(ChunkRows(many, 0).size() == many.size(), "a zero batch size did not fall back to one row");
+
+        // A server that stores the removed rows and sends them back is too old.
+        Require(EchoesRemovedRows({ row, other }, removed), "an echoed removal was not caught");
+        Require(!EchoesRemovedRows({ other }, removed), "a removal the server applied was reported as echoed");
+        Require(!EchoesRemovedRows({ tombstone, other }, removed), "a returned tombstone was reported as echoed");
+    }
+
 } // namespace
 
 int main()
@@ -1246,6 +1298,7 @@ int main()
         TestOptionalSubtitleFallback();
         TestContinueShelf();
         TestWatchMarks();
+        TestHistoryRemoval();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

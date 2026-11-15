@@ -5,17 +5,69 @@
 #endif
 
 #include "App.xaml.h"
+#include "Services/AccountLabelPolicy.h"
+#include "Services/AccountPictureService.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
 
+#include <algorithm>
 #include <array>
+#include <limits>
+#include <string_view>
 #include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
+#include <winrt/Windows.Graphics.Imaging.h>
+#include <winrt/Windows.Storage.Streams.h>
+
+namespace
+{
+    // The avatar's drawn size; the picture is decoded for it rather than at the
+    // size the account uploaded.
+    constexpr std::uint32_t AvatarSize = 28;
+    // The compact rail is wider than the pane toggle's own column, so the toggle
+    // moves this far right to sit centred over the icons below it.
+    constexpr double CompactToggleOffset = 4.0;
+    constexpr wchar_t AccountToolTip[] = L"Server & account";
+
+    winrt::Microsoft::UI::Xaml::FrameworkElement FindNamedDescendant(
+        winrt::Microsoft::UI::Xaml::DependencyObject const& root,
+        std::wstring_view name)
+    {
+        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(root);
+        for (std::int32_t index = 0; index < count; ++index)
+        {
+            auto const child = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(root, index);
+            if (auto const element = child.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>();
+                element && element.Name() == name)
+            {
+                return element;
+            }
+            if (auto const found = FindNamedDescendant(child, name))
+            {
+                return found;
+            }
+        }
+        return nullptr;
+    }
+}
 
 namespace winrt::HaloDesktop::implementation
 {
     ShellPage::ShellPage()
         : m_titleMenu(App::Services())
     {
+    }
+
+    void ShellPage::InitializeComponent()
+    {
+        ShellPageT::InitializeComponent();
+        m_stockAvatar = AccountAvatar().Source();
+        // Closed until the viewer first opens it, then as they last left it.
+        auto const open = App::Services().DevicePreferences->NavPaneOpen();
+        m_storedPaneOpen = open;
+        NavigationControl().IsPaneOpen(open);
+        ApplyPaneState(open);
     }
 
     void ShellPage::OnLoaded(
@@ -120,6 +172,17 @@ namespace winrt::HaloDesktop::implementation
                     self->OnIdentityChanged();
                 }
             });
+        // The tier and the picture arrive with /auth/me, which for the account
+        // restored at launch is no change of account at all.
+        m_profileChangedToken = App::Services().Session->AddProfileChangedHandler(
+            [weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->RefreshAccountIdentity();
+                }
+            });
+        UpdatePaneToggleOffset();
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
@@ -162,6 +225,13 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Session->RemoveIdentityChangedHandler(m_identityChangedToken);
             m_identityChangedToken = 0;
         }
+        if (m_profileChangedToken != 0)
+        {
+            App::Services().Session->RemoveProfileChangedHandler(m_profileChangedToken);
+            m_profileChangedToken = 0;
+        }
+        // A picture still loading has nowhere to go.
+        ++m_pictureRequest;
         if (m_gettingFocusToken)
         {
             Microsoft::UI::Xaml::Input::FocusManager::GettingFocus(m_gettingFocusToken);
@@ -444,16 +514,85 @@ namespace winrt::HaloDesktop::implementation
     {
         RefreshAccountIdentity();
         RefreshJumpBackIn();
-        SetJumpBackVisibility(true);
-        AccountLines().Visibility(Microsoft::UI::Xaml::Visibility::Visible);
+        ApplyPaneState(true);
+        RememberPaneState(true);
     }
 
     void ShellPage::OnPaneClosing(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args)
     {
-        SetJumpBackVisibility(false);
-        AccountLines().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
+        ApplyPaneState(false);
+        RememberPaneState(false);
+    }
+
+    void ShellPage::ApplyPaneState(bool open)
+    {
+        SetJumpBackVisibility(open);
+        AccountLines().Visibility(open
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed);
+        UpdateAccountToolTip();
+        UpdatePaneToggleOffset();
+    }
+
+    // The toggle belongs to the NavigationView's template, so it exists only once
+    // the template has been applied; before that this does nothing and the Loaded
+    // handler applies it.
+    void ShellPage::UpdatePaneToggleOffset()
+    {
+        if (!m_paneToggle && m_attached)
+        {
+            m_paneToggle = FindNamedDescendant(NavigationControl(), L"TogglePaneButton");
+        }
+        auto const toggle = m_paneToggle;
+        if (!toggle)
+        {
+            return;
+        }
+        toggle.Margin(Microsoft::UI::Xaml::Thickness{ m_paneOpen ? 0.0 : CompactToggleOffset, 0.0, 0.0, 0.0 });
+    }
+
+    void ShellPage::RememberPaneState(bool open)
+    {
+        if (open == m_storedPaneOpen)
+        {
+            return;
+        }
+        m_storedPaneOpen = open;
+        if (!m_paneWriteRunning)
+        {
+            WritePaneStateAsync();
+        }
+    }
+
+    // One writer at a time, writing whatever was asked for last, so toggles faster
+    // than the disk only ever leave the final state behind, never an older one.
+    winrt::fire_and_forget ShellPage::WritePaneStateAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const store = App::Services().DevicePreferences;
+        m_paneWriteRunning = true;
+        while (true)
+        {
+            auto const value = m_storedPaneOpen;
+            co_await winrt::resume_background();
+            try
+            {
+                store->NavPaneOpen(value);
+            }
+            catch (...)
+            {
+                // Losing the preference is not worth failing a click over.
+            }
+            co_await uiContext;
+            if (m_storedPaneOpen == value)
+            {
+                break;
+            }
+        }
+        m_paneWriteRunning = false;
     }
 
     void ShellPage::SetJumpBackVisibility(bool visible)
@@ -521,6 +660,11 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Navigation->GoTo(Page::Library);
             return;
         }
+        if (tag == L"History")
+        {
+            App::Services().Navigation->GoTo(Page::History);
+            return;
+        }
         if (tag == L"Downloads")
         {
             App::Services().Navigation->GoTo(Page::Downloads);
@@ -573,6 +717,9 @@ namespace winrt::HaloDesktop::implementation
         case Page::Library:
         case Page::Sources:
             selectedItem = NavigationItem(L"LibraryItem");
+            break;
+        case Page::History:
+            selectedItem = NavigationItem(L"HistoryItem");
             break;
         case Page::Downloads:
             selectedItem = NavigationItem(L"DownloadsItem");
@@ -657,8 +804,123 @@ namespace winrt::HaloDesktop::implementation
     void ShellPage::RefreshAccountIdentity()
     {
         auto const session = App::Services().Session;
-        FindName(L"AccountName").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(session->UserName());
-        FindName(L"AccountRole").as<Microsoft::UI::Xaml::Controls::TextBlock>().Text(
-            session->IsAdmin() ? L"ADMIN · HALO ACCOUNT" : L"HALO ACCOUNT");
+        auto const plan = session->Plan();
+        auto const label = ::HaloDesktop::Services::AccountLabel(::HaloDesktop::Services::AccountLabelInput{
+            .IsAdmin = session->IsAdmin(),
+            .Plan = plan ? std::wstring_view{ *plan } : std::wstring_view{},
+        });
+        AccountName().Text(::HaloDesktop::Services::AccountDisplayName(session->UserName()));
+        AccountRole().Text(label);
+        UpdateAccountToolTip();
+        RefreshAccountPictureAsync();
+    }
+
+    // Open, the row says what it opens; compact, where only the avatar shows, it
+    // names the account.
+    void ShellPage::UpdateAccountToolTip()
+    {
+        auto const name = AccountName().Text();
+        Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(
+            AccountButton(),
+            winrt::box_value(m_paneOpen || name.empty() ? winrt::hstring{ AccountToolTip } : name));
+    }
+
+    void ShellPage::ShowStockAvatar()
+    {
+        AccountAvatar().Source(m_stockAvatar);
+        m_shownPictureVersion.clear();
+        m_shownPictureUser.clear();
+    }
+
+    winrt::fire_and_forget ShellPage::RefreshAccountPictureAsync()
+    {
+        auto lifetime = get_strong();
+        auto const request = ++m_pictureRequest;
+        auto const session = App::Services().Session;
+        auto const userId = session->UserId();
+        auto const version = session->IsSignedIn()
+            ? session->AvatarVersion().value_or(winrt::hstring{})
+            : winrt::hstring{};
+        if (version.empty() || userId.empty())
+        {
+            ShowStockAvatar();
+            co_return;
+        }
+        if (version == m_shownPictureVersion && userId == m_shownPictureUser)
+        {
+            co_return;
+        }
+        // Another account's picture never stays up while this one's loads; the
+        // same account keeps its old picture until the new one is ready.
+        if (userId != m_shownPictureUser)
+        {
+            ShowStockAvatar();
+        }
+
+        auto const uiContext = winrt::apartment_context{};
+        try
+        {
+            auto const bytes = co_await App::Services().AccountPicture->PictureAsync(version);
+            co_await uiContext;
+            if (request != m_pictureRequest)
+            {
+                co_return;
+            }
+            if (!bytes || bytes->empty() || bytes->size() > (std::numeric_limits<std::uint32_t>::max)())
+            {
+                ShowStockAvatar();
+                co_return;
+            }
+
+            winrt::Windows::Storage::Streams::InMemoryRandomAccessStream stream;
+            {
+                winrt::Windows::Storage::Streams::DataWriter writer{ stream };
+                writer.WriteBytes(winrt::array_view<std::uint8_t const>{
+                    bytes->data(),
+                    static_cast<std::uint32_t>(bytes->size()) });
+                co_await writer.StoreAsync();
+                writer.DetachStream();
+            }
+
+            // The shape is read first so the shorter side is decoded at the
+            // avatar's size: an upload can be far larger than the 28 pixels drawn,
+            // and decoding both sides would stretch it.
+            stream.Seek(0);
+            auto const decoder = co_await winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream);
+            auto const width = decoder.PixelWidth();
+            auto const height = decoder.PixelHeight();
+            stream.Seek(0);
+
+            Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+            bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
+            if (width > 0 && height > 0)
+            {
+                if (width <= height)
+                {
+                    bitmap.DecodePixelWidth(static_cast<std::int32_t>((std::min)(width, AvatarSize)));
+                }
+                else
+                {
+                    bitmap.DecodePixelHeight(static_cast<std::int32_t>((std::min)(height, AvatarSize)));
+                }
+            }
+            co_await bitmap.SetSourceAsync(stream);
+            co_await uiContext;
+            if (request != m_pictureRequest)
+            {
+                co_return;
+            }
+            AccountAvatar().Source(bitmap);
+            m_shownPictureVersion = version;
+            m_shownPictureUser = userId;
+        }
+        catch (...)
+        {
+            // Not an image, or one that could not be read: the stock avatar stands in.
+        }
+        if (request == m_pictureRequest && m_shownPictureVersion != version)
+        {
+            ShowStockAvatar();
+        }
     }
 }

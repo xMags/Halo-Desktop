@@ -5,6 +5,7 @@
 #include "Services/NavigationService.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/TitleActions.h"
+#include "Services/WatchStateService.h"
 #include "Views/PageDialog.h"
 
 #include <cstdint>
@@ -39,6 +40,7 @@ namespace
     constexpr wchar_t WatchFailedTitle[] = L"Watch history could not be updated";
     constexpr wchar_t LibraryFailedTitle[] = L"Library could not be updated";
     constexpr wchar_t ServerFailedBody[] = L"Check the connection to your Halo server and try again.";
+    constexpr wchar_t RemoveFailedTitle[] = L"Could not remove from history";
 
     // Where a menu's follow-up dialog opens. Taken when the menu opens, because by
     // the time an action finishes the element it was opened from may be gone.
@@ -180,6 +182,71 @@ namespace
         if (!downloads->DeleteReady(jobId))
         {
             co_await ShowFailureAsync(std::move(host), DownloadFailedTitle, DownloadMissingBody);
+        }
+    }
+
+    // Takes a title off Continue watching by forgetting every video of it in the
+    // history. Asks first when that forgets more than the one video on the card,
+    // and says so when it fails, since the card would otherwise just stay.
+    winrt::fire_and_forget RemoveFromContinueWatching(
+        std::shared_ptr<TitleActions> actions,
+        winrt::hstring itemId,
+        winrt::hstring name,
+        DialogHost host)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const count = actions->HistoryRowCount(itemId);
+        if (count == 0)
+        {
+            co_return;
+        }
+        if (count > 1)
+        {
+            if (!host.Root)
+            {
+                co_return;
+            }
+            auto confirmed = false;
+            try
+            {
+                auto dialog = ::HaloDesktop::Views::MakeDialog(
+                    host.Root,
+                    host.Theme,
+                    L"Remove " + name + L" from Continue watching?",
+                    L"This forgets all " + winrt::to_hstring(static_cast<std::uint64_t>(count))
+                        + L" videos of it in your history: where you stopped and what you watched. Playing it again starts over.",
+                    ::HaloDesktop::Views::DialogTone::Destructive);
+                dialog.PrimaryButtonText(L"Remove");
+                dialog.CloseButtonText(L"Cancel");
+                confirmed = co_await dialog.ShowAsync() == winrt::Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary;
+            }
+            catch (...)
+            {
+                co_return;
+            }
+            if (!confirmed)
+            {
+                co_return;
+            }
+        }
+
+        std::optional<winrt::hstring> failure;
+        try
+        {
+            co_await actions->RemoveFromHistoryAsync(itemId);
+        }
+        catch (::HaloDesktop::Services::HistoryRemovalUnsupported const& error)
+        {
+            failure = winrt::to_hstring(error.what());
+        }
+        catch (...)
+        {
+            failure = winrt::hstring{ ServerFailedBody };
+        }
+        if (failure)
+        {
+            co_await uiContext;
+            co_await ShowFailureAsync(std::move(host), RemoveFailedTitle, *failure);
         }
     }
 
@@ -369,6 +436,25 @@ namespace
                 {
                     SetInLibrary(actions, type, metaId, name, poster, !saved, host);
                 });
+        }
+
+        // Closes a continue card's menu, behind its own separator. Left out until
+        // the history has arrived; the rows it forgets are counted when chosen.
+        void AddRemoveFromContinue(winrt::hstring const& itemId, winrt::hstring const& name)
+        {
+            if (!m_actions->WatchStateKnown() || itemId.empty())
+            {
+                return;
+            }
+            Separator();
+            Item(
+                L"Remove from Continue watching",
+                DeleteGlyph,
+                [actions = m_actions, host = m_host, itemId, name]()
+                {
+                    RemoveFromContinueWatching(actions, itemId, name, host);
+                },
+                EntryTone::Destructive);
         }
 
         // What can be done with the file itself closes the menu, behind its own
@@ -589,6 +675,7 @@ namespace HaloDesktop::Views
         menu.AddWatched({ item.VideoId(), item.ItemId(), item.Name(), item.Poster() }, tag);
         menu.AddLibrary(item.Type(), item.MetaId(), item.Name(), item.Poster());
         menu.AddSavedCopy(item.VideoId());
+        menu.AddRemoveFromContinue(item.ItemId(), item.Name());
         menu.ShowAt(anchor, args);
     }
 

@@ -53,6 +53,22 @@ namespace HaloDesktop::Services
         Apply();
     }
 
+    void ThemeService::SetForcedDarkScope(bool active)
+    {
+        if (m_forcedDark == active)
+        {
+            return;
+        }
+
+        m_forcedDark = active;
+        Apply();
+    }
+
+    bool ThemeService::IsForcedDarkScopeActive() const noexcept
+    {
+        return m_forcedDark;
+    }
+
     void ThemeService::Attach(winrt::Microsoft::UI::Xaml::FrameworkElement const& root)
     {
         m_root = root;
@@ -72,6 +88,11 @@ namespace HaloDesktop::Services
         }
 
         using winrt::Microsoft::UI::Xaml::ElementTheme;
+        if (m_forcedDark)
+        {
+            m_root.RequestedTheme(ElementTheme::Dark);
+            return;
+        }
         switch (m_preference)
         {
         case ThemePreference::Light:

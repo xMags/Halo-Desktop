@@ -16,6 +16,7 @@
 #include "Services/AddonSelectionPolicy.h"
 #include "Services/DownloadSourceMatch.h"
 #include "Services/Downloads/TransferRateWindow.h"
+#include "Shell/ShellChromePolicy.h"
 #include "Shell/WindowPresentationPolicy.h"
 
 #include <algorithm>
@@ -901,6 +902,30 @@ namespace
         Require(!EvaluateAddonEditability(asAdmin, false).Global, "a non-admin could edit the global list");
         Require(EvaluateAddonEditability({}, false).User, "an empty list could not be added to");
     }
+
+    // Mirrors App.tsx (theme-dark on the title page) and TitleBar's dark player bar.
+    void TestShellChrome()
+    {
+        using HaloDesktop::Shell::ResolveShellChrome;
+
+        auto const browsing = ResolveShellChrome({});
+        Require(!browsing.ForceDarkPalette && !browsing.PlayerTitleBar, "a browse page changed the window chrome");
+
+        auto const title = ResolveShellChrome({ .TitlePageCurrent = true });
+        Require(title.ForceDarkPalette && !title.PlayerTitleBar, "a title page did not turn the window dark");
+
+        // The player over a title page keeps the window dark beneath it, so
+        // closing the player lands back on a dark title page.
+        auto const playingTitle = ResolveShellChrome({ .TitlePageCurrent = true, .PlayerOverlayOpen = true });
+        Require(playingTitle.ForceDarkPalette && playingTitle.PlayerTitleBar, "the player over a title page lost a chrome rule");
+
+        auto const playingHome = ResolveShellChrome({ .PlayerOverlayOpen = true });
+        Require(!playingHome.ForceDarkPalette && playingHome.PlayerTitleBar, "the player did not pin its title bar dark");
+
+        // Sign-in keeps the viewer's own theme even over a title page.
+        auto const signIn = ResolveShellChrome({ .TitlePageCurrent = true, .SignInOverlayOpen = true });
+        Require(!signIn.ForceDarkPalette && !signIn.PlayerTitleBar, "the sign-in page took the title page's palette");
+    }
 }
 
 int main()
@@ -935,6 +960,7 @@ int main()
         TestArtworkUrls();
         TestAccountLabel();
         TestAddonListPolicy();
+        TestShellChrome();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }

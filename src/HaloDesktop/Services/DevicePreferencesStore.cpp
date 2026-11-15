@@ -83,6 +83,7 @@ namespace
         result.ResumePlayback = root.GetNamedBoolean(L"resumePlayback", true);
         result.HardwareDecoding = root.GetNamedBoolean(L"hardwareDecoding", true);
         result.DiscordPresence = root.GetNamedBoolean(L"discordPresence", true);
+        result.NavPaneOpen = root.GetNamedBoolean(L"navPaneOpen", false);
         return result;
     }
 
@@ -125,6 +126,7 @@ namespace
         root.Insert(L"resumePlayback", JsonValue::CreateBooleanValue(value.ResumePlayback));
         root.Insert(L"hardwareDecoding", JsonValue::CreateBooleanValue(value.HardwareDecoding));
         root.Insert(L"discordPresence", JsonValue::CreateBooleanValue(value.DiscordPresence));
+        root.Insert(L"navPaneOpen", JsonValue::CreateBooleanValue(value.NavPaneOpen));
         return winrt::to_string(root.Stringify());
     }
 
@@ -255,6 +257,19 @@ namespace HaloDesktop::Services
         Mutate(m_path, m_mutex, [value](DevicePreferences& current)
         {
             current.DiscordPresence = value;
+        });
+    }
+
+    bool DevicePreferencesStore::NavPaneOpen() const noexcept
+    {
+        try { return Read().NavPaneOpen; } catch (...) { return false; }
+    }
+
+    void DevicePreferencesStore::NavPaneOpen(bool value)
+    {
+        Mutate(m_path, m_mutex, [value](DevicePreferences& current)
+        {
+            current.NavPaneOpen = value;
         });
     }
 

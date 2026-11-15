@@ -10,6 +10,7 @@
 #include "Views/PlayerPage.xaml.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/ThemeService.h"
+#include "Shell/ShellChromePolicy.h"
 #include "Shell/WindowPresentationService.h"
 
 #include <winrt/Windows.UI.h>
@@ -40,6 +41,16 @@ namespace winrt::HaloDesktop::implementation
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
         App::Services().Navigation->AttachSheetFrame(SheetFrameControl());
+        // Raised after every shell navigation and every overlay opening or closing,
+        // with the navigation state already updated. Cleared by Navigation's Detach.
+        App::Services().Navigation->SetRouteChangedHandler(
+            [weak = get_weak()]([[maybe_unused]] ::HaloDesktop::Services::Page page)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->ApplyShellChrome();
+                }
+            });
         App::Services().WindowPresentation->Attach(
             m_windowSizing->WindowHandle(),
             RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
@@ -109,6 +120,7 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().Navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
         }
+        ApplyShellChrome();
 
         // An explicit token avoids revoking the Window.Closed event after its
         // native Window has already completed teardown.
@@ -175,6 +187,7 @@ namespace winrt::HaloDesktop::implementation
             OverlayFrame(nullptr);
             SheetFrame(nullptr);
             ShellLayer(nullptr);
+            PlayerTitleBarGround(nullptr);
             AppTitleBar(nullptr);
             TitleBarRow(nullptr);
             RootGrid(nullptr);
@@ -197,13 +210,41 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
+    void MainWindow::ApplyShellChrome()
+    {
+        using ::HaloDesktop::Services::Page;
+
+        auto const& navigation = *App::Services().Navigation;
+        auto const overlayOpen = navigation.IsOverlayOpen();
+        auto const chrome = ::HaloDesktop::Shell::ResolveShellChrome({
+            .TitlePageCurrent = navigation.CurrentPage() == Page::Detail,
+            .SignInOverlayOpen = overlayOpen && navigation.CurrentOverlayPage() == Page::Login,
+            .PlayerOverlayOpen = overlayOpen && navigation.CurrentOverlayPage() == Page::Player,
+        });
+
+        // The root's theme change raises ActualThemeChanged, which repaints the
+        // caption buttons; the player bar is set first so that repaint sees it.
+        m_playerTitleBar = chrome.PlayerTitleBar;
+        PlayerTitleBarGround().Visibility(chrome.PlayerTitleBar
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed);
+        AppTitleBarControl().RequestedTheme(chrome.PlayerTitleBar
+            ? Microsoft::UI::Xaml::ElementTheme::Dark
+            : Microsoft::UI::Xaml::ElementTheme::Default);
+        App::Services().Theme->SetForcedDarkScope(chrome.ForceDarkPalette);
+        UpdateCaptionButtonColors();
+    }
+
     void MainWindow::UpdateCaptionButtonColors()
     {
         auto const titleBar = m_windowSizing->AppWindow().TitleBar();
         auto const transparent = winrt::Windows::UI::Colors::Transparent();
-        auto const foreground = RootGridControl().ActualTheme() == Microsoft::UI::Xaml::ElementTheme::Light
-            ? winrt::Windows::UI::Colors::Black()
-            : winrt::Windows::UI::Colors::White();
+        // Over the player's near-black bar the buttons are light in both themes.
+        auto const lightInk = m_playerTitleBar
+            || RootGridControl().ActualTheme() != Microsoft::UI::Xaml::ElementTheme::Light;
+        auto const foreground = lightInk
+            ? winrt::Windows::UI::Colors::White()
+            : winrt::Windows::UI::Colors::Black();
 
         titleBar.ButtonBackgroundColor(transparent);
         titleBar.ButtonInactiveBackgroundColor(transparent);
