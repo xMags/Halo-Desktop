@@ -153,12 +153,52 @@ namespace
         throw std::invalid_argument{ "A complete session is required for persistence." };
     }
 
+    // The profile fields are a display cache, refreshed by the next /auth/me, so
+    // a missing or malformed one is unknown rather than a failed restore.
+    std::optional<winrt::hstring> TolerantString(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* name,
+        std::size_t maximumLength)
+    {
+        if (!object.HasKey(name))
+        {
+            return std::nullopt;
+        }
+        auto const value = object.GetNamedValue(name);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String)
+        {
+            return std::nullopt;
+        }
+        auto const text = value.GetString();
+        return text.empty() || text.size() > maximumLength
+            ? std::nullopt
+            : std::optional<winrt::hstring>{ text };
+    }
+
+    std::optional<bool> TolerantBoolean(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* name)
+    {
+        if (!object.HasKey(name))
+        {
+            return std::nullopt;
+        }
+        auto const value = object.GetNamedValue(name);
+        return value.ValueType() == winrt::Windows::Data::Json::JsonValueType::Boolean
+            ? std::optional<bool>{ value.GetBoolean() }
+            : std::nullopt;
+    }
+
     ::HaloDesktop::Services::Auth::StoredIdentity ParseIdentity(std::string const& raw)
     {
         auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
         return {
             .UserId = RequiredString(root, L"userId"),
             .Username = RequiredString(root, L"username"),
+            .IsAdmin = TolerantBoolean(root, L"isAdmin"),
+            // The bounds /auth/me is read with.
+            .Plan = TolerantString(root, L"plan", 64),
+            .AvatarVersion = TolerantString(root, L"avatarVersion", 256),
         };
     }
 
@@ -171,6 +211,12 @@ namespace
         winrt::Windows::Data::Json::JsonObject root;
         root.Insert(L"userId", winrt::Windows::Data::Json::JsonValue::CreateStringValue(identity.UserId));
         root.Insert(L"username", winrt::Windows::Data::Json::JsonValue::CreateStringValue(identity.Username));
+        if (identity.IsAdmin)
+        {
+            root.Insert(L"isAdmin", winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(*identity.IsAdmin));
+        }
+        InsertOptionalString(root, L"plan", identity.Plan);
+        InsertOptionalString(root, L"avatarVersion", identity.AvatarVersion);
         return winrt::to_string(root.Stringify());
     }
 }

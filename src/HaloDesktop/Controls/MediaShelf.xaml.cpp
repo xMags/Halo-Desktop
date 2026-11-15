@@ -35,6 +35,13 @@ namespace winrt::HaloDesktop::implementation
             }
             items.ItemsSource(m_bindableItems);
         }
+        // A recycled shelf is handed another row's items: it starts at their
+        // first card, not where the last row was left.
+        if (auto const scroller = ShelfScroller())
+        {
+            scroller.ChangeView(0.0, nullptr, nullptr, true);
+        }
+        UpdateEdges();
     }
     winrt::Windows::Foundation::IInspectable MediaShelf::SelectedItem() const { return m_selectedItem; }
     winrt::event_token MediaShelf::ItemClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_itemClick.add(handler); }
@@ -108,6 +115,7 @@ namespace winrt::HaloDesktop::implementation
     void MediaShelf::UpdateEdges()
     {
         auto const scroller = ShelfScroller();
+        if (!scroller) return;
         auto const edges = ::HaloDesktop::Controls::MeasureShelfEdges(
             scroller.HorizontalOffset(),
             scroller.ViewportWidth(),
@@ -120,5 +128,14 @@ namespace winrt::HaloDesktop::implementation
         };
         apply(ScrollLeftButton(), edges.AtStart);
         apply(ScrollRightButton(), edges.AtEnd);
+        // The fade marks the side that still hides cards, so it follows the
+        // same ends the chevrons do.
+        auto const fade = [](Microsoft::UI::Xaml::UIElement const& element, bool atEnd)
+        {
+            if (!element) return;
+            element.Visibility(atEnd ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
+        };
+        fade(StartFade(), edges.AtStart);
+        fade(EndFade(), edges.AtEnd);
     }
 }

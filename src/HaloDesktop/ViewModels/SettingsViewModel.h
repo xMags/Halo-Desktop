@@ -34,6 +34,7 @@ namespace winrt::HaloDesktop::implementation
     struct SettingsViewModel : SettingsViewModelT<SettingsViewModel>
     {
         explicit SettingsViewModel(::HaloDesktop::Services::AppServices const& services);
+        ~SettingsViewModel();
         [[nodiscard]] winrt::hstring ServerUrl() const;
         [[nodiscard]] winrt::hstring UserName() const;
         [[nodiscard]] winrt::hstring DisplayName() const;
@@ -119,6 +120,9 @@ namespace winrt::HaloDesktop::implementation
         void RaiseAddonState();
         void RaisePreviewMetrics();
         void Raise(wchar_t const* propertyName);
+        void ReadSyncedSettings();
+        void SubscribeToServiceChanges();
+        void OnProfileChanged();
 
         enum class HealthState
         {
@@ -158,6 +162,8 @@ namespace winrt::HaloDesktop::implementation
         HealthState m_healthState{ HealthState::Checking };
         std::uint64_t m_loadVersion{};
         std::uint64_t m_healthRequestVersion{};
+        std::uint64_t m_settingsRevertedToken{};
+        ::HaloDesktop::Services::IdentityChangedToken m_profileChangedToken{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }

@@ -5,6 +5,7 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/ThemeColorLookup.h"
 #include "Playback/IPlaybackEngine.h"
 #include "Services/DiscordPresence.h"
 #include "Views/PlayerPage.xaml.h"
@@ -178,6 +179,9 @@ namespace winrt::HaloDesktop::implementation
             }
             App::Services().WindowPresentation->Detach();
             m_themeChangedRevoker.revoke();
+            // The service holds the root it themes and does not own it; it lets
+            // go here, before the content below is torn down.
+            App::Services().Theme->Detach();
             m_reveal.reset();
 
             // Generated x:Name fields are strong references. Clear them while
@@ -239,16 +243,25 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const titleBar = m_windowSizing->AppWindow().TitleBar();
         auto const transparent = winrt::Windows::UI::Colors::Transparent();
-        // Over the player's near-black bar the buttons are light in both themes.
-        auto const lightInk = m_playerTitleBar
-            || RootGridControl().ActualTheme() != Microsoft::UI::Xaml::ElementTheme::Light;
-        auto const foreground = lightInk
+        // Over the player's near-black bar the buttons take the dark palette in
+        // both themes; a title page has already forced the root dark.
+        auto const theme = m_playerTitleBar
+                || RootGridControl().ActualTheme() != Microsoft::UI::Xaml::ElementTheme::Light
+            ? Microsoft::UI::Xaml::ElementTheme::Dark
+            : Microsoft::UI::Xaml::ElementTheme::Light;
+        auto const fallback = theme == Microsoft::UI::Xaml::ElementTheme::Dark
             ? winrt::Windows::UI::Colors::White()
             : winrt::Windows::UI::Colors::Black();
+        // The reference's caption buttons: the secondary text colour at rest and
+        // the primary one under the pointer.
+        auto const rest = ::HaloDesktop::Controls::ThemeColor(theme, L"HaloText2Color").value_or(fallback);
+        auto const hover = ::HaloDesktop::Controls::ThemeColor(theme, L"HaloText1Color").value_or(fallback);
 
         titleBar.ButtonBackgroundColor(transparent);
         titleBar.ButtonInactiveBackgroundColor(transparent);
-        titleBar.ButtonForegroundColor(foreground);
-        titleBar.ButtonInactiveForegroundColor(foreground);
+        titleBar.ButtonForegroundColor(rest);
+        titleBar.ButtonInactiveForegroundColor(rest);
+        titleBar.ButtonHoverForegroundColor(hover);
+        titleBar.ButtonPressedForegroundColor(hover);
     }
 }

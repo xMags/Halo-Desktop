@@ -9,8 +9,8 @@
   Width="268">
   <UserControl.Resources>
     <!--
-      The card already states hover itself: a 2px lift and the accent ring over
-      the art frame. The stock Button paints a filled, rounded panel behind the
+      The card already states hover itself, as PosterCard does: a 2px lift, a
+      stronger art frame and a shadow under the art. The stock Button paints a filled, rounded panel behind the
       whole card on top of that, which reads as a pane of glass laid under the
       still and its title. Only that fill is dropped. The button keeps its
       transparent background, so the still, the title and the gaps around them
@@ -43,14 +43,25 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
+      <!-- The hover shadow is drawn into this host, which fades in with the stroke. -->
+      <Border
+        x:Name="ShadowHost"
+        IsHitTestVisible="False"
+        Opacity="0">
+        <Border.OpacityTransition>
+          <ScalarTransition Duration="0:0:0.12" />
+        </Border.OpacityTransition>
+      </Border>
       <!--
         The border is what clips the still, the chips and the progress track to
         the card radius. Without it the artwork drew square over a rounded
         placeholder, so the card changed shape the moment the image arrived.
+        Its own 1px border stays, unpainted, so the art sits where it always
+        did; the resting and the hover strokes are rings laid over it.
       -->
       <Border
         x:Name="ArtBorder"
-        BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+        BorderBrush="Transparent"
         BorderThickness="1"
         CornerRadius="{StaticResource HaloArtCornerRadius}">
         <Grid>
@@ -75,20 +86,34 @@
         </Grid>
       </Border>
       <!--
-        The hover accent is a second ring laid exactly over the art frame and
-        faded in, rather than the frame's brush being swapped in code. A code
-        swap has to find the brush by string key at runtime, which fails
-        silently when it misses, and writing a local BorderBrush also cancels
-        the ThemeResource binding, so the frame would stop following a later
-        light/dark switch. Opacity is a plain double with neither problem.
+        The resting and the hover strokes are two rings laid exactly over the
+        art frame that crossfade, rather than the frame's brush being swapped
+        in code. A code swap would cancel the ThemeResource binding, so the
+        frame would stop following a later light/dark switch, and laying the
+        translucent hover stroke over the resting one would tint it. Opacity is
+        a plain double with neither problem.
       -->
       <Border
+        x:Name="ArtRestRing"
+        BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+        BorderThickness="1"
+        CornerRadius="{StaticResource HaloArtCornerRadius}"
+        IsHitTestVisible="False">
+        <Border.OpacityTransition>
+          <ScalarTransition Duration="0:0:0.12" />
+        </Border.OpacityTransition>
+      </Border>
+      <Border
         x:Name="ArtHoverRing"
-        BorderBrush="{ThemeResource HaloAccentBrush}"
+        BorderBrush="{ThemeResource HaloHoverCardStrokeBrush}"
         BorderThickness="1"
         CornerRadius="{StaticResource HaloArtCornerRadius}"
         IsHitTestVisible="False"
-        Opacity="0" />
+        Opacity="0">
+        <Border.OpacityTransition>
+          <ScalarTransition Duration="0:0:0.12" />
+        </Border.OpacityTransition>
+      </Border>
       <TextBlock
         x:Name="TitleText"
         Grid.Row="1"

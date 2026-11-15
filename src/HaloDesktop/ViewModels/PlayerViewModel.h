@@ -55,6 +55,7 @@ namespace winrt::HaloDesktop::implementation
         SubtitleAppearanceViewModel(
             std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> settings,
             std::shared_ptr<::HaloDesktop::Playback::SubtitleController> subtitles);
+        ~SubtitleAppearanceViewModel();
         [[nodiscard]] double Size() const noexcept;
         void Size(double value);
         [[nodiscard]] winrt::hstring SizeLabel() const;
@@ -88,9 +89,11 @@ namespace winrt::HaloDesktop::implementation
         void Raise(wchar_t const* propertyName);
         void RaisePreviewMetrics();
         void Apply();
+        void WatchForRevert();
 
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
         std::shared_ptr<::HaloDesktop::Playback::SubtitleController> m_subtitles;
+        std::uint64_t m_revertedToken{};
         double m_size{ 100.0 };
         std::int32_t m_fontIndex{ 1 };
         std::int32_t m_outlineIndex{ 2 };

@@ -15,4 +15,10 @@ namespace HaloDesktop::Controls
     [[nodiscard]] std::optional<winrt::Windows::UI::Color> ThemeColor(
         winrt::Microsoft::UI::Xaml::FrameworkElement const& scope,
         wchar_t const* key);
+
+    // The same lookup for a theme the caller has already decided on: Light reads
+    // the "Light" dictionary, anything else the dark "Default" one.
+    [[nodiscard]] std::optional<winrt::Windows::UI::Color> ThemeColor(
+        winrt::Microsoft::UI::Xaml::ElementTheme theme,
+        wchar_t const* key);
 }

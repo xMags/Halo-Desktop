@@ -338,6 +338,24 @@ namespace HaloDesktop::Services
         return m_currentOverlayPage;
     }
 
+    Page NavigationService::SectionBehindCurrentPage() const
+    {
+        if (!m_shellFrame)
+        {
+            return Page::Home;
+        }
+        auto const backStack = m_shellFrame.BackStack();
+        for (auto index = backStack.Size(); index > 0; --index)
+        {
+            auto const page = PageFromType(backStack.GetAt(index - 1).SourcePageType());
+            if (page != Page::Detail && page != Page::Catalog)
+            {
+                return page;
+            }
+        }
+        return Page::Home;
+    }
+
     bool NavigationService::IsOverlayOpen() const noexcept
     {
         return m_overlayOpen;

@@ -174,11 +174,13 @@ namespace HaloDesktop::Services
         }
 
         // Read again after the runtime lookup, so the row is stamped against
-        // whatever arrived meanwhile.
+        // whatever arrived meanwhile. The stamp comes from the watch-state
+        // service, so a mark made right after a removal outranks its tombstone.
         auto const existing = m_watchState->Find(target.VideoId);
+        auto const stamp = m_watchState->IssueTimestamp(NowMilliseconds());
         auto row = watched
-            ? WatchedRow(target, existing, runtime, NowMilliseconds())
-            : UnwatchedRow(target, existing, NowMilliseconds());
+            ? WatchedRow(target, existing, runtime, stamp)
+            : UnwatchedRow(target, existing, stamp);
         co_await m_watchState->PutAsync(std::move(row));
         co_await uiContext;
         if (m_session->Generation() == generation)
@@ -213,7 +215,8 @@ namespace HaloDesktop::Services
         {
             co_return;
         }
-        co_await m_watchState->PutRowsAsync(WatchedRowsInOrder(targets, rows, runtime, NowMilliseconds()));
+        co_await m_watchState->PutRowsAsync(WatchedRowsInOrder(
+            targets, rows, runtime, m_watchState->IssueTimestamp(NowMilliseconds())));
         co_await uiContext;
         if (m_session->Generation() == generation)
         {

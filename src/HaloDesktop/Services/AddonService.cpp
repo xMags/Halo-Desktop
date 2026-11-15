@@ -99,6 +99,29 @@ namespace HaloDesktop::Services
         {
             throw std::invalid_argument{ "AddonService requires all dependencies." };
         }
+        // The admin flag can change after the addons were applied, as when
+        // /auth/me answers after them. `this` is sound: the session outlives
+        // this service (it is held here), the destructor removes the handler,
+        // and both live on the UI thread, which is the only one that raises it.
+        m_profileChangedToken = m_session->AddProfileChangedHandler([this]() { RefreshEditability(); });
+    }
+
+    AddonService::~AddonService()
+    {
+        if (m_profileChangedToken != 0)
+        {
+            m_session->RemoveProfileChangedHandler(m_profileChangedToken);
+        }
+    }
+
+    void AddonService::RefreshEditability()
+    {
+        // Before this account's list has been read there are no rows to judge,
+        // and an empty list must not read as one that can be saved over.
+        if (m_listApplied && m_session->IsAdmin() != m_builtAsAdmin)
+        {
+            RebuildItems();
+        }
     }
 
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> AddonService::Items() const
@@ -390,13 +413,20 @@ namespace HaloDesktop::Services
         m_records.reserve(payload.Global.size() + payload.User.size());
         m_records.insert(m_records.end(), payload.Global.begin(), payload.Global.end());
         m_records.insert(m_records.end(), payload.User.begin(), payload.User.end());
+        m_listApplied = true;
+        RebuildItems();
+    }
+
+    void AddonService::RebuildItems()
+    {
         std::vector<AddonEditInput> editInputs;
         editInputs.reserve(m_records.size());
         for (auto const& record : m_records)
         {
             editInputs.push_back({ record.IsGlobal, record.TransportUrl.has_value() });
         }
-        m_editability = EvaluateAddonEditability(editInputs, m_session->IsAdmin());
+        m_builtAsAdmin = m_session->IsAdmin();
+        m_editability = EvaluateAddonEditability(editInputs, m_builtAsAdmin);
 
         m_items.Clear();
         for (auto const& record : m_records)
@@ -441,6 +471,8 @@ namespace HaloDesktop::Services
         m_records.clear();
         m_items.Clear();
         m_editability = {};
+        m_builtAsAdmin = false;
+        m_listApplied = false;
         m_seedAttempted = false;
     }
 }

@@ -1461,6 +1461,8 @@ namespace HaloDesktop::Services::Downloads
             std::shared_ptr<std::atomic_bool> cancel;
             std::vector<DownloadRecord> snapshot;
             std::uint64_t generation{};
+            DownloadRecord started;
+            std::vector<DownloadChangedHandler> startedHandlers;
             {
                 std::unique_lock lock{ m_mutex };
                 m_condition.wait(lock, stopToken, [this]
@@ -1556,10 +1558,16 @@ namespace HaloDesktop::Services::Downloads
                 record.UpdatedAt = NowMilliseconds();
                 generation = ++m_generation;
                 snapshot = { record };
+                started = record;
+                startedHandlers = HandlersLocked();
             }
             try
             {
                 Persist(std::move(snapshot), generation);
+                // Announced once it is stored, and outside the lock, as Finish and
+                // the progress reports are. A transfer that ends before its first
+                // progress report would otherwise never be seen downloading.
+                Notify(startedHandlers, started);
                 try
                 {
                     auto result = TransferWithRetries(jobId, cancel, stopToken);

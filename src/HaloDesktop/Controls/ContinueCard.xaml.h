@@ -2,6 +2,8 @@
 
 #include "ContinueCard.g.h"
 
+#include "Controls/CardHoverShadow.h"
+
 #include <cstdint>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
@@ -50,6 +52,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_timeLeft;
         double m_progress{};
         double m_cardWidth{ 268.0 };
+        ::HaloDesktop::Controls::CardHoverShadow m_hoverShadow;
         std::uint64_t m_metricsToken{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
     };

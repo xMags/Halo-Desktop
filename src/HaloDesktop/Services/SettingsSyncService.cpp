@@ -65,10 +65,25 @@ namespace HaloDesktop::Services
         }
         m_debounceTimer.Interval(std::chrono::milliseconds{ 800 });
         m_debounceTimer.IsRepeating(false);
-        m_debounceTimer.Tick([this](auto const&, auto const&)
+        // `this` is sound: the revoker and the stop in the destructor detach the
+        // handler before the service goes, and the timer ticks on this same
+        // (UI) thread, so it can never be mid-call then.
+        m_debounceTickRevoker = m_debounceTimer.Tick(winrt::auto_revoke, [this](auto const&, auto const&)
         {
             static_cast<void>(SaveAsync(Snapshot(), m_updatedAt));
         });
+    }
+
+    SettingsSyncService::~SettingsSyncService()
+    {
+        try
+        {
+            m_debounceTimer.Stop();
+        }
+        catch (...)
+        {
+        }
+        m_debounceTickRevoker.revoke();
     }
 
     concurrency::task<void> SettingsSyncService::LoadAsync()
@@ -124,12 +139,56 @@ namespace HaloDesktop::Services
             }
             break;
         case SettingsLoadAction::DiscardUnreadEdits:
+        {
             // The waiting edits were only ever shown on an empty document.
+            auto const dropped = !m_unreadEdits.empty();
             m_unreadEdits.clear();
             m_value = winrt::Windows::Data::Json::JsonObject{};
+            if (dropped)
+            {
+                NotifyReverted();
+            }
             break;
+        }
         case SettingsLoadAction::Keep:
             break;
+        }
+    }
+
+    std::uint64_t SettingsSyncService::AddRevertedHandler(std::function<void()> handler)
+    {
+        if (!handler)
+        {
+            return 0;
+        }
+        auto const token = m_nextRevertedToken++;
+        m_revertedHandlers.emplace(token, std::move(handler));
+        return token;
+    }
+
+    void SettingsSyncService::RemoveRevertedHandler(std::uint64_t token) noexcept
+    {
+        m_revertedHandlers.erase(token);
+    }
+
+    void SettingsSyncService::NotifyReverted()
+    {
+        // Copied first: a listener is free to unsubscribe from inside itself.
+        std::vector<std::function<void()>> listeners;
+        listeners.reserve(m_revertedHandlers.size());
+        for (auto const& entry : m_revertedHandlers)
+        {
+            listeners.push_back(entry.second);
+        }
+        for (auto const& listener : listeners)
+        {
+            try
+            {
+                listener();
+            }
+            catch (...)
+            {
+            }
         }
     }
 

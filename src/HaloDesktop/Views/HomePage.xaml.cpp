@@ -348,6 +348,13 @@ namespace winrt::HaloDesktop::implementation
         };
         apply(ContinueScrollLeftButton(), edges.AtStart);
         apply(ContinueScrollRightButton(), edges.AtEnd);
+        // The side that still hides cards fades, as on every shelf.
+        auto const fade = [](Microsoft::UI::Xaml::UIElement const& element, bool atEnd)
+        {
+            element.Visibility(atEnd ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
+        };
+        fade(ContinueStartFade(), edges.AtStart);
+        fade(ContinueEndFade(), edges.AtEnd);
     }
 
     void HomePage::OnShelfItemClick(

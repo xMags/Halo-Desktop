@@ -64,6 +64,11 @@ namespace winrt::HaloDesktop::implementation
         m_discordPresence=m_playbackPreferences->DiscordPresenceEnabled();
         Refresh();
     }
+    SettingsViewModel::~SettingsViewModel()
+    {
+        if (m_settingsRevertedToken != 0) m_settings->RemoveRevertedHandler(m_settingsRevertedToken);
+        if (m_profileChangedToken != 0) m_session->RemoveProfileChangedHandler(m_profileChangedToken);
+    }
     winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
     winrt::hstring SettingsViewModel::UserName() const { return m_userName; }
     winrt::hstring SettingsViewModel::DisplayName() const
@@ -403,6 +408,7 @@ namespace winrt::HaloDesktop::implementation
             addonsFailed = true;
         }
         co_await uiContext;
+        SubscribeToServiceChanges();
         if (version != m_loadVersion)
         {
             co_return;
@@ -417,40 +423,7 @@ namespace winrt::HaloDesktop::implementation
 
         if (!settingsFailed)
         {
-            m_subtitleSize = m_settings->SubtitleScalePercent();
-            auto const family = m_settings->SubtitleFontFamily();
-            m_fontIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleFontIndex(family));
-            auto const outline = m_settings->SubtitleOutline();
-            m_outlineIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleOutlineIndex(outline));
-            m_subtitleShadow = m_settings->SubtitleShadow();
-            m_subtitleTrackStyling = m_settings->SubtitleTrackStyling();
-            m_autoplayNext = m_settings->AutoplayNextEpisode();
-            auto const audio = m_settings->PreferredAudioLanguage();
-            m_audioLanguageIndex = !audio ? 4 : *audio == L"jpn" ? 1 : *audio == L"ger" ? 2 : *audio == L"spa" ? 3 : 0;
-            auto const subtitles = m_settings->PreferredSubtitleLanguage();
-            m_subtitleLanguageIndex = !subtitles ? 0 : *subtitles == L"jpn" ? 2 : *subtitles == L"ger" ? 3 : *subtitles == L"spa" ? 4 : 1;
-            Raise(L"SubtitleSize");
-            Raise(L"SubtitleSizeLabel");
-            Raise(L"PreviewFontFamily");
-            Raise(L"PreviewFontSize");
-            Raise(L"FontIndex");
-            Raise(L"OutlineIndex");
-            Raise(L"IsDefaultFont");
-            Raise(L"IsSystemFont");
-            Raise(L"IsSerifFont");
-            Raise(L"IsMonoFont");
-            Raise(L"IsNoOutline");
-            Raise(L"IsThinOutline");
-            Raise(L"IsNormalOutline");
-            Raise(L"IsThickOutline");
-            Raise(L"PreviewOutlineVisibility");
-            Raise(L"PreviewShadowVisibility");
-            RaisePreviewMetrics();
-            Raise(L"SubtitleShadow");
-            Raise(L"SubtitleTrackStyling");
-            Raise(L"AutoplayNext");
-            Raise(L"AudioLanguageIndex");
-            Raise(L"SubtitleLanguageIndex");
+            ReadSyncedSettings();
         }
         else
         {
@@ -466,6 +439,82 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"AddonNoticeText");
             Raise(L"AddonNoticeVisibility");
         }
+    }
+
+    // Subscribed here rather than in the constructor: by the time a load has
+    // resumed this object is fully built, so a weak reference to it can be had.
+    // Both are removed in the destructor.
+    void SettingsViewModel::SubscribeToServiceChanges()
+    {
+        if (m_settingsRevertedToken == 0)
+        {
+            // An edit made before the account's settings were read is dropped
+            // when none can be had; the page then shows the stored values again.
+            m_settingsRevertedToken = m_settings->AddRevertedHandler([weak = get_weak()]()
+            {
+                if (auto const self = weak.get()) self->ReadSyncedSettings();
+            });
+        }
+        if (m_profileChangedToken == 0)
+        {
+            // The admin flag can arrive after the addons did, and decides which
+            // rows can be edited and what the account line says.
+            m_profileChangedToken = m_session->AddProfileChangedHandler([weak = get_weak()]()
+            {
+                if (auto const self = weak.get()) self->OnProfileChanged();
+            });
+        }
+    }
+
+    void SettingsViewModel::OnProfileChanged()
+    {
+        // Idempotent, so whichever of this and the service's own handler runs
+        // first does the work.
+        m_addonService->RefreshEditability();
+        if (!m_addonsLoading && !m_addonsError)
+        {
+            SynchronizeAddons();
+        }
+        RaiseAddonState();
+        Raise(L"AccountRoleLine");
+    }
+
+    void SettingsViewModel::ReadSyncedSettings()
+    {
+        m_subtitleSize = m_settings->SubtitleScalePercent();
+        auto const family = m_settings->SubtitleFontFamily();
+        m_fontIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleFontIndex(family));
+        auto const outline = m_settings->SubtitleOutline();
+        m_outlineIndex = static_cast<std::int32_t>(::HaloDesktop::ViewModels::SubtitleOutlineIndex(outline));
+        m_subtitleShadow = m_settings->SubtitleShadow();
+        m_subtitleTrackStyling = m_settings->SubtitleTrackStyling();
+        m_autoplayNext = m_settings->AutoplayNextEpisode();
+        auto const audio = m_settings->PreferredAudioLanguage();
+        m_audioLanguageIndex = !audio ? 4 : *audio == L"jpn" ? 1 : *audio == L"ger" ? 2 : *audio == L"spa" ? 3 : 0;
+        auto const subtitles = m_settings->PreferredSubtitleLanguage();
+        m_subtitleLanguageIndex = !subtitles ? 0 : *subtitles == L"jpn" ? 2 : *subtitles == L"ger" ? 3 : *subtitles == L"spa" ? 4 : 1;
+        Raise(L"SubtitleSize");
+        Raise(L"SubtitleSizeLabel");
+        Raise(L"PreviewFontFamily");
+        Raise(L"PreviewFontSize");
+        Raise(L"FontIndex");
+        Raise(L"OutlineIndex");
+        Raise(L"IsDefaultFont");
+        Raise(L"IsSystemFont");
+        Raise(L"IsSerifFont");
+        Raise(L"IsMonoFont");
+        Raise(L"IsNoOutline");
+        Raise(L"IsThinOutline");
+        Raise(L"IsNormalOutline");
+        Raise(L"IsThickOutline");
+        Raise(L"PreviewOutlineVisibility");
+        Raise(L"PreviewShadowVisibility");
+        RaisePreviewMetrics();
+        Raise(L"SubtitleShadow");
+        Raise(L"SubtitleTrackStyling");
+        Raise(L"AutoplayNext");
+        Raise(L"AudioLanguageIndex");
+        Raise(L"SubtitleLanguageIndex");
     }
 
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::AddAddonAsync(winrt::hstring url)

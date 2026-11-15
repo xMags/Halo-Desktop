@@ -93,9 +93,36 @@ namespace winrt::HaloDesktop::implementation
         }
         RaisePreviewMetrics();
     }
+    SubtitleAppearanceViewModel::~SubtitleAppearanceViewModel()
+    {
+        if (m_settings && m_revertedToken != 0)
+        {
+            m_settings->RemoveRevertedHandler(m_revertedToken);
+        }
+    }
     // Style only. RefreshPreferences would also re-run track selection, which would drop
-    // and reload the subtitle mid-drag every time the size slider ticks.
-    void SubtitleAppearanceViewModel::Apply() { if (m_subtitles) m_subtitles->RefreshStyle(); }
+    // and reload the subtitle mid-drag every time the size slider ticks. Every edit ends
+    // here, after it has been written.
+    void SubtitleAppearanceViewModel::Apply()
+    {
+        WatchForRevert();
+        if (m_subtitles) m_subtitles->RefreshStyle();
+    }
+    // An edit made before the account's settings were read can be dropped; the panel
+    // then shows, and the running file is styled with, the stored values again.
+    // Subscribed on the first edit, when this object is fully built.
+    void SubtitleAppearanceViewModel::WatchForRevert()
+    {
+        if (!m_settings || m_revertedToken != 0) return;
+        m_revertedToken = m_settings->AddRevertedHandler([weak = get_weak()]()
+        {
+            if (auto const self = weak.get())
+            {
+                self->Refresh();
+                if (self->m_subtitles) self->m_subtitles->RefreshStyle();
+            }
+        });
+    }
     double SubtitleAppearanceViewModel::Size() const noexcept { return m_size; }
     void SubtitleAppearanceViewModel::Size(double value)
     {

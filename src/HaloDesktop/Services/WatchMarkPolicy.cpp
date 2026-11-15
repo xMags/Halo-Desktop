@@ -179,6 +179,21 @@ namespace HaloDesktop::Services
         return result;
     }
 
+    std::vector<Api::Dto::WatchEntry> LiveWatchRows(
+        std::vector<Api::Dto::WatchEntry> const& rows)
+    {
+        std::vector<Api::Dto::WatchEntry> live;
+        live.reserve(rows.size());
+        for (auto const& row : rows)
+        {
+            if (!row.RemovedAt)
+            {
+                live.push_back(row);
+            }
+        }
+        return live;
+    }
+
     std::vector<std::vector<Api::Dto::WatchEntry>> ChunkRows(
         std::vector<Api::Dto::WatchEntry> const& rows,
         std::size_t size)

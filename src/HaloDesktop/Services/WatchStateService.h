@@ -40,14 +40,17 @@ namespace HaloDesktop::Services
         // A removal that outlives the account it began under stops writing and
         // returns quietly.
         [[nodiscard]] concurrency::task<void> RemoveItemAsync(winrt::hstring itemId);
+        // Both leave removal tombstones out: a removed video reads as never
+        // played, whatever a server sends back.
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::WatchEntry> Rows() const;
         [[nodiscard]] std::optional<::HaloDesktop::Api::Dto::WatchEntry> Find(winrt::hstring const& videoId) const;
         // True once the account's rows have arrived. Before that an empty Rows()
         // means "not known yet" rather than "nothing watched".
         [[nodiscard]] bool HasLoaded() const noexcept;
         // A write stamp strictly later than every stamp this service has issued
-        // or written, and never earlier than `now`. The player's progress reports
-        // and the history removal draw from it, so a report made after a removal
+        // or written, and never earlier than `now`. The player's progress reports,
+        // the watched marks and the history removal draw from it, so a report or
+        // a mark made after a removal
         // always outranks the tombstone and a removal always outranks every
         // report made before it, whatever order the requests arrive in.
         [[nodiscard]] std::int64_t IssueTimestamp(std::int64_t now) noexcept;

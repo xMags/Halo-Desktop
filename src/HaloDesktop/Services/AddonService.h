@@ -26,6 +26,12 @@ namespace HaloDesktop::Services
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
             std::shared_ptr<QueryCache> queryCache,
             std::shared_ptr<ISessionService> session);
+        ~AddonService() override;
+
+        AddonService(AddonService const&) = delete;
+        AddonService& operator=(AddonService const&) = delete;
+        AddonService(AddonService&&) = delete;
+        AddonService& operator=(AddonService&&) = delete;
 
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> Items() const override;
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::AddonRecord> Records() const override;
@@ -36,11 +42,14 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> SetCatalogsVisibleAsync(
             winrt::hstring addonId,
             bool visible) override;
+        void RefreshEditability() override;
         void OnAccountChanged();
 
     private:
         [[nodiscard]] concurrency::task<void> LoadCoreAsync(std::uint64_t accountVersion);
         void Apply(::HaloDesktop::Api::Dto::AddonsPayload payload);
+        // Editability and the display rows, from the records and the admin flag.
+        void RebuildItems();
         [[nodiscard]] std::vector<winrt::hstring> TransportUrls(bool global) const;
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
@@ -51,6 +60,11 @@ namespace HaloDesktop::Services
         std::optional<concurrency::task<void>> m_loadTask;
         std::optional<concurrency::task<void>> m_mutationTail;
         AddonListEditability m_editability{};
+        // The admin flag m_editability and m_items were built with.
+        bool m_builtAsAdmin{};
+        // Whether this account's list has been read and applied.
+        bool m_listApplied{};
+        IdentityChangedToken m_profileChangedToken{};
         bool m_seedAttempted{};
         std::uint64_t m_accountVersion{};
         std::uint64_t m_loadTaskAccountVersion{};

@@ -696,8 +696,13 @@ namespace winrt::HaloDesktop::implementation
     {
         using ::HaloDesktop::Services::Page;
 
+        // A title page keeps the section it was opened from lit, as the
+        // reference does.
+        auto const section = page == Page::Detail
+            ? App::Services().Navigation->SectionBehindCurrentPage()
+            : page;
         Microsoft::UI::Xaml::Controls::NavigationViewItem selectedItem{ nullptr };
-        switch (page)
+        switch (section)
         {
         case Page::Home:
         case Page::Detail:

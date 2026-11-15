@@ -309,8 +309,17 @@ namespace
     ::HaloDesktop::Api::Dto::MetaVideo ParseMetaVideo(
         winrt::Windows::Data::Json::JsonObject const& video)
     {
-        auto const ownTitle = OptionalDisplayString(video, L"title", 512);
-        auto const ownName = OptionalDisplayString(video, L"name", 512);
+        // Trimmed, so a title of nothing but spaces counts as none and the
+        // fallbacks below apply.
+        auto const ownText = [&video](wchar_t const* key) -> std::optional<winrt::hstring>
+        {
+            auto const text = OptionalDisplayString(video, key, 512);
+            if (!text) return std::nullopt;
+            auto trimmed = Trimmed(*text);
+            return trimmed.empty() ? std::nullopt : std::optional<winrt::hstring>{ std::move(trimmed) };
+        };
+        auto const ownTitle = ownText(L"title");
+        auto const ownName = ownText(L"name");
         return {
             DisplayString(video, L"id", 2048),
             ownTitle.value_or(ownName.value_or(L"Episode")),
@@ -501,14 +510,12 @@ namespace
     {
         auto const object = RequireObject(value, L"An addon entry must be an object.");
         auto const manifest = object.GetNamedObject(L"manifest");
+        // A null or non-string URL is a row without one, as a missing key is:
+        // the server hides it, and that must not fail the whole list.
         std::optional<winrt::hstring> transportUrl;
-        if (object.HasKey(L"transportUrl"))
+        if (auto const url = RawString(object, L"transportUrl"); !url.empty())
         {
-            auto const url = object.GetNamedString(L"transportUrl");
-            if (!url.empty())
-            {
-                transportUrl = url;
-            }
+            transportUrl = url;
         }
         auto const position = object.GetNamedNumber(L"position");
         if (!std::isfinite(position) || position < 0 || std::floor(position) != position

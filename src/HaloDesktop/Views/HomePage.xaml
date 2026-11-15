@@ -256,32 +256,37 @@
             <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>
-        <ScrollViewer x:Name="ContinueScroller" Margin="0,-4,0,0" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" ViewChanged="OnContinueViewChanged" SizeChanged="OnContinueScrollerSizeChanged">
-          <!-- The wheel handler belongs on the content, not on the scroller. A
-               ScrollViewer class-handles the wheel before any handler attached to
-               the scroller itself, and marks it handled, so one attached there is
-               never called. The transparent background makes the gaps between
-               cards hit-testable too, so the strip answers everywhere. -->
-          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
-            <!-- The last list on this page that realised everything it was given. -->
-            <ItemsRepeater x:Name="ContinueList">
-            <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
-            <ItemsRepeater.ItemTemplate>
-              <DataTemplate x:DataType="local:ContinueItem">
-                <local:ContinueCard
-                  Title="{x:Bind Name}"
-                  Meta="{x:Bind Sub}"
-                  Art="{x:Bind Art, Mode=OneWay}"
-                  EpisodeTag="{x:Bind Tag}"
-                  TimeLeft="{x:Bind TimeLeft}"
-                  Progress="{x:Bind Progress}"
-                  Tag="{x:Bind}"
-                  Click="OnContinueItemClick" />
-              </DataTemplate>
-            </ItemsRepeater.ItemTemplate>
-            </ItemsRepeater>
-          </Grid>
-        </ScrollViewer>
+        <!-- Holds the strip and its edge fades, which lie over it. -->
+        <Grid>
+          <ScrollViewer x:Name="ContinueScroller" Margin="0,-4,0,0" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" ViewChanged="OnContinueViewChanged" SizeChanged="OnContinueScrollerSizeChanged">
+            <!-- The wheel handler belongs on the content, not on the scroller. A
+                 ScrollViewer class-handles the wheel before any handler attached to
+                 the scroller itself, and marks it handled, so one attached there is
+                 never called. The transparent background makes the gaps between
+                 cards hit-testable too, so the strip answers everywhere. -->
+            <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
+              <!-- The last list on this page that realised everything it was given. -->
+              <ItemsRepeater x:Name="ContinueList">
+              <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
+              <ItemsRepeater.ItemTemplate>
+                <DataTemplate x:DataType="local:ContinueItem">
+                  <local:ContinueCard
+                    Title="{x:Bind Name}"
+                    Meta="{x:Bind Sub}"
+                    Art="{x:Bind Art, Mode=OneWay}"
+                    EpisodeTag="{x:Bind Tag}"
+                    TimeLeft="{x:Bind TimeLeft}"
+                    Progress="{x:Bind Progress}"
+                    Tag="{x:Bind}"
+                    Click="OnContinueItemClick" />
+                </DataTemplate>
+              </ItemsRepeater.ItemTemplate>
+              </ItemsRepeater>
+            </Grid>
+          </ScrollViewer>
+          <Rectangle x:Name="ContinueStartFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Left" Fill="{ThemeResource HaloShelfFadeStartBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
+          <Rectangle x:Name="ContinueEndFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Right" Fill="{ThemeResource HaloShelfFadeEndBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
+        </Grid>
       </StackPanel>
       <!--
         A repeater, not an items control: the catalog cap allows sixteen shelves

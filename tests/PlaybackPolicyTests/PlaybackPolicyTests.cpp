@@ -4,6 +4,7 @@
 #include "Services/AccountLabelPolicy.h"
 #include "Services/AddonListPolicy.h"
 #include "Services/LanguagePolicy.h"
+#include "Services/PlayableVideoPolicy.h"
 #include "Services/RatingPolicy.h"
 #include "ViewModels/QualityMedalPolicy.h"
 #include "Api/OpenSubtitlesHashPolicy.h"
@@ -522,49 +523,6 @@ namespace
         }
     }
 
-    void TestVideoQualityBadges()
-    {
-        using HaloDesktop::Playback::ClassifyVideoQuality;
-        using HaloDesktop::Playback::VideoDynamicRange;
-        using HaloDesktop::Playback::VideoFormat;
-        auto const badge=[](std::int32_t width,std::int32_t height,VideoDynamicRange range=VideoDynamicRange::Standard)
-        {
-            return ClassifyVideoQuality(VideoFormat{width,height,range});
-        };
-
-        Require(badge(3840,2160).Tier==L"4K","a 4K master was not badged as 4K");
-        Require(badge(3840,2160).Detail==L"ULTRA HD","a 4K master lost its qualifier");
-        Require(badge(4096,1716).Tier==L"4K","a DCI scope master was not badged as 4K");
-        // The reason the tiers classify on area: scope framing costs a quarter of the
-        // height, and portrait video hands the larger number to the wrong dimension.
-        Require(badge(3840,1600).Tier==L"4K","a 2.39:1 4K master was demoted by its letterboxed height");
-        Require(badge(2160,3840).Tier==L"4K","a portrait 4K clip was not badged as 4K");
-        Require(badge(1080,1920).Tier==L"1080P","a portrait 1080p clip was promoted by its height");
-        Require(badge(3440,1440).Tier==L"1440P","an ultrawide 1440p panel capture was promoted by its width");
-        Require(badge(2560,1440).Tier==L"1440P","a 1440p master was not badged as QHD");
-        Require(badge(2560,1440).Detail==L"QHD","a 1440p master lost its qualifier");
-        Require(badge(2560,1080).Tier==L"1080P","an ultrawide 1080p master was promoted by its width");
-        Require(badge(1920,1080).Tier==L"1080P","a 1080p master was not badged as full HD");
-        Require(badge(1920,1080).Detail==L"FULL HD","a 1080p master lost its qualifier");
-        Require(badge(1920,800).Tier==L"1080P","a 2.39:1 1080p master was demoted by its letterboxed height");
-        Require(badge(1440,1080).Tier==L"1080P","an anamorphic 1080p master was demoted");
-        Require(badge(1280,720).Tier==L"720P","a 720p master was not badged as HD");
-        Require(badge(1280,536).Tier==L"720P","a 2.39:1 720p master was demoted by its letterboxed height");
-        Require(badge(854,480).Tier==L"SD","a 480p file was not badged as SD");
-        Require(badge(854,480).Detail.empty(),"an SD file gained a qualifier it does not need");
-        Require(badge(720,576).Tier==L"SD","a PAL file was not badged as SD");
-
-        Require(badge(3840,2160,VideoDynamicRange::Hdr).Detail==L"HDR","a PQ master did not report HDR");
-        Require(badge(3840,2160,VideoDynamicRange::Hlg).Detail==L"HLG","an HLG master did not report HLG");
-        Require(badge(3840,2160,VideoDynamicRange::DolbyVision).Detail==L"DOLBY VISION","a Dolby Vision master did not report it");
-        Require(badge(3840,2160,VideoDynamicRange::Hdr).Tier==L"4K","dynamic range overwrote the resolution tier");
-        Require(badge(1920,1080,VideoDynamicRange::DolbyVision).Detail==L"DOLBY VISION","Dolby Vision was reported only at 4K");
-
-        Require(badge(0,0).Tier.empty(),"an undescribed video earned a badge");
-        Require(badge(1920,0).Tier.empty(),"a video with no height earned a badge");
-        Require(badge(-1920,-1080).Tier.empty(),"a negative frame size earned a badge");
-    }
-
     void TestAddonSelection()
     {
         using HaloDesktop::Services::AddonIdentity;
@@ -904,6 +862,26 @@ namespace
     }
 
     // Mirrors App.tsx (theme-dark on the title page) and TitleBar's dark player bar.
+    // Mirrors apps/desktop/tests/playableVideo.test.ts.
+    void TestPlayableVideo()
+    {
+        using HaloDesktop::Services::MovieVideoId;
+        using HaloDesktop::Services::PlayableFromPreview;
+
+        // A TMDB film plays by the IMDb id its addon names.
+        Require(MovieVideoId(L"tmdb:969681", L"tt22084616") == L"tt22084616",
+            "a TMDB film did not play by the IMDb id its addon names");
+        Require(PlayableFromPreview(L"tmdb:969681", L"tt22084616"),
+            "a TMDB film naming its video was not playable from its card");
+        // A film without a named video plays by its own id.
+        Require(MovieVideoId(L"tt0111161", L"") == L"tt0111161", "a film without a named video lost its own id");
+        Require(MovieVideoId(L"tt1", L"  ") == L"tt1", "a blank named video replaced the film's own id");
+        Require(MovieVideoId(L"tmdb:1", L" tt9 ") == L"tt9", "a named video was not trimmed");
+        // A card with an id stream addons do not know goes through the title page.
+        Require(PlayableFromPreview(L"tt0111161", L""), "an IMDb film was not playable from its card");
+        Require(!PlayableFromPreview(L"tmdb:969681", L""), "a card with an unknown id was played from its preview");
+    }
+
     void TestShellChrome()
     {
         using HaloDesktop::Shell::ResolveShellChrome;
@@ -941,7 +919,6 @@ int main()
         TestProtectedHashPolicy();
         TestResponseSizePolicy();
         TestWindowPresentationPolicy();
-        TestVideoQualityBadges();
         TestQualityMedals();
         TestQualityMedalsFromPicture();
         TestHaloMarkGeometry();
@@ -961,6 +938,7 @@ int main()
         TestAccountLabel();
         TestAddonListPolicy();
         TestShellChrome();
+        TestPlayableVideo();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }

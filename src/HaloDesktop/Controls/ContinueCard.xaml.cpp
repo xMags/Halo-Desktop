@@ -10,6 +10,7 @@
 #include "Shell/LayoutMetricsService.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <winrt/Windows.Foundation.Numerics.h>
 
@@ -19,6 +20,10 @@ namespace winrt::HaloDesktop::implementation
     ContinueCard::ContinueCard()
     {
         InitializeComponent();
+        Microsoft::UI::Xaml::Vector3Transition lift;
+        lift.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+            ::HaloDesktop::Controls::CardHoverDuration));
+        TranslationTransition(lift);
         ApplyLayoutMetrics();
     }
 
@@ -132,9 +137,9 @@ namespace winrt::HaloDesktop::implementation
         m_click(*this, args);
     }
 
-    // Same 2px lift and accented frame as PosterCard: the two sit side by side on
-    // Home, and a strip where only half the cards answer the pointer reads as the
-    // other half being disabled.
+    // The same hover as PosterCard: the two sit side by side on Home, and a strip
+    // where only half the cards answer the pointer reads as the other half being
+    // disabled.
     void ContinueCard::OnCardPointerEntered(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
@@ -149,12 +154,16 @@ namespace winrt::HaloDesktop::implementation
         SetHovered(false);
     }
 
+    // Every part fades on its own transition, so this only sets where each ends up.
     void ContinueCard::SetHovered(bool hovered)
     {
-        Translation({ 0.0F, hovered ? -2.0F : 0.0F, 0.0F });
-        if (auto const ring = ArtHoverRing())
+        if (hovered)
         {
-            ring.Opacity(hovered ? 1.0 : 0.0);
+            m_hoverShadow.Prepare(ShadowHost(), *this);
         }
+        Translation({ 0.0F, hovered ? ::HaloDesktop::Controls::CardHoverLift : 0.0F, 0.0F });
+        if (auto const ring = ArtHoverRing()) ring.Opacity(hovered ? 1.0 : 0.0);
+        if (auto const rest = ArtRestRing()) rest.Opacity(hovered ? 0.0 : 1.0);
+        if (auto const host = ShadowHost()) host.Opacity(hovered ? 1.0 : 0.0);
     }
 }

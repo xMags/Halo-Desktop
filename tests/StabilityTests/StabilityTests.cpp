@@ -242,6 +242,27 @@ namespace
         Require(!payload.Global.front().ProvidedGlobally, "a global entry was marked as provided globally");
         Require(payload.User[0].ProvidedGlobally, "a personal entry the admin also installs was not marked");
         Require(!payload.User[1].ProvidedGlobally, "a malformed providedGlobally was read as true");
+        Require(payload.User[0].TransportUrl.value_or(L"") == L"https://a.test/manifest.json",
+            "a personal addon's transport URL was not read");
+
+        // A hidden URL may come as null or as something other than a string; the
+        // row stays, without a URL, and the rest of the list still parses.
+        auto const hidden = HaloDesktop::Api::Mappers::ParseAddons(Json(LR"({
+            "global": [
+                { "id": "g1", "transportUrl": null, "manifest": { "id": "a", "name": "A", "version": "1" }, "position": 0 },
+                { "id": "g2", "transportUrl": 7, "manifest": { "id": "b", "name": "B", "version": "1" }, "position": 1 },
+                { "id": "g3", "manifest": { "id": "c", "name": "C", "version": "1" }, "position": 2 }
+            ],
+            "user": [
+                { "id": "u1", "transportUrl": "https://u.test/manifest.json",
+                  "manifest": { "id": "u", "name": "U", "version": "1" }, "position": 0 }
+            ]
+        })"));
+        Require(hidden.Global.size() == 3 && hidden.User.size() == 1, "a null transport URL failed the addon list");
+        Require(!hidden.Global[0].TransportUrl && !hidden.Global[1].TransportUrl && !hidden.Global[2].TransportUrl,
+            "a null or malformed transport URL was read as a URL");
+        Require(hidden.User[0].TransportUrl.value_or(L"") == L"https://u.test/manifest.json",
+            "a row beside a hidden URL lost its own");
 
         auto const me = HaloDesktop::Api::Mappers::ParseMe(Json(
             LR"({"id":"u","username":"kenneth","isAdmin":false,"createdAt":1,"plan":" premium ","avatarVersion":"v2"})"));
@@ -311,7 +332,9 @@ namespace
                 { "character": "Nobody" } ] },
             "videos": [
                 { "id": "tt1:1:1", "name": "Pilot", "season": 1, "episode": 1 },
-                { "id": "tt1:1:2", "season": 1, "episode": 2 } ]
+                { "id": "tt1:1:2", "season": 1, "episode": 2 },
+                { "id": "tt1:1:3", "title": "   ", "season": 1, "episode": 3 },
+                { "id": "tt1:1:4", "title": " \t ", "name": "  Finale  ", "season": 1, "episode": 4 } ]
         }})"));
         Require(meta.Preview.Genres.size() == 1 && meta.Released && meta.AgeRating.value_or(L"") == L"U/A 13+"
                 && meta.Country && meta.Language && meta.Awards,
@@ -322,9 +345,13 @@ namespace
         Require(meta.PicturedCast.size() == 2 && meta.PicturedCast[0].Photo && meta.PicturedCast[0].Character
                 && !meta.PicturedCast[1].Photo,
             "the pictured cast did not follow the reference rules");
-        Require(meta.Videos.size() == 2 && meta.Videos[0].HasTitle && meta.Videos[0].Title == L"Pilot"
+        Require(meta.Videos.size() == 4 && meta.Videos[0].HasTitle && meta.Videos[0].Title == L"Pilot"
                 && !meta.Videos[1].HasTitle && meta.Videos[1].Title == L"Episode",
             "a video's own name was not told apart from the placeholder");
+        Require(!meta.Videos[2].HasTitle && meta.Videos[2].Title == L"Episode",
+            "a title of nothing but spaces was kept as the video's title");
+        Require(meta.Videos[3].HasTitle && meta.Videos[3].Title == L"Finale",
+            "a blank title did not fall back to the video's trimmed name");
 
         auto const odd = HaloDesktop::Api::Mappers::ParseMeta(Json(LR"({"meta":{
             "id": "tt1", "type": "movie", "name": "Film",
@@ -1262,6 +1289,12 @@ namespace
         Require(ofShow.size() == 2 && ofShow[0].VideoId == L"tt1:1:2" && ofShow[1].VideoId == L"tt1:1:3",
                 "the rows of a title were not every live row of it");
         Require(HistoryRowsOf(history, L"").empty(), "an empty item id matched rows");
+
+        // Mirrors liveWatchStates: a tombstone never reads as a play.
+        auto const live = HaloDesktop::Services::LiveWatchRows(history);
+        Require(live.size() == 3 && live[0].VideoId == L"tt1:1:2" && live[1].VideoId == L"tt2"
+                    && live[2].VideoId == L"tt1:1:3",
+                "a removal tombstone was read as part of the watch history");
 
         // 500 rows a request, the last batch holding the rest.
         std::vector<HaloDesktop::Api::Dto::WatchEntry> many(1001, row);

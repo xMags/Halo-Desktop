@@ -112,6 +112,10 @@ namespace HaloDesktop::Services
         {
             m_userId = identity->UserId;
             m_userName = identity->Username;
+            // What the last /auth/me said, until the live answer replaces it.
+            m_isAdmin = identity->IsAdmin.value_or(false);
+            m_plan = identity->Plan;
+            m_avatarVersion = identity->AvatarVersion;
             NotifyIdentityChanged();
             NotifyProfileChanged();
         }
@@ -357,6 +361,9 @@ namespace HaloDesktop::Services
             co_await m_store->SaveIdentityAsync(Auth::StoredIdentity{
                 .UserId = me.Id,
                 .Username = me.Username,
+                .IsAdmin = me.IsAdmin,
+                .Plan = me.Plan,
+                .AvatarVersion = me.AvatarVersion,
             }, generation);
         }
         catch (...)

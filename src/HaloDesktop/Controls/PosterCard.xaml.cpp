@@ -5,7 +5,6 @@
 #endif
 
 #include "App.xaml.h"
-#include "Controls/ThemeColorLookup.h"
 #include "Shell/LayoutMetricsService.h"
 
 #include <algorithm>
@@ -13,20 +12,10 @@
 #include <cmath>
 #include <limits>
 #include <winrt/Windows.Foundation.Numerics.h>
-#include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
 namespace
 {
-    // The reference's hover: the card lifts 2px over 120ms while its art takes
-    // the hover stroke and `box-shadow: 0 8px 16px -6px`. The negative spread
-    // is drawn by insetting the shadow's shape, which keeps it off the strip's
-    // clipped sides.
-    constexpr std::chrono::milliseconds HoverDuration{ 120 };
-    constexpr float HoverLift = -2.0F;
-    constexpr float ShadowOffsetY = 8.0F;
-    constexpr float ShadowBlur = 16.0F;
-    constexpr float ShadowInset = 6.0F;
     // The 2:3 poster frame.
     constexpr double PosterAspect = 1.5;
 }
@@ -43,7 +32,8 @@ namespace winrt::HaloDesktop::implementation
     {
         InitializeComponent();
         Microsoft::UI::Xaml::Vector3Transition lift;
-        lift.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(HoverDuration));
+        lift.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+            ::HaloDesktop::Controls::CardHoverDuration));
         TranslationTransition(lift);
         ApplyLayoutMetrics();
     }
@@ -196,53 +186,14 @@ namespace winrt::HaloDesktop::implementation
     {
         if (hovered)
         {
-            EnsureHoverShadow();
+            m_hoverShadow.Prepare(ShadowHost(), *this);
         }
-        Translation({ 0.0F, hovered ? HoverLift : 0.0F, 0.0F });
+        Translation({ 0.0F, hovered ? ::HaloDesktop::Controls::CardHoverLift : 0.0F, 0.0F });
         if (auto const ring = ArtHoverRing()) ring.Opacity(hovered ? 1.0 : 0.0);
         if (auto const rest = ArtRestRing()) rest.Opacity(hovered ? 0.0 : 1.0);
         if (auto const host = ShadowHost()) host.Opacity(hovered ? 1.0 : 0.0);
     }
 
-    void PosterCard::EnsureHoverShadow()
-    {
-        auto const host = ShadowHost();
-        if (!host) return;
-        if (!m_shadowVisual)
-        {
-            auto const compositor = Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(host).Compositor();
-            m_shadow = compositor.CreateDropShadow();
-            m_shadow.BlurRadius(ShadowBlur);
-            m_shadow.Offset({ 0.0F, ShadowOffsetY, 0.0F });
-            // A brushless sprite casts the shadow of its own rectangle and
-            // draws nothing else; the art's rounded corners lie outside the
-            // inset rectangle, so none of them peeks out.
-            m_shadowVisual = compositor.CreateSpriteVisual();
-            m_shadowVisual.Shadow(m_shadow);
-            m_shadowVisual.Offset({ ShadowInset, ShadowInset, 0.0F });
-            Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::SetElementChildVisual(host, m_shadowVisual);
-            m_shadowSizeChanged = host.SizeChanged(winrt::auto_revoke, [this](auto const&, auto const&)
-            {
-                SizeHoverShadow();
-            });
-            SizeHoverShadow();
-        }
-        // Read on every hover, so a theme switch since the last one is honoured.
-        if (auto const color = ::HaloDesktop::Controls::ThemeColor(*this, L"HaloHoverCardShadowColor"))
-        {
-            m_shadow.Color(*color);
-        }
-    }
-
-    void PosterCard::SizeHoverShadow()
-    {
-        auto const host = ShadowHost();
-        if (!m_shadowVisual || !host) return;
-        auto const size = host.ActualSize();
-        m_shadowVisual.Size({
-            (std::max)(0.0F, size.x - 2.0F * ShadowInset),
-            (std::max)(0.0F, size.y - 2.0F * ShadowInset) });
-    }
     // The placeholder is opaque and sits directly behind the artwork, so leaving
     // it in place made every card in the list draw its art twice.
     void PosterCard::ShowPlaceholder(bool visible)

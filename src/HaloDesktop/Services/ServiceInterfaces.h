@@ -210,6 +210,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual concurrency::task<void> SetCatalogsVisibleAsync(
             winrt::hstring addonId,
             bool visible) = 0;
+        // Re-judges which rows can be edited against the session's admin flag
+        // now, rebuilding Items when the answer changed. Cheap and idempotent.
+        virtual void RefreshEditability() = 0;
     };
 
     class ISessionService

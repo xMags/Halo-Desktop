@@ -45,6 +45,12 @@ namespace HaloDesktop::Services::Auth
     {
         winrt::hstring UserId;
         winrt::hstring Username;
+        // What the last /auth/me said about the account, so a launch can show it
+        // before the server answers again. A file written before these were kept,
+        // or holding a value that does not parse, reads them as unknown.
+        std::optional<bool> IsAdmin;
+        std::optional<winrt::hstring> Plan;
+        std::optional<winrt::hstring> AvatarVersion;
     };
 
     // Thread-safe. Storage is one current-user DPAPI file in LocalFolder.

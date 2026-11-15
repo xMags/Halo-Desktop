@@ -8,6 +8,7 @@
 #include "Services/HomeRowsPolicy.h"
 #include "Services/LibraryService.h"
 #include "Services/NavigationService.h"
+#include "Services/PlayableVideoPolicy.h"
 #include "ViewModels/HomeStatePolicy.h"
 #include "ViewModels/ObservableHelper.h"
 #include <algorithm>
@@ -30,24 +31,14 @@ namespace
             : ::HaloDesktop::ViewModels::HomeMediaKind::Movie;
     }
 
-    // A film can be played from its card as it is when its id is already the
-    // one stream addons look up (IMDb), or the card names the video to play.
-    // Otherwise the title page, which loads the full details, is the way in.
     winrt::hstring MovieVideoId(winrt::HaloDesktop::MediaSummary const& media)
     {
-        std::wstring hinted{ media.DefaultVideoId() };
-        auto const first = hinted.find_first_not_of(L" \t\r\n");
-        if (first == std::wstring::npos)
-        {
-            return media.Id();
-        }
-        auto const last = hinted.find_last_not_of(L" \t\r\n");
-        return winrt::hstring{ hinted.substr(first, last - first + 1) };
+        return winrt::hstring{ ::HaloDesktop::Services::MovieVideoId(media.Id(), media.DefaultVideoId()) };
     }
 
     bool PlayableFromPreview(winrt::HaloDesktop::MediaSummary const& media)
     {
-        return std::wstring_view{ media.Id() }.starts_with(L"tt") || MovieVideoId(media) != media.Id();
+        return ::HaloDesktop::Services::PlayableFromPreview(media.Id(), media.DefaultVideoId());
     }
 }
 namespace winrt::HaloDesktop::implementation

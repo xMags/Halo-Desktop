@@ -12,6 +12,8 @@
         CSS rgba() tokens converted with alpha = round(a * 255).
       -->
       <Color x:Key="HaloMicaColor">#FF0A0C11</Color>
+      <!-- The ground at zero alpha, so a fade to it never passes through another hue. -->
+      <Color x:Key="HaloMicaClearColor">#000A0C11</Color>
       <Color x:Key="HaloLayerColor">#591C202A</Color>
       <Color x:Key="HaloCardColor">#8C1E222E</Color>
       <Color x:Key="HaloCardStrokeColor">#8C3C4456</Color>
@@ -82,6 +84,15 @@
       <Color x:Key="HaloGlowBColor">#1AA878FF</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
+      <!-- Laid over a strip's edge while it still hides cards: the ground fading to clear, inward. -->
+      <LinearGradientBrush x:Key="HaloShelfFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloMicaColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="HaloShelfFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
       <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />
@@ -174,6 +185,7 @@
 
     <ResourceDictionary x:Key="Light">
       <Color x:Key="HaloMicaColor">#FFF4F6FA</Color>
+      <Color x:Key="HaloMicaClearColor">#00F4F6FA</Color>
       <Color x:Key="HaloLayerColor">#B3FFFFFF</Color>
       <Color x:Key="HaloCardColor">#D1FFFFFF</Color>
       <Color x:Key="HaloCardStrokeColor">#14101828</Color>
@@ -244,6 +256,15 @@
       <Color x:Key="HaloGlowBColor">#0D7850C8</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
+      <!-- Laid over a strip's edge while it still hides cards: the ground fading to clear, inward. -->
+      <LinearGradientBrush x:Key="HaloShelfFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloMicaColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="HaloShelfFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
+        <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
       <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />

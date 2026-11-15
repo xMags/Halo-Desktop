@@ -1,5 +1,7 @@
 #include "StorageTests.h"
 
+#include "Security/Dpapi.h"
+#include "Services/Auth/SessionStore.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/Downloads/DownloadIndexStore.h"
 #include "Services/Downloads/TransferEngine.h"
@@ -604,8 +606,61 @@ namespace
     }
 }
 
+namespace
+{
+    // The saved identity carries what the last /auth/me said about the account,
+    // so the account caption is right at launch. A file the previous version
+    // wrote, or one whose new fields do not parse, still restores the account.
+    void TestSavedIdentityProfile()
+    {
+        using HaloDesktop::Services::Auth::SessionStore;
+        using HaloDesktop::Services::Auth::StoredIdentity;
+
+        TemporaryDirectory const temporary{ L"HaloDesktop-Identity-" };
+        auto const identityPath = temporary.Path() / L"auth-identity.bin";
+        SessionStore store{ temporary.Path() };
+
+        HaloDesktop::Security::WriteProtectedTextAsync(
+            identityPath, R"({"userId":"u1","username":"kenneth"})").get();
+        auto const previous = store.LoadIdentityAsync().get();
+        Require(previous && previous->UserId == L"u1" && previous->Username == L"kenneth",
+            "an identity saved by the previous version did not restore");
+        Require(!previous->IsAdmin && !previous->Plan && !previous->AvatarVersion,
+            "an identity without a profile restored one");
+
+        store.SaveIdentityAsync(StoredIdentity{
+            .UserId = L"u1",
+            .Username = L"kenneth",
+            .IsAdmin = true,
+            .Plan = winrt::hstring{ L"premium" },
+            .AvatarVersion = winrt::hstring{ L"v3" },
+        }, 1).get();
+        auto const saved = store.LoadIdentityAsync().get();
+        Require(saved && saved->UserId == L"u1" && saved->IsAdmin.value_or(false)
+                && saved->Plan.value_or(L"") == L"premium" && saved->AvatarVersion.value_or(L"") == L"v3",
+            "the saved profile did not round-trip");
+        auto const bytes = ReadBytes(identityPath);
+        std::string const raw{ bytes.begin(), bytes.end() };
+        Require(raw.find("kenneth") == std::string::npos && raw.find("premium") == std::string::npos,
+            "the saved identity was written unprotected");
+
+        store.SaveIdentityAsync(StoredIdentity{ .UserId = L"u1", .Username = L"kenneth", .IsAdmin = false }, 2).get();
+        auto const plain = store.LoadIdentityAsync().get();
+        Require(plain && plain->IsAdmin.has_value() && !*plain->IsAdmin && !plain->Plan && !plain->AvatarVersion,
+            "a profile without a tier or picture did not round-trip");
+
+        HaloDesktop::Security::WriteProtectedTextAsync(
+            identityPath,
+            R"({"userId":"u1","username":"kenneth","isAdmin":"yes","plan":5,"avatarVersion":""})").get();
+        auto const odd = store.LoadIdentityAsync().get();
+        Require(odd && odd->UserId == L"u1", "a malformed profile field failed the restore");
+        Require(!odd->IsAdmin && !odd->Plan && !odd->AvatarVersion, "a malformed profile field was kept");
+    }
+}
+
 void RunStandaloneStorageTests()
 {
+    TestSavedIdentityProfile();
     TestPreferenceValidationAndConcurrentMerge();
     TestMigrationNoSource();
     TestMigrationSuccessRetryAndIdempotency();

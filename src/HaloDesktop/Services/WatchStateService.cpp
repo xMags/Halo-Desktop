@@ -50,6 +50,12 @@ namespace HaloDesktop::Services
             co_return;
         }
         auto const uiContext = winrt::apartment_context{};
+        // A run of marks is stamped past the one issued stamp it started from,
+        // so the stamps it writes are what later ones must outrank.
+        for (auto const& row : rows)
+        {
+            NoteTimestamp(row.UpdatedAt);
+        }
         auto const version = ++m_writeVersion;
         auto stored = co_await m_apiClient->PutWatchStateAsync(std::move(rows));
         co_await uiContext;
@@ -142,9 +148,9 @@ namespace HaloDesktop::Services
         m_lastTimestamp = (std::max)(m_lastTimestamp, stamp);
     }
 
-    std::vector<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Rows() const { return m_rows; }
+    std::vector<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Rows() const { return LiveWatchRows(m_rows); }
     bool WatchStateService::HasLoaded() const noexcept { return m_loaded; }
-    std::optional<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Find(winrt::hstring const& videoId)const{auto found=std::find_if(m_rows.begin(),m_rows.end(),[&](auto const&row){return row.VideoId==videoId;});return found==m_rows.end()?std::nullopt:std::optional<::HaloDesktop::Api::Dto::WatchEntry>{*found};}
+    std::optional<::HaloDesktop::Api::Dto::WatchEntry> WatchStateService::Find(winrt::hstring const& videoId)const{auto found=std::find_if(m_rows.begin(),m_rows.end(),[&](auto const&row){return row.VideoId==videoId&&!row.RemovedAt;});return found==m_rows.end()?std::nullopt:std::optional<::HaloDesktop::Api::Dto::WatchEntry>{*found};}
     void WatchStateService::OnAccountChanged() noexcept
     {
         ++m_writeVersion;

@@ -2,6 +2,8 @@
 
 #include "PosterCard.g.h"
 
+#include "Controls/CardHoverShadow.h"
+
 #include <cstdint>
 #include <winrt/Microsoft.UI.Composition.h>
 #include <winrt/Microsoft.UI.Input.h>
@@ -45,8 +47,6 @@ namespace winrt::HaloDesktop::implementation
         void ApplyColumnWidth(double width);
         void ShowPlaceholder(bool visible);
         void SetHovered(bool hovered);
-        void EnsureHoverShadow();
-        void SizeHoverShadow();
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
@@ -55,13 +55,10 @@ namespace winrt::HaloDesktop::implementation
         bool m_showKindBadge{};
         bool m_fillsColumn{};
         double m_cardWidth{ 132.0 };
-        // Built on the first hover rather than for every card realised.
-        Microsoft::UI::Composition::SpriteVisual m_shadowVisual{ nullptr };
-        Microsoft::UI::Composition::DropShadow m_shadow{ nullptr };
+        ::HaloDesktop::Controls::CardHoverShadow m_hoverShadow;
         std::uint64_t m_metricsToken{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
         Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_sizeChanged;
-        Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_shadowSizeChanged;
     };
 }
 

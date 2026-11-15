@@ -3,6 +3,7 @@
 
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
+#include "Services/PlayableVideoPolicy.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/TitleActions.h"
 #include "Services/WatchStateService.h"
@@ -619,30 +620,42 @@ namespace HaloDesktop::Views
         // A series' own id is never a video, so it has no watch row and no
         // download of its own.
         auto const isSeries = media.Kind() == winrt::HaloDesktop::MediaKind::Series;
+        // A film plays, and is marked and saved, by the video its addon names,
+        // as the Home hero does; one whose id stream addons do not know goes
+        // through its title page, which finds the video.
+        auto const videoId = winrt::hstring{ ::HaloDesktop::Services::MovieVideoId(id, media.DefaultVideoId()) };
+        auto const playable = ::HaloDesktop::Services::PlayableFromPreview(id, media.DefaultVideoId());
 
         MenuComposer menu{ m_navigation, m_downloads, m_actions, anchor, std::move(beforeOpen) };
         if (!isSeries)
         {
-            menu.Item(L"Play", PlayGlyph, [navigation = menu.Navigation(), beforeOpen = menu.BeforeOpen(), type, id, itemId, title, poster]()
+            menu.Item(L"Play", PlayGlyph, [navigation = menu.Navigation(), beforeOpen = menu.BeforeOpen(), type, id, videoId, playable, itemId, title, poster]()
             {
                 if (beforeOpen) beforeOpen();
+                if (!playable)
+                {
+                    navigation->GoTo(
+                        ::HaloDesktop::Services::Page::Detail,
+                        winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(type, id, title, poster));
+                    return;
+                }
                 navigation->ShowSheet(
                     ::HaloDesktop::Services::Page::Sources,
                     winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
-                        type, id, id, itemId, title, title, L"", poster));
+                        type, id, videoId, itemId, title, title, L"", poster));
             });
-            menu.AddPlayOffline(id);
+            menu.AddPlayOffline(videoId);
         }
         menu.AddDetails(type, id, title, poster);
         menu.Separator();
         if (!isSeries)
         {
-            menu.AddWatched({ id, itemId, title, poster }, {});
+            menu.AddWatched({ videoId, itemId, title, poster }, {});
         }
         menu.AddLibrary(type, id, title, poster);
         if (!isSeries)
         {
-            menu.AddSavedCopy(id);
+            menu.AddSavedCopy(videoId);
         }
         menu.ShowAt(anchor, args);
     }

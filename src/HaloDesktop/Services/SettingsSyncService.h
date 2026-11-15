@@ -4,10 +4,12 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 #include <pplawait.h>
 #include <ppltasks.h>
@@ -44,6 +46,12 @@ namespace HaloDesktop::Services
             std::shared_ptr<QueryCache> queryCache,
             std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> paths,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
+        ~SettingsSyncService();
+
+        SettingsSyncService(SettingsSyncService const&) = delete;
+        SettingsSyncService& operator=(SettingsSyncService const&) = delete;
+        SettingsSyncService(SettingsSyncService&&) = delete;
+        SettingsSyncService& operator=(SettingsSyncService&&) = delete;
 
         [[nodiscard]] concurrency::task<void> LoadAsync();
         [[nodiscard]] winrt::Windows::Data::Json::JsonObject RawValue() const;
@@ -75,7 +83,15 @@ namespace HaloDesktop::Services
         void CatalogLanguage(std::optional<winrt::hstring> value);
         void OnAccountChanged(winrt::hstring const& serverUrl, winrt::hstring const& userId);
 
+        // Raised, on this thread, when changes made before the document was read
+        // are dropped because no document could be had: the values shown for
+        // them are gone, and every getter reads the stored values again. Returns
+        // 0 for an empty handler.
+        [[nodiscard]] std::uint64_t AddRevertedHandler(std::function<void()> handler);
+        void RemoveRevertedHandler(std::uint64_t token) noexcept;
+
     private:
+        void NotifyReverted();
         [[nodiscard]] concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> ReadMirrorAsync();
         [[nodiscard]] concurrency::task<void> WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload);
         [[nodiscard]] concurrency::task<void> SaveAsync(
@@ -96,6 +112,8 @@ namespace HaloDesktop::Services
         std::filesystem::path m_mirrorRoot;
         std::filesystem::path m_mirrorPath;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
+        // Declared after the timer, so it is released first.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_debounceTickRevoker{};
         winrt::Windows::Data::Json::JsonObject m_value;
         std::int64_t m_updatedAt{};
         std::uint64_t m_writeVersion{};
@@ -113,5 +131,7 @@ namespace HaloDesktop::Services
         bool m_documentRead{};
         // Edits made before that, newest value per key, in first-edit order.
         std::vector<UnreadEdit> m_unreadEdits;
+        std::unordered_map<std::uint64_t, std::function<void()>> m_revertedHandlers;
+        std::uint64_t m_nextRevertedToken{ 1 };
     };
 }

@@ -59,6 +59,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool CanGoBack() const noexcept;
         [[nodiscard]] Page CurrentPage() const noexcept;
         [[nodiscard]] Page CurrentOverlayPage() const noexcept;
+        // The section a title page or a See all page was reached from: the newest
+        // page behind the current one on the shell's back stack that is neither,
+        // or Home when there is none. The reference keeps the rail on the root of
+        // its screen stack, which is that section.
+        [[nodiscard]] Page SectionBehindCurrentPage() const;
         [[nodiscard]] bool IsOverlayOpen() const noexcept;
         [[nodiscard]] bool IsSheetOpen() const noexcept;
         void SetRouteChangedHandler(RouteChangedHandler handler);

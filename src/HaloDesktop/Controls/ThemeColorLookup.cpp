@@ -53,12 +53,30 @@ namespace HaloDesktop::Controls
         }
         try
         {
-            auto const theme = scope.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light
+            return ThemeColor(scope.ActualTheme(), key);
+        }
+        catch (...)
+        {
+            return std::nullopt;
+        }
+    }
+
+    std::optional<winrt::Windows::UI::Color> ThemeColor(
+        winrt::Microsoft::UI::Xaml::ElementTheme theme,
+        wchar_t const* key)
+    {
+        if (!key)
+        {
+            return std::nullopt;
+        }
+        try
+        {
+            auto const dictionary = theme == winrt::Microsoft::UI::Xaml::ElementTheme::Light
                 ? winrt::hstring{ L"Light" }
                 : winrt::hstring{ L"Default" };
             return FindInDictionary(
                 winrt::Microsoft::UI::Xaml::Application::Current().Resources(),
-                theme,
+                dictionary,
                 winrt::box_value(winrt::hstring{ key }),
                 0);
         }
