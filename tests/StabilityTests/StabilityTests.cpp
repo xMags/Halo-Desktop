@@ -21,6 +21,7 @@
 #include "ApiClientAuthTest.h"
 #include "DownloadTransferTest.h"
 #include "HomeRowsTests.h"
+#include "HomeShelfLoadTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1332,6 +1333,7 @@ int main()
         TestOptionalSubtitleFallback();
         TestContinueShelf();
         RunHomeRowsTests();
+        RunHomeShelfLoadTests();
         TestWatchMarks();
         TestHistoryRemoval();
         TestEpisodePositionParsing();

@@ -680,6 +680,10 @@ namespace winrt::HaloDesktop::implementation
     }
     ShelfSeeAll Shelf::SeeAll() const noexcept { return m_seeAll; }
     std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> Shelf::Paging() const noexcept { return m_paging; }
+    bool Shelf::IsLoading() const noexcept { return m_loading; }
+    void Shelf::SetLoading(bool loading) noexcept { m_loading = loading; }
+    std::wstring const& Shelf::Key() const noexcept { return m_key; }
+    void Shelf::SetKey(std::wstring key) { m_key = std::move(key); }
 
     DetailNavParams::DetailNavParams(hstring type,hstring metaId,hstring title,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_title(std::move(title)),m_poster(std::move(poster)){}
     hstring DetailNavParams::Type()const{return m_type;}hstring DetailNavParams::MetaId()const{return m_metaId;}hstring DetailNavParams::Title()const{return m_title;}hstring DetailNavParams::Poster()const{return m_poster;}

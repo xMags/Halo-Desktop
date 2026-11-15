@@ -1,7 +1,9 @@
 #pragma once
 #include "HomeViewModel.g.h"
 #include "Services/AppServices.h"
+#include "Services/HomeShelfLoadPolicy.h"
 #include "Services/ServiceInterfaces.h"
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -33,6 +35,9 @@ namespace winrt::HaloDesktop::implementation
         void AdvanceFeatured();
         void StepFeatured(std::int32_t direction);
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FeaturedVisibility() const noexcept;
+        // The hero's skeleton: while the shelf list itself loads, and then until
+        // the shelves that have answered fix the carousel's picks.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FeaturedSkeletonVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RefreshErrorVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ContinueCountLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ContinueVisibility() const noexcept;
@@ -41,8 +46,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] auto ContinueItemsView() const { return m_continueItems; }
         [[nodiscard]] auto ShelvesView() const { return m_shelves; }
         [[nodiscard]] std::int32_t FilterIndex() const noexcept;
+        // The page itself: its rows, or the skeletons standing in for them.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ContentVisibility() const noexcept;
+        // The skeleton shelves shown while the shelf list itself loads.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility LoadingVisibility() const noexcept;
+        // Not projected: whether any skeleton is on screen, so the view runs
+        // their shared pulse only then.
+        [[nodiscard]] bool SkeletonsShown() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ErrorVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility EmptyVisibility() const noexcept;
         void SetFilter(std::int32_t index);
@@ -72,7 +82,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double Gutter() const noexcept;
         winrt::Windows::Foundation::IAsyncAction LoadAsync();
         winrt::Windows::Foundation::IAsyncAction ToggleFeaturedLibraryAsync(winrt::HaloDesktop::FeaturedItem item);
-        void AdoptSnapshot();
+        // Takes whatever the catalog now holds: the rows, the shelf list and
+        // every shelf that has landed. Unchanged rows are left alone.
+        void AdoptHome();
         void AdoptUserStateChange();
         void ReloadForAccount();
         void ApplyContinue();
@@ -91,6 +103,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] static std::vector<std::wstring> KeysOf(
             winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> const& titles);
         [[nodiscard]] bool HasUsableContent() const noexcept;
+        // A load failed, or every catalog shelf did. Not while a load runs.
+        [[nodiscard]] bool Failed() const;
         void RaiseState();
         void RaiseLayoutMetrics();
         void Raise(wchar_t const* name);
@@ -101,12 +115,20 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t m_metricsToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_continueToken{};
         ::HaloDesktop::Services::CatalogChangedToken m_userStateToken{};
+        ::HaloDesktop::Services::CatalogChangedToken m_homeToken{};
         ::HaloDesktop::Services::IdentityChangedToken m_identityToken{};
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_featured{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_sourceShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_continueItems{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_shelves{ nullptr };
+        // What each row of m_shelves is and draws, index for index.
+        std::vector<::HaloDesktop::Services::HomeRowIdentity> m_rowIdentities;
+        // How many of those rows are a shelf still loading.
+        std::size_t m_loadingRows{};
+        // The continue row the strip was last filled from, so a shelf landing
+        // does not refill an unchanged strip.
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continueSource{ nullptr };
         // The titles the recently watched shelf was last built with, so a
         // continue change that leaves them alone does not rebuild every shelf.
         std::vector<std::wstring> m_recentKeys;
@@ -115,8 +137,8 @@ namespace winrt::HaloDesktop::implementation
         std::uint32_t m_loadVersion{};
         std::uint64_t m_appliedVersion{};
         bool m_loading{ true };
-        bool m_error{};
-        bool m_refreshError{};
+        bool m_loadFailed{};
+        bool m_featuredSettled{};
         bool m_active{};
         bool m_featuredAutoAdvance{ true };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;

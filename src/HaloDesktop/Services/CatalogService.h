@@ -2,6 +2,7 @@
 
 #include "Services/CatalogRefreshPolicy.h"
 #include "Services/ContinueShelfPolicy.h"
+#include "Services/HomeShelfLoadPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
 #include "Api/Dto.h"
@@ -10,7 +11,9 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 namespace HaloDesktop::Api { class ApiClient; }
@@ -25,7 +28,11 @@ namespace HaloDesktop::Services
     class WatchStateService;
 
     // UI-thread-only catalog aggregator. API calls run on background threads;
-    // complete snapshots are applied only after the issuing request returns.
+    // their answers are applied on the UI thread, with no await between reading
+    // an answer's ticket and publishing it. The library and continue rows are
+    // published as soon as their own data is in; Home's catalog shelves are laid
+    // out once the addons are known and then land one at a time, each guarded by
+    // its own generation (HomeShelfBoard) and by the account version.
     class CatalogService final : public ICatalogService, public std::enable_shared_from_this<CatalogService>
     {
     public:
@@ -42,6 +49,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
         [[nodiscard]] std::uint64_t SnapshotVersion() const noexcept override;
+        [[nodiscard]] HomeCatalogStatus CatalogStatus() const override;
+        [[nodiscard]] CatalogChangedToken AddHomeChangedHandler(CatalogChangedHandler handler) override;
+        void RemoveHomeChangedHandler(CatalogChangedToken token) noexcept override;
         void InvalidateCatalogs() noexcept override;
         [[nodiscard]] bool CatalogsDirty() const noexcept override;
         [[nodiscard]] concurrency::task<void> RefreshCatalogsIfDirtyAsync() override;
@@ -51,8 +61,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Hero() const override;
         [[nodiscard]] winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
-            FeaturedSetForFilter(std::int32_t filterIndex, std::uint32_t count) const override;
+        [[nodiscard]] FeaturedSelection FeaturedForHome(std::int32_t filterIndex, std::uint32_t count) const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;
@@ -75,10 +84,46 @@ namespace HaloDesktop::Services
         void OnAccountChanged();
 
     private:
+        // One catalog shelf's request, as laid out on the board.
+        struct ShelfQuery final
+        {
+            winrt::hstring AddonId;
+            winrt::hstring AddonName;
+            ::HaloDesktop::Api::Dto::AddonRecord::Catalog Catalog;
+            // What the catalog is asked with: the account's language, for a
+            // language catalog that offers it.
+            std::vector<std::pair<winrt::hstring, winrt::hstring>> Extras;
+            std::wstring Key;
+        };
+
         [[nodiscard]] concurrency::task<void> RunSharedRefreshAsync(bool loadDependencies);
         [[nodiscard]] concurrency::task<void> LoadCoreAsync(
             bool loadDependencies,
             std::uint64_t accountVersion);
+        // The library, library shelf and continue row from the rows the library
+        // and watch-state services now hold.
+        void PublishUserRows();
+        [[nodiscard]] std::vector<ShelfQuery> BuildShelfQueries(std::optional<std::wstring_view> language) const;
+        void StartShelfFetches(std::vector<HomeShelfTicket> tickets);
+        // Awaits one shelf's request off the UI thread and hands its answer to
+        // the service back on it. Static so no `this` outlives the service: the
+        // continuation reaches it only through the weak reference.
+        static concurrency::task<void> RunShelfFetchAsync(
+            std::weak_ptr<CatalogService> weak,
+            winrt::apartment_context uiContext,
+            concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> request,
+            HomeShelfTicket ticket,
+            std::uint64_t accountVersion);
+        void ApplyShelfAnswer(
+            HomeShelfTicket const& ticket,
+            std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> answer);
+        [[nodiscard]] winrt::HaloDesktop::Shelf BuildCatalogShelf(
+            ShelfQuery const& query,
+            std::vector<::HaloDesktop::Api::Dto::MetaPreview> const* items) const;
+        // Re-lays the catalog shelves from the board and the stored answers,
+        // then the full shelf list with the library shelf ahead of them.
+        void ComposeCatalogShelves();
+        void NotifyHomeChanged();
         [[nodiscard]] std::vector<winrt::HaloDesktop::MediaSummary> BuildLibraryItems() const;
         [[nodiscard]] std::vector<winrt::HaloDesktop::Shelf> BuildShelves(
             winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> const& catalogShelves,
@@ -131,13 +176,20 @@ namespace HaloDesktop::Services
         std::uint64_t m_snapshotVersion{};
         std::uint64_t m_accountVersion{};
         std::uint64_t m_loadTaskAccountVersion{};
-        // The catalog language the committed shelves were asked with. A
+        // The catalog language the laid-out shelves were asked with. A
         // different one makes the catalogs dirty without anything else having
         // changed, and only the catalogs it affects are fetched again.
         std::optional<std::wstring> m_appliedLanguage;
-        // What each catalog of the committed snapshot returned, keyed by its
-        // request, so a refresh caused by the language alone reuses the rest.
-        std::unordered_map<std::wstring, std::vector<::HaloDesktop::Api::Dto::MetaPreview>> m_catalogResults;
+        // Home's catalog shelves: their load state in shelf order, the request
+        // behind each, and the titles each last answered with, by request key.
+        HomeShelfBoard m_shelfBoard;
+        std::vector<ShelfQuery> m_shelfQueries;
+        std::unordered_map<std::wstring, std::vector<::HaloDesktop::Api::Dto::MetaPreview>> m_shelfAnswers;
+        // The shelf built from each stored answer, so a shelf landing rebuilds
+        // only itself. Dropped with its answer.
+        std::unordered_map<std::wstring, winrt::HaloDesktop::Shelf> m_builtShelves;
+        std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_homeHandlers;
+        CatalogChangedToken m_nextHomeToken{ 1 };
         std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_continueHandlers;
         CatalogChangedToken m_nextContinueToken{ 1 };
         std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_userStateHandlers;

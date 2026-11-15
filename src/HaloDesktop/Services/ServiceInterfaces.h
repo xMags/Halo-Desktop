@@ -44,17 +44,48 @@ namespace HaloDesktop::Services
     using IdentityChangedToken = std::uint64_t;
     using IdentityChangedHandler = std::function<void()>;
 
+    // Home's carousel: the picks, once they can no longer change as slower
+    // catalogs answer. Until then Settled is false and Items is empty.
+    struct FeaturedSelection final
+    {
+        bool Settled{};
+        winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> Items{ nullptr };
+    };
+
+    // Where Home's catalog shelves stand as a whole.
+    struct HomeCatalogStatus final
+    {
+        // The shelf list (titles, sources, order) is laid out.
+        bool ListKnown{};
+        // It holds at least one catalog.
+        bool HasCatalogs{};
+        // Every shelf's last answer was a failure.
+        bool EveryShelfFailed{};
+    };
+
     class ICatalogService
     {
     public:
         virtual ~ICatalogService() = default;
+        // Completes once the addons, the library and the watch history are in and
+        // Home's shelf list is laid out; the library and continue projections are
+        // final by then. Each catalog shelf then loads on its own, in the
+        // background, and the Home changed handlers hear of every one that lands.
         [[nodiscard]] virtual concurrency::task<void> LoadAsync() = 0;
-        // True once a usable snapshot exists, so a caller can adopt what is already
-        // in memory instead of fetching the catalogs a second time.
+        // True once the shelf list is laid out, so a caller can adopt what is
+        // already in memory instead of fetching the catalogs a second time.
         [[nodiscard]] virtual bool HasLoaded() const = 0;
-        // Advances every time a snapshot worth showing replaces the last one, so a
-        // view holding an older one can tell without comparing its contents.
+        // Advances every time what Home shows changes (a shelf landing included),
+        // so a view holding an older state can tell without comparing contents.
         [[nodiscard]] virtual std::uint64_t SnapshotVersion() const = 0;
+        [[nodiscard]] virtual HomeCatalogStatus CatalogStatus() const = 0;
+        // Raised on the UI thread whenever SnapshotVersion advances because of a
+        // load: the library and continue rows arriving, the shelf list being laid
+        // out, a shelf landing. Not raised for the continue or user-state changes
+        // that have handlers of their own.
+        [[nodiscard]] virtual CatalogChangedToken AddHomeChangedHandler(
+            CatalogChangedHandler handler) = 0;
+        virtual void RemoveHomeChangedHandler(CatalogChangedToken token) noexcept = 0;
         // Addon mutations invalidate only the catalog portion of Home. A later
         // Home entry owns the refresh, which keeps ordinary navigation network free.
         virtual void InvalidateCatalogs() noexcept = 0;
@@ -71,9 +102,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary Hero() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::MediaSummary FeaturedForFilter(
             std::int32_t filterIndex) const = 0;
-        // Up to count distinct titles for the home carousel, in catalog order.
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
-            FeaturedSetForFilter(std::int32_t filterIndex, std::uint32_t count) const = 0;
+        // Up to count distinct titles for the home carousel, in catalog order,
+        // held back until the shelves that have answered fix them.
+        [[nodiscard]] virtual FeaturedSelection FeaturedForHome(std::int32_t filterIndex, std::uint32_t count) const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> ContinueWatching() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> Shelves() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const = 0;

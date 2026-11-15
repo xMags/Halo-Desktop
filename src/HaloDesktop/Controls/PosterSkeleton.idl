@@ -1,0 +1,11 @@
+namespace HaloDesktop
+{
+    // The reference's PosterCardSkeleton: a poster card's frame and two text
+    // bars, at the poster size of the current layout step. Drawn only; it
+    // takes no input and says nothing to assistive technology.
+    [default_interface]
+    runtimeclass PosterSkeleton : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        PosterSkeleton();
+    }
+}

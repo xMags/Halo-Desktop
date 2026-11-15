@@ -3,6 +3,11 @@
 #include "MediaShelf.g.h"
 
 #include <winrt/Windows.Foundation.h>
+
+namespace HaloDesktop::Controls
+{
+    class SkeletonPulse;
+}
 #include <winrt/Windows.Foundation.Collections.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -18,6 +23,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ItemsSource() const;
         void ItemsSource(winrt::Windows::Foundation::IInspectable const& value);
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SelectedItem() const;
+        [[nodiscard]] bool IsLoading() const noexcept;
+        void IsLoading(bool value);
+        // Not projected. The page's one pulse drives this shelf's skeletons.
+        void AttachSkeletonPulse(::HaloDesktop::Controls::SkeletonPulse const& pulse);
 
         winrt::event_token ItemClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler);
         void ItemClick(winrt::event_token const& token) noexcept;
@@ -47,6 +56,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable m_itemsSource{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_bindableItems{ nullptr };
         winrt::Windows::Foundation::IInspectable m_selectedItem{ nullptr };
+        bool m_loading{};
+        bool m_pulseAttached{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_itemClick;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_seeAllClick;
     };

@@ -27,6 +27,8 @@ namespace HaloDesktop::Views
     inline constexpr std::chrono::milliseconds HeroFade{ 400 };
     // The carousel's length, and so the most pips the hero carries.
     inline constexpr std::size_t HeroPipCount = 5;
+    // `.pip` widening into `.pip-active`: `transition: width 0.3s ease`.
+    inline constexpr std::chrono::milliseconds HeroPipResize{ 300 };
 
     // The hero's elements, all from HomePage.xaml.
     struct HomeHeroParts final
@@ -101,7 +103,11 @@ namespace HaloDesktop::Views
         void RebuildLayers(std::vector<winrt::HaloDesktop::FeaturedItem> const& items);
         void ReleaseLayers();
         void Activate(std::int32_t index, bool crossfade);
-        void UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items);
+        // Restyles the pips for the active title. A change of title within
+        // the same run animates the widths; a new run sets them outright, as
+        // the reference draws a new run's pips afresh.
+        void UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items, bool animateWidths);
+        void AnimatePipWidths(std::size_t count, std::array<double, HeroPipCount> const& from);
         void UpdateTitleTreatment();
         void UpdatePlaceholder();
         void RestartClock();
@@ -132,6 +138,9 @@ namespace HaloDesktop::Views
 
         winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard m_clock{ nullptr };
         winrt::Microsoft::UI::Xaml::Media::Animation::DoubleAnimation m_clockFill{ nullptr };
+        // The pips' widths, between their resting 8px and the active 28px.
+        // One storyboard for all of them, replaced on each change of title.
+        winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard m_pipWidths{ nullptr };
 
         std::vector<ArtLayer> m_layers;
         // The run of titles the layers were built for, by type, id and art.

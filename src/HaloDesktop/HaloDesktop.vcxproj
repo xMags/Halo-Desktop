@@ -343,6 +343,9 @@
     <ClInclude Include="Views\HomeHeroPresenter.h" />
     <ClInclude Include="Services\PlayableVideoPolicy.h" />
     <ClInclude Include="Controls\CardHoverShadow.h" />
+    <ClInclude Include="Services\HomeShelfLoadPolicy.h" />
+    <ClInclude Include="Controls\SkeletonPulse.h" />
+    <ClInclude Include="Controls\PosterSkeleton.xaml.h"><DependentUpon>PosterSkeleton.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -375,6 +378,7 @@
     <Page Include="Controls\HaloMark.xaml" />
     <Page Include="Controls\QualityMedal.xaml" />
     <Page Include="Views\HistoryPage.xaml" />
+    <Page Include="Controls\PosterSkeleton.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -627,6 +631,11 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Controls\CardHoverShadow.cpp" />
+    <ClCompile Include="Services\HomeShelfLoadPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Controls\SkeletonPulse.cpp" />
+    <ClCompile Include="Controls\PosterSkeleton.xaml.cpp"><DependentUpon>PosterSkeleton.xaml</DependentUpon></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
@@ -702,6 +711,7 @@
     <Midl Include="Controls\HaloMark.idl"><SubType>Code</SubType><DependentUpon>HaloMark.xaml</DependentUpon></Midl>
     <Midl Include="Controls\QualityMedal.idl"><SubType>Code</SubType><DependentUpon>QualityMedal.xaml</DependentUpon></Midl>
     <Midl Include="Views\HistoryPage.idl"><SubType>Code</SubType><DependentUpon>HistoryPage.xaml</DependentUpon></Midl>
+    <Midl Include="Controls\PosterSkeleton.idl"><SubType>Code</SubType><DependentUpon>PosterSkeleton.xaml</DependentUpon></Midl>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\halo-mark.png" />

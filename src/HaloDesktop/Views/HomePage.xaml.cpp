@@ -9,6 +9,7 @@
 #include "Controls/ContinueCard.xaml.h"
 #include "Controls/MediaShelf.xaml.h"
 #include "Controls/PlaceholderArt.xaml.h"
+#include "Controls/PosterSkeleton.xaml.h"
 #include "Controls/ShelfScrollPolicy.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
@@ -18,6 +19,7 @@
 #include <string_view>
 #include <vector>
 #include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Windows.System.h>
 
 namespace
@@ -108,10 +110,15 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args)
         {
             auto const self = weak.get();
-            if (self && IsHeroProperty(args.PropertyName()))
+            if (!self)
+            {
+                return;
+            }
+            if (IsHeroProperty(args.PropertyName()))
             {
                 self->SyncHero();
             }
+            self->UpdateSkeletonPulse();
         });
         m_themeChanged = ActualThemeChanged(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
         {
@@ -120,6 +127,43 @@ namespace winrt::HaloDesktop::implementation
                 self->m_hero->OnThemeChanged();
             }
         });
+    }
+
+    void HomePage::EnsureSkeletonPulse()
+    {
+        if (m_skeletonPulse)
+        {
+            return;
+        }
+        auto const compositor = Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(HeroSkeleton()).Compositor();
+        m_skeletonPulse = std::make_unique<::HaloDesktop::Controls::SkeletonPulse>(compositor);
+        m_skeletonPulse->Attach(HeroSkeletonBody());
+        m_skeletonPulse->Attach(ShelfSkeleton0());
+        m_skeletonPulse->Attach(ShelfSkeleton1());
+    }
+
+    void HomePage::UpdateSkeletonPulse()
+    {
+        if (!m_skeletonPulse)
+        {
+            return;
+        }
+        m_skeletonPulse->SetActive(m_onScreen && winrt::get_self<HomeViewModel>(m_viewModel)->SkeletonsShown());
+    }
+
+    void HomePage::OnShelfElementPrepared(
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::ItemsRepeater const& sender,
+        Microsoft::UI::Xaml::Controls::ItemsRepeaterElementPreparedEventArgs const& args)
+    {
+        // The list is bound only after the pulse exists; this is a guard.
+        if (!m_skeletonPulse)
+        {
+            return;
+        }
+        if (auto const shelf = args.Element().try_as<winrt::HaloDesktop::MediaShelf>())
+        {
+            winrt::get_self<MediaShelf>(shelf)->AttachSkeletonPulse(*m_skeletonPulse);
+        }
     }
 
     void HomePage::SyncHero()
@@ -136,6 +180,8 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
+        // First, so the shelves the list realises can follow it.
+        EnsureSkeletonPulse();
         // Bound once for the life of the page. Handing a repeater the same
         // collection again resets it, and this runs on every return to Home.
         if (!m_listsBound)
@@ -151,6 +197,8 @@ namespace winrt::HaloDesktop::implementation
         // The theme may have changed while Home was cached off screen.
         m_hero->OnThemeChanged();
         m_hero->SetRunning(true);
+        m_onScreen = true;
+        UpdateSkeletonPulse();
         UpdateContinueEdges();
     }
 
@@ -165,6 +213,8 @@ namespace winrt::HaloDesktop::implementation
         {
             m_hero->SetRunning(false);
         }
+        m_onScreen = false;
+        UpdateSkeletonPulse();
     }
 
     void HomePage::OnSearchSubmitted(

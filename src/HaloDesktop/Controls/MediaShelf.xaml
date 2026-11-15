@@ -63,6 +63,22 @@
         </ItemsRepeater>
       </Grid>
     </ScrollViewer>
+    <!-- While the catalog loads: six skeleton cards where the strip will be,
+         at the strip's own offset so the cards land on them. -->
+    <StackPanel
+      x:Name="SkeletonStrip"
+      Grid.Row="1"
+      Margin="0,-4,0,0"
+      Orientation="Horizontal"
+      Spacing="14"
+      Visibility="Collapsed">
+      <local:PosterSkeleton />
+      <local:PosterSkeleton />
+      <local:PosterSkeleton />
+      <local:PosterSkeleton />
+      <local:PosterSkeleton />
+      <local:PosterSkeleton />
+    </StackPanel>
     <!-- The reference fades 12px at whichever side still hides cards. XAML has no
          opacity mask for live content, so the page ground is laid over that edge
          instead, fading to clear; UpdateEdges shows each one with its chevron. -->

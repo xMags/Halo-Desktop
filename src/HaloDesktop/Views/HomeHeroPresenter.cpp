@@ -19,6 +19,9 @@ namespace
     constexpr float HeroCornerRadius = 8.0F;
     // The body rises this far into place as it fades in.
     constexpr float BodyRise = 6.0F;
+    // `.pip` and `.pip-active`, as HeroPipStyle and HeroActivePipStyle set them.
+    constexpr double PipWidth = 8.0;
+    constexpr double ActivePipWidth = 28.0;
 
     // The reference's scrim tokens, used only if the theme lookup fails.
     constexpr winrt::Windows::UI::Color FallbackScrim1{ 0xF5, 0x0A, 0x0C, 0x11 };
@@ -107,6 +110,10 @@ namespace HaloDesktop::Views
         try
         {
             StopClock();
+            if (m_pipWidths)
+            {
+                m_pipWidths.Stop();
+            }
             ReleaseLayers();
             ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, nullptr);
             ElementCompositionPreview::SetElementChildVisual(m_parts.LogoShadowHost, nullptr);
@@ -216,7 +223,7 @@ namespace HaloDesktop::Views
         if (featured.empty())
         {
             StopClock();
-            UpdatePips(featured);
+            UpdatePips(featured, false);
             UpdatePlaceholder();
             return;
         }
@@ -230,7 +237,7 @@ namespace HaloDesktop::Views
         }
         auto const modeChanged = autoAdvance != m_autoAdvance;
         m_autoAdvance = autoAdvance;
-        UpdatePips(featured);
+        UpdatePips(featured, !listChanged && AnimationsEnabled());
         UpdateTitleTreatment();
         if (listChanged || indexChanged || modeChanged)
         {
@@ -338,11 +345,18 @@ namespace HaloDesktop::Views
         }
     }
 
-    void HomeHeroPresenter::UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items)
+    void HomeHeroPresenter::UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items, bool animateWidths)
     {
         m_parts.PipStrip.Visibility(items.size() > 1
             ? winrt::Microsoft::UI::Xaml::Visibility::Visible
             : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        // Where each pip is drawn now, read before restyling moves any of them.
+        std::array<double, HeroPipCount> from{};
+        for (std::size_t index = 0; index < HeroPipCount; ++index)
+        {
+            from[index] = m_parts.Pips[index].ActualWidth();
+        }
+        bool restyled{};
         for (std::size_t index = 0; index < HeroPipCount; ++index)
         {
             auto const& pip = m_parts.Pips[index];
@@ -358,6 +372,7 @@ namespace HaloDesktop::Views
             if (pip.Style() != style)
             {
                 pip.Style(style);
+                restyled = true;
             }
             m_parts.PipFills[index].Visibility(active
                 ? winrt::Microsoft::UI::Xaml::Visibility::Visible
@@ -371,6 +386,63 @@ namespace HaloDesktop::Views
                 winrt::Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(pip, winrt::box_value(title));
             }
         }
+        if (!restyled)
+        {
+            return;
+        }
+        if (!animateWidths)
+        {
+            // Back to the widths the styles set.
+            if (m_pipWidths)
+            {
+                m_pipWidths.Stop();
+                m_pipWidths = nullptr;
+            }
+            return;
+        }
+        AnimatePipWidths(items.size(), from);
+    }
+
+    void HomeHeroPresenter::AnimatePipWidths(std::size_t count, std::array<double, HeroPipCount> const& from)
+    {
+        namespace Animation = winrt::Microsoft::UI::Xaml::Media::Animation;
+        if (m_pipWidths)
+        {
+            m_pipWidths.Stop();
+        }
+        m_pipWidths = Animation::Storyboard{};
+        auto const resize = winrt::Microsoft::UI::Xaml::Media::Animation::KeyTimeHelper::FromTimeSpan(ToTimeSpan(HeroPipResize));
+        auto const start = winrt::Microsoft::UI::Xaml::Media::Animation::KeyTimeHelper::FromTimeSpan(winrt::Windows::Foundation::TimeSpan{});
+        for (std::size_t index = 0; index < count && index < HeroPipCount; ++index)
+        {
+            auto const target = static_cast<std::int32_t>(index) == m_active ? ActivePipWidth : PipWidth;
+            // A pip not drawn yet has no width to start from: it starts where
+            // it would have rested.
+            auto const origin = from[index] > 0.0
+                ? from[index]
+                : (target == ActivePipWidth ? PipWidth : ActivePipWidth);
+            Animation::DoubleAnimationUsingKeyFrames animation;
+            // Width is a layout property, so this runs on the UI thread; it is
+            // five pips for 0.3s.
+            animation.EnableDependentAnimation(true);
+            Animation::DiscreteDoubleKeyFrame first;
+            first.KeyTime(start);
+            first.Value(origin);
+            animation.KeyFrames().Append(first);
+            // CSS `ease`, the reference's timing.
+            Animation::KeySpline spline;
+            spline.ControlPoint1({ 0.25F, 0.1F });
+            spline.ControlPoint2({ 0.25F, 1.0F });
+            Animation::SplineDoubleKeyFrame last;
+            last.KeyTime(resize);
+            last.Value(target);
+            last.KeySpline(spline);
+            animation.KeyFrames().Append(last);
+            Animation::Storyboard::SetTarget(animation, m_parts.Pips[index]);
+            Animation::Storyboard::SetTargetProperty(animation, L"Width");
+            m_pipWidths.Children().Append(animation);
+        }
+        m_pipWidths.Begin();
     }
 
     // The logo art when the title has one and it loads, else the name. Logos

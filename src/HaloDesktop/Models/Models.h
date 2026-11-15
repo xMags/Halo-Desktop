@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
@@ -489,6 +490,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] ShelfSeeAll SeeAll() const noexcept;
         // Null when the shelf's catalog does not page.
         [[nodiscard]] std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> Paging() const noexcept;
+        [[nodiscard]] bool IsLoading() const noexcept;
+        // Not projected. Set once, right after construction, by whoever makes
+        // the shelf; a shelf is a snapshot and never changes once handed out.
+        void SetLoading(bool loading) noexcept;
+        // Which row of Home this is (a catalog's request, or the library), so
+        // a rebuilt list can tell a kept row from a new one.
+        [[nodiscard]] std::wstring const& Key() const noexcept;
+        void SetKey(std::wstring key);
 
     private:
         hstring m_title;
@@ -497,6 +506,8 @@ namespace winrt::HaloDesktop::implementation
         Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_seeAllItems{ nullptr };
         ShelfSeeAll m_seeAll{ ShelfSeeAll::Catalog };
         std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> m_paging;
+        std::wstring m_key;
+        bool m_loading{};
     };
 
     struct DetailNavParams : DetailNavParamsT<DetailNavParams>

@@ -235,6 +235,9 @@ namespace HaloDesktop
         String Title { get; };
         String SourceLabel { get; };
         Windows.Foundation.Collections.IVectorView<MediaSummary> Items { get; };
+        // A catalog shelf whose answer has not arrived: it draws its title
+        // over skeleton cards.
+        Boolean IsLoading { get; };
     };
 
     [default_interface]

@@ -93,6 +93,12 @@
         <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
         <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
       </LinearGradientBrush>
+      <!-- The hero skeleton's scrim, the hero's own stops: `hs1` to `hs2` at 52%, clear by 92%. -->
+      <LinearGradientBrush x:Key="HaloHeroSkeletonScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.52" Color="{StaticResource HaloHeroScrim2Color}" />
+        <GradientStop Offset="0.92" Color="{StaticResource HaloMicaClearColor}" />
+      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />
       <SolidColorBrush x:Key="HaloCardStrokeBrush" Color="{StaticResource HaloCardStrokeColor}" />
@@ -264,6 +270,13 @@
       <LinearGradientBrush x:Key="HaloShelfFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
         <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
         <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
+      </LinearGradientBrush>
+      <!-- The hero skeleton's scrim, the light hero's stops: `hs1` to 24%, `hs2` at 46%, clear by 68%. -->
+      <LinearGradientBrush x:Key="HaloHeroSkeletonScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.24" Color="{StaticResource HaloHeroScrim1Color}" />
+        <GradientStop Offset="0.46" Color="{StaticResource HaloHeroScrim2Color}" />
+        <GradientStop Offset="0.68" Color="{StaticResource HaloMicaClearColor}" />
       </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloLayerBrush" Color="{StaticResource HaloLayerColor}" />
       <SolidColorBrush x:Key="HaloCardBrush" Color="{StaticResource HaloCardColor}" />

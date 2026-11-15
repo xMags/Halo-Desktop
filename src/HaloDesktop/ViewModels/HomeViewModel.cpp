@@ -14,6 +14,8 @@
 #include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 namespace
@@ -39,6 +41,51 @@ namespace
     bool PlayableFromPreview(winrt::HaloDesktop::MediaSummary const& media)
     {
         return ::HaloDesktop::Services::PlayableFromPreview(media.Id(), media.DefaultVideoId());
+    }
+
+    // The rows of Home that are not a catalog's. A catalog row is keyed by its
+    // request, which starts with an addon id and so never with a control
+    // character, the mappers having stripped them all.
+    constexpr std::wstring_view RecentRowKey{ L"\x1Frecent" };
+    constexpr std::wstring_view LibraryRowKey{ L"\x1Flibrary" };
+    // A loading shelf draws only its labels, which its key already fixes.
+    constexpr std::wstring_view LoadingSignature{ L"\x1Floading" };
+
+    std::wstring JoinedKeys(std::vector<std::wstring> const& keys)
+    {
+        std::wstring joined;
+        for (auto const& key : keys)
+        {
+            joined.append(key);
+            joined.push_back(L'\x1E');
+        }
+        return joined;
+    }
+
+    // Everything a shown row draws or hands its See all, so an unchanged row
+    // can be told from a changed one without keeping the old titles around.
+    std::wstring RowSignature(
+        winrt::HaloDesktop::Shelf const& shelf,
+        std::vector<winrt::HaloDesktop::MediaSummary> const& filtered,
+        std::int32_t filterIndex)
+    {
+        auto const* const details = winrt::get_self<winrt::HaloDesktop::implementation::Shelf>(shelf);
+        std::wstring signature{ shelf.Title() };
+        signature.push_back(L'\x1F');
+        signature.append(shelf.SourceLabel());
+        signature.push_back(L'\x1F');
+        signature.append(std::to_wstring(filterIndex));
+        signature.push_back(details->Paging() ? L'P' : L'-');
+        for (auto const& item : filtered)
+        {
+            signature.push_back(L'\x1E');
+            for (auto const& part : { item.Type(), item.Id(), item.Title(), item.Poster(), item.Meta() })
+            {
+                signature.append(part);
+                signature.push_back(L'\x1D');
+            }
+        }
+        return signature;
     }
 }
 namespace winrt::HaloDesktop::implementation
@@ -69,6 +116,9 @@ namespace winrt::HaloDesktop::implementation
             // included, and the shelves, the continue row and the banner's library
             // buttons all show one or the other.
             m_userStateToken = m_catalog->AddUserStateChangedHandler([this]() { AdoptUserStateChange(); });
+            // Same reasoning again. Home's rows arrive one at a time: the
+            // library and continue rows, the shelf list, then each shelf.
+            m_homeToken = m_catalog->AddHomeChangedHandler([this]() { AdoptHome(); });
         }
         // And for the account itself. Home is usually the page already on screen
         // when a sign-in completes, often behind the sign-in page from launch, and
@@ -83,6 +133,7 @@ namespace winrt::HaloDesktop::implementation
         if (m_layout && m_metricsToken != 0) m_layout->RemoveChangedHandler(m_metricsToken);
         if (m_catalog && m_continueToken != 0) m_catalog->RemoveContinueChangedHandler(m_continueToken);
         if (m_catalog && m_userStateToken != 0) m_catalog->RemoveUserStateChangedHandler(m_userStateToken);
+        if (m_catalog && m_homeToken != 0) m_catalog->RemoveHomeChangedHandler(m_homeToken);
         if (m_session && m_identityToken != 0) m_session->RemoveIdentityChangedHandler(m_identityToken);
     }
     // Hero art scales with the page because it is a backdrop, and its title with
@@ -157,6 +208,15 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_featured.Size() > 0 ? Visible : Collapsed;
     }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::FeaturedSkeletonVisibility() const noexcept
+    {
+        auto const status = m_catalog->CatalogStatus();
+        if (!status.ListKnown)
+        {
+            return m_loading ? Visible : Collapsed;
+        }
+        return status.HasCatalogs && !m_featuredSettled ? Visible : Collapsed;
+    }
     // Arrow-key navigation, wrapped so it never leaves the strip. A pick like
     // any other, so it stops the carousel too.
     void HomeViewModel::StepFeatured(std::int32_t direction)
@@ -171,7 +231,7 @@ namespace winrt::HaloDesktop::implementation
             % static_cast<std::int32_t>(count);
         SelectFeatured(wrapped);
     }
-    Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return m_refreshError && HasUsableContent() ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility HomeViewModel::RefreshErrorVisibility() const noexcept { return Failed() && HasUsableContent() ? Visible : Collapsed; }
     winrt::hstring HomeViewModel::ContinueCountLabel() const { return winrt::to_hstring(m_continueItems.Size()) + L" IN PROGRESS"; }
     // Nothing in progress means no section at all. The header carries a count, a
     // See all and two scroll buttons, none of which have anything to act on, and
@@ -183,32 +243,45 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable HomeViewModel::ContinueItems() const { return m_continueItems; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::Shelves() const { return m_shelves; }
     std::int32_t HomeViewModel::FilterIndex() const noexcept { return m_filterIndex; }
+    // The page shows its header with the skeletons while nothing is usable
+    // yet, as the reference does, rather than a spinner in place of the page.
     Microsoft::UI::Xaml::Visibility HomeViewModel::ContentVisibility() const noexcept
     {
-        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
-            m_loading, m_error, HasUsableContent()).ShowContent ? Visible : Collapsed;
+        auto const state = ::HaloDesktop::ViewModels::ResolveHomeVisibility(
+            m_loading, Failed(), HasUsableContent());
+        return state.ShowContent || state.ShowLoading ? Visible : Collapsed;
     }
     Microsoft::UI::Xaml::Visibility HomeViewModel::LoadingVisibility() const noexcept
     {
-        return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
-            m_loading, m_error, HasUsableContent()).ShowLoading ? Visible : Collapsed;
+        return m_loading && !m_catalog->CatalogStatus().ListKnown ? Visible : Collapsed;
+    }
+    bool HomeViewModel::SkeletonsShown() const noexcept
+    {
+        return ContentVisibility() == Visible
+            && (m_loadingRows > 0 || LoadingVisibility() == Visible || FeaturedSkeletonVisibility() == Visible);
     }
     Microsoft::UI::Xaml::Visibility HomeViewModel::ErrorVisibility() const noexcept
     {
         return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
-            m_loading, m_error, HasUsableContent()).ShowError ? Visible : Collapsed;
+            m_loading, Failed(), HasUsableContent()).ShowError ? Visible : Collapsed;
     }
     Microsoft::UI::Xaml::Visibility HomeViewModel::EmptyVisibility() const noexcept
     {
         return ::HaloDesktop::ViewModels::ResolveHomeVisibility(
-            m_loading, m_error, HasUsableContent()).ShowEmpty ? Visible : Collapsed;
+            m_loading, Failed(), HasUsableContent()).ShowEmpty ? Visible : Collapsed;
     }
     void HomeViewModel::SetFilter(std::int32_t index) { if (index >= 0 && index <= 2 && index != m_filterIndex) { m_filterIndex = index; Rebuild(); Raise(L"FilterIndex"); } }
     void HomeViewModel::Retry() { static_cast<void>(LoadAsync()); }
 
     bool HomeViewModel::HasUsableContent() const noexcept
     {
+        // A shelf still loading counts: it is on screen, as its skeleton.
         return m_featured.Size() > 0 || m_shelves.Size() > 0 || m_continueItems.Size() > 0;
+    }
+
+    bool HomeViewModel::Failed() const
+    {
+        return !m_loading && (m_loadFailed || m_catalog->CatalogStatus().EveryShelfFailed);
     }
 
     void HomeViewModel::EnsureLoaded()
@@ -222,8 +295,8 @@ namespace winrt::HaloDesktop::implementation
         if (m_appliedVersion != m_catalog->SnapshotVersion())
         {
             // Either nothing has been shown yet, or something else reloaded the
-            // catalogs while Home was away and this is now the older snapshot.
-            AdoptSnapshot();
+            // catalogs while Home was away and this is now the older state.
+            AdoptHome();
         }
         m_catalog->RefreshContinue();
         ApplyContinue();
@@ -239,15 +312,16 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    void HomeViewModel::AdoptSnapshot()
+    void HomeViewModel::AdoptHome()
     {
-        // The catalogs finished loading for somebody else, so take what they hold
-        // rather than fetching them again. Reached when this view model is built
-        // after the shell has already warmed the catalog.
+        // Also reached when the catalogs loaded for somebody else (the shell
+        // warms them), so what they hold is taken rather than fetched again.
         m_sourceShelves = m_catalog->Shelves();
-        m_loading = false;
-        m_error = false;
         m_appliedVersion = m_catalog->SnapshotVersion();
+        if (m_catalog->ContinueWatching() != m_continueSource)
+        {
+            ApplyContinue();
+        }
         Rebuild();
         RaiseState();
     }
@@ -288,7 +362,8 @@ namespace winrt::HaloDesktop::implementation
         // notification per item, and the list on the other end tears down and
         // rebuilds its realised containers for every one of them.
         std::vector<winrt::Windows::Foundation::IInspectable> continued;
-        for (auto const& item : m_catalog->ContinueWatching()) continued.push_back(item);
+        m_continueSource = m_catalog->ContinueWatching();
+        for (auto const& item : m_continueSource) continued.push_back(item);
         m_continueItems.ReplaceAll(continued);
         for (auto const name : { L"ContinueItems", L"ContinueCountLabel", L"ContinueVisibility", L"ContentVisibility", L"EmptyVisibility" }) Raise(name);
     }
@@ -454,9 +529,14 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
         auto const version = ++m_loadVersion;
-        m_loading = !HasUsableContent();
-        m_error = false;
-        m_refreshError = false;
+        m_loading = true;
+        m_loadFailed = false;
+        // An account change emptied the catalog before this ran: the old
+        // account's rows must not stay on screen while the new ones load.
+        if (m_appliedVersion != m_catalog->SnapshotVersion())
+        {
+            AdoptHome();
+        }
         RaiseState();
 
         bool failed{};
@@ -482,22 +562,10 @@ namespace winrt::HaloDesktop::implementation
         }
 
         m_loading = false;
-        if (!failed)
-        {
-            m_sourceShelves = m_catalog->Shelves();
-            m_appliedVersion = m_catalog->SnapshotVersion();
-            ApplyContinue();
-            Rebuild();
-        }
-        else if (HasUsableContent())
-        {
-            m_refreshError = true;
-        }
-        else
-        {
-            m_error = true;
-        }
-        RaiseState();
+        m_loadFailed = failed;
+        // Even a failed load may have published the user's own rows before
+        // the addons let it down.
+        AdoptHome();
     }
 
     winrt::Windows::Foundation::IAsyncAction HomeViewModel::ToggleFeaturedLibraryAsync(winrt::HaloDesktop::FeaturedItem item)
@@ -559,83 +627,125 @@ namespace winrt::HaloDesktop::implementation
 
     // In the reference's order: recently watched, the library, then the
     // catalogs. Continue watching and the hero sit above this list.
+    //
+    // The list is edited in place rather than replaced: a shelf that did not
+    // change keeps its element and where its strip was scrolled to, a new
+    // shelf goes in at its own slot, and a shelf that went comes out without
+    // the others moving. Shelves land one at a time while the page is in use.
     void HomeViewModel::RebuildShelves()
     {
+        auto const filter = ::HaloDesktop::ViewModels::HomeFilterFromIndex(m_filterIndex);
+        std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
+        std::vector<::HaloDesktop::Services::HomeRowIdentity> identities;
+        std::size_t loadingRows{};
+
         if (!m_sourceShelves)
         {
             m_recentKeys.clear();
-            m_shelves.Clear();
-            RaiseState();
-            return;
         }
-
-        auto const filter = ::HaloDesktop::ViewModels::HomeFilterFromIndex(m_filterIndex);
-        std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
-
-        // History is browsed, so it follows the filter; what continue watching
-        // already offers is left out. No source line.
-        auto const recent = m_catalog->RecentlyWatchedForFilter(m_filterIndex);
-        m_recentKeys = KeysOf(recent);
-        if (recent.Size() > 0)
+        else
         {
-            rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
-                L"Recently watched", L"", recent, nullptr, ShelfSeeAll::History, nullptr));
-        }
-
-        for (auto const& shelf : m_sourceShelves)
-        {
-            auto const* const details = winrt::get_self<winrt::HaloDesktop::implementation::Shelf>(shelf);
-            std::vector<winrt::HaloDesktop::MediaSummary> filtered;
-            for (auto const& item : shelf.Items())
+            // History is browsed, so it follows the filter; what continue
+            // watching already offers is left out. No source line.
+            auto const recent = m_catalog->RecentlyWatchedForFilter(m_filterIndex);
+            m_recentKeys = KeysOf(recent);
+            if (recent.Size() > 0)
             {
-                if (::HaloDesktop::ViewModels::MatchesHomeFilter(filter, HomeKind(item)))
-                {
-                    filtered.push_back(item);
-                }
-            }
-            // A shelf the filter empties does not earn a place.
-            if (filtered.empty())
-            {
-                continue;
-            }
-            if (details->SeeAll() != ShelfSeeAll::Catalog)
-            {
-                // The library shelf: every title, its label counting the whole
-                // library whatever the filter narrows it to.
                 rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
-                    shelf.Title(), shelf.SourceLabel(), winrt::single_threaded_vector(std::move(filtered)).GetView(),
-                    nullptr, details->SeeAll(), nullptr));
-                continue;
+                    L"Recently watched", L"", recent, nullptr, ShelfSeeAll::History, nullptr));
+                identities.push_back({ std::wstring{ RecentRowKey }, JoinedKeys(m_recentKeys) });
             }
 
-            // A catalog strip draws its first titles; its grid opens with all
-            // of them and, when the catalog pages, keeps the filter going.
-            auto const shownCount = (std::min)(filtered.size(), ::HaloDesktop::Services::HomeShelfLimit);
-            std::vector<winrt::HaloDesktop::MediaSummary> shown{ filtered.begin(), filtered.begin() + static_cast<std::ptrdiff_t>(shownCount) };
-            std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> paging;
-            if (auto const source = details->Paging())
+            for (auto const& shelf : m_sourceShelves)
             {
-                auto filteredSource = std::make_shared<::HaloDesktop::Services::CatalogPagingSource>(*source);
-                filteredSource->Filter = filter;
-                paging = std::move(filteredSource);
+                auto const* const details = winrt::get_self<winrt::HaloDesktop::implementation::Shelf>(shelf);
+                if (details->IsLoading())
+                {
+                    // Its real title over skeleton cards, whatever the filter:
+                    // there is nothing to filter yet.
+                    rebuilt.push_back(shelf);
+                    identities.push_back({ details->Key(), std::wstring{ LoadingSignature } });
+                    ++loadingRows;
+                    continue;
+                }
+
+                std::vector<winrt::HaloDesktop::MediaSummary> filtered;
+                for (auto const& item : shelf.Items())
+                {
+                    if (::HaloDesktop::ViewModels::MatchesHomeFilter(filter, HomeKind(item)))
+                    {
+                        filtered.push_back(item);
+                    }
+                }
+                // A shelf the filter empties does not earn a place.
+                if (filtered.empty())
+                {
+                    continue;
+                }
+                auto signature = RowSignature(shelf, filtered, m_filterIndex);
+                if (details->SeeAll() != ShelfSeeAll::Catalog)
+                {
+                    // The library shelf: every title, its label counting the
+                    // whole library whatever the filter narrows it to.
+                    rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+                        shelf.Title(), shelf.SourceLabel(), winrt::single_threaded_vector(std::move(filtered)).GetView(),
+                        nullptr, details->SeeAll(), nullptr));
+                    identities.push_back({ std::wstring{ LibraryRowKey }, std::move(signature) });
+                    continue;
+                }
+
+                // A catalog strip draws its first titles; its grid opens with
+                // all of them and, when the catalog pages, keeps the filter going.
+                auto const shownCount = (std::min)(filtered.size(), ::HaloDesktop::Services::HomeShelfLimit);
+                std::vector<winrt::HaloDesktop::MediaSummary> shown{ filtered.begin(), filtered.begin() + static_cast<std::ptrdiff_t>(shownCount) };
+                std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> paging;
+                if (auto const source = details->Paging())
+                {
+                    auto filteredSource = std::make_shared<::HaloDesktop::Services::CatalogPagingSource>(*source);
+                    filteredSource->Filter = filter;
+                    paging = std::move(filteredSource);
+                }
+                rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
+                    shelf.Title(),
+                    shelf.SourceLabel(),
+                    winrt::single_threaded_vector(std::move(shown)).GetView(),
+                    winrt::single_threaded_vector(std::move(filtered)).GetView(),
+                    ShelfSeeAll::Catalog,
+                    std::move(paging)));
+                identities.push_back({ details->Key(), std::move(signature) });
             }
-            rebuilt.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
-                shelf.Title(),
-                shelf.SourceLabel(),
-                winrt::single_threaded_vector(std::move(shown)).GetView(),
-                winrt::single_threaded_vector(std::move(filtered)).GetView(),
-                ShelfSeeAll::Catalog,
-                std::move(paging)));
         }
-        // One replacement rather than a clear and a run of appends: switching the
-        // filter used to make the repeater rebuild a shelf at a time.
-        m_shelves.ReplaceAll(rebuilt);
+
+        for (auto const& edit : ::HaloDesktop::Services::PlanHomeRowEdits(m_rowIdentities, identities))
+        {
+            auto const index = static_cast<std::uint32_t>(edit.Index);
+            switch (edit.Kind)
+            {
+            case ::HaloDesktop::Services::HomeRowEditKind::Remove:
+                m_shelves.RemoveAt(index);
+                break;
+            case ::HaloDesktop::Services::HomeRowEditKind::Insert:
+                m_shelves.InsertAt(index, rebuilt[edit.Source]);
+                break;
+            case ::HaloDesktop::Services::HomeRowEditKind::Replace:
+                m_shelves.SetAt(index, rebuilt[edit.Source]);
+                break;
+            }
+        }
+        m_rowIdentities = std::move(identities);
+        m_loadingRows = loadingRows;
         RaiseState();
     }
 
     void HomeViewModel::RebuildFeatured()
     {
-        auto const summaries = m_catalog->FeaturedSetForFilter(m_filterIndex, FeaturedCardCount);
+        auto const selection = m_catalog->FeaturedForHome(m_filterIndex, FeaturedCardCount);
+        auto const summaries = selection.Items;
+        if (selection.Settled != m_featuredSettled)
+        {
+            m_featuredSettled = selection.Settled;
+            Raise(L"FeaturedSkeletonVisibility");
+        }
         auto const titleSize = m_layout ? m_layout->Current().HeroTitleSize : 36.0;
         std::vector<winrt::Windows::Foundation::IInspectable> rebuilt;
         rebuilt.reserve(summaries.Size());
@@ -714,6 +824,7 @@ namespace winrt::HaloDesktop::implementation
                  L"FeaturedIndex",
                  L"CurrentFeatured",
                  L"FeaturedVisibility",
+                 L"FeaturedSkeletonVisibility",
                  L"RefreshErrorVisibility",
                  L"ContinueItems",
                  L"ContinueCountLabel",

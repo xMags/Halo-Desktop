@@ -14,6 +14,7 @@ namespace HaloDesktop
         void AdvanceFeatured();
         void StepFeatured(Int32 direction);
         Microsoft.UI.Xaml.Visibility FeaturedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FeaturedSkeletonVisibility { get; };
         Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
         String ContinueCountLabel { get; };
         Microsoft.UI.Xaml.Visibility ContinueVisibility { get; };

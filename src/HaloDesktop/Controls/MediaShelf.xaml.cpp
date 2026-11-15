@@ -6,6 +6,8 @@
 
 #include "App.xaml.h"
 #include "Controls/PosterCard.xaml.h"
+#include "Controls/PosterSkeleton.xaml.h"
+#include "Controls/SkeletonPulse.h"
 #include "Controls/ShelfScrollPolicy.h"
 #include "Shell/LayoutMetricsService.h"
 #include <winrt/HaloDesktop.h>
@@ -44,6 +46,33 @@ namespace winrt::HaloDesktop::implementation
         UpdateEdges();
     }
     winrt::Windows::Foundation::IInspectable MediaShelf::SelectedItem() const { return m_selectedItem; }
+    bool MediaShelf::IsLoading() const noexcept { return m_loading; }
+    void MediaShelf::IsLoading(bool value)
+    {
+        m_loading = value;
+        auto const shown = Microsoft::UI::Xaml::Visibility::Visible;
+        auto const hidden = Microsoft::UI::Xaml::Visibility::Collapsed;
+        if (auto const skeletons = SkeletonStrip())
+        {
+            skeletons.Visibility(value ? shown : hidden);
+        }
+        if (auto const scroller = ShelfScroller())
+        {
+            scroller.Visibility(value ? hidden : shown);
+        }
+        // Nothing to scroll yet: both chevrons inert, no fade. A recycled shelf
+        // may have been somewhere else when it was handed this one.
+        UpdateEdges();
+    }
+    void MediaShelf::AttachSkeletonPulse(::HaloDesktop::Controls::SkeletonPulse const& pulse)
+    {
+        if (m_pulseAttached)
+        {
+            return;
+        }
+        m_pulseAttached = true;
+        pulse.Attach(SkeletonStrip());
+    }
     winrt::event_token MediaShelf::ItemClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_itemClick.add(handler); }
     void MediaShelf::ItemClick(winrt::event_token const& token) noexcept { m_itemClick.remove(token); }
     winrt::event_token MediaShelf::SeeAllClick(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_seeAllClick.add(handler); }
@@ -116,10 +145,12 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const scroller = ShelfScroller();
         if (!scroller) return;
-        auto const edges = ::HaloDesktop::Controls::MeasureShelfEdges(
-            scroller.HorizontalOffset(),
-            scroller.ViewportWidth(),
-            scroller.ExtentWidth());
+        auto const edges = m_loading
+            ? ::HaloDesktop::Controls::ShelfEdges{}
+            : ::HaloDesktop::Controls::MeasureShelfEdges(
+                scroller.HorizontalOffset(),
+                scroller.ViewportWidth(),
+                scroller.ExtentWidth());
         auto const apply = [](Microsoft::UI::Xaml::Controls::Button const& button, bool atEnd)
         {
             if (!button) return;
