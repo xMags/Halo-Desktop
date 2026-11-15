@@ -2,8 +2,11 @@
 
 #include "HomePage.g.h"
 
+#include "Views/HomeHeroPresenter.h"
 #include "Views/TitleMenu.h"
 
+#include <memory>
+#include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Windows.Foundation.h>
 #include <winrt/Windows.System.h>
@@ -14,8 +17,6 @@ namespace winrt::HaloDesktop::implementation
     {
         HomePage();
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnHeroPointerWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
-        void OnHeroCardLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         [[nodiscard]] winrt::HaloDesktop::HomeViewModel ViewModel() const;
         void OnSearchSubmitted(
@@ -32,6 +33,7 @@ namespace winrt::HaloDesktop::implementation
         void OnFeaturedPointerEntered(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFeaturedPointerExited(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnFeaturedKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
+        void OnHeroPipClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         // The strips scroll by their own arrows only. A tilt wheel or a shift
         // wheel over one would otherwise pan it, which no other list here does.
@@ -41,6 +43,8 @@ namespace winrt::HaloDesktop::implementation
         void OnContinueSeeAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueScrollLeft(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnContinueScrollRight(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnContinueViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        void OnContinueScrollerSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         void OnShelfItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShelfSeeAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         // One handler for the page: the banner, the continue strip and every shelf
@@ -48,11 +52,18 @@ namespace winrt::HaloDesktop::implementation
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
-        void ScrollContinueBy(double direction);
+        void ScrollContinueBy(int direction);
+        void UpdateContinueEdges();
+        void EnsureHeroPresenter();
+        void SyncHero();
 
         winrt::HaloDesktop::HomeViewModel m_viewModel{ nullptr };
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
+        std::unique_ptr<::HaloDesktop::Views::HomeHeroPresenter> m_hero;
         bool m_listsBound{};
+        // Last, so both are revoked before the presenter and the view model go.
+        Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
+        Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChanged;
     };
 }
 

@@ -5,6 +5,7 @@
 #include "Views/TitleMenu.h"
 
 #include <cstdint>
+#include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -22,18 +23,26 @@ namespace winrt::HaloDesktop::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnGridLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnBackClick(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnRetryMoreClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnScrollerViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        void OnGridSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         // One handler for the page: every poster on it answers a right-click from here.
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         void ApplyLayoutMetrics();
+        // Asks for the next page once the end of the grid is within the
+        // prefetch margin of the view, so scrolling rarely waits.
+        void CheckNearEnd();
+        void ScheduleNearEndCheck();
         winrt::HaloDesktop::CatalogViewModel m_viewModel{ nullptr };
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         std::uint64_t m_metricsToken{};
+        bool m_listBound{};
+        Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
     };
 }
 

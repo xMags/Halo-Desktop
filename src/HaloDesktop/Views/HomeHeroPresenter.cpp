@@ -1,0 +1,598 @@
+#include "pch.h"
+#include "Views/HomeHeroPresenter.h"
+
+#include "Controls/ThemeColorLookup.h"
+
+#include <stdexcept>
+#include <utility>
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Hosting.h>
+#include <winrt/Windows.Foundation.Numerics.h>
+
+namespace
+{
+    using winrt::Microsoft::UI::Xaml::Hosting::ElementCompositionPreview;
+
+    // Backdrops are decoded no larger than this, which still covers the widest
+    // hero on a dense display without holding an 8K original in memory.
+    constexpr winrt::Windows::Foundation::Size BackdropDecodeLimit{ 2560.0F, 1440.0F };
+    constexpr float HeroCornerRadius = 8.0F;
+    // The body rises this far into place as it fades in.
+    constexpr float BodyRise = 6.0F;
+
+    // The reference's scrim tokens, used only if the theme lookup fails.
+    constexpr winrt::Windows::UI::Color FallbackScrim1{ 0xF5, 0x0A, 0x0C, 0x11 };
+    constexpr winrt::Windows::UI::Color FallbackScrim2{ 0x9E, 0x0A, 0x0C, 0x11 };
+
+    winrt::Windows::UI::Color Transparent(winrt::Windows::UI::Color color) noexcept
+    {
+        // The colour itself at zero alpha, so the gradient fades the scrim out
+        // rather than through black, as a premultiplied CSS gradient does.
+        color.A = 0;
+        return color;
+    }
+
+    winrt::Windows::Foundation::TimeSpan ToTimeSpan(std::chrono::milliseconds value) noexcept
+    {
+        return std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(value);
+    }
+}
+
+namespace HaloDesktop::Views
+{
+    HomeHeroPresenter::HomeHeroPresenter(HomeHeroParts parts, std::function<void()> dwellElapsed)
+        : m_parts(std::move(parts)), m_dwellElapsed(std::move(dwellElapsed))
+    {
+        if (!m_parts.Root || !m_parts.ArtHost || !m_parts.Placeholder || !m_parts.Body || !m_parts.Logo
+            || !m_parts.LogoShadowHost || !m_parts.LogoFrame || !m_parts.TitleText || !m_parts.PipStrip
+            || !m_parts.PipStyle || !m_parts.ActivePipStyle)
+        {
+            throw std::invalid_argument{ "The hero needs all of its parts." };
+        }
+        for (std::size_t index = 0; index < HeroPipCount; ++index)
+        {
+            if (!m_parts.Pips[index] || !m_parts.PipFills[index] || !m_parts.PipScales[index])
+            {
+                throw std::invalid_argument{ "The hero needs every pip." };
+            }
+        }
+
+        BuildComposition();
+
+        // The active pip's fill is the carousel's clock: one storyboard, moved
+        // onto whichever pip is active. One clock means the fill can never
+        // disagree with when the title actually changes.
+        m_clockFill = winrt::Microsoft::UI::Xaml::Media::Animation::DoubleAnimation{};
+        m_clockFill.From(0.0);
+        m_clockFill.To(1.0);
+        m_clockFill.Duration(winrt::Microsoft::UI::Xaml::DurationHelper::FromTimeSpan(ToTimeSpan(HeroDwell)));
+        m_clock = winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard{};
+        m_clock.Children().Append(m_clockFill);
+        winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard::SetTargetProperty(m_clockFill, L"ScaleX");
+
+        m_clockCompleted = m_clock.Completed(winrt::auto_revoke, [this](auto const&, auto const&)
+        {
+            OnDwellCompleted();
+        });
+        m_artSizeChanged = m_parts.ArtHost.SizeChanged(winrt::auto_revoke, [this](auto const&, auto const&)
+        {
+            ResizeArt();
+        });
+        m_logoSizeChanged = m_parts.LogoShadowHost.SizeChanged(winrt::auto_revoke, [this](auto const&, auto const&)
+        {
+            ResizeLogoShadow();
+        });
+        m_logoOpened = m_parts.Logo.ImageOpened(winrt::auto_revoke, [this](auto const&, auto const&)
+        {
+            // The mask follows the picture now on screen.
+            if (m_logoDropShadow)
+            {
+                m_logoDropShadow.Mask(m_parts.Logo.GetAlphaMask());
+            }
+        });
+        m_logoFailed = m_parts.Logo.ImageFailed(winrt::auto_revoke, [this](auto const&, auto const&)
+        {
+            // A logo that fails to load falls back to the name, and stays
+            // fallen back for as long as this run of titles lasts.
+            if (!m_shownLogo.empty())
+            {
+                m_failedLogos.insert(m_shownLogo);
+            }
+            UpdateTitleTreatment();
+        });
+    }
+
+    HomeHeroPresenter::~HomeHeroPresenter()
+    {
+        try
+        {
+            StopClock();
+            ReleaseLayers();
+            ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, nullptr);
+            ElementCompositionPreview::SetElementChildVisual(m_parts.LogoShadowHost, nullptr);
+        }
+        catch (...)
+        {
+        }
+    }
+
+    void HomeHeroPresenter::BuildComposition()
+    {
+        m_compositor = ElementCompositionPreview::GetElementVisual(m_parts.ArtHost).Compositor();
+
+        m_artRoot = m_compositor.CreateContainerVisual();
+        m_artClip = m_compositor.CreateRoundedRectangleGeometry();
+        m_artClip.CornerRadius({ HeroCornerRadius, HeroCornerRadius });
+        m_artRoot.Clip(m_compositor.CreateGeometricClip(m_artClip));
+
+        // The art fades out over its lower half into whatever is really behind
+        // the hero, the window's glows included, in both themes.
+        m_fadeMask = m_compositor.CreateLinearGradientBrush();
+        m_fadeMask.StartPoint({ 0.0F, 0.0F });
+        m_fadeMask.EndPoint({ 0.0F, 1.0F });
+        winrt::Windows::UI::Color const opaque{ 0xFF, 0x00, 0x00, 0x00 };
+        m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(0.0F, opaque));
+        m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(0.5F, opaque));
+        m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(1.0F, Transparent(opaque)));
+
+        m_scrimGradient = m_compositor.CreateLinearGradientBrush();
+        m_scrimGradient.StartPoint({ 0.0F, 0.0F });
+        m_scrimGradient.EndPoint({ 1.0F, 0.0F });
+        ApplyScrimColors();
+        auto const scrimBrush = m_compositor.CreateMaskBrush();
+        scrimBrush.Source(m_scrimGradient);
+        scrimBrush.Mask(m_fadeMask);
+        m_scrim = m_compositor.CreateSpriteVisual();
+        m_scrim.Brush(scrimBrush);
+        m_artRoot.Children().InsertAtTop(m_scrim);
+        ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, m_artRoot);
+
+        // CSS `ease`, the reference's timing for both the crossfade and the body.
+        auto const ease = m_compositor.CreateCubicBezierEasingFunction({ 0.25F, 0.1F }, { 0.25F, 1.0F });
+        auto const fade = m_compositor.CreateScalarKeyFrameAnimation();
+        fade.Target(L"Opacity");
+        fade.InsertExpressionKeyFrame(1.0F, L"this.FinalValue", ease);
+        fade.Duration(ToTimeSpan(HeroFade));
+        m_crossfade = m_compositor.CreateImplicitAnimationCollection();
+        m_crossfade.Insert(L"Opacity", fade);
+
+        m_bodyVisual = ElementCompositionPreview::GetElementVisual(m_parts.Body);
+        ElementCompositionPreview::SetIsTranslationEnabled(m_parts.Body, true);
+        m_bodyFade = m_compositor.CreateScalarKeyFrameAnimation();
+        m_bodyFade.InsertKeyFrame(0.0F, 0.0F);
+        m_bodyFade.InsertKeyFrame(1.0F, 1.0F, ease);
+        m_bodyFade.Duration(ToTimeSpan(HeroFade));
+        m_bodyRise = m_compositor.CreateScalarKeyFrameAnimation();
+        m_bodyRise.InsertKeyFrame(0.0F, BodyRise);
+        m_bodyRise.InsertKeyFrame(1.0F, 0.0F, ease);
+        m_bodyRise.Duration(ToTimeSpan(HeroFade));
+
+        // The logo's `drop-shadow(0 4px 24px rgba(0,0,0,.5))`, cast by the
+        // logo's own alpha rather than its box.
+        m_logoDropShadow = m_compositor.CreateDropShadow();
+        m_logoDropShadow.BlurRadius(24.0F);
+        m_logoDropShadow.Offset({ 0.0F, 4.0F, 0.0F });
+        m_logoDropShadow.Color({ 0x80, 0x00, 0x00, 0x00 });
+        m_logoShadow = m_compositor.CreateSpriteVisual();
+        m_logoShadow.Shadow(m_logoDropShadow);
+        ElementCompositionPreview::SetElementChildVisual(m_parts.LogoShadowHost, m_logoShadow);
+    }
+
+    void HomeHeroPresenter::Sync(
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& items,
+        std::int32_t index,
+        bool autoAdvance)
+    {
+        std::vector<winrt::HaloDesktop::FeaturedItem> featured;
+        std::vector<std::wstring> keys;
+        if (items)
+        {
+            for (auto const& entry : items)
+            {
+                auto const item = entry.try_as<winrt::HaloDesktop::FeaturedItem>();
+                if (!item || !item.Media() || featured.size() == HeroPipCount)
+                {
+                    continue;
+                }
+                keys.push_back(std::wstring{ item.Media().Type() } + L':' + std::wstring{ item.Media().Id() }
+                    + L'\x1F' + std::wstring{ item.Background() });
+                featured.push_back(item);
+            }
+        }
+
+        auto const listChanged = keys != m_keys;
+        m_items = featured;
+        if (listChanged)
+        {
+            m_keys = std::move(keys);
+            m_logos.clear();
+            m_failedLogos.clear();
+            m_shownLogo.clear();
+            m_active = -1;
+            RebuildLayers(featured);
+            ResizeArt();
+        }
+
+        if (featured.empty())
+        {
+            StopClock();
+            UpdatePips(featured);
+            UpdatePlaceholder();
+            return;
+        }
+
+        auto const count = static_cast<std::int32_t>(featured.size());
+        auto const target = index >= 0 && index < count ? index : 0;
+        auto const indexChanged = target != m_active;
+        if (indexChanged)
+        {
+            Activate(target, m_active >= 0);
+        }
+        auto const modeChanged = autoAdvance != m_autoAdvance;
+        m_autoAdvance = autoAdvance;
+        UpdatePips(featured);
+        UpdateTitleTreatment();
+        if (listChanged || indexChanged || modeChanged)
+        {
+            RestartClock();
+        }
+    }
+
+    void HomeHeroPresenter::RebuildLayers(std::vector<winrt::HaloDesktop::FeaturedItem> const& items)
+    {
+        ReleaseLayers();
+        m_layers.reserve(items.size());
+        for (auto const& item : items)
+        {
+            ArtLayer layer;
+            layer.Url = std::wstring{ item.Background() };
+            layer.Visual = m_compositor.CreateSpriteVisual();
+            layer.Visual.Opacity(0.0F);
+            layer.Visual.IsVisible(false);
+            if (!layer.Url.empty())
+            {
+                try
+                {
+                    // Loaded and decoded off the UI thread, once for the whole
+                    // run of titles: rotating back to a title reuses it.
+                    layer.Surface = winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface::StartLoadFromUri(
+                        winrt::Windows::Foundation::Uri{ layer.Url },
+                        BackdropDecodeLimit);
+                    auto const art = m_compositor.CreateSurfaceBrush(layer.Surface);
+                    art.Stretch(winrt::Microsoft::UI::Composition::CompositionStretch::UniformToFill);
+                    art.HorizontalAlignmentRatio(0.5F);
+                    art.VerticalAlignmentRatio(0.5F);
+                    auto const masked = m_compositor.CreateMaskBrush();
+                    masked.Source(art);
+                    masked.Mask(m_fadeMask);
+                    layer.Visual.Brush(masked);
+                    layer.Loaded = layer.Surface.LoadCompleted(winrt::auto_revoke, [this](
+                        winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
+                        winrt::Microsoft::UI::Xaml::Media::LoadedImageSourceLoadCompletedEventArgs const& args)
+                    {
+                        OnLayerLoaded(
+                            surface,
+                            args.Status() == winrt::Microsoft::UI::Xaml::Media::LoadedImageSourceLoadStatus::Success);
+                    });
+                }
+                catch (...)
+                {
+                    // A URL the loader refuses leaves the placeholder showing,
+                    // as a backdrop that fails to load does.
+                    layer.Surface = nullptr;
+                    layer.Visual.Brush(nullptr);
+                }
+            }
+            layer.Visual.ImplicitAnimations(m_crossfade);
+            m_artRoot.Children().InsertBelow(layer.Visual, m_scrim);
+            m_layers.push_back(std::move(layer));
+        }
+    }
+
+    void HomeHeroPresenter::ReleaseLayers()
+    {
+        for (auto& layer : m_layers)
+        {
+            layer.Loaded.revoke();
+            if (layer.Visual && m_artRoot)
+            {
+                m_artRoot.Children().Remove(layer.Visual);
+            }
+            if (layer.Surface)
+            {
+                layer.Surface.Close();
+            }
+        }
+        m_layers.clear();
+    }
+
+    void HomeHeroPresenter::Activate(std::int32_t index, bool crossfade)
+    {
+        auto const previous = m_active;
+        for (std::int32_t layerIndex = 0; layerIndex < static_cast<std::int32_t>(m_layers.size()); ++layerIndex)
+        {
+            auto const& visual = m_layers[static_cast<std::size_t>(layerIndex)].Visual;
+            auto const shown = layerIndex == index;
+            // The outgoing layer stays drawn while it fades; every other one is
+            // hidden outright, so at most two backdrops are ever composed.
+            auto const leaving = crossfade && layerIndex == previous && previous != index;
+            if (!crossfade)
+            {
+                visual.ImplicitAnimations(nullptr);
+            }
+            visual.IsVisible(shown || leaving);
+            visual.Opacity(shown ? 1.0F : 0.0F);
+            if (!crossfade)
+            {
+                visual.ImplicitAnimations(m_crossfade);
+            }
+        }
+        m_active = index;
+        UpdatePlaceholder();
+
+        // The text arrives with its picture rather than ahead of it.
+        if (m_bodyVisual && AnimationsEnabled())
+        {
+            m_bodyVisual.StartAnimation(L"Opacity", m_bodyFade);
+            m_bodyVisual.StartAnimation(L"Translation.Y", m_bodyRise);
+        }
+    }
+
+    void HomeHeroPresenter::UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items)
+    {
+        m_parts.PipStrip.Visibility(items.size() > 1
+            ? winrt::Microsoft::UI::Xaml::Visibility::Visible
+            : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        for (std::size_t index = 0; index < HeroPipCount; ++index)
+        {
+            auto const& pip = m_parts.Pips[index];
+            if (index >= items.size())
+            {
+                pip.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+                continue;
+            }
+            pip.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Visible);
+            auto const active = static_cast<std::int32_t>(index) == m_active;
+            auto const& style = active ? m_parts.ActivePipStyle : m_parts.PipStyle;
+            // Restyling re-applies the template, so only on a real change.
+            if (pip.Style() != style)
+            {
+                pip.Style(style);
+            }
+            m_parts.PipFills[index].Visibility(active
+                ? winrt::Microsoft::UI::Xaml::Visibility::Visible
+                : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+            // Named only when the title changes: this runs on every sync.
+            auto const title = items[index].Title();
+            if (m_pipTitles[index] != title)
+            {
+                m_pipTitles[index] = title;
+                winrt::Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(pip, L"Show " + title);
+                winrt::Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(pip, winrt::box_value(title));
+            }
+        }
+    }
+
+    // The logo art when the title has one and it loads, else the name. Logos
+    // are drawn for dark backdrops, and over the light theme's pale scrim most
+    // would vanish, so the light theme always shows the name.
+    void HomeHeroPresenter::UpdateTitleTreatment()
+    {
+        auto const item = m_active >= 0 && static_cast<std::size_t>(m_active) < m_items.size()
+            ? m_items[static_cast<std::size_t>(m_active)]
+            : winrt::HaloDesktop::FeaturedItem{ nullptr };
+        std::wstring const url = item ? std::wstring{ item.Logo() } : std::wstring{};
+        auto const light = m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light;
+        auto showLogo = !url.empty() && !light && !m_failedLogos.contains(url);
+        if (showLogo && url != m_shownLogo)
+        {
+            auto cached = m_logos.find(url);
+            if (cached == m_logos.end())
+            {
+                try
+                {
+                    winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+                    bitmap.UriSource(winrt::Windows::Foundation::Uri{ url });
+                    cached = m_logos.emplace(url, bitmap).first;
+                }
+                catch (...)
+                {
+                    m_failedLogos.insert(url);
+                    showLogo = false;
+                }
+            }
+            if (showLogo)
+            {
+                m_shownLogo = url;
+                m_parts.Logo.Source(cached->second);
+            }
+        }
+        if (!showLogo)
+        {
+            m_shownLogo.clear();
+        }
+        m_parts.LogoFrame.Visibility(showLogo
+            ? winrt::Microsoft::UI::Xaml::Visibility::Visible
+            : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
+        m_parts.TitleText.Visibility(showLogo
+            ? winrt::Microsoft::UI::Xaml::Visibility::Collapsed
+            : winrt::Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
+    // The bare placeholder shows behind the title while the shown backdrop
+    // loads, and goes once it is up: left behind a loaded backdrop it would be
+    // drawn under it, full width, for as long as the hero is on screen.
+    void HomeHeroPresenter::UpdatePlaceholder()
+    {
+        auto const ready = m_active >= 0
+            && static_cast<std::size_t>(m_active) < m_layers.size()
+            && m_layers[static_cast<std::size_t>(m_active)].Ready;
+        m_parts.Placeholder.Visibility(ready
+            ? winrt::Microsoft::UI::Xaml::Visibility::Collapsed
+            : winrt::Microsoft::UI::Xaml::Visibility::Visible);
+    }
+
+    void HomeHeroPresenter::OnLayerLoaded(
+        winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
+        bool succeeded)
+    {
+        for (auto& layer : m_layers)
+        {
+            if (layer.Surface == surface)
+            {
+                layer.Ready = succeeded;
+                break;
+            }
+        }
+        UpdatePlaceholder();
+    }
+
+    void HomeHeroPresenter::RestartClock()
+    {
+        StopClock();
+        if (m_active < 0 || static_cast<std::size_t>(m_active) >= HeroPipCount)
+        {
+            return;
+        }
+        auto const& scale = m_parts.PipScales[static_cast<std::size_t>(m_active)];
+        // Once the viewer has picked a title the fill sits full: the carousel
+        // has stopped.
+        if (!m_autoAdvance || m_items.size() < 2)
+        {
+            scale.ScaleX(1.0);
+            return;
+        }
+        scale.ScaleX(0.0);
+        if (!m_running)
+        {
+            return;
+        }
+        winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard::SetTarget(m_clockFill, scale);
+        m_clock.Begin();
+        m_clockRunning = true;
+        if (m_hovered)
+        {
+            m_clock.Pause();
+        }
+    }
+
+    void HomeHeroPresenter::StopClock()
+    {
+        m_clockRunning = false;
+        if (m_clock)
+        {
+            m_clock.Stop();
+        }
+    }
+
+    void HomeHeroPresenter::OnDwellCompleted()
+    {
+        // Completed is raised once the fill has run its whole dwell. A stop or
+        // a restart in between clears the flag or starts a new run, so a stale
+        // completion cannot move the carousel on.
+        if (!m_clockRunning
+            || m_clock.GetCurrentState() != winrt::Microsoft::UI::Xaml::Media::Animation::ClockState::Filling)
+        {
+            return;
+        }
+        m_clockRunning = false;
+        if (m_dwellElapsed)
+        {
+            m_dwellElapsed();
+        }
+    }
+
+    void HomeHeroPresenter::SetHovered(bool hovered)
+    {
+        m_hovered = hovered;
+        if (!m_clockRunning)
+        {
+            return;
+        }
+        if (hovered)
+        {
+            m_clock.Pause();
+        }
+        else
+        {
+            m_clock.Resume();
+        }
+    }
+
+    void HomeHeroPresenter::SetRunning(bool running)
+    {
+        m_running = running;
+        if (!running)
+        {
+            // The pointer cannot be over a hero that is not on screen, and the
+            // exit that would have said so may never arrive.
+            m_hovered = false;
+            StopClock();
+            return;
+        }
+        RestartClock();
+    }
+
+    void HomeHeroPresenter::OnThemeChanged()
+    {
+        ApplyScrimColors();
+        UpdateTitleTreatment();
+    }
+
+    void HomeHeroPresenter::ApplyScrimColors()
+    {
+        if (!m_scrimGradient)
+        {
+            return;
+        }
+        auto const first = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim1Color").value_or(FallbackScrim1);
+        auto const second = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim2Color").value_or(FallbackScrim2);
+        auto stops = m_scrimGradient.ColorStops();
+        stops.Clear();
+        if (m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light)
+        {
+            // Light keeps the art: the haze stays behind the text and is gone by
+            // the middle, rather than whitening the whole picture.
+            stops.Append(m_compositor.CreateColorGradientStop(0.0F, first));
+            stops.Append(m_compositor.CreateColorGradientStop(0.24F, first));
+            stops.Append(m_compositor.CreateColorGradientStop(0.46F, second));
+            stops.Append(m_compositor.CreateColorGradientStop(0.68F, Transparent(second)));
+            return;
+        }
+        stops.Append(m_compositor.CreateColorGradientStop(0.0F, first));
+        stops.Append(m_compositor.CreateColorGradientStop(0.52F, second));
+        stops.Append(m_compositor.CreateColorGradientStop(0.92F, Transparent(second)));
+    }
+
+    void HomeHeroPresenter::ResizeArt()
+    {
+        auto const size = m_parts.ArtHost.ActualSize();
+        if (m_artRoot) m_artRoot.Size(size);
+        if (m_artClip) m_artClip.Size(size);
+        if (m_scrim) m_scrim.Size(size);
+        for (auto const& layer : m_layers)
+        {
+            layer.Visual.Size(size);
+        }
+    }
+
+    void HomeHeroPresenter::ResizeLogoShadow()
+    {
+        if (m_logoShadow)
+        {
+            m_logoShadow.Size(m_parts.LogoShadowHost.ActualSize());
+        }
+    }
+
+    bool HomeHeroPresenter::AnimationsEnabled() const
+    {
+        try
+        {
+            return m_uiSettings.AnimationsEnabled();
+        }
+        catch (...)
+        {
+            return true;
+        }
+    }
+}

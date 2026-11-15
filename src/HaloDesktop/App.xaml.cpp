@@ -134,6 +134,14 @@ namespace winrt::HaloDesktop::implementation
         auto continueNextEpisodeService = std::make_shared<::HaloDesktop::Services::ContinueNextEpisodeService>(
             m_apiClient,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        // Built ahead of the catalog, which asks its language rows in the
+        // account's synced catalog language.
+        auto settingsSyncService = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
+            m_apiClient,
+            m_queryCache,
+            m_storagePaths,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        m_services.SettingsSync = settingsSyncService;
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
             m_apiClient,
             addonService,
@@ -141,7 +149,8 @@ namespace winrt::HaloDesktop::implementation
             m_services.WatchState,
             m_devicePreferences,
             continueArtworkService,
-            continueNextEpisodeService);
+            continueNextEpisodeService,
+            settingsSyncService);
         m_services.Catalog = catalogService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState(),
@@ -158,12 +167,6 @@ namespace winrt::HaloDesktop::implementation
         auto metadataService = std::make_shared<::HaloDesktop::Services::MetadataService>(
             m_apiClient, m_services.WatchState, m_services.Downloads);
         m_services.Metadata = metadataService;
-        auto settingsSyncService = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
-            m_apiClient,
-            m_queryCache,
-            m_storagePaths,
-            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
-        m_services.SettingsSync = settingsSyncService;
         auto sourceService = std::make_shared<::HaloDesktop::Services::SourceService>(
             m_apiClient,
             m_services.Downloads,

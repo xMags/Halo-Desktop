@@ -9,69 +9,19 @@
 #include "Controls/ContinueCard.xaml.h"
 #include "Controls/MediaShelf.xaml.h"
 #include "Controls/PlaceholderArt.xaml.h"
+#include "Controls/ShelfScrollPolicy.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
+#include "Shell/LayoutMetricsService.h"
 #include "ViewModels/HomeViewModel.h"
 
+#include <string_view>
 #include <vector>
 #include <winrt/Microsoft.UI.Input.h>
 #include <winrt/Windows.System.h>
 
 namespace
 {
-    // One wheel notch, in pixels. Matches what the page's own ScrollViewer moves
-    // for a notch, measured against it, so a scroll that begins over the hero and
-    // continues below it keeps one rate.
-    constexpr double HeroWheelStep = 150.0;
-
-    // The FlipView flips cards by panning its internal ScrollViewer, and nothing
-    // on the public surface disables that gesture. Take the manipulation away
-    // from the template's scroll host: the auto-advance timer, the pips pager
-    // and the arrow keys all move the selection directly, so none of them need
-    // it.
-    //
-    // Only the manipulation. The host keeps both scrolling axes, because that is
-    // how the control walks to the selected card and settles on its edge. With
-    // them disabled it could still reach the right card but could not finish the
-    // last few pixels, leaving the strip parked just short of the boundary with
-    // the previous card's edge showing down the side of the hero. The wheel is
-    // dealt with in OnHeroPointerWheelChanged instead, before the control sees
-    // it at all.
-    //
-    // The stock previous/next chevrons go too. They surface the same sideways
-    // model, they are drawn in the system's acrylic rather than anything of
-    // Halo's, and the pips pager underneath already offers position and jumps.
-    //
-    // These are template part names from the WinUI 3.2.4.0 FlipView. On a future
-    // SDK bump that names them differently this scan simply finds nothing, and
-    // the stock behaviour quietly returns rather than anything breaking.
-    void TameFlipViewChrome(winrt::Microsoft::UI::Xaml::DependencyObject const& node)
-    {
-        if (auto const element = node.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>())
-        {
-            auto const name = element.Name();
-            if (name == L"ScrollingHost")
-            {
-                element.as<winrt::Microsoft::UI::Xaml::Controls::ScrollViewer>().ManipulationMode(
-                    winrt::Microsoft::UI::Xaml::Input::ManipulationModes::None);
-                // Not descended into: the cards below it are the page's whole
-                // featured list, and nothing under here needs touching.
-                return;
-            }
-            if (name == L"PreviousButtonHorizontal" || name == L"NextButtonHorizontal" ||
-                name == L"PreviousButtonVertical" || name == L"NextButtonVertical")
-            {
-                element.Visibility(winrt::Microsoft::UI::Xaml::Visibility::Collapsed);
-                return;
-            }
-        }
-        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(node);
-        for (auto index = 0; index < count; ++index)
-        {
-            TameFlipViewChrome(winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(node, index));
-        }
-    }
-
     winrt::HaloDesktop::Shelf CreateShelfSnapshot(winrt::HaloDesktop::MediaShelf const& shelf)
     {
         std::vector<winrt::HaloDesktop::MediaSummary> items;
@@ -92,6 +42,12 @@ namespace
             shelf.Title(),
             shelf.SourceLabel(),
             winrt::single_threaded_vector(std::move(items)).GetView());
+    }
+
+    bool IsHeroProperty(std::wstring_view name) noexcept
+    {
+        return name.empty() || name == L"FeaturedItems" || name == L"FeaturedIndex"
+            || name == L"FeaturedAutoAdvance" || name == L"CurrentFeatured";
     }
 }
 
@@ -115,6 +71,67 @@ namespace winrt::HaloDesktop::implementation
         return m_viewModel;
     }
 
+    void HomePage::EnsureHeroPresenter()
+    {
+        if (m_hero)
+        {
+            return;
+        }
+        ::HaloDesktop::Views::HomeHeroParts parts;
+        parts.Root = HeroRoot();
+        parts.ArtHost = HeroArtHost();
+        parts.Placeholder = HeroPlaceholder();
+        parts.Body = HeroBody();
+        parts.Logo = HeroLogo();
+        parts.LogoShadowHost = HeroLogoShadowHost();
+        parts.LogoFrame = HeroLogoFrame();
+        parts.TitleText = HeroTitleText();
+        parts.PipStrip = HeroPips();
+        parts.Pips = { HeroPip0(), HeroPip1(), HeroPip2(), HeroPip3(), HeroPip4() };
+        parts.PipFills = { HeroPipFill0(), HeroPipFill1(), HeroPipFill2(), HeroPipFill3(), HeroPipFill4() };
+        parts.PipScales = { HeroPipScale0(), HeroPipScale1(), HeroPipScale2(), HeroPipScale3(), HeroPipScale4() };
+        parts.PipStyle = Resources().Lookup(winrt::box_value(L"HeroPipStyle")).as<Microsoft::UI::Xaml::Style>();
+        parts.ActivePipStyle = Resources().Lookup(winrt::box_value(L"HeroActivePipStyle")).as<Microsoft::UI::Xaml::Style>();
+        // Weak: the presenter is the page's, but the clock's completion is an
+        // event the framework raises, and nothing here may reach a page that
+        // has already gone.
+        m_hero = std::make_unique<::HaloDesktop::Views::HomeHeroPresenter>(std::move(parts), [weak = get_weak()]()
+        {
+            if (auto const self = weak.get())
+            {
+                self->m_viewModel.AdvanceFeatured();
+            }
+        });
+
+        m_viewModelChanged = m_viewModel.PropertyChanged(winrt::auto_revoke, [weak = get_weak()](
+            winrt::Windows::Foundation::IInspectable const&,
+            Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args)
+        {
+            auto const self = weak.get();
+            if (self && IsHeroProperty(args.PropertyName()))
+            {
+                self->SyncHero();
+            }
+        });
+        m_themeChanged = ActualThemeChanged(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
+        {
+            if (auto const self = weak.get(); self && self->m_hero)
+            {
+                self->m_hero->OnThemeChanged();
+            }
+        });
+    }
+
+    void HomePage::SyncHero()
+    {
+        if (!m_hero)
+        {
+            return;
+        }
+        auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
+        m_hero->Sync(viewModel->FeaturedItemsView(), m_viewModel.FeaturedIndex(), m_viewModel.FeaturedAutoAdvance());
+    }
+
     void HomePage::OnLoaded(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
@@ -125,29 +142,29 @@ namespace winrt::HaloDesktop::implementation
         {
             m_listsBound = true;
             auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
-            FindName(L"ContinueList")
-                .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
-                .ItemsSource(viewModel->ContinueItemsView());
-            FindName(L"ShelfList")
-                .as<Microsoft::UI::Xaml::Controls::ItemsRepeater>()
-                .ItemsSource(viewModel->ShelvesView());
-            FindName(L"FeaturedFlip")
-                .as<Microsoft::UI::Xaml::Controls::FlipView>()
-                .ItemsSource(viewModel->FeaturedItemsView());
+            ContinueList().ItemsSource(viewModel->ContinueItemsView());
+            ShelfList().ItemsSource(viewModel->ShelvesView());
         }
-        TameFlipViewChrome(
-            FindName(L"FeaturedFlip")
-                .as<winrt::Microsoft::UI::Xaml::DependencyObject>());
+        EnsureHeroPresenter();
         m_viewModel.EnsureLoaded();
+        SyncHero();
+        // The theme may have changed while Home was cached off screen.
+        m_hero->OnThemeChanged();
+        m_hero->SetRunning(true);
+        UpdateContinueEdges();
     }
 
     void HomePage::OnUnloaded(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        // Stop the carousel while Home is off screen; it restarts on the next
-        // OnLoaded through EnsureLoaded.
+        // Stop the carousel while Home is off screen; its dwell starts over on
+        // the next OnLoaded.
         m_viewModel.Deactivate();
+        if (m_hero)
+        {
+            m_hero->SetRunning(false);
+        }
     }
 
     void HomePage::OnSearchSubmitted(
@@ -180,9 +197,8 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.SetFilter(2);
     }
 
-    // The card buttons hand their FeaturedItem through Tag, the same trick
-    // ContinueCard uses, because a DataTemplate has no other way to say which
-    // row a click came from.
+    // The hero's buttons hand the current FeaturedItem through Tag, so a click
+    // acts on the title the button was showing.
     void HomePage::OnFeaturedActionClick(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
@@ -217,18 +233,34 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        m_viewModel.PauseFeatured();
+        if (m_hero) m_hero->SetHovered(true);
     }
 
     void HomePage::OnFeaturedPointerExited(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        m_viewModel.ResumeFeatured();
+        if (m_hero) m_hero->SetHovered(false);
     }
 
-    // Left and Right flip the strip while focus is anywhere on it. The FlipView
-    // is not a tab stop by default, so its own key handling would not see these.
+    void HomePage::OnHeroPipClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        auto const button = sender.try_as<Microsoft::UI::Xaml::Controls::Button>();
+        if (!button)
+        {
+            return;
+        }
+        auto const tag = winrt::unbox_value_or<winrt::hstring>(button.Tag(), L"");
+        if (tag.size() != 1 || tag[0] < L'0' || tag[0] > L'9')
+        {
+            return;
+        }
+        m_viewModel.SelectFeatured(static_cast<std::int32_t>(tag[0] - L'0'));
+    }
+
+    // Left and Right step between the titles while focus is on a pip.
     void HomePage::OnFeaturedKeyDown(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
@@ -261,24 +293,61 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        ScrollContinueBy(-1.0);
+        ScrollContinueBy(-1);
     }
 
     void HomePage::OnContinueScrollRight(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        ScrollContinueBy(1.0);
+        ScrollContinueBy(1);
     }
 
-    void HomePage::ScrollContinueBy(double direction)
+    // The continue strip pages the way every shelf does: by the whole cards
+    // that fit, landing on a card boundary.
+    void HomePage::ScrollContinueBy(int direction)
     {
-        auto const scroller = FindName(L"ContinueScroller").as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
-        scroller.ChangeView(
-            scroller.HorizontalOffset() + direction * scroller.ViewportWidth() * 0.8,
-            nullptr,
-            nullptr,
-            false);
+        auto const scroller = ContinueScroller();
+        auto const metrics = App::Services().LayoutMetrics;
+        auto const cardWidth = metrics ? metrics->Current().ContinueWidth : 268.0;
+        auto const target = ::HaloDesktop::Controls::ShelfPageTarget(
+            scroller.HorizontalOffset(),
+            scroller.ViewportWidth(),
+            cardWidth,
+            ::HaloDesktop::Controls::ShelfCardGap,
+            direction);
+        scroller.ChangeView(target, nullptr, nullptr, false);
+    }
+
+    void HomePage::OnContinueViewChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const& args)
+    {
+        UpdateContinueEdges();
+    }
+
+    void HomePage::OnContinueScrollerSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        UpdateContinueEdges();
+    }
+
+    // The chevron toward an end already in view is drawn but plainly inert.
+    void HomePage::UpdateContinueEdges()
+    {
+        auto const scroller = ContinueScroller();
+        auto const edges = ::HaloDesktop::Controls::MeasureShelfEdges(
+            scroller.HorizontalOffset(),
+            scroller.ViewportWidth(),
+            scroller.ExtentWidth());
+        auto const apply = [](Microsoft::UI::Xaml::Controls::Button const& button, bool atEnd)
+        {
+            button.IsEnabled(!atEnd);
+            button.Opacity(atEnd ? 0.4 : 1.0);
+        };
+        apply(ContinueScrollLeftButton(), edges.AtStart);
+        apply(ContinueScrollRightButton(), edges.AtEnd);
     }
 
     void HomePage::OnShelfItemClick(
@@ -305,86 +374,6 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    // Pairs the card's backdrop with the placeholder behind it, so the artwork
-    // can take it away once it is up. An opaque placeholder left under a loaded
-    // image means the hero draws its picture twice, full width, for as long as
-    // the card is on screen; PosterCard has always collapsed its own for that
-    // reason.
-    //
-    // Done here rather than by binding Placeholder in the template. x:Bind to an
-    // element named inside a DataTemplate compiles, and the generated setter is
-    // then never called, so the binding silently does nothing. The two elements
-    // are read out of the card's own Children rather than walked for, which
-    // keeps this indifferent to how they are ordered.
-    void HomePage::OnHeroCardLoaded(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
-    {
-        auto const card = sender.try_as<Microsoft::UI::Xaml::Controls::Grid>();
-        if (!card)
-        {
-            return;
-        }
-
-        winrt::HaloDesktop::PlaceholderArt placeholder{ nullptr };
-        winrt::HaloDesktop::ArtworkImage artwork{ nullptr };
-        for (auto const& child : card.Children())
-        {
-            if (auto const behind = child.try_as<winrt::HaloDesktop::PlaceholderArt>())
-            {
-                placeholder = behind;
-            }
-            else if (auto const front = child.try_as<winrt::HaloDesktop::ArtworkImage>())
-            {
-                artwork = front;
-            }
-        }
-        if (placeholder && artwork)
-        {
-            artwork.Placeholder(placeholder);
-        }
-    }
-
-    // FlipView treats a wheel notch as "flip to the next card", and it does that
-    // from its own control-level handler, so neither disabling its scroll host nor
-    // attaching anything at or above the FlipView prevents it. The card content is
-    // below the FlipView in the bubble order, so taking the event here is the only
-    // point that runs first.
-    //
-    // Having taken it, this has to move the page itself: the event is marked
-    // handled, so nothing above will. Horizontal intent is swallowed outright, the
-    // way the shelves treat it.
-    void HomePage::OnHeroPointerWheelChanged(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
-        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
-    {
-        auto const point = args.GetCurrentPoint(nullptr);
-        if (!point)
-        {
-            return;
-        }
-
-        auto const properties = point.Properties();
-        args.Handled(true);
-        if (properties.IsHorizontalMouseWheel())
-        {
-            return;
-        }
-
-        auto const scroller = FindName(L"PageScroller")
-            .try_as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
-        if (!scroller)
-        {
-            return;
-        }
-
-        // Read the offset fresh each notch rather than accumulating, so a fast
-        // spin retargets from where the view actually is instead of from where
-        // the previous notch aimed.
-        auto const notches = static_cast<double>(properties.MouseWheelDelta()) / 120.0;
-        scroller.ChangeView(nullptr, scroller.VerticalOffset() - notches * HeroWheelStep, nullptr, false);
-    }
-
     void HomePage::OnContinueSeeAllClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
@@ -401,7 +390,13 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-
+        // The shelf the strip was made from knows where its See all leads and
+        // how its catalog pages; a strip without one opens what it shows.
+        if (auto const model = shelf.Tag().try_as<winrt::HaloDesktop::Shelf>())
+        {
+            m_viewModel.OpenCatalog(model);
+            return;
+        }
         m_viewModel.OpenCatalog(CreateShelfSnapshot(shelf));
     }
 }

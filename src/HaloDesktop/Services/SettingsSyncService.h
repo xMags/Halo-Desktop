@@ -68,6 +68,11 @@ namespace HaloDesktop::Services
         void SubtitleTrackStyling(bool value);
         [[nodiscard]] bool AutoplayNextEpisode() const noexcept;
         void AutoplayNextEpisode(bool value);
+        // The language Home's language catalogs are asked for (TMDB's
+        // "Language" rows), 1 to 64 characters. Unset leaves each catalog on its
+        // own default.
+        [[nodiscard]] std::optional<winrt::hstring> CatalogLanguage() const;
+        void CatalogLanguage(std::optional<winrt::hstring> value);
         void OnAccountChanged(winrt::hstring const& serverUrl, winrt::hstring const& userId);
 
     private:

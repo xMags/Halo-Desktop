@@ -216,6 +216,13 @@ namespace HaloDesktop::Services
         catch (...) { return true; }
     }
     void SettingsSyncService::AutoplayNextEpisode(bool value) { SetBoolean(L"autoplayNextEpisode", value); }
+    std::optional<winrt::hstring> SettingsSyncService::CatalogLanguage() const { return OptionalString(m_value, L"catalogLanguage", 64); }
+    void SettingsSyncService::CatalogLanguage(std::optional<winrt::hstring> value)
+    {
+        // The server refuses an empty or longer value, so either clears the key.
+        if (value && (value->empty() || value->size() > 64)) value.reset();
+        SetString(L"catalogLanguage", std::move(value), false);
+    }
 
     concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> SettingsSyncService::ReadMirrorAsync()
     {

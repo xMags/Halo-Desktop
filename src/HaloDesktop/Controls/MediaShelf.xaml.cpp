@@ -4,7 +4,10 @@
 #include "MediaShelf.g.cpp"
 #endif
 
+#include "App.xaml.h"
 #include "Controls/PosterCard.xaml.h"
+#include "Controls/ShelfScrollPolicy.h"
+#include "Shell/LayoutMetricsService.h"
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Input.h>
 #include <winrt/Windows.System.h>
@@ -49,8 +52,8 @@ namespace winrt::HaloDesktop::implementation
     {
         m_seeAllClick(*this, args);
     }
-    void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1.0); }
-    void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1.0); }
+    void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1); }
+    void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1); }
 
     // Only sideways intent is swallowed. A plain wheel still reaches the page
     // scroller above, so pointing at a strip does not trap the page.
@@ -68,9 +71,54 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    void MediaShelf::ScrollBy(double direction)
+    // Pages by the whole cards that fit, landing on a card boundary, so a click
+    // never leaves a half card at either edge. Every card on a shelf is a
+    // poster, as wide as the layout step makes posters.
+    void MediaShelf::ScrollBy(int direction)
     {
-        auto const scroller = FindName(L"ShelfScroller").as<Microsoft::UI::Xaml::Controls::ScrollViewer>();
-        scroller.ChangeView(scroller.HorizontalOffset() + direction * scroller.ViewportWidth() * 0.8, nullptr, nullptr, false);
+        auto const scroller = ShelfScroller();
+        auto const metrics = App::Services().LayoutMetrics;
+        auto const cardWidth = metrics ? metrics->Current().PosterWidth : 132.0;
+        auto const target = ::HaloDesktop::Controls::ShelfPageTarget(
+            scroller.HorizontalOffset(),
+            scroller.ViewportWidth(),
+            cardWidth,
+            ::HaloDesktop::Controls::ShelfCardGap,
+            direction);
+        scroller.ChangeView(target, nullptr, nullptr, false);
+    }
+
+    void MediaShelf::OnStripSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        UpdateEdges();
+    }
+
+    void MediaShelf::OnStripViewChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const& args)
+    {
+        UpdateEdges();
+    }
+
+    // The chevrons are always drawn rather than appearing on demand: a control
+    // that comes and goes as a catalog resolves makes the row jitter. The one
+    // pointing at an end already in view is drawn but plainly inert instead.
+    void MediaShelf::UpdateEdges()
+    {
+        auto const scroller = ShelfScroller();
+        auto const edges = ::HaloDesktop::Controls::MeasureShelfEdges(
+            scroller.HorizontalOffset(),
+            scroller.ViewportWidth(),
+            scroller.ExtentWidth());
+        auto const apply = [](Microsoft::UI::Xaml::Controls::Button const& button, bool atEnd)
+        {
+            if (!button) return;
+            button.IsEnabled(!atEnd);
+            button.Opacity(atEnd ? 0.4 : 1.0);
+        };
+        apply(ScrollLeftButton(), edges.AtStart);
+        apply(ScrollRightButton(), edges.AtEnd);
     }
 }

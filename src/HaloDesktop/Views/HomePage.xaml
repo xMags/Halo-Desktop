@@ -8,6 +8,63 @@
   Unloaded="OnUnloaded"
   ContextRequested="OnContextRequested"
   NavigationCacheMode="Required">
+  <Page.Resources>
+    <!--
+      The hero's position pips: 8x6 bars in Text4 that lighten under the
+      pointer. The active one widens into the 28px track its fill crosses over
+      one dwell, and keeps its track colour under the pointer. Templated down
+      to the bar itself: the stock Button chrome would pad and plate a 6px pip.
+    -->
+    <Style x:Key="HeroPipStyle" TargetType="Button">
+      <Setter Property="Width" Value="8" />
+      <Setter Property="Height" Value="6" />
+      <Setter Property="MinWidth" Value="0" />
+      <Setter Property="MinHeight" Value="0" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="3" />
+      <Setter Property="Background" Value="{ThemeResource HaloText4Brush}" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="UseSystemFocusVisuals" Value="True" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid x:Name="PipRoot" Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+              <VisualStateManager.VisualStateGroups>
+                <VisualStateGroup x:Name="CommonStates">
+                  <VisualState x:Name="Normal" />
+                  <VisualState x:Name="PointerOver">
+                    <VisualState.Setters>
+                      <Setter Target="PipRoot.Background" Value="{ThemeResource HaloText3Brush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Pressed">
+                    <VisualState.Setters>
+                      <Setter Target="PipRoot.Background" Value="{ThemeResource HaloText3Brush}" />
+                    </VisualState.Setters>
+                  </VisualState>
+                  <VisualState x:Name="Disabled" />
+                </VisualStateGroup>
+              </VisualStateManager.VisualStateGroups>
+              <ContentPresenter HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Content="{TemplateBinding Content}" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+    <Style x:Key="HeroActivePipStyle" TargetType="Button" BasedOn="{StaticResource HeroPipStyle}">
+      <Setter Property="Width" Value="28" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid Background="{TemplateBinding Background}" CornerRadius="{TemplateBinding CornerRadius}">
+              <ContentPresenter HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" Content="{TemplateBinding Content}" />
+            </Grid>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+  </Page.Resources>
   <Grid>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading your Halo home…" /></StackPanel>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Home could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
@@ -48,106 +105,136 @@
         </InfoBar.ActionButton>
       </InfoBar>
       <!--
-        The featured strip is a FlipView advanced by a dispatcher timer, with a
-        pips pager underneath for position and manual jumps. Hovering over the
-        strip pauses the advance, and leaving the page stops it entirely: a timer
-        ticking behind another page would animate a carousel nobody is looking at.
+        The featured hero. The backdrops, their crossfade, the bottom fade and
+        the scrim are drawn into HeroArtHost by HomeHeroPresenter; the body
+        shows whichever title the view model has current. The Tag is what a
+        right-click anywhere on the hero opens the title's menu for.
       -->
       <Grid
+        x:Name="HeroRoot"
         Height="{x:Bind ViewModel.HeroHeight, Mode=OneWay}"
         Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}"
+        Background="Transparent"
         CornerRadius="8"
         PointerEntered="OnFeaturedPointerEntered"
         PointerExited="OnFeaturedPointerExited"
+        PointerCanceled="OnFeaturedPointerExited"
+        Tag="{x:Bind ViewModel.CurrentFeatured, Mode=OneWay}"
         Visibility="{x:Bind ViewModel.FeaturedVisibility, Mode=OneWay}">
-        <!--
-          Transparent, and with the control's own rounding off. The stock style
-          paints an opaque plate behind the cards and rounds itself a second
-          time inside the hero's corners, so any moment a card is not exactly
-          filling the viewport, that plate shows down the edge as a pale strip.
-          The hero Grid already supplies the corners and there is nothing behind
-          the cards that should ever be seen.
-        -->
-        <FlipView
-          x:Name="FeaturedFlip"
-          Background="Transparent"
-          CornerRadius="0"
-          AutomationProperties.Name="Featured titles"
-          KeyDown="OnFeaturedKeyDown"
-          SelectedIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}">
-          <FlipView.ItemTemplate>
-            <DataTemplate x:DataType="local:FeaturedItem">
-              <!-- The wheel is taken here, on the card itself, because FlipView
-                   handles PointerWheelChanged at control level: anything attached
-                   to the FlipView or above it only runs after the flip already
-                   happened. See OnHeroPointerWheelChanged. The Tag is what a
-                   right-click anywhere on the banner opens the title's menu for. -->
-              <Grid Background="Transparent" Loaded="OnHeroCardLoaded" PointerWheelChanged="OnHeroPointerWheelChanged" Tag="{x:Bind}">
-                <local:PlaceholderArt Caption="BACKDROP 1920×1080" />
-                <local:ArtworkImage SourceUrl="{x:Bind Background, Mode=OneWay}" />
-                <Rectangle>
-                  <Rectangle.Fill>
-                    <LinearGradientBrush StartPoint="0,0.5" EndPoint="1,0.5">
-                      <GradientStop Offset="0" Color="{ThemeResource HaloHeroScrim1Color}" />
-                      <GradientStop Offset="0.52" Color="{ThemeResource HaloHeroScrim2Color}" />
-                      <GradientStop Offset="0.92" Color="#0018181A" />
-                    </LinearGradientBrush>
-                  </Rectangle.Fill>
-                </Rectangle>
-                <StackPanel Width="580" Margin="40,0,0,0" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="10">
-                  <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
-                  <TextBlock FontSize="{x:Bind TitleSize, Mode=OneWay}" Style="{StaticResource HaloHeroTitle}" Text="{x:Bind Title}" />
-                  <StackPanel Orientation="Horizontal" Spacing="10">
-                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind Rating, Mode=OneWay}" />
-                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="·" />
-                    <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Meta, Mode=OneWay}" />
-                  </StackPanel>
-                  <!-- Clamped because the hero is a fixed height and the synopsis is
-                       the addon's description verbatim: an overview that runs long
-                       used to push the action buttons out through the clip. -->
-                  <TextBlock MaxWidth="520" MaxLines="3" Style="{StaticResource HaloBody}" Text="{x:Bind Synopsis, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
-                  <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
-                    <Button Height="36" Padding="18,0" AutomationProperties.Name="Open featured title" Tag="{x:Bind}" Click="OnFeaturedActionClick" Style="{StaticResource HaloAccentButtonStyle}">
-                      <StackPanel Orientation="Horizontal" Spacing="9">
-                        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
-                        <TextBlock VerticalAlignment="Center" Text="{x:Bind ActionLabel, Mode=OneWay}" />
-                      </StackPanel>
-                    </Button>
-                    <Button Height="36" Padding="18,0" Tag="{x:Bind}" Click="OnFeaturedDetailsClick" Content="Details" />
-                    <!--
-                      The filled star and the outline are separate icons swapped
-                      by visibility, so each keeps its own themed brush without a
-                      value converter.
-                    -->
-                    <Button
-                      Height="36"
-                      Padding="14,0"
-                      AutomationProperties.Name="{x:Bind LibraryLabel, Mode=OneWay}"
-                      Tag="{x:Bind}"
-                      Click="OnFeaturedLibraryClick"
-                      IsEnabled="{x:Bind LibraryEnabled, Mode=OneWay}">
-                      <StackPanel Orientation="Horizontal" Spacing="8">
-                        <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE735;" Visibility="{x:Bind InLibraryVisibility, Mode=OneWay}" />
-                        <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Glyph="&#xE734;" Visibility="{x:Bind NotInLibraryVisibility, Mode=OneWay}" />
-                        <TextBlock VerticalAlignment="Center" Text="{x:Bind LibraryLabel, Mode=OneWay}" />
-                      </StackPanel>
-                    </Button>
-                  </StackPanel>
-                  <TextBlock
-                    Foreground="{ThemeResource HaloCriticalBrush}"
-                    Text="{x:Bind LibraryErrorText, Mode=OneWay}"
-                    Visibility="{x:Bind LibraryErrorVisibility, Mode=OneWay}" />
-                </StackPanel>
-              </Grid>
-            </DataTemplate>
-          </FlipView.ItemTemplate>
-        </FlipView>
-        <PipsPager
+        <local:PlaceholderArt x:Name="HeroPlaceholder" />
+        <Grid x:Name="HeroArtHost" IsHitTestVisible="False" />
+        <StackPanel
+          x:Name="HeroBody"
+          Width="580"
+          Margin="40,0,0,0"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Center"
+          Spacing="10">
+          <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="FEATURED" />
+          <Grid>
+            <!-- Sized to the logo, so the shadow host under it is too. -->
+            <Grid x:Name="HeroLogoFrame" HorizontalAlignment="Left" VerticalAlignment="Bottom" Visibility="Collapsed">
+              <Grid x:Name="HeroLogoShadowHost" IsHitTestVisible="False" />
+              <Image
+                x:Name="HeroLogo"
+                MaxWidth="380"
+                MaxHeight="{x:Bind ViewModel.HeroLogoMaxHeight, Mode=OneWay}"
+                HorizontalAlignment="Left"
+                VerticalAlignment="Bottom"
+                AutomationProperties.Name="{x:Bind ViewModel.CurrentFeatured.Title, Mode=OneWay}"
+                Stretch="Uniform"
+                ToolTipService.ToolTip="{x:Bind ViewModel.CurrentFeatured.Title, Mode=OneWay}" />
+            </Grid>
+            <TextBlock
+              x:Name="HeroTitleText"
+              FontSize="{x:Bind ViewModel.HeroTitleSize, Mode=OneWay}"
+              Style="{StaticResource HaloHeroTitle}"
+              Text="{x:Bind ViewModel.CurrentFeatured.Title, Mode=OneWay}" />
+          </Grid>
+          <StackPanel Orientation="Horizontal" Spacing="10">
+            <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCautionBrush}" Text="{x:Bind ViewModel.CurrentFeatured.Rating, Mode=OneWay}" Visibility="{x:Bind ViewModel.CurrentFeatured.RatingVisibility, Mode=OneWay}" />
+            <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText4Brush}" Text="·" Visibility="{x:Bind ViewModel.CurrentFeatured.FactsSeparatorVisibility, Mode=OneWay}" />
+            <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.CurrentFeatured.Meta, Mode=OneWay}" TextTrimming="CharacterEllipsis" Visibility="{x:Bind ViewModel.CurrentFeatured.MetaVisibility, Mode=OneWay}" />
+          </StackPanel>
+          <!-- Clamped because the hero is a fixed height and the synopsis is
+               the addon's description verbatim: an overview that runs long
+               used to push the action buttons out through the clip. -->
+          <TextBlock
+            MaxWidth="520"
+            MaxLines="3"
+            Style="{StaticResource HaloBody}"
+            Text="{x:Bind ViewModel.CurrentFeatured.Synopsis, Mode=OneWay}"
+            TextTrimming="CharacterEllipsis"
+            Visibility="{x:Bind ViewModel.CurrentFeatured.SynopsisVisibility, Mode=OneWay}" />
+          <StackPanel Margin="0,10,0,0" Orientation="Horizontal" Spacing="10">
+            <Button Height="36" Padding="18,0" AutomationProperties.Name="{x:Bind ViewModel.CurrentFeatured.ActionLabel, Mode=OneWay}" Tag="{x:Bind ViewModel.CurrentFeatured, Mode=OneWay}" Click="OnFeaturedActionClick" Style="{StaticResource HaloAccentButtonStyle}">
+              <StackPanel Orientation="Horizontal" Spacing="9">
+                <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE768;" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.CurrentFeatured.ActionLabel, Mode=OneWay}" />
+              </StackPanel>
+            </Button>
+            <Button Height="36" Padding="18,0" Tag="{x:Bind ViewModel.CurrentFeatured, Mode=OneWay}" Click="OnFeaturedDetailsClick" Content="Details" />
+            <!--
+              The filled star and the outline are separate icons swapped
+              by visibility, so each keeps its own themed brush without a
+              value converter.
+            -->
+            <Button
+              Height="36"
+              Padding="14,0"
+              AutomationProperties.Name="{x:Bind ViewModel.CurrentFeatured.LibraryLabel, Mode=OneWay}"
+              Tag="{x:Bind ViewModel.CurrentFeatured, Mode=OneWay}"
+              Click="OnFeaturedLibraryClick"
+              IsEnabled="{x:Bind ViewModel.CurrentFeatured.LibraryEnabled, Mode=OneWay}">
+              <StackPanel Orientation="Horizontal" Spacing="8">
+                <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloCautionBrush}" Glyph="&#xE735;" Visibility="{x:Bind ViewModel.CurrentFeatured.InLibraryVisibility, Mode=OneWay}" />
+                <FontIcon FontSize="{StaticResource HaloFontEmphasis}" Glyph="&#xE734;" Visibility="{x:Bind ViewModel.CurrentFeatured.NotInLibraryVisibility, Mode=OneWay}" />
+                <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.CurrentFeatured.LibraryLabel, Mode=OneWay}" />
+              </StackPanel>
+            </Button>
+          </StackPanel>
+          <TextBlock
+            Foreground="{ThemeResource HaloCriticalBrush}"
+            Text="{x:Bind ViewModel.CurrentFeatured.LibraryErrorText, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.CurrentFeatured.LibraryErrorVisibility, Mode=OneWay}" />
+        </StackPanel>
+        <!-- Five pips, the carousel's length; the presenter shows as many as
+             there are titles. Left and Right step between them. -->
+        <StackPanel
+          x:Name="HeroPips"
           Margin="0,0,0,14"
           HorizontalAlignment="Center"
           VerticalAlignment="Bottom"
-          NumberOfPages="{x:Bind ViewModel.FeaturedCount, Mode=OneWay}"
-          SelectedPageIndex="{x:Bind ViewModel.FeaturedIndex, Mode=TwoWay}" />
+          AutomationProperties.Name="Featured titles"
+          KeyDown="OnFeaturedKeyDown"
+          Orientation="Horizontal"
+          Spacing="8">
+          <Button x:Name="HeroPip0" Click="OnHeroPipClick" Style="{StaticResource HeroPipStyle}" Tag="0">
+            <Border x:Name="HeroPipFill0" Background="{ThemeResource HaloText1Brush}" CornerRadius="3" RenderTransformOrigin="0,0.5" Visibility="Collapsed">
+              <Border.RenderTransform><ScaleTransform x:Name="HeroPipScale0" /></Border.RenderTransform>
+            </Border>
+          </Button>
+          <Button x:Name="HeroPip1" Click="OnHeroPipClick" Style="{StaticResource HeroPipStyle}" Tag="1">
+            <Border x:Name="HeroPipFill1" Background="{ThemeResource HaloText1Brush}" CornerRadius="3" RenderTransformOrigin="0,0.5" Visibility="Collapsed">
+              <Border.RenderTransform><ScaleTransform x:Name="HeroPipScale1" /></Border.RenderTransform>
+            </Border>
+          </Button>
+          <Button x:Name="HeroPip2" Click="OnHeroPipClick" Style="{StaticResource HeroPipStyle}" Tag="2">
+            <Border x:Name="HeroPipFill2" Background="{ThemeResource HaloText1Brush}" CornerRadius="3" RenderTransformOrigin="0,0.5" Visibility="Collapsed">
+              <Border.RenderTransform><ScaleTransform x:Name="HeroPipScale2" /></Border.RenderTransform>
+            </Border>
+          </Button>
+          <Button x:Name="HeroPip3" Click="OnHeroPipClick" Style="{StaticResource HeroPipStyle}" Tag="3">
+            <Border x:Name="HeroPipFill3" Background="{ThemeResource HaloText1Brush}" CornerRadius="3" RenderTransformOrigin="0,0.5" Visibility="Collapsed">
+              <Border.RenderTransform><ScaleTransform x:Name="HeroPipScale3" /></Border.RenderTransform>
+            </Border>
+          </Button>
+          <Button x:Name="HeroPip4" Click="OnHeroPipClick" Style="{StaticResource HeroPipStyle}" Tag="4">
+            <Border x:Name="HeroPipFill4" Background="{ThemeResource HaloText1Brush}" CornerRadius="3" RenderTransformOrigin="0,0.5" Visibility="Collapsed">
+              <Border.RenderTransform><ScaleTransform x:Name="HeroPipScale4" /></Border.RenderTransform>
+            </Border>
+          </Button>
+        </StackPanel>
       </Grid>
       <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
         <Grid Margin="0,0,0,12">
@@ -162,20 +249,20 @@
           <TextBlock Style="{StaticResource HaloShelfTitle}" Text="Continue watching" />
           <TextBlock Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ContinueCountLabel, Mode=OneWay}" />
           <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all in progress titles" Click="OnContinueSeeAllClick" />
-          <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
+          <Button x:Name="ContinueScrollLeftButton" Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching left" Click="OnContinueScrollLeft" ToolTipService.ToolTip="Scroll left">
             <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
           </Button>
-          <Button Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
+          <Button x:Name="ContinueScrollRightButton" Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll Continue watching right" Click="OnContinueScrollRight" ToolTipService.ToolTip="Scroll right">
             <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>
-        <ScrollViewer x:Name="ContinueScroller" Margin="0,-4,0,0" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled">
+        <ScrollViewer x:Name="ContinueScroller" Margin="0,-4,0,0" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" ViewChanged="OnContinueViewChanged" SizeChanged="OnContinueScrollerSizeChanged">
           <!-- The wheel handler belongs on the content, not on the scroller. A
                ScrollViewer class-handles the wheel before any handler attached to
                the scroller itself, and marks it handled, so one attached there is
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
-          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
+          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
             <!-- The last list on this page that realised everything it was given. -->
             <ItemsRepeater x:Name="ContinueList">
             <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
@@ -197,11 +284,13 @@
         </ScrollViewer>
       </StackPanel>
       <!--
-        A repeater, not an items control: the catalog cap allows eight shelves plus
-        the library, and an items control realises every one of them at page load.
-        Each shelf carries its own scroll viewer and repeater, and every one of
-        those recomputes its realisation window on each scroll frame, on screen or
-        not. Virtualising here keeps that work to the shelves actually in view.
+        A repeater, not an items control: the catalog cap allows sixteen shelves
+        plus the history and the library, and an items control realises every
+        one of them at page load. Each shelf carries its own scroll viewer and
+        repeater, and every one of those recomputes its realisation window on
+        each scroll frame, on screen or not. Virtualising here keeps that work
+        to the shelves actually in view. The shelf hands itself through Tag so
+        its See all knows where it leads.
       -->
       <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}">
         <ItemsRepeater.Layout>
@@ -209,7 +298,7 @@
         </ItemsRepeater.Layout>
         <ItemsRepeater.ItemTemplate>
           <DataTemplate x:DataType="local:Shelf">
-            <local:MediaShelf Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
+            <local:MediaShelf Title="{x:Bind Title}" SourceLabel="{x:Bind SourceLabel}" ItemsSource="{x:Bind Items}" Tag="{x:Bind}" ItemClick="OnShelfItemClick" SeeAllClick="OnShelfSeeAllClick" />
           </DataTemplate>
         </ItemsRepeater.ItemTemplate>
       </ItemsRepeater>

@@ -4,6 +4,7 @@
 #include "Services/ServiceInterfaces.h"
 #include <cstdint>
 #include <memory>
+#include <string>
 #include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.h>
@@ -22,7 +23,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] auto FeaturedItemsView() const { return m_featured; }
         [[nodiscard]] std::int32_t FeaturedCount() const noexcept;
         [[nodiscard]] std::int32_t FeaturedIndex() const noexcept;
-        void FeaturedIndex(std::int32_t value);
+        [[nodiscard]] winrt::HaloDesktop::FeaturedItem CurrentFeatured() const;
+        // False once the viewer has picked a title: the carousel then stays put.
+        [[nodiscard]] bool FeaturedAutoAdvance() const noexcept;
+        // A manual pick, which stops the carousel on that title.
+        void SelectFeatured(std::int32_t index);
+        // The dwell on the current title ran out. The view's pip fill is the
+        // clock, so this is only ever called when that fill completes.
+        void AdvanceFeatured();
         void StepFeatured(std::int32_t direction);
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FeaturedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RefreshErrorVisibility() const noexcept;
@@ -44,18 +52,16 @@ namespace winrt::HaloDesktop::implementation
         void OpenFeaturedDetail(winrt::Windows::Foundation::IInspectable const& item);
         void OpenFeaturedSources(winrt::Windows::Foundation::IInspectable const& item);
         void ToggleFeaturedLibrary(winrt::Windows::Foundation::IInspectable const& item);
-        // The strip stops advancing while a pointer rests on it, and stops
-        // entirely once Home is off screen: a timer ticking behind another page
-        // would animate a carousel nobody is looking at.
-        void PauseFeatured();
-        void ResumeFeatured();
+        // Home is off screen. The view stops the carousel's clock itself.
         void Deactivate();
         void OpenContinue(winrt::Windows::Foundation::IInspectable const& item);
         void OpenSearch(winrt::hstring const& query);
+        // A shelf's "See all": its grid, the history or the library.
         void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
         void OpenContinueCatalog();
         [[nodiscard]] double HeroHeight() const noexcept;
         [[nodiscard]] double HeroTitleSize() const noexcept;
+        [[nodiscard]] double HeroLogoMaxHeight() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness ContentPadding() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
@@ -70,12 +76,20 @@ namespace winrt::HaloDesktop::implementation
         void AdoptUserStateChange();
         void ReloadForAccount();
         void ApplyContinue();
+        // The continue row changed on its own (a next-episode lookup landed).
+        // The recently watched shelf leaves out what that row offers, so it is
+        // rebuilt too when its titles would change.
+        void ApplyContinueChange();
         void Rebuild();
+        void RebuildShelves();
         void RebuildFeatured();
         void SynchronizeFeaturedLibraryState();
-        void RestartFeaturedTimer();
-        void StopFeaturedTimer();
-        void AdvanceFeatured();
+        void ShowFeatured(std::int32_t index, bool autoAdvance);
+        [[nodiscard]] std::vector<std::wstring> RecentlyWatchedKeys() const;
+        // What the recently watched shelf shows of each title, so a rebuild is
+        // skipped only when nothing it draws would change.
+        [[nodiscard]] static std::vector<std::wstring> KeysOf(
+            winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> const& titles);
         [[nodiscard]] bool HasUsableContent() const noexcept;
         void RaiseState();
         void RaiseLayoutMetrics();
@@ -90,11 +104,12 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::IdentityChangedToken m_identityToken{};
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_featured{ nullptr };
-        Microsoft::UI::Xaml::DispatcherTimer m_featuredTimer{ nullptr };
-        winrt::event_token m_featuredTickToken{};
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_sourceShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_continueItems{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_shelves{ nullptr };
+        // The titles the recently watched shelf was last built with, so a
+        // continue change that leaves them alone does not rebuild every shelf.
+        std::vector<std::wstring> m_recentKeys;
         std::int32_t m_filterIndex{};
         std::int32_t m_featuredIndex{};
         std::uint32_t m_loadVersion{};
@@ -103,7 +118,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_error{};
         bool m_refreshError{};
         bool m_active{};
-        bool m_featuredPaused{};
+        bool m_featuredAutoAdvance{ true };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 }

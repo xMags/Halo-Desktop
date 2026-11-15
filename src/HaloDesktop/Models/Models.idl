@@ -51,6 +51,11 @@ namespace HaloDesktop
         Int64 UpdatedAt { get; };
         MediaKind Kind { get; };
         String KindLabel { get; };
+        // The title's logo art, when its addon sent one.
+        String Logo { get; };
+        // `behaviorHints.defaultVideoId`: the video a film plays as when that
+        // differs from its id. Empty when the addon named none.
+        String DefaultVideoId { get; };
     };
 
     [default_interface]
@@ -195,6 +200,14 @@ namespace HaloDesktop
         String Synopsis { get; };
         String Background { get; };
         String ActionLabel { get; };
+        // The logo drawn in place of the title, empty when there is none.
+        String Logo { get; };
+        // Hidden when the title has no positive rating, and the separator only
+        // when both the rating and the release line are there.
+        Microsoft.UI.Xaml.Visibility RatingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MetaVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FactsSeparatorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SynopsisVisibility { get; };
         Double TitleSize { get; };
         String LibraryLabel { get; };
         Boolean InLibrary { get; };

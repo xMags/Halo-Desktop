@@ -2,14 +2,18 @@
 #include "Services/CatalogService.h"
 
 #include "Api/ApiClient.h"
+#include "Api/CatalogExtrasPolicy.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
 #include "Services/AddonSelectionPolicy.h"
+#include "Services/CatalogLanguagePolicy.h"
 #include "Services/ContinueArtworkService.h"
 #include "Services/ContinueNextEpisodeService.h"
 #include "Services/DevicePreferencesStore.h"
+#include "Services/HomeRowsPolicy.h"
 #include "Services/LibraryService.h"
 #include "Services/RatingPolicy.h"
+#include "Services/SettingsSyncService.h"
 #include "Services/WatchStateService.h"
 #include "ViewModels/HomeStatePolicy.h"
 
@@ -24,6 +28,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace
@@ -33,7 +38,54 @@ namespace
         winrt::hstring AddonId;
         winrt::hstring AddonName;
         ::HaloDesktop::Api::Dto::AddonRecord::Catalog Catalog;
+        // What the catalog is asked with: the account's language, for a
+        // language catalog that offers it.
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> Extras;
+        // The request's identity, for reusing an unchanged catalog's answer.
+        std::wstring Key;
     };
+
+    std::wstring RequestKey(
+        winrt::hstring const& addonId,
+        winrt::hstring const& type,
+        winrt::hstring const& catalogId,
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> const& extras)
+    {
+        // Unit separators: none of the parts can contain one, the mappers
+        // having stripped control characters from every display string.
+        std::wstring key{ addonId };
+        for (auto const& part : { type, catalogId })
+        {
+            key.push_back(L'\x1F');
+            key.append(part);
+        }
+        for (auto const& [name, value] : extras)
+        {
+            key.push_back(L'\x1F');
+            key.append(name);
+            key.push_back(L'=');
+            key.append(value);
+        }
+        return key;
+    }
+
+    std::vector<::HaloDesktop::Services::CatalogExtraDeclaration> ExtraDeclarations(
+        ::HaloDesktop::Api::Dto::AddonRecord::Catalog const& catalog)
+    {
+        std::vector<::HaloDesktop::Services::CatalogExtraDeclaration> declarations;
+        declarations.reserve(catalog.Extras.size());
+        for (auto const& extra : catalog.Extras)
+        {
+            ::HaloDesktop::Services::CatalogExtraDeclaration declaration{ std::wstring{ extra.Name }, extra.IsRequired, {} };
+            declaration.Options.reserve(extra.Options.size());
+            for (auto const& option : extra.Options)
+            {
+                declaration.Options.emplace_back(option);
+            }
+            declarations.push_back(std::move(declaration));
+        }
+        return declarations;
+    }
 
     winrt::HaloDesktop::MediaKind Kind(winrt::hstring const& type)
     {
@@ -66,14 +118,8 @@ namespace
             item.Id, item.Name, MetaLine(item), Kind(item.Type), item.Type,
             item.Poster.value_or(L""), item.Background.value_or(L""), item.Description.value_or(L""),
             winrt::hstring{ ::HaloDesktop::Services::RatedValue(RatingText(item)).value_or(L"") },
-            item.ReleaseInfo.value_or(L""), addedAt, updatedAt);
-    }
-
-    winrt::hstring TypeLabel(winrt::hstring const& type)
-    {
-        if (type == L"movie") return L"Movies";
-        if (type == L"series") return L"Series";
-        return type;
+            item.ReleaseInfo.value_or(L""), addedAt, updatedAt,
+            item.Logo.value_or(L""), item.DefaultVideoId.value_or(L""));
     }
 
     // The most cards the shelf shows, and the most lookups one fill will start.
@@ -157,17 +203,19 @@ namespace HaloDesktop::Services
         std::shared_ptr<WatchStateService> watchState,
         std::shared_ptr<DevicePreferencesStore> preferences,
         std::shared_ptr<ContinueArtworkService> artwork,
-        std::shared_ptr<ContinueNextEpisodeService> nextEpisodes)
+        std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
+        std::shared_ptr<SettingsSyncService> settings)
         : m_apiClient(std::move(apiClient)),
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_watchState(std::move(watchState)),
           m_preferences(std::move(preferences)),
           m_artwork(std::move(artwork)),
-          m_nextEpisodes(std::move(nextEpisodes))
+          m_nextEpisodes(std::move(nextEpisodes)),
+          m_settings(std::move(settings))
     {
         if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_preferences || !m_artwork ||
-            !m_nextEpisodes)
+            !m_nextEpisodes || !m_settings)
         {
             throw std::invalid_argument{ "CatalogService requires all dependencies." };
         }
@@ -195,7 +243,7 @@ namespace HaloDesktop::Services
             co_await RunSharedRefreshAsync(true);
             co_return;
         }
-        if (!m_refreshState.IsDirty())
+        if (!CatalogsDirty())
         {
             co_return;
         }
@@ -247,13 +295,27 @@ namespace HaloDesktop::Services
         }
 
         auto const uiContext = winrt::apartment_context{};
+        // Only a refresh the catalog language alone asked for may reuse what
+        // the committed catalogs returned; any other change refetches them all.
+        auto const reuseUnchanged = m_refreshState.HasLoaded() && !m_refreshState.IsDirty();
         try
         {
             if (loadDependencies)
             {
+                // Read beside the addons rather than after them, so the language
+                // the shelves are asked with costs Home no extra round trip.
+                auto settingsLoad = m_settings->LoadAsync();
                 co_await m_addons->LoadAsync();
                 co_await m_library->LoadAsync();
                 co_await m_watchState->LoadAsync();
+                try
+                {
+                    co_await settingsLoad;
+                }
+                catch (...)
+                {
+                    // Without settings the language catalogs keep their default.
+                }
                 co_await uiContext;
                 if (accountVersion != m_accountVersion)
                 {
@@ -261,20 +323,41 @@ namespace HaloDesktop::Services
                 }
             }
 
+            auto const language = CurrentCatalogLanguage();
+            auto const languageView = language
+                ? std::optional<std::wstring_view>{ *language }
+                : std::nullopt;
             std::vector<CatalogQuery> queries;
-            auto const addons = DistinctAddons(m_addons->Records());
-            for (auto const& addon : addons)
+            // The effective resolution order: global addons first, then the
+            // user's own minus those the administrator already installs.
+            for (auto const& addon : m_addons->Records())
             {
-                if (addon.HideCatalogs)
+                if (queries.size() == MaximumHomeShelves)
+                {
+                    break;
+                }
+                if (addon.HideCatalogs || (!addon.IsGlobal && addon.ProvidedGlobally))
                 {
                     continue;
                 }
                 for (auto const& catalog : addon.Catalogs)
                 {
-                    if (!catalog.HasRequiredExtra && queries.size() < 8)
+                    if (queries.size() == MaximumHomeShelves)
                     {
-                        queries.push_back({ addon.Id, addon.Name, catalog });
+                        break;
                     }
+                    if (catalog.HasRequiredExtra || !IsHomeCatalogType(std::wstring_view{ catalog.Type }))
+                    {
+                        continue;
+                    }
+                    std::vector<std::pair<winrt::hstring, winrt::hstring>> extras;
+                    auto const declarations = ExtraDeclarations(catalog);
+                    if (auto const genre = CatalogLanguageGenre(declarations, languageView))
+                    {
+                        extras.emplace_back(L"genre", winrt::hstring{ *genre });
+                    }
+                    auto key = RequestKey(addon.Id, catalog.Type, catalog.Id, extras);
+                    queries.push_back({ addon.Id, addon.Name, catalog, std::move(extras), std::move(key) });
                 }
             }
 
@@ -284,24 +367,43 @@ namespace HaloDesktop::Services
                 std::vector<::HaloDesktop::Api::Dto::MetaPreview> Items;
             };
 
-            std::vector<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> tasks;
+            // Answers reused from the committed snapshot are copied here, on the
+            // UI thread, before anything is awaited.
+            std::vector<std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>>> tasks;
+            std::vector<std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> reused;
             tasks.reserve(queries.size());
+            reused.reserve(queries.size());
             for (auto const& query : queries)
             {
+                auto const cached = reuseUnchanged ? m_catalogResults.find(query.Key) : m_catalogResults.end();
+                if (cached != m_catalogResults.end())
+                {
+                    tasks.emplace_back();
+                    reused.emplace_back(cached->second);
+                    continue;
+                }
                 tasks.push_back(m_apiClient->GetCatalogAsync(
                     query.AddonId,
                     query.Catalog.Type,
-                    query.Catalog.Id));
+                    query.Catalog.Id,
+                    query.Extras));
+                reused.emplace_back();
             }
 
             std::vector<CatalogResult> results;
             results.reserve(tasks.size());
             std::size_t successfulCatalogCount{};
-            for (auto& task : tasks)
+            for (std::size_t index = 0; index < tasks.size(); ++index)
             {
+                if (!tasks[index])
+                {
+                    results.push_back({ true, std::move(*reused[index]) });
+                    ++successfulCatalogCount;
+                    continue;
+                }
                 try
                 {
-                    results.push_back({ true, co_await task });
+                    results.push_back({ true, co_await *tasks[index] });
                     ++successfulCatalogCount;
                 }
                 catch (...)
@@ -322,12 +424,14 @@ namespace HaloDesktop::Services
             }
 
             std::vector<winrt::HaloDesktop::Shelf> catalogShelfItems;
+            std::unordered_map<std::wstring, std::vector<::HaloDesktop::Api::Dto::MetaPreview>> catalogResults;
             for (std::size_t index = 0; index < queries.size(); ++index)
             {
                 if (!results[index].Succeeded || results[index].Items.empty())
                 {
                     continue;
                 }
+                auto const& query = queries[index];
 
                 std::vector<winrt::HaloDesktop::MediaSummary> items;
                 items.reserve(results[index].Items.size());
@@ -335,12 +439,40 @@ namespace HaloDesktop::Services
                 {
                     items.push_back(MakeMedia(item));
                 }
-                auto const title = queries[index].Catalog.Name.value_or(queries[index].AddonName);
-                auto const label = TypeLabel(queries[index].Catalog.Type);
+
+                // A catalog that pages carries what its grid needs to go on:
+                // the request and the first page as the addon sent it.
+                std::shared_ptr<CatalogPagingSource const> paging;
+                if (::HaloDesktop::Api::SupportsSkip(query.Catalog))
+                {
+                    auto source = std::make_shared<CatalogPagingSource>();
+                    source->AddonId = query.AddonId;
+                    source->Type = query.Catalog.Type;
+                    source->CatalogId = query.Catalog.Id;
+                    for (auto const& [name, value] : query.Extras)
+                    {
+                        source->Extras.emplace_back(std::wstring{ name }, std::wstring{ value });
+                    }
+                    source->FirstPage.reserve(results[index].Items.size());
+                    for (auto const& item : results[index].Items)
+                    {
+                        source->FirstPage.push_back({ std::wstring{ item.Type }, std::wstring{ item.Id } });
+                    }
+                    paging = std::move(source);
+                }
+
+                auto const name = query.Catalog.Name
+                    ? std::optional<std::wstring_view>{ std::wstring_view{ *query.Catalog.Name } }
+                    : std::nullopt;
+                auto labels = CatalogShelfLabels(name, std::wstring_view{ query.Catalog.Type }, std::wstring_view{ query.AddonName });
                 catalogShelfItems.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
-                    title,
-                    label,
-                    winrt::single_threaded_vector(std::move(items)).GetView()));
+                    winrt::hstring{ labels.Title },
+                    winrt::hstring{ labels.Source },
+                    winrt::single_threaded_vector(std::move(items)).GetView(),
+                    nullptr,
+                    winrt::HaloDesktop::implementation::ShelfSeeAll::Catalog,
+                    std::move(paging)));
+                catalogResults.insert_or_assign(query.Key, std::move(results[index].Items));
             }
 
             auto const catalogShelves = winrt::single_threaded_vector(
@@ -357,6 +489,8 @@ namespace HaloDesktop::Services
             m_libraryItems = libraryItems;
             m_shelves = shelves;
             m_continue = continueSnapshot.Items;
+            m_catalogResults = std::move(catalogResults);
+            m_appliedLanguage = language;
             ++m_snapshotVersion;
             BeginContinueArtworkFill();
             BeginContinueNextFill(std::move(continueSnapshot.Requests));
@@ -470,7 +604,115 @@ namespace HaloDesktop::Services
 
     void CatalogService::InvalidateCatalogs() noexcept { m_refreshState.Invalidate(); }
 
-    bool CatalogService::CatalogsDirty() const noexcept { return m_refreshState.IsDirty(); }
+    bool CatalogService::CatalogsDirty() const noexcept
+    {
+        if (m_refreshState.IsDirty())
+        {
+            return true;
+        }
+        try
+        {
+            return m_refreshState.HasLoaded() && CurrentCatalogLanguage() != m_appliedLanguage;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
+    std::optional<std::wstring> CatalogService::CurrentCatalogLanguage() const
+    {
+        auto const value = m_settings->CatalogLanguage();
+        return value ? std::optional<std::wstring>{ std::wstring{ *value } } : std::nullopt;
+    }
+
+    winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+    CatalogService::RecentlyWatchedForFilter(std::int32_t filterIndex) const
+    {
+        std::vector<RecentlyWatchedRow> rows;
+        for (auto const& row : m_watchState->Rows())
+        {
+            // A tombstone is a removal from the history, not a play.
+            if (row.RemovedAt)
+            {
+                continue;
+            }
+            rows.push_back({
+                std::wstring{ row.ItemId },
+                row.Name ? std::optional<std::wstring>{ std::wstring{ *row.Name } } : std::nullopt,
+                row.Poster ? std::optional<std::wstring>{ std::wstring{ *row.Poster } } : std::nullopt,
+                row.UpdatedAt,
+            });
+        }
+        std::vector<RecentlyWatchedLibraryEntry> library;
+        for (auto const& row : m_library->Rows())
+        {
+            library.push_back({
+                std::wstring{ row.Id },
+                std::wstring{ row.Name },
+                row.Poster ? std::optional<std::wstring>{ std::wstring{ *row.Poster } } : std::nullopt,
+                row.RemovedAt.has_value(),
+            });
+        }
+        std::unordered_set<std::wstring> exclude;
+        if (m_continue)
+        {
+            for (auto const& item : m_continue)
+            {
+                exclude.insert(std::wstring{ item.ItemId() });
+            }
+        }
+
+        std::vector<winrt::HaloDesktop::MediaSummary> items;
+        for (auto const& title : BuildRecentlyWatchedRow(
+                 std::move(rows),
+                 library,
+                 exclude,
+                 ::HaloDesktop::ViewModels::HomeFilterFromIndex(filterIndex)))
+        {
+            auto const type = winrt::hstring{ title.Type };
+            items.push_back(winrt::make<winrt::HaloDesktop::implementation::MediaSummary>(
+                winrt::hstring{ title.MetaId }, winrt::hstring{ title.Name }, L"", Kind(type), type,
+                winrt::hstring{ title.Poster.value_or(std::wstring{}) }));
+        }
+        return winrt::single_threaded_vector(std::move(items)).GetView();
+    }
+
+    concurrency::task<std::vector<winrt::HaloDesktop::MediaSummary>> CatalogService::FetchCatalogPageAsync(
+        std::shared_ptr<CatalogPagingSource const> source,
+        std::size_t skip)
+    {
+        if (!source)
+        {
+            throw std::invalid_argument{ "A catalog page needs the catalog it pages." };
+        }
+        auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> extras;
+        extras.reserve(source->Extras.size() + 1);
+        for (auto const& [name, value] : source->Extras)
+        {
+            extras.emplace_back(winrt::hstring{ name }, winrt::hstring{ value });
+        }
+        extras.emplace_back(L"skip", winrt::to_hstring(static_cast<std::uint64_t>(skip)));
+        auto const page = co_await m_apiClient->GetCatalogAsync(
+            winrt::hstring{ source->AddonId },
+            winrt::hstring{ source->Type },
+            winrt::hstring{ source->CatalogId },
+            std::move(extras));
+        co_await uiContext;
+        if (accountVersion != m_accountVersion)
+        {
+            throw winrt::hresult_canceled{};
+        }
+        std::vector<winrt::HaloDesktop::MediaSummary> items;
+        items.reserve(page.size());
+        for (auto const& item : page)
+        {
+            items.push_back(MakeMedia(item));
+        }
+        co_return items;
+    }
 
     void CatalogService::RefreshContinue() { BuildContinue(); }
 
@@ -526,7 +768,10 @@ namespace HaloDesktop::Services
             shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
                 L"My library",
                 L"SYNCED · " + winrt::to_hstring(libraryItems.Size()),
-                libraryItems));
+                libraryItems,
+                nullptr,
+                winrt::HaloDesktop::implementation::ShelfSeeAll::Library,
+                nullptr));
         }
         for (auto const& shelf : catalogShelves)
         {
@@ -820,6 +1065,8 @@ namespace HaloDesktop::Services
         ++m_searchVersion;
         m_loadTask.reset();
         m_refreshState.Reset();
+        m_appliedLanguage.reset();
+        m_catalogResults.clear();
         m_continue = winrt::single_threaded_vector<winrt::HaloDesktop::ContinueItem>().GetView();
         m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();

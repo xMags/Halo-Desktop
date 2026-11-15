@@ -156,12 +156,29 @@
     <ClCompile Include="..\..\src\HaloDesktop\Api\OpenSubtitlesHashPolicy.cpp">
       <Link>OpenSubtitlesHashPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="HomeRowsTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\HomeRowsPolicy.cpp">
+      <Link>HomeRowsPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogLanguagePolicy.cpp">
+      <Link>CatalogLanguagePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogPagingPolicy.cpp">
+      <Link>CatalogPagingPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\LanguagePolicy.cpp">
+      <Link>LanguagePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Controls\ShelfScrollPolicy.cpp">
+      <Link>ShelfScrollPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
     <ClInclude Include="PlaybackSourceResolverTest.h" />
     <ClInclude Include="StorageTests.h" />
     <ClInclude Include="ApiClientAuthTest.h" />
+    <ClInclude Include="HomeRowsTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

@@ -9,7 +9,17 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SourceVisibility { get; };
         Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        // The end of a grid whose catalog pages: a spinner while the next page
+        // loads, or why it could not and a retry.
+        Microsoft.UI.Xaml.Visibility MoreVisibility { get; };
+        Boolean LoadingMore { get; };
+        Microsoft.UI.Xaml.Visibility LoadingMoreVisibility { get; };
+        Microsoft.UI.Xaml.Visibility MoreFailedVisibility { get; };
         void Load(Object parameter);
+        // The end of the grid is near: asks for the next page when there is one
+        // and none is loading or has failed.
+        void RequestMore();
+        void RetryMore();
         void OpenDetail(Object item);
         void GoBack();
     }

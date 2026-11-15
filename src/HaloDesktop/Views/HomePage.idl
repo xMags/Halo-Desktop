@@ -1,10 +1,17 @@
+// The current featured card is the shared FeaturedItem model.
+import "Models/Models.idl";
+
 namespace HaloDesktop
 {
     runtimeclass HomeViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         Object FeaturedItems { get; };
         Int32 FeaturedCount { get; };
-        Int32 FeaturedIndex;
+        Int32 FeaturedIndex { get; };
+        FeaturedItem CurrentFeatured { get; };
+        Boolean FeaturedAutoAdvance { get; };
+        void SelectFeatured(Int32 index);
+        void AdvanceFeatured();
         void StepFeatured(Int32 direction);
         Microsoft.UI.Xaml.Visibility FeaturedVisibility { get; };
         Microsoft.UI.Xaml.Visibility RefreshErrorVisibility { get; };
@@ -24,8 +31,6 @@ namespace HaloDesktop
         void OpenFeaturedDetail(Object item);
         void OpenFeaturedSources(Object item);
         void ToggleFeaturedLibrary(Object item);
-        void PauseFeatured();
-        void ResumeFeatured();
         void Deactivate();
         void OpenContinue(Object item);
         void OpenSearch(String query);
@@ -33,6 +38,7 @@ namespace HaloDesktop
         void OpenContinueCatalog();
         Double HeroHeight { get; };
         Double HeroTitleSize { get; };
+        Double HeroLogoMaxHeight { get; };
         Microsoft.UI.Xaml.Thickness ContentPadding { get; };
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
     }

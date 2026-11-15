@@ -21,10 +21,10 @@
       <TextBlock x:Name="TitleText" Style="{StaticResource HaloShelfTitle}" />
       <TextBlock x:Name="SourceText" Grid.Column="1" Margin="10,0,0,2" VerticalAlignment="Bottom" Style="{StaticResource HaloMonoData}" />
       <Button Grid.Column="3" Padding="8,3" Background="Transparent" BorderThickness="0" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Content="See all" AutomationProperties.Name="See all shelf items" Click="OnSeeAllClick" />
-      <Button Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll left" Click="OnScrollLeft" ToolTipService.ToolTip="Scroll left">
+      <Button x:Name="ScrollLeftButton" Grid.Column="4" Width="28" Height="28" MinWidth="0" Margin="8,0,0,0" Padding="0" AutomationProperties.Name="Scroll left" Click="OnScrollLeft" ToolTipService.ToolTip="Scroll left">
         <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76B;" />
       </Button>
-      <Button Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll right" Click="OnScrollRight" ToolTipService.ToolTip="Scroll right">
+      <Button x:Name="ScrollRightButton" Grid.Column="5" Width="28" Height="28" MinWidth="0" Margin="6,0,0,0" Padding="0" AutomationProperties.Name="Scroll right" Click="OnScrollRight" ToolTipService.ToolTip="Scroll right">
         <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
       </Button>
     </Grid>
@@ -35,13 +35,15 @@
       HorizontalScrollBarVisibility="Hidden"
       HorizontalScrollMode="Disabled"
       VerticalScrollMode="Disabled"
-      ZoomMode="Disabled">
+      ZoomMode="Disabled"
+      SizeChanged="OnStripSizeChanged"
+      ViewChanged="OnStripViewChanged">
       <!-- The wheel handler belongs on the content, not on the scroller. A
                ScrollViewer class-handles the wheel before any handler attached to
                the scroller itself, and marks it handled, so one attached there is
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
-      <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
+      <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnStripSizeChanged">
         <ItemsRepeater x:Name="ShelfItems">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Horizontal" Spacing="14" />

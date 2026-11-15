@@ -4,9 +4,12 @@
 #include "Services/ContinueShelfPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
+#include "Api/Dto.h"
+
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -18,6 +21,7 @@ namespace HaloDesktop::Services
     class ContinueNextEpisodeService;
     class DevicePreferencesStore;
     class LibraryService;
+    class SettingsSyncService;
     class WatchStateService;
 
     // UI-thread-only catalog aggregator. API calls run on background threads;
@@ -32,7 +36,8 @@ namespace HaloDesktop::Services
             std::shared_ptr<WatchStateService> watchState,
             std::shared_ptr<DevicePreferencesStore> preferences,
             std::shared_ptr<ContinueArtworkService> artwork,
-            std::shared_ptr<ContinueNextEpisodeService> nextEpisodes);
+            std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
+            std::shared_ptr<SettingsSyncService> settings);
 
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
@@ -53,6 +58,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary> LibraryItems() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const override;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+            RecentlyWatchedForFilter(std::int32_t filterIndex) const override;
+        [[nodiscard]] concurrency::task<std::vector<winrt::HaloDesktop::MediaSummary>> FetchCatalogPageAsync(
+            std::shared_ptr<CatalogPagingSource const> source,
+            std::size_t skip) override;
 
         void RecordRecent(winrt::hstring term) override;
         [[nodiscard]] CatalogChangedToken AddContinueChangedHandler(
@@ -98,6 +108,8 @@ namespace HaloDesktop::Services
             std::unordered_map<CatalogChangedToken, CatalogChangedHandler> const& registered);
         void LoadRecentTerms();
         void SaveRecentTerms();
+        // The language the account currently asks language catalogs for.
+        [[nodiscard]] std::optional<std::wstring> CurrentCatalogLanguage() const;
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<AddonService> m_addons;
@@ -106,6 +118,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<DevicePreferencesStore> m_preferences;
         std::shared_ptr<ContinueArtworkService> m_artwork;
         std::shared_ptr<ContinueNextEpisodeService> m_nextEpisodes;
+        std::shared_ptr<SettingsSyncService> m_settings;
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };
@@ -118,6 +131,13 @@ namespace HaloDesktop::Services
         std::uint64_t m_snapshotVersion{};
         std::uint64_t m_accountVersion{};
         std::uint64_t m_loadTaskAccountVersion{};
+        // The catalog language the committed shelves were asked with. A
+        // different one makes the catalogs dirty without anything else having
+        // changed, and only the catalogs it affects are fetched again.
+        std::optional<std::wstring> m_appliedLanguage;
+        // What each catalog of the committed snapshot returned, keyed by its
+        // request, so a refresh caused by the language alone reuses the rest.
+        std::unordered_map<std::wstring, std::vector<::HaloDesktop::Api::Dto::MetaPreview>> m_catalogResults;
         std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_continueHandlers;
         CatalogChangedToken m_nextContinueToken{ 1 };
         std::unordered_map<CatalogChangedToken, CatalogChangedHandler> m_userStateHandlers;

@@ -9,6 +9,9 @@ namespace HaloDesktop
         String Poster;
         String KindLabel;
         Boolean ShowKindBadge;
+        // True in a grid whose columns stretch: the card takes its column's
+        // width and its art keeps the 2:3 frame at that width.
+        Boolean FillsColumn;
         Double CardWidth { get; };
         event Microsoft.UI.Xaml.RoutedEventHandler Click;
     }

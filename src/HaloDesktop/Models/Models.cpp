@@ -62,7 +62,9 @@ namespace winrt::HaloDesktop::implementation
         hstring rating,
         hstring releaseInfo,
         std::int64_t addedAt,
-        std::int64_t updatedAt)
+        std::int64_t updatedAt,
+        hstring logo,
+        hstring defaultVideoId)
         : m_id(std::move(id)),
           m_type(type.empty() ? (kind == HaloDesktop::MediaKind::Series ? L"series" : L"movie") : std::move(type)),
           m_title(std::move(title)),
@@ -72,6 +74,8 @@ namespace winrt::HaloDesktop::implementation
           m_description(std::move(description)),
           m_rating(std::move(rating)),
           m_releaseInfo(std::move(releaseInfo)),
+          m_logo(std::move(logo)),
+          m_defaultVideoId(std::move(defaultVideoId)),
           m_addedAt(addedAt),
           m_updatedAt(updatedAt),
           m_kind(kind)
@@ -94,6 +98,8 @@ namespace winrt::HaloDesktop::implementation
     {
         return m_kind == HaloDesktop::MediaKind::Movie ? L"MOVIE" : L"SERIES";
     }
+    hstring MediaSummary::Logo() const { return m_logo; }
+    hstring MediaSummary::DefaultVideoId() const { return m_defaultVideoId; }
 
     MediaDetail::MediaDetail(
         hstring id,
@@ -461,6 +467,30 @@ namespace winrt::HaloDesktop::implementation
         return m_media && m_media.Kind() == HaloDesktop::MediaKind::Series ? L"Choose episode" : L"Play";
     }
 
+    hstring FeaturedItem::Logo() const { return m_media ? m_media.Logo() : hstring{}; }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::RatingVisibility() const noexcept
+    {
+        return m_media && !m_media.Rating().empty() ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::MetaVisibility() const noexcept
+    {
+        return m_media && !m_media.ReleaseInfo().empty() ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::FactsSeparatorVisibility() const noexcept
+    {
+        return RatingVisibility() == Microsoft::UI::Xaml::Visibility::Visible && MetaVisibility() == Microsoft::UI::Xaml::Visibility::Visible
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+
+    Microsoft::UI::Xaml::Visibility FeaturedItem::SynopsisVisibility() const noexcept
+    {
+        return m_media && !m_media.Description().empty() ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed;
+    }
+
     double FeaturedItem::TitleSize() const noexcept { return m_titleSize; }
 
     hstring FeaturedItem::LibraryLabel() const
@@ -524,15 +554,21 @@ namespace winrt::HaloDesktop::implementation
             || m_media.Background() != media.Background()
             || m_media.Poster() != media.Poster();
         auto const actionChanged = !m_media || m_media.Kind() != media.Kind();
+        auto const logoChanged = !m_media || m_media.Logo() != media.Logo();
         m_media = std::move(media);
 
         m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ L"Media" });
         for (auto const& [changed, name] : {
                  std::pair{ titleChanged, L"Title" },
                  std::pair{ ratingChanged, L"Rating" },
+                 std::pair{ ratingChanged, L"RatingVisibility" },
                  std::pair{ metaChanged, L"Meta" },
+                 std::pair{ metaChanged, L"MetaVisibility" },
+                 std::pair{ ratingChanged || metaChanged, L"FactsSeparatorVisibility" },
                  std::pair{ synopsisChanged, L"Synopsis" },
+                 std::pair{ synopsisChanged, L"SynopsisVisibility" },
                  std::pair{ backgroundChanged, L"Background" },
+                 std::pair{ logoChanged, L"Logo" },
                  std::pair{ actionChanged, L"ActionLabel" } })
         {
             if (changed)
@@ -621,7 +657,29 @@ namespace winrt::HaloDesktop::implementation
 
     hstring Shelf::Title() const { return m_title; }
     hstring Shelf::SourceLabel() const { return m_sourceLabel; }
+    Shelf::Shelf(
+        hstring title,
+        hstring sourceLabel,
+        Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> items,
+        Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> seeAllItems,
+        ShelfSeeAll seeAll,
+        std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> paging)
+        : m_title(std::move(title)),
+          m_sourceLabel(std::move(sourceLabel)),
+          m_items(std::move(items)),
+          m_seeAllItems(std::move(seeAllItems)),
+          m_seeAll(seeAll),
+          m_paging(std::move(paging))
+    {
+    }
+
     Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> Shelf::Items() const { return m_items; }
+    Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> Shelf::SeeAllItems() const
+    {
+        return m_seeAllItems ? m_seeAllItems : m_items;
+    }
+    ShelfSeeAll Shelf::SeeAll() const noexcept { return m_seeAll; }
+    std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> Shelf::Paging() const noexcept { return m_paging; }
 
     DetailNavParams::DetailNavParams(hstring type,hstring metaId,hstring title,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_title(std::move(title)),m_poster(std::move(poster)){}
     hstring DetailNavParams::Type()const{return m_type;}hstring DetailNavParams::MetaId()const{return m_metaId;}hstring DetailNavParams::Title()const{return m_title;}hstring DetailNavParams::Poster()const{return m_poster;}

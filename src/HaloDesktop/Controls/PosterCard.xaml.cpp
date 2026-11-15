@@ -5,10 +5,31 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/ThemeColorLookup.h"
 #include "Shell/LayoutMetricsService.h"
 
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <limits>
 #include <winrt/Windows.Foundation.Numerics.h>
+#include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
+
+namespace
+{
+    // The reference's hover: the card lifts 2px over 120ms while its art takes
+    // the hover stroke and `box-shadow: 0 8px 16px -6px`. The negative spread
+    // is drawn by insetting the shadow's shape, which keeps it off the strip's
+    // clipped sides.
+    constexpr std::chrono::milliseconds HoverDuration{ 120 };
+    constexpr float HoverLift = -2.0F;
+    constexpr float ShadowOffsetY = 8.0F;
+    constexpr float ShadowBlur = 16.0F;
+    constexpr float ShadowInset = 6.0F;
+    // The 2:3 poster frame.
+    constexpr double PosterAspect = 1.5;
+}
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -21,6 +42,9 @@ namespace winrt::HaloDesktop::implementation
     PosterCard::PosterCard()
     {
         InitializeComponent();
+        Microsoft::UI::Xaml::Vector3Transition lift;
+        lift.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(HoverDuration));
+        TranslationTransition(lift);
         ApplyLayoutMetrics();
     }
 
@@ -64,6 +88,27 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
+    bool PosterCard::FillsColumn() const noexcept { return m_fillsColumn; }
+    void PosterCard::FillsColumn(bool value)
+    {
+        if (m_fillsColumn == value) return;
+        m_fillsColumn = value;
+        if (value)
+        {
+            // The art follows the width the column hands the card, so the frame
+            // stays 2:3 however far the column stretches.
+            m_sizeChanged = SizeChanged(winrt::auto_revoke, [this](auto const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+            {
+                ApplyColumnWidth(args.NewSize().Width);
+            });
+        }
+        else
+        {
+            m_sizeChanged.revoke();
+        }
+        ApplyLayoutMetrics();
+    }
+
     double PosterCard::CardWidth() const noexcept { return m_cardWidth; }
 
     // The card reads the layout step itself rather than being fed by its hosts.
@@ -102,10 +147,33 @@ namespace winrt::HaloDesktop::implementation
         if (!metrics) return;
         auto const current = metrics->Current();
         m_cardWidth = current.PosterWidth;
+        if (m_fillsColumn)
+        {
+            // No width of its own: the column decides, and never below a poster.
+            Width(std::numeric_limits<double>::quiet_NaN());
+            MinWidth(current.PosterWidth);
+            HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+            ApplyColumnWidth(ActualWidth() > 0.0 ? ActualWidth() : current.PosterWidth);
+            return;
+        }
+        MinWidth(0.0);
         Width(current.PosterWidth);
         if (auto const row = FindName(L"ArtRow").try_as<Microsoft::UI::Xaml::Controls::RowDefinition>())
         {
             row.Height(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(current.PosterArtHeight()));
+        }
+    }
+
+    void PosterCard::ApplyColumnWidth(double width)
+    {
+        if (!std::isfinite(width) || width <= 0.0) return;
+        m_cardWidth = width;
+        auto const row = ArtRow();
+        auto const height = std::round(width * PosterAspect);
+        // Height follows width only, so this settles in one pass.
+        if (row && row.Height().Value != height)
+        {
+            row.Height(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(height));
         }
     }
 
@@ -114,15 +182,67 @@ namespace winrt::HaloDesktop::implementation
     void PosterCard::OnCardClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_click(*this, args); }
     void PosterCard::OnCardPointerEntered([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        Translation({ 0.0F, -2.0F, 0.0F });
-        ArtBorderControl().BorderBrush(Microsoft::UI::Xaml::Application::Current().Resources().Lookup(winrt::box_value(L"HaloAccentBrush")).as<Microsoft::UI::Xaml::Media::Brush>());
+        SetHovered(true);
     }
     void PosterCard::OnCardPointerExited([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        Translation({ 0.0F, 0.0F, 0.0F });
-        ArtBorderControl().BorderBrush(Microsoft::UI::Xaml::Application::Current().Resources().Lookup(winrt::box_value(L"HaloCardStrokeBrush")).as<Microsoft::UI::Xaml::Media::Brush>());
+        SetHovered(false);
     }
-    Microsoft::UI::Xaml::Controls::Border PosterCard::ArtBorderControl() const { return FindName(L"ArtBorder").as<Microsoft::UI::Xaml::Controls::Border>(); }
+
+    // Every part fades on its own transition, so this only sets where each
+    // ends up. Opacity is a plain double, which leaves the rings' themed
+    // brushes bound to the theme.
+    void PosterCard::SetHovered(bool hovered)
+    {
+        if (hovered)
+        {
+            EnsureHoverShadow();
+        }
+        Translation({ 0.0F, hovered ? HoverLift : 0.0F, 0.0F });
+        if (auto const ring = ArtHoverRing()) ring.Opacity(hovered ? 1.0 : 0.0);
+        if (auto const rest = ArtRestRing()) rest.Opacity(hovered ? 0.0 : 1.0);
+        if (auto const host = ShadowHost()) host.Opacity(hovered ? 1.0 : 0.0);
+    }
+
+    void PosterCard::EnsureHoverShadow()
+    {
+        auto const host = ShadowHost();
+        if (!host) return;
+        if (!m_shadowVisual)
+        {
+            auto const compositor = Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(host).Compositor();
+            m_shadow = compositor.CreateDropShadow();
+            m_shadow.BlurRadius(ShadowBlur);
+            m_shadow.Offset({ 0.0F, ShadowOffsetY, 0.0F });
+            // A brushless sprite casts the shadow of its own rectangle and
+            // draws nothing else; the art's rounded corners lie outside the
+            // inset rectangle, so none of them peeks out.
+            m_shadowVisual = compositor.CreateSpriteVisual();
+            m_shadowVisual.Shadow(m_shadow);
+            m_shadowVisual.Offset({ ShadowInset, ShadowInset, 0.0F });
+            Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::SetElementChildVisual(host, m_shadowVisual);
+            m_shadowSizeChanged = host.SizeChanged(winrt::auto_revoke, [this](auto const&, auto const&)
+            {
+                SizeHoverShadow();
+            });
+            SizeHoverShadow();
+        }
+        // Read on every hover, so a theme switch since the last one is honoured.
+        if (auto const color = ::HaloDesktop::Controls::ThemeColor(*this, L"HaloHoverCardShadowColor"))
+        {
+            m_shadow.Color(*color);
+        }
+    }
+
+    void PosterCard::SizeHoverShadow()
+    {
+        auto const host = ShadowHost();
+        if (!m_shadowVisual || !host) return;
+        auto const size = host.ActualSize();
+        m_shadowVisual.Size({
+            (std::max)(0.0F, size.x - 2.0F * ShadowInset),
+            (std::max)(0.0F, size.y - 2.0F * ShadowInset) });
+    }
     // The placeholder is opaque and sits directly behind the artwork, so leaving
     // it in place made every card in the list draw its art twice.
     void PosterCard::ShowPlaceholder(bool visible)

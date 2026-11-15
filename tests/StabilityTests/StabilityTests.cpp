@@ -20,6 +20,7 @@
 #include "ViewModels/HomeStatePolicy.h"
 #include "ApiClientAuthTest.h"
 #include "DownloadTransferTest.h"
+#include "HomeRowsTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1297,6 +1298,7 @@ int main()
         TestSelectFeaturedItems();
         TestOptionalSubtitleFallback();
         TestContinueShelf();
+        RunHomeRowsTests();
         TestWatchMarks();
         TestHistoryRemoval();
         TestEpisodePositionParsing();

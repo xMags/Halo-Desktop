@@ -28,33 +28,71 @@
         </StackPanel>
       </local:SectionHeader.RightContent>
     </local:SectionHeader>
-    <GridView
-      x:Name="CatalogGrid"
-      Loaded="OnGridLoaded"
+    <!--
+      As many columns as fit at the poster width, then stretched to share the
+      whole row, so a wide window leaves no empty band at the right. Rows are
+      as tall as the stretched art and its caption. The end area below the grid
+      is where the next page's spinner, or why it could not load, appears.
+    -->
+    <ScrollViewer
+      x:Name="CatalogScroller"
       Grid.Row="1"
-      Padding="24,16,24,32"
-      IsItemClickEnabled="False"
-      ScrollViewer.VerticalScrollBarVisibility="Hidden"
-      SelectionMode="None"
+      HorizontalScrollMode="Disabled"
+      HorizontalScrollBarVisibility="Disabled"
+      VerticalScrollBarVisibility="Hidden"
+      ViewChanged="OnScrollerViewChanged"
       Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
-      <GridView.ItemsPanel>
-        <ItemsPanelTemplate>
-          <ItemsWrapGrid Orientation="Horizontal" />
-        </ItemsPanelTemplate>
-      </GridView.ItemsPanel>
-      <GridView.ItemTemplate>
-        <DataTemplate x:DataType="local:MediaSummary">
-          <local:PosterCard
-            Title="{x:Bind Title}"
-            Meta="{x:Bind Meta}"
-            Poster="{x:Bind Poster}"
-            KindLabel="{x:Bind KindLabel}"
-            ShowKindBadge="True"
-            Tag="{x:Bind}"
-            Click="OnPosterClick" />
-        </DataTemplate>
-      </GridView.ItemTemplate>
-    </GridView>
+      <StackPanel>
+        <ItemsRepeater x:Name="CatalogGrid" Margin="24,20,24,32" SizeChanged="OnGridSizeChanged">
+          <ItemsRepeater.Layout>
+            <UniformGridLayout
+              x:Name="CatalogLayout"
+              ItemsStretch="Uniform"
+              MinColumnSpacing="22"
+              MinRowSpacing="14"
+              Orientation="Horizontal" />
+          </ItemsRepeater.Layout>
+          <ItemsRepeater.ItemTemplate>
+            <DataTemplate x:DataType="local:MediaSummary">
+              <local:PosterCard
+                Title="{x:Bind Title}"
+                Meta="{x:Bind Meta}"
+                Poster="{x:Bind Poster}"
+                KindLabel="{x:Bind KindLabel}"
+                ShowKindBadge="True"
+                FillsColumn="True"
+                Tag="{x:Bind}"
+                Click="OnPosterClick" />
+            </DataTemplate>
+          </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+        <StackPanel
+          MinHeight="56"
+          Margin="24,-16,24,24"
+          HorizontalAlignment="Center"
+          Orientation="Horizontal"
+          Spacing="12"
+          Visibility="{x:Bind ViewModel.MoreVisibility, Mode=OneWay}">
+          <ProgressRing
+            Width="20"
+            Height="20"
+            VerticalAlignment="Center"
+            IsActive="{x:Bind ViewModel.LoadingMore, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.LoadingMoreVisibility, Mode=OneWay}" />
+          <TextBlock
+            VerticalAlignment="Center"
+            FontSize="{StaticResource HaloFontLabel}"
+            Foreground="{ThemeResource HaloText3Brush}"
+            Text="Couldn't load more titles."
+            Visibility="{x:Bind ViewModel.MoreFailedVisibility, Mode=OneWay}" />
+          <Button
+            VerticalAlignment="Center"
+            Click="OnRetryMoreClick"
+            Content="Retry"
+            Visibility="{x:Bind ViewModel.MoreFailedVisibility, Mode=OneWay}" />
+        </StackPanel>
+      </StackPanel>
+    </ScrollViewer>
     <StackPanel
       Grid.Row="1"
       HorizontalAlignment="Center"

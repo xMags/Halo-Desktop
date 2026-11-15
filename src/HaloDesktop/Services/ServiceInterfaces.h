@@ -1,12 +1,15 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Services/CatalogPagingPolicy.h"
 #include "Services/Downloads/DownloadTypes.h"
 
 #include <chrono>
 #include <cstdint>
+#include <cstddef>
 #include <functional>
 #include <filesystem>
+#include <memory>
 #include <optional>
 #include <pplawait.h>
 #include <ppltasks.h>
@@ -77,6 +80,17 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SearchGroup> SearchResults() const = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::hstring> RecentTerms() const = 0;
         virtual void RecordRecent(winrt::hstring term) = 0;
+        // Home's recently watched shelf: the last distinct titles played, newest
+        // first, leaving out what the continue row already offers, following
+        // the filter. Synchronous and network free.
+        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::MediaSummary>
+            RecentlyWatchedForFilter(std::int32_t filterIndex) const = 0;
+        // The page of a catalog after the first `skip` titles, as the addon sent
+        // it, for a "See all" grid. Throws when the request fails, and cancels
+        // when the account changes before it returns. UI thread in and out.
+        [[nodiscard]] virtual concurrency::task<std::vector<winrt::HaloDesktop::MediaSummary>> FetchCatalogPageAsync(
+            std::shared_ptr<CatalogPagingSource const> source,
+            std::size_t skip) = 0;
         // Raised when the continue row changes on its own, which happens when a
         // next-episode lookup lands after the snapshot was already shown. Without
         // it a promoted card would not appear until Home was navigated to again.

@@ -15,7 +15,10 @@
 #include "StreamSource.g.h"
 #include "PlaybackRequest.g.h"
 
+#include "Services/CatalogPagingPolicy.h"
+
 #include <cstdint>
+#include <memory>
 #include <utility>
 #include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
@@ -38,7 +41,9 @@ namespace winrt::HaloDesktop::implementation
             hstring rating = {},
             hstring releaseInfo = {},
             std::int64_t addedAt = 0,
-            std::int64_t updatedAt = 0);
+            std::int64_t updatedAt = 0,
+            hstring logo = {},
+            hstring defaultVideoId = {});
 
         [[nodiscard]] hstring Id() const;
         [[nodiscard]] hstring Type() const;
@@ -53,6 +58,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] std::int64_t UpdatedAt() const noexcept;
         [[nodiscard]] HaloDesktop::MediaKind Kind() const noexcept;
         [[nodiscard]] hstring KindLabel() const;
+        [[nodiscard]] hstring Logo() const;
+        [[nodiscard]] hstring DefaultVideoId() const;
 
     private:
         hstring m_id;
@@ -64,6 +71,8 @@ namespace winrt::HaloDesktop::implementation
         hstring m_description;
         hstring m_rating;
         hstring m_releaseInfo;
+        hstring m_logo;
+        hstring m_defaultVideoId;
         std::int64_t m_addedAt{};
         std::int64_t m_updatedAt{};
         HaloDesktop::MediaKind m_kind{ HaloDesktop::MediaKind::Movie };
@@ -396,6 +405,11 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring Synopsis() const;
         [[nodiscard]] hstring Background() const;
         [[nodiscard]] hstring ActionLabel() const;
+        [[nodiscard]] hstring Logo() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RatingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MetaVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility FactsSeparatorVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SynopsisVisibility() const noexcept;
         [[nodiscard]] double TitleSize() const noexcept;
         [[nodiscard]] hstring LibraryLabel() const;
         [[nodiscard]] bool InLibrary() const noexcept;
@@ -443,19 +457,46 @@ namespace winrt::HaloDesktop::implementation
         Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_items{ nullptr };
     };
 
+    // Where a shelf's "See all" leads.
+    enum class ShelfSeeAll
+    {
+        // The shelf's titles as a grid, paging on when the catalog pages.
+        Catalog,
+        History,
+        Library,
+    };
+
     struct Shelf : ShelfT<Shelf>
     {
         Shelf() = default;
         Shelf(hstring title, hstring sourceLabel, Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> items);
+        // Not projected. `items` is what the strip draws; `seeAllItems` is what
+        // its grid opens with when the strip shows only the first of them.
+        Shelf(
+            hstring title,
+            hstring sourceLabel,
+            Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> items,
+            Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> seeAllItems,
+            ShelfSeeAll seeAll,
+            std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> paging);
 
         [[nodiscard]] hstring Title() const;
         [[nodiscard]] hstring SourceLabel() const;
         [[nodiscard]] Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> Items() const;
 
+        // Not projected: read by the views that open "See all", through get_self.
+        [[nodiscard]] Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> SeeAllItems() const;
+        [[nodiscard]] ShelfSeeAll SeeAll() const noexcept;
+        // Null when the shelf's catalog does not page.
+        [[nodiscard]] std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> Paging() const noexcept;
+
     private:
         hstring m_title;
         hstring m_sourceLabel;
         Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_items{ nullptr };
+        Windows::Foundation::Collections::IVectorView<HaloDesktop::MediaSummary> m_seeAllItems{ nullptr };
+        ShelfSeeAll m_seeAll{ ShelfSeeAll::Catalog };
+        std::shared_ptr<::HaloDesktop::Services::CatalogPagingSource const> m_paging;
     };
 
     struct DetailNavParams : DetailNavParamsT<DetailNavParams>

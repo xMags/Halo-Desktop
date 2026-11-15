@@ -335,6 +335,12 @@
     <ClInclude Include="Shell\ShellChromePolicy.h" />
     <ClInclude Include="Services\AccountPictureService.h" />
     <ClInclude Include="Views\HistoryPage.xaml.h"><DependentUpon>HistoryPage.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Services\HomeRowsPolicy.h" />
+    <ClInclude Include="Services\CatalogLanguagePolicy.h" />
+    <ClInclude Include="Services\CatalogPagingPolicy.h" />
+    <ClInclude Include="Controls\ShelfScrollPolicy.h" />
+    <ClInclude Include="Controls\ThemeColorLookup.h" />
+    <ClInclude Include="Views\HomeHeroPresenter.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -601,6 +607,20 @@
     </ClCompile>
     <ClCompile Include="Services\AccountPictureService.cpp" />
     <ClCompile Include="Views\HistoryPage.xaml.cpp"><DependentUpon>HistoryPage.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Services\HomeRowsPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\CatalogLanguagePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\CatalogPagingPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Controls\ShelfScrollPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Controls\ThemeColorLookup.cpp" />
+    <ClCompile Include="Views\HomeHeroPresenter.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

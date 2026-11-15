@@ -33,9 +33,14 @@ namespace winrt::HaloDesktop::implementation
         void OnStripPointerWheelChanged(
             winrt::Windows::Foundation::IInspectable const&,
             Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
+        // The strip's ends move with its own width (the window), its cards (a
+        // catalog arriving) and its offset, so all three re-measure them.
+        void OnStripSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
+        void OnStripViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
 
     private:
-        void ScrollBy(double direction);
+        void ScrollBy(int direction);
+        void UpdateEdges();
 
         winrt::hstring m_title;
         winrt::hstring m_sourceLabel;
