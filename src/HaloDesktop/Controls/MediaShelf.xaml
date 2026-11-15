@@ -53,7 +53,7 @@
             <local:PosterCard
               Title="{x:Bind Title}"
               Meta="{x:Bind Meta}"
-              Poster="{x:Bind Poster}"
+              Poster="{x:Bind Poster}" MetaId="{x:Bind Id}"
               KindLabel="{x:Bind KindLabel}"
               ShowKindBadge="False"
               Tag="{x:Bind}"

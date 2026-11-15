@@ -5,12 +5,14 @@
 #endif
 
 #include "App.xaml.h"
+#include "Controls/ArtworkUrlPolicy.h"
 #include "Shell/LayoutMetricsService.h"
 
 #include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <limits>
+#include <string_view>
 #include <winrt/Windows.Foundation.Numerics.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
@@ -50,23 +52,64 @@ namespace winrt::HaloDesktop::implementation
         // that rebuilding the bitmap here is a decode per scroll, not per item.
         if (m_poster == value && image && image.Source() != nullptr) return;
         m_poster = value;
+        LoadArtwork();
+    }
+
+    winrt::hstring PosterCard::MetaId() const { return m_metaId; }
+    void PosterCard::MetaId(winrt::hstring const& value)
+    {
+        if (m_metaId == value) return;
+        m_metaId = value;
+        // Bindings set the id and the poster in either order, and a recycled card
+        // gets both anew. Only a card showing its own poster can keep it; one on
+        // a fallback, or with nothing at all, starts over for the new id.
+        auto const onOwnPoster = !m_exhausted && !m_poster.empty()
+            && m_attempted.size() == 1 && m_attempted.front() == std::wstring_view{ m_poster };
+        if (!onOwnPoster) LoadArtwork();
+    }
+
+    void PosterCard::LoadArtwork()
+    {
+        auto const image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>();
         if (!image) return;
+        m_attempted.clear();
+        m_exhausted = false;
         image.Opacity(0);
         ShowPlaceholder(true);
-        if (value.empty()) { image.Source(nullptr); return; }
-        try
+        TryNextSource();
+    }
+
+    void PosterCard::TryNextSource()
+    {
+        auto const image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        if (!image) return;
+        // At most two sources, so a url the bitmap refuses outright moves on in a
+        // bounded loop rather than waiting for a failure event.
+        for (auto const& candidate : ::HaloDesktop::Controls::ArtworkCandidates(m_poster, L"", m_metaId))
         {
-            Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
-            // Set before the uri, or the decode has already been scheduled at full
-            // size. Poster sources run to a thousand pixels wide for a slot a sixth
-            // of that, and every realised card was holding the whole thing.
-            bitmap.DecodePixelWidth(::HaloDesktop::Shell::PosterDecodeWidth());
-            bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
-            image.Source(bitmap);
+            if (std::find(m_attempted.begin(), m_attempted.end(), candidate) != m_attempted.end()) continue;
+            m_attempted.push_back(candidate);
+            try
+            {
+                Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+                // Set before the uri, or the decode has already been scheduled at full
+                // size. Poster sources run to a thousand pixels wide for a slot a sixth
+                // of that, and every realised card was holding the whole thing.
+                bitmap.DecodePixelWidth(::HaloDesktop::Shell::PosterDecodeWidth());
+                bitmap.UriSource(winrt::Windows::Foundation::Uri{ candidate });
+                image.Source(bitmap);
+                return;
+            }
+            catch (...)
+            {
+                // A url the bitmap refuses outright: on to the next.
+            }
         }
-        catch (...)
+        image.Source(nullptr);
+        image.Opacity(0);
+        if (!m_exhausted)
         {
-            image.Source(nullptr);
+            m_exhausted = true;
             RaisePosterFailed();
         }
     }
@@ -221,6 +264,7 @@ namespace winrt::HaloDesktop::implementation
     void PosterCard::OnPosterFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
     {
         if (auto image = FindName(L"PosterImage").try_as<Microsoft::UI::Xaml::Controls::Image>()) image.Opacity(0);
-        RaisePosterFailed();
+        ShowPlaceholder(true);
+        TryNextSource();
     }
 }

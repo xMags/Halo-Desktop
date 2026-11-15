@@ -3,6 +3,7 @@
 #include "Services/WatchMarkPolicy.h"
 
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <pplawait.h>
 #include <ppltasks.h>
@@ -62,6 +63,10 @@ namespace HaloDesktop::Services
         // pages and the pane re-read the history afterwards whether it worked or
         // not. Throws HistoryRemovalUnsupported for a server too old to remove.
         [[nodiscard]] concurrency::task<void> RemoveFromHistoryAsync(winrt::hstring itemId);
+        // Forgets exactly these videos, read the same way and published the same
+        // way: "Remove from history" passes one, "Clear history" every video the
+        // page held when the viewer confirmed.
+        [[nodiscard]] concurrency::task<void> RemoveVideosFromHistoryAsync(std::vector<winrt::hstring> videoIds);
         // Marks the targets watched in one write, stamped in the order given. What
         // is watched is read again when this runs, so an episode marked since the
         // menu opened is not written a second time.
@@ -79,6 +84,12 @@ namespace HaloDesktop::Services
         // The addon's runtime for the title an item id names, or 0 when it gives
         // none or cannot be reached: a mark is still worth writing without one.
         [[nodiscard]] concurrency::task<double> RuntimeSecondsAsync(winrt::hstring itemId);
+        // Waits for a removal already under way, then tells the pages, whether it
+        // worked or not, if the account it began under (`generation`) is still
+        // signed in; rethrows its failure after.
+        [[nodiscard]] concurrency::task<void> PublishAfterRemovalAsync(
+            concurrency::task<void> removal,
+            std::uint64_t generation);
 
         std::shared_ptr<WatchStateService> m_watchState;
         std::shared_ptr<LibraryService> m_library;

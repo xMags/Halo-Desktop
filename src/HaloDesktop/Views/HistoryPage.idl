@@ -1,10 +1,55 @@
 namespace HaloDesktop
 {
-    // The watch history. A placeholder for now: the page exists so the rail and
-    // navigation can reach it; its rows arrive in a later change.
+    // One played video on the History page, as its card prints it.
+    runtimeclass HistoryEntryViewModel
+    {
+        String Title { get; };
+        // "{tag} · {WATCHED | time left | STARTED}".
+        String Meta { get; };
+        String Time { get; };
+        // The full date and time, the time's tooltip.
+        String FullTime { get; };
+        String Poster { get; };
+        // For the art's metahub fallback.
+        String MetaId { get; };
+        // The filled part of the 52px thumbnail's bar.
+        Double ProgressWidth { get; };
+        Microsoft.UI.Xaml.Visibility ProgressVisibility { get; };
+        String PlayGlyph { get; };
+        // "Resume", or "Play again" once finished.
+        String PlayLabel { get; };
+        // What clicking the card does, for its tooltip and screen readers.
+        String OpenLabel { get; };
+    }
+
+    // One section of the page: a day or a month.
+    runtimeclass HistoryGroupViewModel
+    {
+        String Label { get; };
+        String Count { get; };
+        Windows.Foundation.Collections.IVector<Object> Entries { get; };
+    }
+
+    runtimeclass HistoryViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Query;
+        Microsoft.UI.Xaml.Visibility ClearQueryVisibility { get; };
+        Int32 FilterIndex { get; };
+        // False while nothing is in the history or a removal is under way.
+        Boolean CanClear { get; };
+        String Note { get; };
+        Microsoft.UI.Xaml.Visibility NoteVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        void SetFilter(Int32 index);
+        void Retry();
+    }
+
+    // Everything played, newest first, one row per video, from the synced watch
+    // history, grouped by the viewer's calendar.
     [default_interface]
     runtimeclass HistoryPage : Microsoft.UI.Xaml.Controls.Page
     {
         HistoryPage();
+        HistoryViewModel ViewModel { get; };
     }
 }

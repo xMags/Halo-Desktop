@@ -128,12 +128,25 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> TitleActions::RemoveFromHistoryAsync(winrt::hstring itemId)
     {
-        auto const uiContext = winrt::apartment_context{};
         auto const generation = m_session->Generation();
+        co_await PublishAfterRemovalAsync(m_watchState->RemoveItemAsync(std::move(itemId)), generation);
+    }
+
+    concurrency::task<void> TitleActions::RemoveVideosFromHistoryAsync(std::vector<winrt::hstring> videoIds)
+    {
+        auto const generation = m_session->Generation();
+        co_await PublishAfterRemovalAsync(m_watchState->RemoveVideosAsync(std::move(videoIds)), generation);
+    }
+
+    concurrency::task<void> TitleActions::PublishAfterRemovalAsync(
+        concurrency::task<void> removal,
+        std::uint64_t generation)
+    {
+        auto const uiContext = winrt::apartment_context{};
         std::exception_ptr failure;
         try
         {
-            co_await m_watchState->RemoveItemAsync(std::move(itemId));
+            co_await removal;
         }
         catch (...)
         {

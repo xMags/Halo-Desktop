@@ -349,6 +349,8 @@
     <ClInclude Include="Services\SearchResultsPolicy.h" />
     <ClInclude Include="Services\SearchHistoryPolicy.h" />
     <ClInclude Include="Services\SearchService.h" />
+    <ClInclude Include="Services\HistoryRowsPolicy.h" />
+    <ClInclude Include="ViewModels\HistoryViewModel.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -646,6 +648,10 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\SearchService.cpp" />
+    <ClCompile Include="Services\HistoryRowsPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ViewModels\HistoryViewModel.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

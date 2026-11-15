@@ -35,6 +35,30 @@ namespace HaloDesktop::Views
         std::function<void()> Play;
     };
 
+    // One History row: one video played. Its own play and remove actions come
+    // with it, so the menu does exactly what the row's buttons do.
+    struct HistoryMenuTarget final
+    {
+        winrt::hstring Type;
+        winrt::hstring MetaId;
+        winrt::hstring ItemId;
+        winrt::hstring VideoId;
+        winrt::hstring Name;
+        winrt::hstring Poster;
+        // S01E05, or empty for a film or an id that names no episode.
+        winrt::hstring Tag;
+        // Finished videos play again from the start rather than resume.
+        bool Finished{};
+        // The episode and every episode of its show, only when the title page
+        // already has the show's details loaded, so a right click never fetches.
+        winrt::HaloDesktop::Episode Episode{ nullptr };
+        std::vector<winrt::HaloDesktop::Episode> Episodes;
+        winrt::hstring ShowName;
+        winrt::hstring ShowPoster;
+        std::function<void()> Play;
+        std::function<void()> Remove;
+    };
+
     // The right-click menus for everything that stands for a title: a poster or
     // the featured banner, a continue card or a Jump back in row, an episode row.
     // Every menu reads the same way: what a click would do and where the title
@@ -88,6 +112,12 @@ namespace HaloDesktop::Views
             winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor,
             winrt::Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args,
             EpisodeMenuTarget target) const;
+        // A History row's menu. `args` is null when the row's More button opens
+        // it, and the menu then hangs under that button.
+        void ShowForHistory(
+            winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor,
+            winrt::Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args,
+            HistoryMenuTarget target) const;
 
     private:
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;

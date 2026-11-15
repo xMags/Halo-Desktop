@@ -67,9 +67,18 @@ namespace HaloDesktop::Services
     }
     concurrency::task<void> WatchStateService::RemoveItemAsync(winrt::hstring itemId)
     {
+        co_await RemoveRowsAsync(HistoryRowsOf(m_rows, itemId));
+    }
+
+    concurrency::task<void> WatchStateService::RemoveVideosAsync(std::vector<winrt::hstring> videoIds)
+    {
+        co_await RemoveRowsAsync(HistoryRowsOfVideos(m_rows, videoIds));
+    }
+
+    concurrency::task<void> WatchStateService::RemoveRowsAsync(std::vector<::HaloDesktop::Api::Dto::WatchEntry> targets)
+    {
         auto const uiContext = winrt::apartment_context{};
         auto const epoch = m_accountEpoch;
-        auto const targets = HistoryRowsOf(m_rows, itemId);
         if (targets.empty())
         {
             co_return;

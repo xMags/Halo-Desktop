@@ -5,6 +5,8 @@
 #include "Controls/CardHoverShadow.h"
 
 #include <cstdint>
+#include <string>
+#include <vector>
 #include <winrt/Microsoft.UI.Composition.h>
 #include <winrt/Microsoft.UI.Input.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
@@ -22,6 +24,8 @@ namespace winrt::HaloDesktop::implementation
         void Meta(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring Poster() const;
         void Poster(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring MetaId() const;
+        void MetaId(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring KindLabel() const;
         void KindLabel(winrt::hstring const& value);
         [[nodiscard]] bool ShowKindBadge() const noexcept;
@@ -50,10 +54,18 @@ namespace winrt::HaloDesktop::implementation
         void ShowPlaceholder(bool visible);
         void SetHovered(bool hovered);
         void RaisePosterFailed();
+        // Starts over from the card's own poster.
+        void LoadArtwork();
+        // The next source not tried yet (the poster, then metahub's), or the
+        // placeholder and PosterFailed once none is left.
+        void TryNextSource();
 
         winrt::hstring m_title;
         winrt::hstring m_meta;
         winrt::hstring m_poster;
+        winrt::hstring m_metaId;
+        std::vector<std::wstring> m_attempted;
+        bool m_exhausted{};
         winrt::hstring m_kindLabel;
         bool m_showKindBadge{};
         bool m_fillsColumn{};

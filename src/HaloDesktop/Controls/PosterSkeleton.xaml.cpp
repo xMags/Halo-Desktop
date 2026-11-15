@@ -7,6 +7,15 @@
 #include "App.xaml.h"
 #include "Shell/LayoutMetricsService.h"
 
+#include <cmath>
+#include <limits>
+
+namespace
+{
+    // The 2:3 poster frame.
+    constexpr double PosterAspect = 1.5;
+}
+
 namespace winrt::HaloDesktop::implementation
 {
     // Sized here as well as on Loaded, for the reason PosterCard gives: a
@@ -16,6 +25,37 @@ namespace winrt::HaloDesktop::implementation
     {
         InitializeComponent();
         ApplyLayoutMetrics();
+    }
+
+    bool PosterSkeleton::FillsColumn() const noexcept { return m_fillsColumn; }
+    void PosterSkeleton::FillsColumn(bool value)
+    {
+        if (m_fillsColumn == value) return;
+        m_fillsColumn = value;
+        if (value)
+        {
+            // The frame follows the width the column hands the skeleton, as a
+            // poster card's art does, so the card that replaces it is that size.
+            m_sizeChanged = SizeChanged(winrt::auto_revoke, [this](auto const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+            {
+                ApplyColumnWidth(args.NewSize().Width);
+            });
+        }
+        else
+        {
+            m_sizeChanged.revoke();
+        }
+        ApplyLayoutMetrics();
+    }
+
+    bool PosterSkeleton::ShowKindBadge() const noexcept { return m_showKindBadge; }
+    void PosterSkeleton::ShowKindBadge(bool value)
+    {
+        m_showKindBadge = value;
+        if (auto const bar = KindBar())
+        {
+            bar.Visibility(value ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
     }
 
     // Follows the layout step as a poster card does, so the cards that replace
@@ -48,10 +88,32 @@ namespace winrt::HaloDesktop::implementation
         auto const metrics = App::Services().LayoutMetrics;
         if (!metrics) return;
         auto const current = metrics->Current();
+        if (m_fillsColumn)
+        {
+            // No width of its own: the column decides, and never below a poster.
+            Width(std::numeric_limits<double>::quiet_NaN());
+            MinWidth(current.PosterWidth);
+            HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+            ApplyColumnWidth(ActualWidth() > 0.0 ? ActualWidth() : current.PosterWidth);
+            return;
+        }
+        MinWidth(0.0);
         Width(current.PosterWidth);
         if (auto const frame = ArtFrame())
         {
             frame.Height(current.PosterArtHeight());
+        }
+    }
+
+    void PosterSkeleton::ApplyColumnWidth(double width)
+    {
+        if (!std::isfinite(width) || width <= 0.0) return;
+        auto const frame = ArtFrame();
+        auto const height = std::round(width * PosterAspect);
+        // Height follows width only, so this settles in one pass.
+        if (frame && frame.Height() != height)
+        {
+            frame.Height(height);
         }
     }
 }

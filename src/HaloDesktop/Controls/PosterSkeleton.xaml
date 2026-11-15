@@ -22,7 +22,19 @@
       Background="{ThemeResource HaloCardBrush}"
       BorderBrush="{ThemeResource HaloCardStrokeBrush}"
       BorderThickness="1"
-      CornerRadius="{StaticResource HaloArtCornerRadius}" />
+      CornerRadius="{StaticResource HaloArtCornerRadius}">
+      <!-- `.skeleton-badge`: 44 x 18, radius 4, 8 in from the frame's corner. -->
+      <Border
+        x:Name="KindBar"
+        Width="44"
+        Height="18"
+        Margin="7"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Top"
+        Background="{ThemeResource HaloSubtleBrush}"
+        CornerRadius="4"
+        Visibility="Collapsed" />
+    </Border>
     <Grid Height="14" Margin="0,8,0,0">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="78*" />

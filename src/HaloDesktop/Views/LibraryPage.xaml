@@ -10,9 +10,9 @@
   NavigationCacheMode="Required">
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Library" />
-    <!-- The design keeps the filter and sort row in the page body, below the header. -->
-    <Grid Grid.Row="1" Margin="24,0,24,0">
+    <local:SectionHeader x:Name="Header" Title="Library" />
+    <!-- `.lib-bar`: the filter and sort row in the page body, below the header, in the gutter. -->
+    <Grid x:Name="LibraryBar" Grid.Row="1" Margin="24,0,24,0">
       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
       <Border Style="{StaticResource HaloSegmentedTrayStyle}">
             <StackPanel Orientation="Horizontal">
@@ -36,26 +36,70 @@
         </Button.Flyout>
       </Button>
     </Grid>
-    <GridView
-      x:Name="LibraryGrid"
-      Loaded="OnGridLoaded"
-      ScrollViewer.VerticalScrollBarVisibility="Hidden"
+    <ScrollViewer
       Grid.Row="2"
-      Padding="24,16,24,32"
-      Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}"
-      IsItemClickEnabled="False"
-      SelectionMode="None">
-      <GridView.ItemsPanel>
-        <ItemsPanelTemplate><ItemsWrapGrid Orientation="Horizontal" /></ItemsPanelTemplate>
-      </GridView.ItemsPanel>
-      <GridView.ItemTemplate>
-        <DataTemplate x:DataType="local:MediaSummary">
-          <local:PosterCard Title="{x:Bind Title}" Meta="{x:Bind Meta}" Poster="{x:Bind Poster}" KindLabel="{x:Bind KindLabel}" ShowKindBadge="True" Tag="{x:Bind}" Click="OnPosterClick" />
-        </DataTemplate>
-      </GridView.ItemTemplate>
-    </GridView>
-    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}"><ProgressRing IsActive="True" /><TextBlock Text="Loading library…" /></StackPanel>
-    <StackPanel Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Library could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
-    <TextBlock Grid.Row="2" HorizontalAlignment="Center" VerticalAlignment="Center" Text="Your library is empty." Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}" />
+      HorizontalScrollBarVisibility="Disabled"
+      HorizontalScrollMode="Disabled"
+      VerticalScrollBarVisibility="Hidden">
+      <StackPanel>
+        <!-- `.state-note`: 15px Text3, 14 above and below, in the gutter. -->
+        <StackPanel x:Name="ErrorNote" Margin="24,14,24,14" Orientation="Horizontal" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}">
+          <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCriticalBrush}" Text="Library could not be refreshed." />
+          <Button VerticalAlignment="Center" Click="OnRetryClick" Content="Retry" />
+        </StackPanel>
+        <TextBlock
+          x:Name="EmptyNote"
+          Margin="24,14,24,14"
+          FontSize="{StaticResource HaloFontBody}"
+          Foreground="{ThemeResource HaloText3Brush}"
+          Text="Nothing saved yet. Open a title and use its star button to keep it here."
+          TextWrapping="Wrap"
+          Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}" />
+        <TextBlock
+          x:Name="FilteredEmptyNote"
+          Margin="24,14,24,14"
+          FontSize="{StaticResource HaloFontBody}"
+          Foreground="{ThemeResource HaloText3Brush}"
+          Text="{x:Bind ViewModel.FilteredEmptyText, Mode=OneWay}"
+          TextWrapping="Wrap"
+          Visibility="{x:Bind ViewModel.FilteredEmptyVisibility, Mode=OneWay}" />
+        <!--
+          `.lib-grid` while the library loads: twelve poster skeletons, stretched
+          the same way as the cards that replace them. The wrapper takes the
+          pulse; nothing inside it animates on its own.
+        -->
+        <Grid
+          x:Name="LibrarySkeleton"
+          AutomationProperties.AccessibilityView="Raw"
+          IsHitTestVisible="False"
+          Visibility="{x:Bind ViewModel.SkeletonVisibility, Mode=OneWay}">
+          <ItemsRepeater x:Name="SkeletonGrid" Margin="24,16,24,32">
+            <ItemsRepeater.Layout>
+              <UniformGridLayout x:Name="SkeletonLayout" ItemsStretch="Uniform" MinColumnSpacing="4" MinRowSpacing="4" Orientation="Horizontal" />
+            </ItemsRepeater.Layout>
+            <ItemsRepeater.ItemTemplate>
+              <DataTemplate>
+                <local:PosterSkeleton FillsColumn="True" ShowKindBadge="True" />
+              </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+          </ItemsRepeater>
+        </Grid>
+        <!--
+          `.lib-grid`: as many columns as fit at the poster width, stretched to
+          share the row, 4 apart; each card keeps the 4px band above its art it
+          lifts into on hover.
+        -->
+        <ItemsRepeater x:Name="LibraryGrid" Margin="24,16,24,32" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+          <ItemsRepeater.Layout>
+            <UniformGridLayout x:Name="LibraryLayout" ItemsStretch="Uniform" MinColumnSpacing="4" MinRowSpacing="4" Orientation="Horizontal" />
+          </ItemsRepeater.Layout>
+          <ItemsRepeater.ItemTemplate>
+            <DataTemplate x:DataType="local:MediaSummary">
+              <local:PosterCard Title="{x:Bind Title}" Meta="{x:Bind Meta}" Poster="{x:Bind Poster}" MetaId="{x:Bind Id}" KindLabel="{x:Bind KindLabel}" ShowKindBadge="True" FillsColumn="True" Tag="{x:Bind}" Click="OnPosterClick" />
+            </DataTemplate>
+          </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+      </StackPanel>
+    </ScrollViewer>
   </Grid>
 </Page>

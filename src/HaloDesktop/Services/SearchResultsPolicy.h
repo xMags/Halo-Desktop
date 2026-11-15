@@ -108,6 +108,8 @@ namespace HaloDesktop::Services
     [[nodiscard]] std::wstring LowerText(std::wstring_view text);
     // JavaScript's `String.prototype.trim`.
     [[nodiscard]] std::wstring TrimmedText(std::wstring_view text);
+    // JavaScript's `text.split(/\s+/).filter(Boolean)`.
+    [[nodiscard]] std::vector<std::wstring> WhitespaceWords(std::wstring_view text);
     // What the search box keeps of what was typed: the first 120 UTF-16 units,
     // without splitting a surrogate pair.
     [[nodiscard]] std::wstring CappedQuery(std::wstring_view text);

@@ -25,6 +25,7 @@ namespace
 
     // Segoe Fluent Icons.
     constexpr wchar_t PlayGlyph[] = L"\xE768";
+    constexpr wchar_t PlayAgainGlyph[] = L"\xE72C";
     constexpr wchar_t OfflineGlyph[] = L"\xE896";
     constexpr wchar_t DetailsGlyph[] = L"\xE946";
     constexpr wchar_t WatchedGlyph[] = L"\xE73E";
@@ -486,7 +487,8 @@ namespace
         }
 
         // At the pointer for a click or a press-and-hold, under the element for the
-        // Menu key or Shift+F10, which report no position.
+        // Menu key or Shift+F10, which report no position, and for a button that
+        // opens the menu itself, which passes no request at all.
         void ShowAt(
             winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor,
             winrt::Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args) const
@@ -498,7 +500,7 @@ namespace
             winrt::Microsoft::UI::Xaml::Controls::Primitives::FlyoutShowOptions options;
             options.ShowMode(winrt::Microsoft::UI::Xaml::Controls::Primitives::FlyoutShowMode::Standard);
             winrt::Windows::Foundation::Point point{};
-            if (args.TryGetPosition(anchor, point))
+            if (args && args.TryGetPosition(anchor, point))
             {
                 options.Position(point);
             }
@@ -507,7 +509,10 @@ namespace
                 options.Placement(winrt::Microsoft::UI::Xaml::Controls::Primitives::FlyoutPlacementMode::BottomEdgeAlignedLeft);
             }
             m_flyout.ShowAt(anchor, options);
-            args.Handled(true);
+            if (args)
+            {
+                args.Handled(true);
+            }
         }
 
         [[nodiscard]] std::function<void()> const& BeforeOpen() const noexcept { return m_beforeOpen; }
@@ -711,6 +716,46 @@ namespace HaloDesktop::Views
         menu.AddWatched({ videoId, target.Type + L":" + target.MetaId, target.ShowName, target.Poster }, {});
         menu.AddEarlierEpisodes(target);
         menu.AddSavedCopy(videoId);
+        menu.ShowAt(anchor, args);
+    }
+
+    void TitleMenu::ShowForHistory(
+        winrt::Microsoft::UI::Xaml::FrameworkElement const& anchor,
+        winrt::Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args,
+        HistoryMenuTarget target) const
+    {
+        if (!anchor || target.VideoId.empty() || target.ItemId.empty())
+        {
+            return;
+        }
+        auto const& tag = target.Tag;
+        // Left partway it resumes; finished, it plays again from the start, since
+        // the player only resumes unfinished rows.
+        auto const playLabel = target.Finished
+            ? (tag.empty() ? winrt::hstring{ L"Play again" } : L"Play " + tag + L" again")
+            : (tag.empty() ? winrt::hstring{ L"Resume" } : L"Resume " + tag);
+
+        MenuComposer menu{ m_navigation, m_downloads, m_actions, anchor, {} };
+        menu.Item(playLabel, target.Finished ? PlayAgainGlyph : PlayGlyph, target.Play);
+        menu.AddPlayOffline(target.VideoId);
+        menu.AddDetails(target.Type, target.MetaId, target.Name, target.Poster);
+        menu.Separator();
+        menu.AddWatched({ target.VideoId, target.ItemId, target.Name, target.Poster }, tag);
+        if (target.Episode)
+        {
+            EpisodeMenuTarget episode;
+            episode.Type = target.Type;
+            episode.MetaId = target.MetaId;
+            episode.ShowName = target.ShowName;
+            episode.Poster = target.ShowPoster;
+            episode.Episode = target.Episode;
+            episode.Episodes = target.Episodes;
+            menu.AddEarlierEpisodes(episode);
+        }
+        menu.AddLibrary(target.Type, target.MetaId, target.Name, target.Poster);
+        menu.AddSavedCopy(target.VideoId);
+        menu.Separator();
+        menu.Item(L"Remove from history", DeleteGlyph, target.Remove, EntryTone::Destructive);
         menu.ShowAt(anchor, args);
     }
 }

@@ -10,8 +10,14 @@ namespace HaloDesktop
         String SeriesLabel { get; };
         Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
         Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        // The twelve poster skeletons, while the library loads.
+        Microsoft.UI.Xaml.Visibility SkeletonVisibility { get; };
         Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        // Nothing saved at all.
         Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        // Something saved, but nothing of the kind the filter asks for.
+        Microsoft.UI.Xaml.Visibility FilteredEmptyVisibility { get; };
+        String FilteredEmptyText { get; };
         void SetFilter(Int32 index);
         void SetSort(Int32 index);
         void Retry();

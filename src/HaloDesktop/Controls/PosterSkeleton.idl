@@ -7,5 +7,10 @@ namespace HaloDesktop
     runtimeclass PosterSkeleton : Microsoft.UI.Xaml.Controls.UserControl
     {
         PosterSkeleton();
+        // True in a grid whose columns stretch, as PosterCard's: the skeleton
+        // takes its column's width and its frame keeps 2:3 at that width.
+        Boolean FillsColumn;
+        // `showKind`: the badge's bar in the frame's top left corner.
+        Boolean ShowKindBadge;
     }
 }

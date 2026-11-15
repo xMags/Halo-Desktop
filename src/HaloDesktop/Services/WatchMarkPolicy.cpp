@@ -179,6 +179,33 @@ namespace HaloDesktop::Services
         return result;
     }
 
+    std::vector<Api::Dto::WatchEntry> HistoryRowsOfVideos(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::vector<winrt::hstring> const& videoIds)
+    {
+        std::unordered_set<std::wstring_view> wanted;
+        for (auto const& videoId : videoIds)
+        {
+            if (!videoId.empty())
+            {
+                wanted.insert(std::wstring_view{ videoId });
+            }
+        }
+        std::vector<Api::Dto::WatchEntry> result;
+        if (wanted.empty())
+        {
+            return result;
+        }
+        for (auto const& row : rows)
+        {
+            if (!row.RemovedAt && wanted.contains(std::wstring_view{ row.VideoId }))
+            {
+                result.push_back(row);
+            }
+        }
+        return result;
+    }
+
     std::vector<Api::Dto::WatchEntry> LiveWatchRows(
         std::vector<Api::Dto::WatchEntry> const& rows)
     {

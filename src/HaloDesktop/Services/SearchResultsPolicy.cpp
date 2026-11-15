@@ -441,6 +441,11 @@ namespace HaloDesktop::Services
         return std::wstring{ text };
     }
 
+    std::vector<std::wstring> WhitespaceWords(std::wstring_view text)
+    {
+        return SplitOnWhitespace(text);
+    }
+
     std::wstring CappedQuery(std::wstring_view text)
     {
         if (text.size() <= SearchMaximumQuery) return std::wstring{ text };

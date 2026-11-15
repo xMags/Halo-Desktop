@@ -2,9 +2,11 @@
 
 #include "LibraryPage.g.h"
 
+#include "Controls/SkeletonPulse.h"
 #include "Views/TitleMenu.h"
 
 #include <cstdint>
+#include <memory>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -21,15 +23,20 @@ namespace winrt::HaloDesktop::implementation
         void OnSortClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnGridLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         // One handler for the page: every poster on it answers a right-click from here.
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
 
     private:
         void ApplyLayoutMetrics();
+        void EnsureSkeletonPulse();
+        void UpdateSkeletonPulse();
         winrt::HaloDesktop::LibraryViewModel m_viewModel{ nullptr };
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
+        std::unique_ptr<::HaloDesktop::Controls::SkeletonPulse> m_skeletonPulse;
+        Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
         std::uint64_t m_metricsToken{};
+        bool m_listBound{};
+        bool m_onScreen{};
     };
 }
 

@@ -12,13 +12,22 @@ namespace winrt::HaloDesktop::implementation
     {
         PosterSkeleton();
 
+        [[nodiscard]] bool FillsColumn() const noexcept;
+        void FillsColumn(bool value);
+        [[nodiscard]] bool ShowKindBadge() const noexcept;
+        void ShowKindBadge(bool value);
+
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
         void ApplyLayoutMetrics();
+        void ApplyColumnWidth(double width);
 
         std::uint64_t m_metricsToken{};
+        bool m_fillsColumn{};
+        bool m_showKindBadge{};
+        Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_sizeChanged;
     };
 }
 

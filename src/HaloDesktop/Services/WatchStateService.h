@@ -40,6 +40,10 @@ namespace HaloDesktop::Services
         // A removal that outlives the account it began under stops writing and
         // returns quietly.
         [[nodiscard]] concurrency::task<void> RemoveItemAsync(winrt::hstring itemId);
+        // The same removal for exactly these videos: the live rows of them when
+        // this is called, and nothing else, so a video removed meanwhile is not
+        // written again and one played meanwhile under another id is untouched.
+        [[nodiscard]] concurrency::task<void> RemoveVideosAsync(std::vector<winrt::hstring> videoIds);
         // Both leave removal tombstones out: a removed video reads as never
         // played, whatever a server sends back.
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::WatchEntry> Rows() const;
@@ -57,6 +61,9 @@ namespace HaloDesktop::Services
         void OnAccountChanged() noexcept;
     private:
         void NoteTimestamp(std::int64_t stamp) noexcept;
+        // Tombstones `targets` (rows read from the snapshot by the caller, on this
+        // thread, before anything was awaited) in batches, then reads again.
+        [[nodiscard]] concurrency::task<void> RemoveRowsAsync(std::vector<::HaloDesktop::Api::Dto::WatchEntry> targets);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::vector<::HaloDesktop::Api::Dto::WatchEntry> m_rows;

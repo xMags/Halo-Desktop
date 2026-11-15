@@ -73,6 +73,14 @@ namespace HaloDesktop::Services
         std::vector<Api::Dto::WatchEntry> const& rows,
         winrt::hstring const& itemId);
 
+    // The live rows of exactly these videos, in history order, tombstones left
+    // out. "Remove from history" forgets one video's row; "Clear history"
+    // forgets the videos the page showed when the viewer confirmed, and a row
+    // that arrived or was removed since is matched against that, not guessed.
+    [[nodiscard]] std::vector<Api::Dto::WatchEntry> HistoryRowsOfVideos(
+        std::vector<Api::Dto::WatchEntry> const& rows,
+        std::vector<winrt::hstring> const& videoIds);
+
     // The rows a watch history read stands for: everything but removal
     // tombstones, as the reference client's `liveWatchStates`. A tombstone is
     // a forgotten video, never a play, a position or a watched mark.

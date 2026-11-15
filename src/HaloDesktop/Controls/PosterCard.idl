@@ -7,6 +7,9 @@ namespace HaloDesktop
         String Title;
         String Meta;
         String Poster;
+        // The title's id: an IMDb id falls back on metahub's poster when the
+        // addon's art is missing or does not load, as the reference card does.
+        String MetaId;
         String KindLabel;
         Boolean ShowKindBadge;
         // True in a grid whose columns stretch: the card takes its column's
@@ -14,8 +17,9 @@ namespace HaloDesktop
         Boolean FillsColumn;
         Double CardWidth { get; };
         event Microsoft.UI.Xaml.RoutedEventHandler Click;
-        // The poster it was handed could not be loaded. Search counts such a
-        // title as artless; other hosts need not listen.
+        // The poster it was handed could not be loaded, and neither could the
+        // metahub fallback. Search counts such a title as artless; other hosts
+        // need not listen.
         event Microsoft.UI.Xaml.RoutedEventHandler PosterFailed;
     }
 }
