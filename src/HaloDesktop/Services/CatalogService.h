@@ -75,6 +75,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] CatalogChangedToken AddUserStateChangedHandler(
             CatalogChangedHandler handler) override;
         void RemoveUserStateChangedHandler(CatalogChangedToken token) noexcept override;
+        [[nodiscard]] concurrency::task<std::optional<SimilarShelf>> FetchSimilarAsync(
+            winrt::hstring type,
+            winrt::hstring metaId,
+            std::vector<winrt::hstring> genres) override;
         void OnAccountChanged();
 
     private:

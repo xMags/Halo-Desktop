@@ -1,58 +1,206 @@
+import "Controls/QualityMedal.idl";
+import "Models/Models.idl";
+
 namespace HaloDesktop
 {
-    [default_interface]
-    runtimeclass DetailEpisodeViewModel
+    // One row of the Episodes panel.
+    runtimeclass DetailEpisodeViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Tag { get; };
         String Title { get; };
         String Blurb { get; };
-        String Runtime { get; };
+        // The time left when the episode is under way, else the title's runtime.
+        String Aside { get; };
         String Aired { get; };
         String VideoId { get; };
         String Thumbnail { get; };
+        // How much of the episode has been seen, 0 to 1, for its progress strip.
         Double Progress { get; };
-        Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProgressVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BlurbVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AsideVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AiredVisibility { get; };
         Microsoft.UI.Xaml.Visibility WatchedVisibility { get; };
-        Microsoft.UI.Xaml.Visibility InProgressVisibility { get; };
-        Microsoft.UI.Xaml.Visibility IdleVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
+        // The row Resume targets: a subtle fill and ring.
+        Microsoft.UI.Xaml.Visibility CurrentVisibility { get; };
+        // The tag in the accent colour when the row is current or under way.
+        Microsoft.UI.Xaml.Visibility AccentTagVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PlainTagVisibility { get; };
+    }
+
+    // One item of the hero's facts line: plain text, the age chip or the IMDb rating.
+    runtimeclass DetailFactViewModel
+    {
+        String Text { get; };
+        Microsoft.UI.Xaml.Visibility SeparatorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PlainVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CertificateVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ImdbVisibility { get; };
+    }
+
+    // One quality in "Ways to watch".
+    runtimeclass DetailAvailabilityViewModel
+    {
+        String Plate { get; };
+        String TagText { get; };
+        QualityMedalFinish Finish { get; };
+        // The meter's fill, 0.04 to 1, against the quality with the most sources.
+        Double Meter { get; };
+        Microsoft.UI.Xaml.Visibility GoldMeterVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PlainMeterVisibility { get; };
+        String Count { get; };
+    }
+
+    // A person on the cast row.
+    runtimeclass DetailCreditViewModel
+    {
+        String Name { get; };
+        String Role { get; };
+        Microsoft.UI.Xaml.Visibility RoleVisibility { get; };
+        String Photo { get; };
+        String Initials { get; };
+        String Tooltip { get; };
+    }
+
+    // A label and value of the About panel.
+    runtimeclass DetailAboutRowViewModel
+    {
+        String Label { get; };
+        String Value { get; };
+        // The hairline under every row but the last.
+        Microsoft.UI.Xaml.Visibility DividerVisibility { get; };
     }
 
     runtimeclass DetailViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        String Title { get; };
-        String HeaderTitle { get; };
-        String Kicker { get; };
-        String MetaLine { get; };
-        String Synopsis { get; };
-        String Poster { get; };
-        String Background { get; };
-        String PrimaryActionLabel { get; };
-        String SourceActionLabel { get; };
-        String SeasonMeta { get; };
-        String LibraryLabel { get; };
-        String LibraryGlyph { get; };
-        Int32 SeasonIndex { get; };
-        Object Episodes { get; };
-        Object Facts { get; };
-        Object Availability { get; };
-        Object Seasons { get; };
         Microsoft.UI.Xaml.Visibility ContentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SkeletonVisibility { get; };
         Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
-        Microsoft.UI.Xaml.Visibility EpisodeSectionVisibility { get; };
-        Microsoft.UI.Xaml.Controls.Orientation AsideOrientation { get; };
-        Int32 AsideColumn { get; };
-        Int32 AsideColumnSpan { get; };
-        Double AsideCardWidth { get; };
+        String ErrorText { get; };
+
+        // The art behind the page: the backdrop, else the poster.
+        String Backdrop { get; };
+
+        String Title { get; };
+        String Logo { get; };
+        // The logo while there is one and it has not failed; the name otherwise.
+        Microsoft.UI.Xaml.Visibility LogoVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TitleVisibility { get; };
+        Object Facts { get; };
+        String Synopsis { get; };
+        Microsoft.UI.Xaml.Visibility SynopsisVisibility { get; };
+        // "Resume S01E03", "Resume", "Play S01E01" or "Play".
+        String PlayLabel { get; };
+        Microsoft.UI.Xaml.Visibility InLibraryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NotInLibraryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TrailerVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ProgressVisibility { get; };
+        Double ProgressFraction { get; };
+        String TimeLeft { get; };
+        Microsoft.UI.Xaml.Visibility ProgressSeparatorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BestVisibility { get; };
+        String BestPlate { get; };
+        String BestTag { get; };
+        QualityMedalFinish BestFinish { get; };
+        String SourcesLink { get; };
+
+        Object Availability { get; };
+        Object AvailabilityFailures { get; };
+        Microsoft.UI.Xaml.Visibility AvailabilityLoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AvailabilityEmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SubtitlesVisibility { get; };
+        String SubtitlesText { get; };
+
+        Microsoft.UI.Xaml.Visibility EpisodesVisibility { get; };
+        String EpisodesNote { get; };
+        Object Seasons { get; };
+        Int32 SeasonIndex { get; };
+        Microsoft.UI.Xaml.Visibility SeasonPickerVisibility { get; };
+        Object Pages { get; };
+        Int32 PageIndex { get; };
+        Microsoft.UI.Xaml.Visibility PagePickerVisibility { get; };
+        Object Episodes { get; };
+
+        Microsoft.UI.Xaml.Visibility CastVisibility { get; };
+        String CastNote { get; };
+        Object Credits { get; };
+        Microsoft.UI.Xaml.Visibility AboutVisibility { get; };
+        Object AboutRows { get; };
+
+        Microsoft.UI.Xaml.Visibility SimilarVisibility { get; };
+        String SimilarNote { get; };
+        Object Similar { get; };
+
         void Load(Object parameter);
-        void SelectSeason(Int32 index);
         void Retry();
         void ToggleLibrary();
-        void OpenSources(Object episode);
-        void OpenPrimarySource();
-        void BrowseSources();
-        void OpenDownloads();
+        // The main button and the compact bar's: the resume episode, else the
+        // active season's first, else the film.
+        void Play();
+        void OpenEpisode(Object row);
+        void OpenTrailer();
+        void OpenCredit(Object credit);
+        void OpenSimilar(Object media);
+        void SelectSeason(Int32 index);
+        void SelectPage(Int32 index);
+        void LogoFailed();
         void GoBack();
+    }
+
+    // The title page's hero: logo, facts, synopsis, actions, progress and
+    // "Ways to watch". Draws the page's view model; owns no state of its own.
+    [default_interface]
+    runtimeclass DetailHero : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailHero();
+        DetailViewModel ViewModel;
+    }
+
+    [default_interface]
+    runtimeclass DetailEpisodesPanel : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailEpisodesPanel();
+        DetailViewModel ViewModel;
+    }
+
+    // Cast and crew beside About.
+    [default_interface]
+    runtimeclass DetailCreditsPanel : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailCreditsPanel();
+        DetailViewModel ViewModel;
+    }
+
+    [default_interface]
+    runtimeclass DetailSimilarPanel : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailSimilarPanel();
+        DetailViewModel ViewModel;
+    }
+
+    [default_interface]
+    runtimeclass DetailEpisodeRow : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailEpisodeRow();
+        DetailEpisodeViewModel Episode;
+        event Microsoft.UI.Xaml.RoutedEventHandler Click;
+    }
+
+    [default_interface]
+    runtimeclass DetailCreditCard : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailCreditCard();
+        DetailCreditViewModel Credit;
+        event Microsoft.UI.Xaml.RoutedEventHandler Click;
+    }
+
+    [default_interface]
+    runtimeclass DetailSimilarCard : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DetailSimilarCard();
+        MediaSummary Media;
+        event Microsoft.UI.Xaml.RoutedEventHandler Click;
     }
 
     [default_interface]

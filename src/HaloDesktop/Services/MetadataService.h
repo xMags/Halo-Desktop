@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <optional>
 #include <vector>
 
 namespace HaloDesktop::Api
@@ -33,6 +34,7 @@ namespace HaloDesktop::Services
             winrt::hstring metaId) override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode>
             Episodes(std::int32_t season) const override;
+        [[nodiscard]] std::optional<::HaloDesktop::Api::Dto::MetaDetail> Meta() const override;
         void OnAccountChanged();
 
     private:
@@ -40,6 +42,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<WatchStateService> m_watch;
         std::shared_ptr<IDownloadService> m_downloads;
         winrt::HaloDesktop::MediaDetail m_detail{ nullptr };
+        std::optional<::HaloDesktop::Api::Dto::MetaDetail> m_meta;
         std::int32_t m_runtimeMinutes{};
         std::vector<winrt::HaloDesktop::Episode> m_episodes;
         // Prevent an older detail response from replacing the current title.

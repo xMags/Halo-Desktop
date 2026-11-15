@@ -31,4 +31,19 @@ namespace HaloDesktop::Controls
         double cardWidth,
         double gap,
         int direction) noexcept;
+
+    // The title page's rows (`components/ScrollRow.tsx`) share the shelf's
+    // edges, but differ in three ways: their arrows appear only when the strip
+    // overflows, a page moves the viewport less one card's worth (so the last
+    // card seen stays as the anchor), and the edge with more to show fades over
+    // this many pixels.
+    inline constexpr double ScrollRowFadeWidth = 48.0;
+    inline constexpr double ScrollRowPageInset = 160.0;
+
+    // Whether the strip is wider than its viewport by more than the slack.
+    [[nodiscard]] bool ShelfOverflows(double viewport, double extent) noexcept;
+
+    // Where an arrow click lands on a title page row: `max(viewport - 160, 160)`
+    // further in `direction`, held inside the strip's range.
+    [[nodiscard]] double ScrollRowPageTarget(double offset, double viewport, double extent, int direction) noexcept;
 }

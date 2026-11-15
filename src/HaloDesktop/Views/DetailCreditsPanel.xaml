@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.DetailCreditsPanel"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False">
+  <!--
+    `.detail-split`: cast and crew beside About, `minmax(0,1fr) 360px`, or one
+    column on a narrow page. Beside the cast, About takes the cast panel's height
+    and a long list scrolls inside it; the page sets the arrangement.
+  -->
+  <Grid x:Name="SplitGrid" ColumnSpacing="20" RowSpacing="20">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition x:Name="CastColumn" Width="*" />
+      <ColumnDefinition x:Name="AboutColumn" Width="360" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+
+    <Border
+      x:Name="CastPanel"
+      VerticalAlignment="Top"
+      SizeChanged="OnCastSizeChanged"
+      Style="{StaticResource HaloDetailGlassPanelStyle}"
+      Visibility="{x:Bind ViewModel.CastVisibility, Mode=OneWay}">
+      <Grid>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid MinHeight="32" ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+          </Grid.ColumnDefinitions>
+          <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+            <TextBlock Style="{StaticResource HaloDetailPanelTitleStyle}" Text="Cast and crew" />
+            <TextBlock Style="{StaticResource HaloDetailPanelNoteStyle}" Text="{x:Bind ViewModel.CastNote, Mode=OneWay}" />
+          </StackPanel>
+          <StackPanel x:Name="CastPager" Grid.Column="1" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+            <Button x:Name="CastPrevious" AutomationProperties.Name="Scroll left" Style="{StaticResource HaloDetailPagerButtonStyle}" ToolTipService.ToolTip="Scroll left">
+              <FontIcon FontSize="14" Glyph="&#xE76B;" />
+            </Button>
+            <Button x:Name="CastNext" AutomationProperties.Name="Scroll right" Style="{StaticResource HaloDetailPagerButtonStyle}" ToolTipService.ToolTip="Scroll right">
+              <FontIcon FontSize="14" Glyph="&#xE76C;" />
+            </Button>
+          </StackPanel>
+        </Grid>
+        <ScrollViewer
+          x:Name="CastStrip"
+          Grid.Row="1"
+          Margin="0,16,0,0"
+          HorizontalScrollBarVisibility="Hidden"
+          HorizontalScrollMode="Disabled"
+          VerticalScrollBarVisibility="Disabled"
+          VerticalScrollMode="Disabled"
+          ZoomMode="Disabled">
+          <ItemsControl
+            x:Name="CastItems"
+            Padding="0,4,0,6"
+            IsTabStop="False"
+            ItemsSource="{x:Bind ViewModel.Credits, Mode=OneWay}">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <StackPanel Orientation="Horizontal" Spacing="18" />
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:DetailCreditViewModel">
+                <local:DetailCreditCard Click="OnCreditClick" Credit="{x:Bind}" />
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </ScrollViewer>
+        <Rectangle
+          x:Name="CastStartFade"
+          Grid.Row="1"
+          Width="48"
+          Margin="0,16,0,0"
+          HorizontalAlignment="Left"
+          Fill="{StaticResource HaloDetailFadeStartBrush}"
+          IsHitTestVisible="False"
+          Visibility="Collapsed" />
+        <Rectangle
+          x:Name="CastEndFade"
+          Grid.Row="1"
+          Width="48"
+          Margin="0,16,0,0"
+          HorizontalAlignment="Right"
+          Fill="{StaticResource HaloDetailFadeEndBrush}"
+          IsHitTestVisible="False"
+          Visibility="Collapsed" />
+      </Grid>
+    </Border>
+
+    <Border
+      x:Name="AboutPanel"
+      Grid.Column="1"
+      VerticalAlignment="Top"
+      Padding="0"
+      Style="{StaticResource HaloDetailGlassPanelStyle}"
+      Visibility="{x:Bind ViewModel.AboutVisibility, Mode=OneWay}">
+      <ScrollViewer
+        x:Name="AboutScroller"
+        Padding="22,20,22,22"
+        HorizontalScrollMode="Disabled"
+        VerticalScrollBarVisibility="Auto">
+        <StackPanel>
+          <TextBlock MinHeight="32" Style="{StaticResource HaloDetailPanelTitleStyle}" Text="About" />
+          <ItemsControl
+            Margin="0,8,0,0"
+            IsTabStop="False"
+            ItemsSource="{x:Bind ViewModel.AboutRows, Mode=OneWay}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate x:DataType="local:DetailAboutRowViewModel">
+                <Grid>
+                  <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                  </Grid.RowDefinitions>
+                  <Grid Padding="0,12" ColumnSpacing="24">
+                    <Grid.ColumnDefinitions>
+                      <ColumnDefinition Width="Auto" />
+                      <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock FontSize="14" Foreground="{StaticResource HaloDetailInk50Brush}" Text="{x:Bind Label}" />
+                    <!-- `max-width: 66%`, right-aligned. -->
+                    <TextBlock
+                      Grid.Column="1"
+                      HorizontalAlignment="Right"
+                      FontSize="14"
+                      Foreground="{StaticResource HaloDetailInkBrush}"
+                      LineHeight="20.3"
+                      LineStackingStrategy="BlockLineHeight"
+                      Text="{x:Bind Value}"
+                      TextAlignment="Right"
+                      TextWrapping="Wrap" />
+                  </Grid>
+                  <Border
+                    Grid.Row="1"
+                    Height="1"
+                    Background="{StaticResource HaloDetailLineBrush}"
+                    Visibility="{x:Bind DividerVisibility}" />
+                </Grid>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </ScrollViewer>
+    </Border>
+  </Grid>
+</UserControl>

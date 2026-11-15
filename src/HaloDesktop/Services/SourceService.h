@@ -3,6 +3,8 @@
 #include "Services/ServiceInterfaces.h"
 #include "Services/StreamInfo.h"
 
+#include <chrono>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <string>
@@ -44,7 +46,12 @@ namespace HaloDesktop::Services
             std::shared_ptr<IDownloadService> downloads,
             std::shared_ptr<SettingsSyncService> settings);
 
-        [[nodiscard]] concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) override;
+        [[nodiscard]] concurrency::task<void> LoadAsync(
+            winrt::HaloDesktop::SourcesNavParams const& parameters,
+            StreamReuse reuse) override;
+        [[nodiscard]] concurrency::task<StreamFetch> RequestStreamsAsync(
+            winrt::hstring type,
+            winrt::hstring videoId) override;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const override;
         [[nodiscard]] concurrency::task<DownloadStartOutcome> StartDownloadAsync(
@@ -66,6 +73,17 @@ namespace HaloDesktop::Services
         // Drops the retained resolve and everything projected from it. Used wherever
         // the service must stop answering for the title it last loaded.
         void ClearResolve();
+        // The one /streams request per video the title page and the sheet share:
+        // the request already made for this video when it is still waiting or
+        // answered recently, else a new one that replaces it.
+        [[nodiscard]] concurrency::task<StreamFetch> SharedStreams(
+            winrt::hstring const& type,
+            winrt::hstring const& videoId,
+            StreamReuse reuse);
+        [[nodiscard]] concurrency::task<StreamFetch> FetchStreamsAsync(
+            winrt::hstring type,
+            winrt::hstring videoId,
+            std::uint64_t serial);
         [[nodiscard]] concurrency::task<std::optional<Downloads::SubtitleRequest>> PrepareSubtitleAsync(
             Api::Dto::StreamRecord stream,
             winrt::hstring mediaType,
@@ -90,6 +108,21 @@ namespace HaloDesktop::Services
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::StreamSource> m_localSources{ nullptr };
         winrt::hstring m_summary;
         std::uint64_t m_requestVersion{};
+
+        struct SharedFetch final
+        {
+            winrt::hstring Type;
+            winrt::hstring VideoId;
+            std::optional<concurrency::task<StreamFetch>> Task;
+            // Set once the request answered; a failed one is dropped instead, so
+            // the next caller asks again.
+            std::optional<std::chrono::steady_clock::time_point> AnsweredAt;
+            std::uint64_t Serial{};
+        };
+        // Only the newest video's request is kept: a title page asks for one
+        // video at a time, and the sheet opens on the one the page showed.
+        std::optional<SharedFetch> m_fetch;
+        std::uint64_t m_fetchSerial{};
     };
 
     [[nodiscard]] winrt::hstring SanitizeAddonName(std::optional<winrt::hstring> const& name);

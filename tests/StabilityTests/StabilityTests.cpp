@@ -24,6 +24,7 @@
 #include "HomeShelfLoadTests.h"
 #include "SearchResultsTests.h"
 #include "HistoryRowsTests.h"
+#include "DetailPageTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1340,6 +1341,7 @@ int main()
         TestWatchMarks();
         TestHistoryRemoval();
         RunHistoryRowsTests();
+        RunDetailPageTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

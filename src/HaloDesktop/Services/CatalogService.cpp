@@ -8,10 +8,12 @@
 #include "Services/CatalogLanguagePolicy.h"
 #include "Services/ContinueArtworkService.h"
 #include "Services/ContinueNextEpisodeService.h"
+#include "Services/HistoryRowsPolicy.h"
 #include "Services/HomeRowsPolicy.h"
 #include "Services/LibraryService.h"
 #include "Services/RatingPolicy.h"
 #include "Services/SettingsSyncService.h"
+#include "Services/SimilarTitlesPolicy.h"
 #include "Services/WatchStateService.h"
 #include "ViewModels/HomeStatePolicy.h"
 
@@ -113,27 +115,8 @@ namespace
     constexpr std::size_t MaximumContinueCards = 8;
     constexpr std::size_t MaximumContinueRequests = MaximumContinueCards;
 
-    winrt::hstring EpisodeTag(winrt::hstring const& videoId, winrt::hstring const& metaId)
-    {
-        std::wstring video{ videoId };
-        std::wstring prefix{ metaId };
-        prefix.push_back(L':');
-        if (!video.starts_with(prefix)) return L"MOVIE";
-        auto const tail = video.substr(prefix.size());
-        auto const separator = tail.find(L':');
-        if (separator == std::wstring::npos) return L"SERIES";
-        try
-        {
-            auto const season = std::stoi(tail.substr(0, separator));
-            auto const episode = std::stoi(tail.substr(separator + 1));
-            std::wostringstream output;
-            output << L'S' << std::setw(2) << std::setfill(L'0') << season
-                << L'E' << std::setw(2) << std::setfill(L'0') << episode;
-            return winrt::hstring{ output.str() };
-        }
-        catch (...) { return L"SERIES"; }
-    }
-
+    // The reference continue card prints `formatClock(remaining) LEFT`, not the
+    // title page's `formatTimeLeft` wording, so this stays a clock.
     winrt::hstring TimeLeft(double duration, double position)
     {
         auto seconds = static_cast<std::int64_t>((std::max)(0.0, duration - position));
@@ -824,6 +807,63 @@ namespace HaloDesktop::Services
         co_return items;
     }
 
+    concurrency::task<std::optional<SimilarShelf>> CatalogService::FetchSimilarAsync(
+        winrt::hstring type,
+        winrt::hstring metaId,
+        std::vector<winrt::hstring> genres)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
+        if (genres.empty())
+        {
+            co_return std::nullopt;
+        }
+        // A title page reached before Home has read the addons reads them here.
+        auto addons = m_addons->Records();
+        if (addons.empty())
+        {
+            co_await m_addons->LoadAsync();
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                throw winrt::hresult_canceled{};
+            }
+            addons = m_addons->Records();
+        }
+        // The effective order Home reads, with hidden catalogs left out.
+        std::erase_if(addons, [](::HaloDesktop::Api::Dto::AddonRecord const& addon)
+        {
+            return addon.HideCatalogs || (!addon.IsGlobal && addon.ProvidedGlobally);
+        });
+        auto const source = PickGenreCatalog(addons, std::wstring_view{ type }, genres);
+        if (!source)
+        {
+            co_return std::nullopt;
+        }
+        auto page = co_await m_apiClient->GetCatalogAsync(
+            winrt::hstring{ source->AddonId },
+            type,
+            winrt::hstring{ source->CatalogId },
+            { { winrt::hstring{ L"genre" }, winrt::hstring{ source->Genre } } });
+        co_await uiContext;
+        if (accountVersion != m_accountVersion)
+        {
+            throw winrt::hresult_canceled{};
+        }
+        auto const titles = SimilarTitles(std::move(page), std::wstring_view{ type }, std::wstring_view{ metaId });
+        if (titles.empty())
+        {
+            co_return std::nullopt;
+        }
+        SimilarShelf shelf{ winrt::hstring{ source->Genre }, {} };
+        shelf.Items.reserve(titles.size());
+        for (auto const& title : titles)
+        {
+            shelf.Items.push_back(MakeMedia(title));
+        }
+        co_return shelf;
+    }
+
     void CatalogService::RefreshContinue() { BuildContinue(); }
 
     void CatalogService::RebuildLibrary()
@@ -973,7 +1013,7 @@ namespace HaloDesktop::Services
             auto const itemId = winrt::hstring{ card.ItemId };
             auto const videoId = winrt::hstring{ card.VideoId };
             auto const metaId = winrt::hstring{ MetaIdFromItemId(std::wstring_view{ itemId }) };
-            auto const tag = EpisodeTag(videoId, metaId);
+            auto const tag = winrt::hstring{ VideoIdTag(std::wstring_view{ videoId }, std::wstring_view{ metaId }) };
             // A promoted episode has never been started, so there is no position to
             // count down from and nothing to fill the card's bar with.
             auto const promoted = card.Kind == ContinueCardKind::NextEpisode;

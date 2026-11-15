@@ -63,6 +63,28 @@ namespace HaloDesktop::Services
         bool EveryShelfFailed{};
     };
 
+    // A title page's "More like this": the genre it was picked by and the titles.
+    struct SimilarShelf final
+    {
+        winrt::hstring Genre;
+        std::vector<winrt::HaloDesktop::MediaSummary> Items;
+    };
+
+    // What one /streams request for a video answered, and how long it took.
+    struct StreamFetch final
+    {
+        ::HaloDesktop::Api::Dto::StreamsPayload Payload;
+        double ElapsedSeconds{};
+    };
+
+    // Whether a resolve may adopt the answer a recent request for the same video
+    // already has (or is waiting on), or must ask the addons again.
+    enum class StreamReuse
+    {
+        Recent,
+        Fresh,
+    };
+
     class ICatalogService
     {
     public:
@@ -132,6 +154,15 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual CatalogChangedToken AddUserStateChangedHandler(
             CatalogChangedHandler handler) = 0;
         virtual void RemoveUserStateChangedHandler(CatalogChangedToken token) noexcept = 0;
+        // A title page's "More like this": titles of `type` from the first
+        // shown addon catalog that filters by one of `genres` alone, this title
+        // and repeats dropped, at most 20. Empty when no catalog can, or it
+        // answered nothing. Throws when the request fails, and cancels when the
+        // account changes before it returns. UI thread in and out.
+        [[nodiscard]] virtual concurrency::task<std::optional<SimilarShelf>> FetchSimilarAsync(
+            winrt::hstring type,
+            winrt::hstring metaId,
+            std::vector<winrt::hstring> genres) = 0;
     };
 
     class IMetadataService
@@ -149,13 +180,27 @@ namespace HaloDesktop::Services
             winrt::hstring type,
             winrt::hstring metaId) = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Episode> Episodes(std::int32_t season) const = 0;
+        // The validated meta of the title loaded last, as the server sent it;
+        // empty before the first load and after an account change. A copy, so
+        // a later load cannot change it under the caller.
+        [[nodiscard]] virtual std::optional<::HaloDesktop::Api::Dto::MetaDetail> Meta() const = 0;
     };
 
     class ISourceService
     {
     public:
         virtual ~ISourceService() = default;
-        [[nodiscard]] virtual concurrency::task<void> LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters) = 0;
+        // Resolves the sheet's sources. With StreamReuse::Recent it adopts the
+        // request a title page already made for the same video, finished or still
+        // waiting, rather than asking the addons a second time.
+        [[nodiscard]] virtual concurrency::task<void> LoadAsync(
+            winrt::HaloDesktop::SourcesNavParams const& parameters,
+            StreamReuse reuse) = 0;
+        // The streams for one video, shared with the sheet: one request answers
+        // both. UI thread in and out. Throws when the request fails.
+        [[nodiscard]] virtual concurrency::task<StreamFetch> RequestStreamsAsync(
+            winrt::hstring type,
+            winrt::hstring videoId) = 0;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::SourceGroup> Groups() const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(winrt::hstring const& key) const = 0;
         [[nodiscard]] virtual concurrency::task<DownloadStartOutcome> StartDownloadAsync(

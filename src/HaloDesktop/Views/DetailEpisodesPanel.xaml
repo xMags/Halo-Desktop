@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.DetailEpisodesPanel"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False">
+  <!--
+    A show's season picker and the chosen season's episodes, as one glass panel.
+    A season longer than a page is shown a page at a time behind a second picker.
+  -->
+  <Border Style="{StaticResource HaloDetailGlassPanelStyle}">
+    <StackPanel>
+      <Grid MinHeight="32" ColumnSpacing="12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+          <TextBlock Style="{StaticResource HaloDetailPanelTitleStyle}" Text="Episodes" />
+          <TextBlock Style="{StaticResource HaloDetailPanelNoteStyle}" Text="{x:Bind ViewModel.EpisodesNote, Mode=OneWay}" />
+        </StackPanel>
+        <StackPanel
+          Grid.Column="1"
+          VerticalAlignment="Center"
+          Orientation="Horizontal"
+          Spacing="8">
+          <ComboBox
+            MinWidth="140"
+            AutomationProperties.Name="Season"
+            ItemsSource="{x:Bind ViewModel.Seasons, Mode=OneWay}"
+            SelectedIndex="{x:Bind ViewModel.SeasonIndex, Mode=OneWay}"
+            SelectionChanged="OnSeasonChanged"
+            Visibility="{x:Bind ViewModel.SeasonPickerVisibility, Mode=OneWay}" />
+          <ComboBox
+            MinWidth="170"
+            AutomationProperties.Name="Episodes"
+            ItemsSource="{x:Bind ViewModel.Pages, Mode=OneWay}"
+            SelectedIndex="{x:Bind ViewModel.PageIndex, Mode=OneWay}"
+            SelectionChanged="OnPageChanged"
+            Visibility="{x:Bind ViewModel.PagePickerVisibility, Mode=OneWay}" />
+        </StackPanel>
+      </Grid>
+      <ItemsControl
+        Margin="0,14,0,0"
+        IsTabStop="False"
+        ItemsSource="{x:Bind ViewModel.Episodes, Mode=OneWay}">
+        <ItemsControl.ItemsPanel>
+          <ItemsPanelTemplate>
+            <StackPanel Spacing="4" />
+          </ItemsPanelTemplate>
+        </ItemsControl.ItemsPanel>
+        <ItemsControl.ItemTemplate>
+          <DataTemplate x:DataType="local:DetailEpisodeViewModel">
+            <!-- Tag hands the row to the page's right-click menu. -->
+            <local:DetailEpisodeRow Click="OnEpisodeClick" Episode="{x:Bind}" Tag="{x:Bind}" />
+          </DataTemplate>
+        </ItemsControl.ItemTemplate>
+      </ItemsControl>
+    </StackPanel>
+  </Border>
+</UserControl>

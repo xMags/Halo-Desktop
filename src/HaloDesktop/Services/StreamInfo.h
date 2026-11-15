@@ -30,6 +30,9 @@ namespace HaloDesktop::Services
     // nameless source, so it identifies nothing and must never be used to decide
     // that two sources are the same file.
     [[nodiscard]] bool HasIdentifyingFilename(ParsedStreamInfo const& info) noexcept;
+    // Best-first position of a parsed quality token (2160p, 1440p, 1080p, 720p,
+    // 480p, SD); anything else, or none, ranks after all of them.
+    [[nodiscard]] int QualityRank(std::optional<winrt::hstring> const& quality) noexcept;
     [[nodiscard]] int CompareStreams(ParsedStreamInfo const& left, ParsedStreamInfo const& right) noexcept;
     [[nodiscard]] winrt::hstring FormatStreamSize(std::optional<std::uint64_t> bytes);
 }

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.DetailSimilarCard"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  Width="148"
+  IsTabStop="False"
+  PointerCanceled="OnHoverEnded"
+  PointerEntered="OnHoverStarted"
+  PointerExited="OnHoverEnded">
+  <!--
+    `.similar`: a 148px poster card. On hover the art lifts 3px and the rating
+    drops in. Both are plain property transitions; nothing in this card is handed
+    a composition visual. The 3px band above the art is the room the lift rises
+    into, inside the row's own clip.
+  -->
+  <Button
+    Padding="0,3,0,0"
+    HorizontalAlignment="Stretch"
+    AutomationProperties.Name="{x:Bind Media.Title}"
+    Click="OnClick"
+    Style="{StaticResource HaloDetailBareButtonStyle}"
+    ToolTipService.ToolTip="{x:Bind Media.Title}">
+    <StackPanel>
+      <Grid
+        x:Name="ArtFrame"
+        Width="148"
+        Height="222"
+        Background="{StaticResource HaloDetailArtBrush}"
+        BorderBrush="{StaticResource HaloDetailArtRingBrush}"
+        BorderThickness="1"
+        CornerRadius="12">
+        <Grid.TranslationTransition>
+          <Vector3Transition Duration="0:0:0.15" />
+        </Grid.TranslationTransition>
+        <TextBlock
+          x:Name="FallbackText"
+          Padding="10"
+          HorizontalAlignment="Center"
+          VerticalAlignment="Center"
+          FontSize="13"
+          Foreground="{StaticResource HaloDetailInk45Brush}"
+          Text="{x:Bind Media.Title}"
+          TextAlignment="Center"
+          TextWrapping="Wrap" />
+        <local:ArtworkImage
+          DecodeWidth="296"
+          MetaId="{x:Bind Media.Id}"
+          Placeholder="{x:Bind FallbackText}"
+          SourceUrl="{x:Bind Media.Poster}" />
+        <Border
+          x:Name="RatingBadge"
+          Margin="8"
+          Padding="7,3"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Top"
+          Background="{StaticResource HaloDetailBadgeBrush}"
+          CornerRadius="6"
+          IsHitTestVisible="False"
+          Opacity="0"
+          Visibility="Collapsed">
+          <Border.OpacityTransition>
+            <ScalarTransition Duration="0:0:0.15" />
+          </Border.OpacityTransition>
+          <TextBlock x:Name="RatingText" FontSize="11" FontWeight="Medium" Foreground="{StaticResource HaloDetailInkBrush}" />
+        </Border>
+      </Grid>
+      <TextBlock
+        x:Name="NameText"
+        Margin="0,10,0,0"
+        FontSize="14"
+        Foreground="{StaticResource HaloDetailInk78Brush}"
+        Text="{x:Bind Media.Title}"
+        TextTrimming="CharacterEllipsis" />
+      <TextBlock
+        x:Name="YearText"
+        Margin="0,3,0,0"
+        FontFamily="{StaticResource HaloMonoFont}"
+        FontSize="12"
+        Foreground="{StaticResource HaloDetailInk50Brush}"
+        Text="{x:Bind Media.ReleaseInfo}" />
+    </StackPanel>
+  </Button>
+</UserControl>

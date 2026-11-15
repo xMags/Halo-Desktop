@@ -30,4 +30,22 @@ namespace HaloDesktop::Controls
         auto const sign = direction < 0 ? -1.0 : 1.0;
         return (current + sign * perPage) * step;
     }
+
+    bool ShelfOverflows(double viewport, double extent) noexcept
+    {
+        if (!std::isfinite(viewport) || !std::isfinite(extent)) return false;
+        return extent - viewport > ShelfEdgeSlack;
+    }
+
+    double ScrollRowPageTarget(double offset, double viewport, double extent, int direction) noexcept
+    {
+        if (!std::isfinite(offset) || !std::isfinite(viewport) || !std::isfinite(extent))
+        {
+            return 0.0;
+        }
+        auto const step = (std::max)(viewport - ScrollRowPageInset, ScrollRowPageInset);
+        auto const sign = direction < 0 ? -1.0 : 1.0;
+        auto const end = (std::max)(0.0, extent - viewport);
+        return std::clamp(offset + sign * step, 0.0, end);
+    }
 }

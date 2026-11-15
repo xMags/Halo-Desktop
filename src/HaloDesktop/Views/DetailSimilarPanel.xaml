@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.DetailSimilarPanel"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False"
+  Visibility="{x:Bind ViewModel.SimilarVisibility, Mode=OneWay}">
+  <!--
+    "More like this": titles of the same type sharing this one's genre, from the
+    first addon catalog that can filter by it. Drawn only once there is something
+    to show; the genre is the note.
+  -->
+  <Border Style="{StaticResource HaloDetailGlassPanelStyle}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="Auto" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
+      <Grid MinHeight="32" ColumnSpacing="12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+        <StackPanel VerticalAlignment="Center" Orientation="Horizontal">
+          <TextBlock Style="{StaticResource HaloDetailPanelTitleStyle}" Text="More like this" />
+          <TextBlock Style="{StaticResource HaloDetailPanelNoteStyle}" Text="{x:Bind ViewModel.SimilarNote, Mode=OneWay}" />
+        </StackPanel>
+        <StackPanel x:Name="SimilarPager" Grid.Column="1" Orientation="Horizontal" Spacing="8" Visibility="Collapsed">
+          <Button x:Name="SimilarPrevious" AutomationProperties.Name="Scroll left" Style="{StaticResource HaloDetailPagerButtonStyle}" ToolTipService.ToolTip="Scroll left">
+            <FontIcon FontSize="14" Glyph="&#xE76B;" />
+          </Button>
+          <Button x:Name="SimilarNext" AutomationProperties.Name="Scroll right" Style="{StaticResource HaloDetailPagerButtonStyle}" ToolTipService.ToolTip="Scroll right">
+            <FontIcon FontSize="14" Glyph="&#xE76C;" />
+          </Button>
+        </StackPanel>
+      </Grid>
+      <ScrollViewer
+        x:Name="SimilarStrip"
+        Grid.Row="1"
+        Margin="0,16,0,0"
+        HorizontalScrollBarVisibility="Hidden"
+        HorizontalScrollMode="Disabled"
+        VerticalScrollBarVisibility="Disabled"
+        VerticalScrollMode="Disabled"
+        ZoomMode="Disabled">
+        <ItemsControl
+          x:Name="SimilarItems"
+          Padding="0,4,0,6"
+          IsTabStop="False"
+          ItemsSource="{x:Bind ViewModel.Similar, Mode=OneWay}">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Orientation="Horizontal" Spacing="18" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
+            <DataTemplate x:DataType="local:MediaSummary">
+              <!-- Tag hands the title to the page's poster menu. -->
+              <local:DetailSimilarCard Click="OnSimilarClick" Media="{x:Bind}" Tag="{x:Bind}" />
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </ScrollViewer>
+      <Rectangle
+        x:Name="SimilarStartFade"
+        Grid.Row="1"
+        Width="48"
+        Margin="0,16,0,0"
+        HorizontalAlignment="Left"
+        Fill="{StaticResource HaloDetailFadeStartBrush}"
+        IsHitTestVisible="False"
+        Visibility="Collapsed" />
+      <Rectangle
+        x:Name="SimilarEndFade"
+        Grid.Row="1"
+        Width="48"
+        Margin="0,16,0,0"
+        HorizontalAlignment="Right"
+        Fill="{StaticResource HaloDetailFadeEndBrush}"
+        IsHitTestVisible="False"
+        Visibility="Collapsed" />
+    </Grid>
+  </Border>
+</UserControl>

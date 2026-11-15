@@ -4,6 +4,8 @@
 #include "Models/Models.h"
 #include "Services/RatingPolicy.h"
 #include "Services/WatchStateService.h"
+#include "ViewModels/DetailFactsPolicy.h"
+#include "ViewModels/EpisodePagesPolicy.h"
 #include <algorithm>
 #include <cwctype>
 #include <iomanip>
@@ -24,53 +26,14 @@ namespace
         return winrt::hstring{ output.str() };
     }
 
-    // Addons write the runtime free-form ("48 min", "1 h 52 min", "120"), so the
-    // leading run of digits is the only part worth trusting. An hour-and-minute
-    // form is folded together; anything else falls back to the first number.
+    // Addons write the runtime free-form ("48 min", "1 h 52 min", "120"); the
+    // reference's reading of it, so a season count or other text is no runtime
+    // rather than a number of minutes. Zero when it does not read.
     std::int32_t RuntimeMinutesFrom(std::optional<winrt::hstring> const& value)
     {
         if (!value) return 0;
-        std::wstring const text{ value->c_str() };
-        std::vector<std::pair<std::int32_t, wchar_t>> parts;
-        for (std::size_t index{}; index < text.size();)
-        {
-            if (!std::iswdigit(text[index])) { ++index; continue; }
-            std::int64_t number{};
-            while (index < text.size() && std::iswdigit(text[index]) && number < 100000)
-            {
-                number = number * 10 + (text[index] - L'0');
-                ++index;
-            }
-            while (index < text.size() && std::iswspace(text[index])) ++index;
-            auto const unit = index < text.size()
-                ? static_cast<wchar_t>(std::towlower(text[index]))
-                : L'\0';
-            parts.emplace_back(static_cast<std::int32_t>(number), unit);
-        }
-        if (parts.empty()) return 0;
-        std::int32_t minutes{};
-        auto matched = false;
-        for (auto const& [number, unit] : parts)
-        {
-            if (unit == L'h') { minutes += number * 60; matched = true; }
-            else if (unit == L'm') { minutes += number; matched = true; }
-        }
-        if (!matched) minutes = parts.front().first;
-        return minutes > 0 && minutes < 100000 ? minutes : 0;
-    }
-
-    winrt::hstring Join(std::vector<winrt::hstring> const& values)
-    {
-        std::wstring result;
-        for (auto const& value : values)
-        {
-            if (!result.empty())
-            {
-                result.append(L", ");
-            }
-            result.append(value);
-        }
-        return winrt::hstring{ result };
+        auto const minutes = HaloDesktop::ViewModels::RuntimeMinutes(std::wstring_view{ *value });
+        return minutes && *minutes > 0 ? *minutes : 0;
     }
 
     winrt::hstring MetaLine(HaloDesktop::Api::Dto::MetaPreview const& preview)
@@ -121,36 +84,28 @@ namespace HaloDesktop::Services
             co_return;
         }
 
-        std::vector<std::int32_t> seasons;
+        // A video without a season is listed under season 0 with the specials,
+        // as the reference lists it, so every episode below is reachable.
+        std::vector<HaloDesktop::ViewModels::EpisodeRef> refs;
+        refs.reserve(meta.Videos.size());
         for (auto const& video : meta.Videos)
         {
-            if (video.Season
-                && std::find(seasons.begin(), seasons.end(), *video.Season) == seasons.end())
-            {
-                seasons.push_back(*video.Season);
-            }
+            refs.push_back({ std::wstring{ video.Id }, video.Episode, video.Season });
         }
-        std::sort(seasons.begin(), seasons.end(), [](auto left, auto right)
-        {
-            if (left == 0) return false;
-            if (right == 0) return true;
-            return left < right;
-        });
+        auto seasons = HaloDesktop::ViewModels::SeasonOrder(refs);
 
         m_runtimeMinutes = RuntimeMinutesFrom(meta.Runtime);
-        std::vector<winrt::hstring> facts;
-        if (meta.Runtime) facts.push_back(L"Runtime · " + *meta.Runtime);
-        if (!meta.Preview.Genres.empty()) facts.push_back(L"Genres · " + Join(meta.Preview.Genres));
-        if (!meta.Cast.empty()) facts.push_back(L"Cast · " + Join(meta.Cast));
 
+        // The title page reads its facts from Meta(); the summary's own fact and
+        // availability lists are no longer drawn anywhere.
         m_detail = winrt::make<winrt::HaloDesktop::implementation::MediaDetail>(
             meta.Preview.Id,
             meta.Preview.Name,
             type == L"series" ? L"SERIES" : L"MOVIE",
             MetaLine(meta.Preview),
             meta.Preview.Description.value_or(L""),
-            winrt::single_threaded_vector(std::move(facts)).GetView(),
-            winrt::single_threaded_vector<winrt::hstring>({ L"Sources resolved on demand" }).GetView(),
+            winrt::single_threaded_vector<winrt::hstring>().GetView(),
+            winrt::single_threaded_vector<winrt::hstring>().GetView(),
             winrt::single_threaded_vector(std::move(seasons)).GetView(),
             type,
             meta.Preview.Poster.value_or(L""),
@@ -188,6 +143,12 @@ namespace HaloDesktop::Services
             if (right.Season() == 0) return true;
             return left.Season() < right.Season();
         });
+        m_meta = std::move(meta);
+    }
+
+    std::optional<::HaloDesktop::Api::Dto::MetaDetail> MetadataService::Meta() const
+    {
+        return m_meta;
     }
 
     std::int32_t MetadataService::RuntimeMinutes() const noexcept { return m_runtimeMinutes; }
@@ -261,6 +222,7 @@ namespace HaloDesktop::Services
     {
         ++m_requestVersion;
         m_detail = nullptr;
+        m_meta.reset();
         m_episodes.clear();
     }
 }

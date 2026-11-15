@@ -190,6 +190,22 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\HistoryRowsPolicy.cpp">
       <Link>HistoryRowsPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="DetailPageTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\DetailFactsPolicy.cpp">
+      <Link>DetailFactsPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\EpisodePagesPolicy.cpp">
+      <Link>EpisodePagesPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\QualityMedalPolicy.cpp">
+      <Link>QualityMedalPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SimilarTitlesPolicy.cpp">
+      <Link>SimilarTitlesPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Views\DetailLayoutPolicy.cpp">
+      <Link>DetailLayoutPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -200,6 +216,7 @@
     <ClInclude Include="HomeShelfLoadTests.h" />
     <ClInclude Include="SearchResultsTests.h" />
     <ClInclude Include="HistoryRowsTests.h" />
+    <ClInclude Include="DetailPageTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

@@ -23,6 +23,12 @@
 
 namespace
 {
+    // How long a finished stream request may answer a later resolve of the same
+    // video. Long enough for "open the title, then open its sources" to cost one
+    // request; short enough that a sheet opened much later asks the addons again,
+    // as cached or debrid availability moves.
+    constexpr auto StreamAnswerReuse = std::chrono::minutes{ 5 };
+
     winrt::hstring JoinLanguages(std::vector<winrt::hstring> const& languages)
     {
         if (languages.empty()) return L"UNKNOWN";
@@ -159,7 +165,9 @@ namespace HaloDesktop::Services
         if (!m_api || !m_downloads || !m_settings) throw std::invalid_argument("SourceService requires its dependencies.");
     }
 
-    concurrency::task<void> SourceService::LoadAsync(winrt::HaloDesktop::SourcesNavParams const& parameters)
+    concurrency::task<void> SourceService::LoadAsync(
+        winrt::HaloDesktop::SourcesNavParams const& parameters,
+        StreamReuse reuse)
     {
         if (!parameters || parameters.Type().empty() || parameters.VideoId().empty())
         {
@@ -172,24 +180,22 @@ namespace HaloDesktop::Services
 
         auto const version = ++m_requestVersion;
         auto const uiContext = winrt::apartment_context{};
-        auto const started = std::chrono::steady_clock::now();
-        std::optional<Api::Dto::StreamsPayload> payload;
+        std::optional<StreamFetch> fetched;
         std::exception_ptr failure;
         try
         {
-            payload = co_await m_api->GetStreamsAsync(parameters.Type(), parameters.VideoId());
+            fetched = co_await SharedStreams(parameters.Type(), parameters.VideoId(), reuse);
         }
         catch (...)
         {
             failure = std::current_exception();
         }
-        auto const elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
         co_await uiContext;
         if (version != m_requestVersion) co_return;
 
         m_parameters = parameters;
-        m_payload = payload ? std::move(*payload) : Api::Dto::StreamsPayload{};
-        m_elapsedSeconds = elapsed;
+        m_payload = fetched ? std::move(fetched->Payload) : Api::Dto::StreamsPayload{};
+        m_elapsedSeconds = fetched ? fetched->ElapsedSeconds : 0.0;
         m_streamKeys.clear();
         m_streamKeys.reserve(m_payload.Results.size());
         for (auto const& payloadGroup : m_payload.Results)
@@ -209,6 +215,72 @@ namespace HaloDesktop::Services
         // is emptied by the same call, so nothing of the previous title survives.
         ApplyResolve();
         if (failure) std::rethrow_exception(failure);
+    }
+
+    concurrency::task<StreamFetch> SourceService::RequestStreamsAsync(winrt::hstring type, winrt::hstring videoId)
+    {
+        if (type.empty() || videoId.empty())
+        {
+            throw std::invalid_argument("A stream request needs a type and a video.");
+        }
+        return SharedStreams(type, videoId, StreamReuse::Recent);
+    }
+
+    concurrency::task<StreamFetch> SourceService::SharedStreams(
+        winrt::hstring const& type,
+        winrt::hstring const& videoId,
+        StreamReuse reuse)
+    {
+        if (reuse == StreamReuse::Recent && m_fetch && m_fetch->Task
+            && m_fetch->Type == type && m_fetch->VideoId == videoId
+            && (!m_fetch->AnsweredAt || std::chrono::steady_clock::now() - *m_fetch->AnsweredAt < StreamAnswerReuse))
+        {
+            return *m_fetch->Task;
+        }
+        // The entry is in place before the request starts, so a request that
+        // completes before this returns still finds it by its serial.
+        auto const serial = ++m_fetchSerial;
+        m_fetch = SharedFetch{ type, videoId, std::nullopt, std::nullopt, serial };
+        auto task = FetchStreamsAsync(type, videoId, serial);
+        if (m_fetch && m_fetch->Serial == serial)
+        {
+            m_fetch->Task = task;
+        }
+        return task;
+    }
+
+    concurrency::task<StreamFetch> SourceService::FetchStreamsAsync(
+        winrt::hstring type,
+        winrt::hstring videoId,
+        std::uint64_t serial)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const started = std::chrono::steady_clock::now();
+        std::optional<Api::Dto::StreamsPayload> payload;
+        std::exception_ptr failure;
+        try
+        {
+            payload = co_await m_api->GetStreamsAsync(type, videoId);
+        }
+        catch (...)
+        {
+            failure = std::current_exception();
+        }
+        auto const elapsed = std::chrono::duration<double>(std::chrono::steady_clock::now() - started).count();
+        co_await uiContext;
+        if (m_fetch && m_fetch->Serial == serial)
+        {
+            if (failure)
+            {
+                m_fetch.reset();
+            }
+            else
+            {
+                m_fetch->AnsweredAt = std::chrono::steady_clock::now();
+            }
+        }
+        if (failure) std::rethrow_exception(failure);
+        co_return StreamFetch{ std::move(*payload), elapsed };
     }
 
     void SourceService::ApplyResolve()
@@ -625,6 +697,10 @@ namespace HaloDesktop::Services
         // The version bump is part of the clear: a resolve already in flight must not
         // be allowed to land on top of the emptied state.
         ++m_requestVersion;
+        // The shared request goes too: an answer from before an account change
+        // must not be adopted after it.
+        ++m_fetchSerial;
+        m_fetch.reset();
         m_parameters = nullptr;
         m_payload = {};
         m_streamKeys.clear();

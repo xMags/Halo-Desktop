@@ -348,7 +348,8 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
-        [[nodiscard]] winrt::Windows::Foundation::IAsyncAction LoadAsync();
+        // The first resolve adopts the title page's request for the same video; Retry asks again.
+        [[nodiscard]] winrt::Windows::Foundation::IAsyncAction LoadAsync(::HaloDesktop::Services::StreamReuse reuse);
         void AdoptResolve();
         void Rebuild();
         void RebuildFooter();

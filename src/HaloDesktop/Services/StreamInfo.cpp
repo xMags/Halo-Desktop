@@ -204,6 +204,10 @@ namespace
     // into disagreeing about which names mean "no name".
     constexpr wchar_t const* UnnamedFilename = L"Unnamed source";
 
+}
+
+namespace HaloDesktop::Services
+{
     int QualityRank(std::optional<winrt::hstring> const& quality) noexcept
     {
         static std::array<wchar_t const*, 6> const order{ L"2160p", L"1440p", L"1080p", L"720p", L"480p", L"SD" };
@@ -211,10 +215,7 @@ namespace
         auto const found = std::find_if(order.begin(), order.end(), [&](wchar_t const* item) { return *quality == item; });
         return found == order.end() ? static_cast<int>(order.size()) : static_cast<int>(std::distance(order.begin(), found));
     }
-}
 
-namespace HaloDesktop::Services
-{
     bool HasIdentifyingFilename(ParsedStreamInfo const& info) noexcept
     {
         return !info.Filename.empty() && info.Filename != UnnamedFilename;

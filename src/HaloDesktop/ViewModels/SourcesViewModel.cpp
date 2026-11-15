@@ -693,10 +693,10 @@ namespace winrt::HaloDesktop::implementation
             RaiseState();
             return;
         }
-        static_cast<void>(LoadAsync());
+        static_cast<void>(LoadAsync(::HaloDesktop::Services::StreamReuse::Recent));
     }
 
-    void SourcesViewModel::Retry() { if (m_parameters) static_cast<void>(LoadAsync()); }
+    void SourcesViewModel::Retry() { if (m_parameters) static_cast<void>(LoadAsync(::HaloDesktop::Services::StreamReuse::Fresh)); }
 
     void SourcesViewModel::SetFilter(std::int32_t index)
     {
@@ -918,7 +918,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void SourcesViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
 
-    winrt::Windows::Foundation::IAsyncAction SourcesViewModel::LoadAsync()
+    winrt::Windows::Foundation::IAsyncAction SourcesViewModel::LoadAsync(::HaloDesktop::Services::StreamReuse reuse)
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
@@ -936,7 +936,7 @@ namespace winrt::HaloDesktop::implementation
         RaiseState();
 
         bool failed{};
-        try { co_await m_sources->LoadAsync(m_parameters); }
+        try { co_await m_sources->LoadAsync(m_parameters, reuse); }
         catch (...) { failed = true; }
         try { co_await m_settings->LoadAsync(); }
         catch (...) {}

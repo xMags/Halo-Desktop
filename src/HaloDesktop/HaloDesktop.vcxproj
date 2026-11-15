@@ -351,6 +351,19 @@
     <ClInclude Include="Services\SearchService.h" />
     <ClInclude Include="Services\HistoryRowsPolicy.h" />
     <ClInclude Include="ViewModels\HistoryViewModel.h" />
+    <ClInclude Include="ViewModels\DetailFactsPolicy.h" />
+    <ClInclude Include="ViewModels\EpisodePagesPolicy.h" />
+    <ClInclude Include="Services\SimilarTitlesPolicy.h" />
+    <ClInclude Include="Views\DetailLayoutPolicy.h" />
+    <ClInclude Include="Views\DetailScrollRow.h" />
+    <ClInclude Include="Views\DetailBackdropPresenter.h" />
+    <ClInclude Include="Views\DetailHero.xaml.h"><DependentUpon>DetailHero.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailEpisodesPanel.xaml.h"><DependentUpon>DetailEpisodesPanel.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailCreditsPanel.xaml.h"><DependentUpon>DetailCreditsPanel.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailSimilarPanel.xaml.h"><DependentUpon>DetailSimilarPanel.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailEpisodeRow.xaml.h"><DependentUpon>DetailEpisodeRow.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailCreditCard.xaml.h"><DependentUpon>DetailCreditCard.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\DetailSimilarCard.xaml.h"><DependentUpon>DetailSimilarCard.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -384,6 +397,14 @@
     <Page Include="Controls\QualityMedal.xaml" />
     <Page Include="Views\HistoryPage.xaml" />
     <Page Include="Controls\PosterSkeleton.xaml" />
+    <Page Include="Styles\Detail.xaml" />
+    <Page Include="Views\DetailHero.xaml" />
+    <Page Include="Views\DetailEpisodesPanel.xaml" />
+    <Page Include="Views\DetailCreditsPanel.xaml" />
+    <Page Include="Views\DetailSimilarPanel.xaml" />
+    <Page Include="Views\DetailEpisodeRow.xaml" />
+    <Page Include="Views\DetailCreditCard.xaml" />
+    <Page Include="Views\DetailSimilarCard.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -652,6 +673,27 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="ViewModels\HistoryViewModel.cpp" />
+    <ClCompile Include="ViewModels\DetailFactsPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ViewModels\EpisodePagesPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\SimilarTitlesPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Views\DetailLayoutPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Views\DetailScrollRow.cpp" />
+    <ClCompile Include="Views\DetailBackdropPresenter.cpp" />
+    <ClCompile Include="Views\DetailHero.xaml.cpp"><DependentUpon>DetailHero.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailEpisodesPanel.xaml.cpp"><DependentUpon>DetailEpisodesPanel.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailCreditsPanel.xaml.cpp"><DependentUpon>DetailCreditsPanel.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailSimilarPanel.xaml.cpp"><DependentUpon>DetailSimilarPanel.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailEpisodeRow.xaml.cpp"><DependentUpon>DetailEpisodeRow.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailCreditCard.xaml.cpp"><DependentUpon>DetailCreditCard.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\DetailSimilarCard.xaml.cpp"><DependentUpon>DetailSimilarCard.xaml</DependentUpon></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
