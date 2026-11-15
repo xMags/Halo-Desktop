@@ -1,10 +1,13 @@
 #include "pch.h"
 #include "Services/Auth/LoopbackListener.h"
 
+#include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstdint>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <stop_token>
 #include <string>
@@ -14,6 +17,8 @@
 namespace
 {
     constexpr std::uint16_t CallbackPort = 17871;
+    constexpr std::chrono::milliseconds ClientReadBudget{ 5000 };
+    constexpr std::chrono::milliseconds StopPollInterval{ 50 };
     constexpr std::string_view SuccessPage =
         "<!doctype html><html><head><meta charset=\"utf-8\"><title>Halo</title></head>"
         "<body style=\"background:#0a0c11;color:#f4f6fb;font-family:'Segoe UI',sans-serif;"
@@ -54,6 +59,51 @@ namespace
             return "/";
         }
         return std::string{ firstLine.substr(firstSpace + 1, secondSpace - firstSpace - 1) };
+    }
+
+    // Reads the request head of an accepted client. Windows does not wake a
+    // recv that is already blocked when another thread shuts the socket down,
+    // so the read waits for data in short slices and checks the stop token
+    // between them; it never blocks longer than StopPollInterval.
+    // Returns nullopt when a stop was requested, an empty string when the
+    // client sent nothing usable within the budget, else the received bytes.
+    std::optional<std::string> ReadRequest(SOCKET client, std::stop_token const& stopToken)
+    {
+        auto const deadline = std::chrono::steady_clock::now() + ClientReadBudget;
+        while (!stopToken.stop_requested())
+        {
+            auto const now = std::chrono::steady_clock::now();
+            if (now >= deadline)
+            {
+                return std::string{};
+            }
+            auto const slice = (std::min)(
+                std::chrono::duration_cast<std::chrono::microseconds>(deadline - now),
+                std::chrono::duration_cast<std::chrono::microseconds>(StopPollInterval));
+
+            fd_set readable;
+            FD_ZERO(&readable);
+            FD_SET(client, &readable);
+            timeval wait{ 0, static_cast<long>(slice.count()) };
+            auto const selected = select(0, &readable, nullptr, nullptr, &wait);
+            if (selected == SOCKET_ERROR)
+            {
+                return std::string{};
+            }
+            if (selected == 0)
+            {
+                continue;
+            }
+
+            std::array<char, 8192> buffer{};
+            auto const received = recv(client, buffer.data(), static_cast<int>(buffer.size()), 0);
+            if (received <= 0)
+            {
+                return std::string{};
+            }
+            return std::string{ buffer.data(), static_cast<std::size_t>(received) };
+        }
+        return std::nullopt;
     }
 
     void WakeListener() noexcept
@@ -142,6 +192,7 @@ namespace HaloDesktop::Services::Auth
         ~State()
         {
             Cancel();
+            ObserveCompletion();
             if (winsockStarted)
             {
                 WSACleanup();
@@ -168,38 +219,43 @@ namespace HaloDesktop::Services::Auth
         {
             std::scoped_lock const lock{ cancelMutex };
             Fail("Halo sign-in was cancelled.");
+            // A closed listener means an earlier Cancel already stopped and
+            // joined the worker. Waking again would connect to whatever owns
+            // the port now, possibly a newer sign-in's listener, and cancel it.
+            if (listener == INVALID_SOCKET)
+            {
+                return;
+            }
             worker.request_stop();
-            InterruptActiveClient();
             WakeListener();
             if (worker.joinable() && worker.get_id() != std::this_thread::get_id())
             {
                 worker.join();
             }
-            if (listener != INVALID_SOCKET)
+            closesocket(listener);
+            listener = INVALID_SOCKET;
+        }
+
+        // PPL breaks into the debugger (STATUS_BREAKPOINT) when an exception
+        // stored in a task is released without anyone reading it. The listener
+        // fails its own event on cancel, timeout and destruction whether or not
+        // a caller still awaits WaitAsync, so it reads the outcome once itself.
+        // Callers awaiting WaitAsync still receive the same exception. Cancel
+        // has completed the event by now, so the wait never blocks, which also
+        // keeps it legal on an STA thread.
+        void ObserveCompletion() noexcept
+        {
+            try
             {
-                closesocket(listener);
-                listener = INVALID_SOCKET;
+                concurrency::create_task(completion).wait();
+            }
+            catch (...)
+            {
             }
         }
 
-        void InterruptActiveClient() noexcept
+        static void CloseClient(SOCKET client) noexcept
         {
-            std::scoped_lock const lock{ clientMutex };
-            if (activeClient != INVALID_SOCKET)
-            {
-                shutdown(activeClient, SD_BOTH);
-            }
-        }
-
-        void CloseClient(SOCKET client) noexcept
-        {
-            {
-                std::scoped_lock const lock{ clientMutex };
-                if (activeClient == client)
-                {
-                    activeClient = INVALID_SOCKET;
-                }
-            }
             shutdown(client, SD_BOTH);
             closesocket(client);
         }
@@ -240,28 +296,13 @@ namespace HaloDesktop::Services::Auth
                 {
                     continue;
                 }
-                {
-                    std::scoped_lock const lock{ clientMutex };
-                    activeClient = client;
-                }
-                if (stopToken.stop_requested())
+                auto const request = ReadRequest(client, stopToken);
+                if (!request)
                 {
                     CloseClient(client);
                     return;
                 }
-
-                DWORD receiveTimeout = 5000;
-                setsockopt(
-                    client,
-                    SOL_SOCKET,
-                    SO_RCVTIMEO,
-                    reinterpret_cast<char const*>(&receiveTimeout),
-                    sizeof(receiveTimeout));
-                std::array<char, 8192> buffer{};
-                auto const received = recv(client, buffer.data(), static_cast<int>(buffer.size()), 0);
-                auto const path = received > 0
-                    ? RequestPath(std::string_view{ buffer.data(), static_cast<std::size_t>(received) })
-                    : std::string{ "/" };
+                auto const path = request->empty() ? std::string{ "/" } : RequestPath(*request);
 
                 auto const isCancel = path == "/cancel" || path.starts_with("/cancel?");
                 if (isCancel)
@@ -292,11 +333,9 @@ namespace HaloDesktop::Services::Auth
 
         std::chrono::seconds timeout;
         std::mutex cancelMutex;
-        std::mutex clientMutex;
         concurrency::task_completion_event<winrt::hstring> completion;
         std::atomic_bool completed{};
         SOCKET listener{ INVALID_SOCKET };
-        SOCKET activeClient{ INVALID_SOCKET };
         std::jthread worker;
         bool winsockStarted{};
     };
