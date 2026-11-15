@@ -28,6 +28,12 @@ namespace winrt::HaloDesktop::implementation
         SetTitleBar(AppTitleBarControl());
 
         m_windowSizing = std::make_unique<::HaloDesktop::Shell::WindowSizing>(*this);
+        // Before App activates the window: it stays off screen until its first
+        // frame has rendered, or the fallback passes.
+        m_reveal = ::HaloDesktop::Shell::WindowReveal::Begin(
+            m_windowSizing->WindowHandle(),
+            RootGridControl(),
+            DispatcherQueue());
         // Applied before the first paint so a stored preference never flashes the other theme.
         App::Services().Theme->Attach(RootGridControl());
         UpdateCaptionButtonColors();
@@ -160,6 +166,7 @@ namespace winrt::HaloDesktop::implementation
             }
             App::Services().WindowPresentation->Detach();
             m_themeChangedRevoker.revoke();
+            m_reveal.reset();
 
             // Generated x:Name fields are strong references. Clear them while
             // XAML is alive so Frame navigation caches do not release Pages

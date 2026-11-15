@@ -187,6 +187,8 @@ namespace HaloDesktop::Services
         virtual ~IAddonService() = default;
         [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> Items() const = 0;
         [[nodiscard]] virtual std::vector<::HaloDesktop::Api::Dto::AddonRecord> Records() const = 0;
+        // Whether the caller's own list can be saved back, which needs every
+        // personal row's transport URL. Global rows are judged per row.
         [[nodiscard]] virtual bool CanEditLists() const noexcept = 0;
         [[nodiscard]] virtual concurrency::task<void> LoadAsync() = 0;
         [[nodiscard]] virtual concurrency::task<void> AddAsync(winrt::hstring transportUrl) = 0;

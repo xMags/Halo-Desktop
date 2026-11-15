@@ -87,6 +87,24 @@
     <ClCompile Include="..\..\src\HaloDesktop\Controls\HaloMarkGeometry.cpp">
       <Link>HaloMarkGeometry.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\LanguagePolicy.cpp">
+      <Link>LanguagePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\ActionEntryPolicy.cpp">
+      <Link>ActionEntryPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\RatingPolicy.cpp">
+      <Link>RatingPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Controls\ArtworkUrlPolicy.cpp">
+      <Link>ArtworkUrlPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AccountLabelPolicy.cpp">
+      <Link>AccountLabelPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AddonListPolicy.cpp">
+      <Link>AddonListPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
 </Project>

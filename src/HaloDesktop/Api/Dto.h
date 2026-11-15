@@ -40,10 +40,22 @@ namespace HaloDesktop::Api::Dto
         winrt::hstring Username;
         bool IsAdmin{};
         std::int64_t CreatedAt{};
+        // The account's tier from a server that has tiers (`premium`).
+        std::optional<winrt::hstring> Plan;
+        // Fingerprint of the profile picture behind GET /auth/avatar; it
+        // changes exactly when the picture does, so the image is cached by it.
+        std::optional<winrt::hstring> AvatarVersion;
     };
 
     struct AddonRecord final
     {
+        struct CatalogExtra final
+        {
+            winrt::hstring Name;
+            bool IsRequired{};
+            std::vector<winrt::hstring> Options;
+        };
+
         struct Catalog final
         {
             winrt::hstring Type;
@@ -51,6 +63,10 @@ namespace HaloDesktop::Api::Dto
             std::optional<winrt::hstring> Name;
             bool SupportsSearch{};
             bool HasRequiredExtra{};
+            std::vector<CatalogExtra> Extras;
+            // The legacy alternatives to `extra` some addons still emit.
+            std::vector<winrt::hstring> ExtraSupported;
+            std::vector<winrt::hstring> ExtraRequired;
         };
 
         winrt::hstring Id;
@@ -66,6 +82,9 @@ namespace HaloDesktop::Api::Dto
         std::int32_t Position{};
         bool HideCatalogs{};
         bool IsGlobal{};
+        // Personal entries only: the admin installs this same transport URL for
+        // everyone, so the server answers from the global entry instead.
+        bool ProvidedGlobally{};
     };
 
     struct AddonsPayload final
@@ -89,7 +108,16 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Background;
         std::optional<winrt::hstring> Description;
         std::optional<winrt::hstring> ReleaseInfo;
+        // The addon's raw `imdbRating`; RatedValue decides whether it is one.
         std::optional<winrt::hstring> Rating;
+        std::optional<winrt::hstring> Logo;
+        // `behaviorHints.defaultVideoId`: the video a film plays as when that
+        // differs from its id (the TMDB addon lists films as `tmdb:` ids but
+        // plays them by IMDb id).
+        std::optional<winrt::hstring> DefaultVideoId;
+        std::vector<winrt::hstring> Genres;
+        // `imdb_id`, sent beside an addon's own id; kept only in IMDb shape.
+        std::optional<winrt::hstring> ImdbId;
     };
 
     struct MetaVideo final
@@ -101,6 +129,22 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Overview;
         std::optional<std::int32_t> Season;
         std::optional<std::int32_t> Episode;
+        // False when the addon sent neither `title` nor `name`, so Title holds
+        // the generic "Episode" and a caller may prefer the show's name.
+        bool HasTitle{};
+    };
+
+    struct MetaPerson final
+    {
+        winrt::hstring Name;
+        std::optional<winrt::hstring> Character;
+        std::optional<winrt::hstring> Photo;
+    };
+
+    struct MetaTrailer final
+    {
+        winrt::hstring Source;
+        std::optional<winrt::hstring> Type;
     };
 
     struct MetaDetail final
@@ -108,10 +152,22 @@ namespace HaloDesktop::Api::Dto
         MetaPreview Preview;
         std::vector<MetaVideo> Videos;
         std::optional<winrt::hstring> Runtime;
-        std::vector<winrt::hstring> Genres;
         std::vector<winrt::hstring> Cast;
         std::vector<winrt::hstring> Director;
         std::vector<winrt::hstring> Writer;
+        // ISO date of the first release, finer than the preview's releaseInfo.
+        std::optional<winrt::hstring> Released;
+        // A local certificate such as `U/A 13+`.
+        std::optional<winrt::hstring> AgeRating;
+        // `trailerStreams[].ytId`, in the addon's order.
+        std::vector<winrt::hstring> TrailerStreamIds;
+        // The older trailer list, `{ source, type }`.
+        std::vector<MetaTrailer> Trailers;
+        // `app_extras.cast`: the cast with parts and photos some addons send.
+        std::vector<MetaPerson> PicturedCast;
+        std::optional<winrt::hstring> Country;
+        std::optional<winrt::hstring> Language;
+        std::optional<winrt::hstring> Awards;
     };
 
     struct LibraryRow final
@@ -135,6 +191,10 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Name;
         std::optional<winrt::hstring> Poster;
         std::int64_t UpdatedAt{};
+        // Set on a removal from the watch history: the row is a tombstone that
+        // forgets its progress and wins over stale copies. Servers never return
+        // tombstones; a newer row without it brings the video back.
+        std::optional<std::int64_t> RemovedAt;
     };
 
     struct StreamSubtitleRecord final
@@ -180,4 +240,9 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::NextEpisodePayload ParseNextEpisode(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::SubtitlesPayload ParseSubtitles(winrt::Windows::Data::Json::IJsonValue const& value);
+
+    // The server's sentence when an account's plan refuses something
+    // (`{ code: "plan_required" | "plan_limit_reached", error }`), sanitised
+    // like every other server message; empty for any other body.
+    [[nodiscard]] std::optional<winrt::hstring> PlanRefusalMessage(winrt::hstring const& body);
 }

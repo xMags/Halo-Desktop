@@ -4,6 +4,9 @@
 #include "ArtworkImage.g.cpp"
 #endif
 
+#include "Controls/ArtworkUrlPolicy.h"
+
+#include <algorithm>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -32,7 +35,23 @@ namespace winrt::HaloDesktop::implementation
 
     void ArtworkImage::FallbackUrl(winrt::hstring const& value)
     {
+        if (m_fallbackUrl == value) return;
         m_fallbackUrl = value;
+        // A source that arrives after the others failed, or were missing, is
+        // still worth a try; while one is loading it simply joins the chain.
+        if (m_exhausted) TryNextSource();
+    }
+
+    winrt::hstring ArtworkImage::MetaId() const
+    {
+        return m_metaId;
+    }
+
+    void ArtworkImage::MetaId(winrt::hstring const& value)
+    {
+        if (m_metaId == value) return;
+        m_metaId = value;
+        if (m_exhausted) TryNextSource();
     }
 
     double ArtworkImage::DecodeWidth() const noexcept { return m_decodeWidth; }
@@ -81,16 +100,10 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::ExceptionRoutedEventArgs const& args)
     {
-        auto const image = sender.as<Microsoft::UI::Xaml::Controls::Image>();
-        if (!m_fallbackAttempted && !m_fallbackUrl.empty() && m_fallbackUrl != m_sourceUrl)
-        {
-            m_fallbackAttempted = true;
-            SetImageSource(m_fallbackUrl);
-            return;
-        }
-        image.Opacity(0);
+        sender.as<Microsoft::UI::Xaml::Controls::Image>().Opacity(0);
         m_opened = false;
         ShowPlaceholder(true);
+        TryNextSource();
     }
 
     void ArtworkImage::Refresh()
@@ -100,26 +113,52 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        m_fallbackAttempted = false;
+        m_attempted.clear();
+        m_exhausted = false;
         image.Opacity(0);
         // Back to the placeholder until the new artwork actually opens, or a
         // recycled card would keep showing the previous item's picture.
         m_opened = false;
         ShowPlaceholder(true);
-        SetImageSource(m_sourceUrl);
+        TryNextSource();
     }
 
-    void ArtworkImage::SetImageSource(winrt::hstring const& value)
+    void ArtworkImage::TryNextSource()
     {
         auto const image = FindName(L"Artwork").try_as<Microsoft::UI::Xaml::Controls::Image>();
         if (!image)
         {
             return;
         }
-        if (value.empty())
+        // At most three sources, so a URL the bitmap refuses outright moves on
+        // in a bounded loop rather than waiting for a failure event.
+        for (auto const& candidate : ::HaloDesktop::Controls::ArtworkCandidates(m_sourceUrl, m_fallbackUrl, m_metaId))
         {
-            image.Source(nullptr);
-            return;
+            if (std::find(m_attempted.begin(), m_attempted.end(), candidate) != m_attempted.end())
+            {
+                continue;
+            }
+            m_attempted.push_back(candidate);
+            auto const url = ::HaloDesktop::Controls::UsesCardArtwork(m_decodeWidth)
+                ? ::HaloDesktop::Controls::CardArtworkUrl(candidate)
+                : candidate;
+            if (SetImageSource(winrt::hstring{ url }))
+            {
+                m_exhausted = false;
+                return;
+            }
+        }
+        image.Source(nullptr);
+        image.Opacity(0);
+        m_exhausted = true;
+    }
+
+    bool ArtworkImage::SetImageSource(winrt::hstring const& value)
+    {
+        auto const image = FindName(L"Artwork").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        if (!image || value.empty())
+        {
+            return false;
         }
         try
         {
@@ -128,11 +167,13 @@ namespace winrt::HaloDesktop::implementation
             if (m_decodeWidth > 0.0) bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
+            return true;
         }
         catch (...)
         {
             image.Source(nullptr);
             image.Opacity(0);
+            return false;
         }
     }
 }

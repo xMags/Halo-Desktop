@@ -2,8 +2,11 @@
 #include <ws2tcpip.h>
 
 #include "Services/CatalogRefreshPolicy.h"
+#include "Api/ApiError.h"
+#include "Api/CatalogExtrasPolicy.h"
 #include "Api/Dto.h"
 #include "Api/JsonNumberPolicy.h"
+#include "Diagnostics/CrashLog.h"
 #include "Services/SettingsSyncPolicy.h"
 #include "Services/DiscordPresence.h"
 #include "Services/Downloads/DownloadPageOperationState.h"
@@ -15,6 +18,7 @@
 #include "Services/ContinueShelfPolicy.h"
 #include "Services/WatchMarkPolicy.h"
 #include "ViewModels/HomeStatePolicy.h"
+#include "ApiClientAuthTest.h"
 #include "DownloadTransferTest.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
@@ -157,6 +161,278 @@ namespace
             "an equal-timestamp settings payload replaced the local document");
         Require(ShouldApplyLoadedSettings(101, 100, 0, 0),
             "a newer remote settings payload was rejected");
+
+        // A save replaces the whole document, so none goes out before a real
+        // read (the reference's syncedSettings waits for the read and fails the
+        // save when there is still nothing).
+        using HaloDesktop::Services::CanSaveSettings;
+        using HaloDesktop::Services::DecideSettingsLoad;
+        using HaloDesktop::Services::SettingsLoadAction;
+        Require(!CanSaveSettings(false), "settings could be saved before they were read");
+        Require(CanSaveSettings(true), "settings that were read could not be saved");
+
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = false, .ReceivedDocument = true, .IsLatestRequest = true,
+                    .PayloadUpdatedAt = 0, .LocalUpdatedAt = 0, .RequestWriteVersion = 3, .CurrentWriteVersion = 3 })
+                == SettingsLoadAction::AdoptFirstRead,
+            "a never-saved account's first document was not adopted");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = false, .ReceivedDocument = true, .IsLatestRequest = false,
+                    .PayloadUpdatedAt = 50, .LocalUpdatedAt = 0, .RequestWriteVersion = 1, .CurrentWriteVersion = 1 })
+                == SettingsLoadAction::AdoptFirstRead,
+            "an older read was ignored while nothing had been read yet");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = false, .ReceivedDocument = false, .IsLatestRequest = true })
+                == SettingsLoadAction::DiscardUnreadEdits,
+            "edits waiting on a read that failed were kept for a later save");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = false, .ReceivedDocument = false, .IsLatestRequest = false })
+                == SettingsLoadAction::Keep,
+            "a superseded failed read discarded edits a newer read can still land");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = true, .ReceivedDocument = false, .IsLatestRequest = true })
+                == SettingsLoadAction::Keep,
+            "a failed refresh dropped settings already read");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = true, .ReceivedDocument = true, .IsLatestRequest = true,
+                    .PayloadUpdatedAt = 101, .LocalUpdatedAt = 100, .RequestWriteVersion = 2, .CurrentWriteVersion = 2 })
+                == SettingsLoadAction::ApplyNewer,
+            "a newer document was not applied after the first read");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = true, .ReceivedDocument = true, .IsLatestRequest = true,
+                    .PayloadUpdatedAt = 101, .LocalUpdatedAt = 100, .RequestWriteVersion = 2, .CurrentWriteVersion = 3 })
+                == SettingsLoadAction::Keep,
+            "a document read before a local edit replaced the edit");
+    }
+
+    winrt::Windows::Data::Json::IJsonValue Json(std::wstring_view text)
+    {
+        return winrt::Windows::Data::Json::JsonValue::Parse(winrt::hstring{ text });
+    }
+
+    void TestCatalogExtrasAndAddonFields()
+    {
+        auto const payload = HaloDesktop::Api::Mappers::ParseAddons(Json(LR"({
+            "global": [
+                { "id": "g1", "manifest": { "id": "tmdb", "name": "TMDB", "version": "1.0.0", "catalogs": [
+                    { "type": "movie", "id": "lang", "name": "Language",
+                      "extra": [ { "name": "genre", "options": [ "Hindi", 5, " Tamil " ] }, { "name": "skip" },
+                                 { "name": "search", "isRequired": true } ],
+                      "extraSupported": [ "skip", 7 ], "extraRequired": [ "search" ] },
+                    { "type": "movie", "id": "year", "extra": [ { "name": "genre", "isRequired": true } ] },
+                    { "type": "series", "id": "odd", "extra": [ { "name": "genre", "options": "Hindi" } ] } ] },
+                  "position": 0, "providedGlobally": true }
+            ],
+            "user": [
+                { "id": "u1", "transportUrl": "https://a.test/manifest.json",
+                  "manifest": { "id": "a", "name": "A", "version": "1" }, "position": 0, "providedGlobally": true },
+                { "id": "u2", "transportUrl": "https://b.test/manifest.json",
+                  "manifest": { "id": "b", "name": "B", "version": "1" }, "position": 1, "providedGlobally": "yes" }
+            ]
+        })"));
+        Require(payload.Global.size() == 1 && payload.User.size() == 2, "the addon lists did not parse");
+        auto const& catalogs = payload.Global.front().Catalogs;
+        Require(catalogs.size() == 3, "a catalog with an odd optional extra was dropped");
+        auto const& language = catalogs[0];
+        Require(language.SupportsSearch && language.HasRequiredExtra, "the existing catalog flags changed");
+        Require(language.Extras.size() == 3 && language.ExtraSupported.size() == 1 && language.ExtraRequired.size() == 1,
+            "the catalog extras were not read");
+        auto const genres = HaloDesktop::Api::GenreOptions(language);
+        Require(genres.size() == 2 && genres[0] == L"Hindi" && genres[1] == L"Tamil", "the genre options were not read");
+        Require(HaloDesktop::Api::SupportsSkip(language), "a catalog declaring skip did not page");
+        Require(HaloDesktop::Api::SearchNeedsNothingElse(language), "a catalog needing only the query was refused a search");
+        Require(!HaloDesktop::Api::SearchNeedsNothingElse(catalogs[1]), "a catalog needing a genre was offered a bare search");
+        Require(!HaloDesktop::Api::SupportsSkip(catalogs[1]), "a catalog without skip was paged");
+        Require(HaloDesktop::Api::GenreOptions(catalogs[2]).empty(), "options that are not a list were read as genres");
+
+        Require(!payload.Global.front().ProvidedGlobally, "a global entry was marked as provided globally");
+        Require(payload.User[0].ProvidedGlobally, "a personal entry the admin also installs was not marked");
+        Require(!payload.User[1].ProvidedGlobally, "a malformed providedGlobally was read as true");
+
+        auto const me = HaloDesktop::Api::Mappers::ParseMe(Json(
+            LR"({"id":"u","username":"kenneth","isAdmin":false,"createdAt":1,"plan":" premium ","avatarVersion":"v2"})"));
+        Require(me.Plan.value_or(L"") == L"premium" && me.AvatarVersion.value_or(L"") == L"v2", "the account tier or picture was not read");
+        auto const plain = HaloDesktop::Api::Mappers::ParseMe(Json(
+            LR"({"id":"u","username":"kenneth","isAdmin":false,"createdAt":1,"plan":5,"avatarVersion":null})"));
+        Require(!plain.Plan && !plain.AvatarVersion, "a malformed tier or picture version was kept");
+    }
+
+    void TestMetaFieldsAndActionFiltering()
+    {
+        // Mirrors actionEntries.test.ts "addon streams are filtered as they are read":
+        // an action stream is dropped and a group left with nothing is dropped too.
+        auto const streams = HaloDesktop::Api::Mappers::ParseStreams(Json(LR"({
+            "results": [
+                { "addon": { "id": "a", "name": "A" }, "streams": [
+                    { "url": "https://cdn.test/film.mkv", "name": "Film" },
+                    { "url": "https://mf.test/streaming_provider/s/delete_all_watchlist?provider=torbox", "name": "TorBox" } ] },
+                { "addon": { "id": "b", "name": "B" }, "streams": [
+                    { "url": "https://cdn.test/v.mkv", "description": "Delete all files in TorBox watchlist." } ] }
+            ],
+            "errors": []
+        })"));
+        Require(streams.Results.size() == 1 && streams.Results.front().Streams.size() == 1
+                && streams.Results.front().Streams.front().Url == L"https://cdn.test/film.mkv",
+            "an action stream, or a group of nothing but actions, was offered");
+
+        auto const next = HaloDesktop::Api::Mappers::ParseNextEpisode(Json(LR"({
+            "video": { "id": "tt1:1:2", "title": "Two" },
+            "stream": { "url": "https://mf.test/delete_all_watchlist", "name": "Next" }
+        })"));
+        Require(next.Video && !next.Stream, "an action stream was kept as the next episode's source");
+
+        // An action entry is dropped without taking one of the page's thirty slots.
+        std::wstring catalog = LR"({"metas":[{"id":"dltorbox","type":"movie","name":"Delete all files"})";
+        for (int index = 0; index < 30; ++index)
+        {
+            catalog += LR"(,{"id":"tt)" + std::to_wstring(index + 1) + LR"(","type":"movie","name":"Film"})";
+        }
+        catalog += L"]}";
+        auto const page = HaloDesktop::Api::Mappers::ParseCatalog(Json(catalog));
+        Require(page.size() == 30 && page.front().Id == L"tt1", "an action entry took a catalog slot or survived");
+
+        auto const previews = HaloDesktop::Api::Mappers::ParseCatalog(Json(LR"({"metas":[
+            { "id": "tmdb:1", "type": "movie", "name": "Film", "logo": "https://img.test/logo.png",
+              "behaviorHints": { "defaultVideoId": " tt9 " }, "imdb_id": "tt5",
+              "genres": [ "Comedy", { "name": "Family" }, 7, { "name": 3 } ] },
+            { "id": "tt2", "type": "movie", "name": "Other", "behaviorHints": "odd", "imdb_id": "x5", "genres": "Drama" }
+        ]})"));
+        Require(previews.size() == 2, "a preview with odd optional fields was dropped");
+        Require(previews[0].Logo && previews[0].DefaultVideoId.value_or(L"") == L"tt9"
+                && previews[0].ImdbId.value_or(L"") == L"tt5"
+                && previews[0].Genres == std::vector<winrt::hstring>{ L"Comedy", L"Family" },
+            "the preview's new fields were not read");
+        Require(!previews[1].DefaultVideoId && !previews[1].ImdbId && previews[1].Genres.empty(),
+            "malformed preview fields were kept");
+
+        auto const meta = HaloDesktop::Api::Mappers::ParseMeta(Json(LR"({"meta":{
+            "id": "tt1", "type": "series", "name": "Show", "imdbRating": "7.1", "genres": [ "Drama" ],
+            "released": "2020-01-02T00:00:00.000Z", "ageRating": "U/A 13+", "country": "India",
+            "language": "Hindi", "awards": "2 wins",
+            "trailerStreams": [ { "title": "Trailer", "ytId": "abc123xyz" }, { "title": "No id" } ],
+            "trailers": [ { "source": "zzz999zzz", "type": "Trailer" }, { "type": "Clip" } ],
+            "app_extras": { "cast": [
+                { "name": "Actor", "character": "Lead", "photo": "https://img.test/a.jpg" },
+                { "name": "Other", "photo": "http://img.test/b.jpg" },
+                { "character": "Nobody" } ] },
+            "videos": [
+                { "id": "tt1:1:1", "name": "Pilot", "season": 1, "episode": 1 },
+                { "id": "tt1:1:2", "season": 1, "episode": 2 } ]
+        }})"));
+        Require(meta.Preview.Genres.size() == 1 && meta.Released && meta.AgeRating.value_or(L"") == L"U/A 13+"
+                && meta.Country && meta.Language && meta.Awards,
+            "the title's facts were not read");
+        Require(meta.TrailerStreamIds == std::vector<winrt::hstring>{ L"abc123xyz" }
+                && meta.Trailers.size() == 1 && meta.Trailers.front().Source == L"zzz999zzz",
+            "the trailers were not read");
+        Require(meta.PicturedCast.size() == 2 && meta.PicturedCast[0].Photo && meta.PicturedCast[0].Character
+                && !meta.PicturedCast[1].Photo,
+            "the pictured cast did not follow the reference rules");
+        Require(meta.Videos.size() == 2 && meta.Videos[0].HasTitle && meta.Videos[0].Title == L"Pilot"
+                && !meta.Videos[1].HasTitle && meta.Videos[1].Title == L"Episode",
+            "a video's own name was not told apart from the placeholder");
+
+        auto const odd = HaloDesktop::Api::Mappers::ParseMeta(Json(LR"({"meta":{
+            "id": "tt1", "type": "movie", "name": "Film",
+            "trailerStreams": "x", "trailers": 5, "app_extras": [], "ageRating": 12, "released": null
+        }})"));
+        Require(odd.TrailerStreamIds.empty() && odd.Trailers.empty() && odd.PicturedCast.empty() && !odd.AgeRating && !odd.Released,
+            "malformed title fields were kept");
+
+        auto const watch = HaloDesktop::Api::Mappers::ParseWatchState(Json(LR"([
+            {"videoId":"a","itemId":"movie:a","positionSec":1,"durationSec":10,"watched":false,"updatedAt":5,"removedAt":4},
+            {"videoId":"b","itemId":"movie:b","positionSec":1,"durationSec":10,"watched":false,"updatedAt":5,"removedAt":"x"},
+            {"videoId":"c","itemId":"movie:c","positionSec":1,"durationSec":10,"watched":false,"updatedAt":5,"removedAt":-1}
+        ])"));
+        Require(watch.size() == 3 && watch[0].RemovedAt.value_or(0) == 4 && !watch[1].RemovedAt && !watch[2].RemovedAt,
+            "a watch-state removal stamp was misread or failed the row");
+    }
+
+    void TestPlanRefusal()
+    {
+        using HaloDesktop::Api::Mappers::PlanRefusalMessage;
+        Require(PlanRefusalMessage(LR"({"code":"plan_required","error":"Downloads need Premium."})").value_or(L"")
+                == L"Downloads need Premium.",
+            "a plan refusal did not surface the server's sentence");
+        Require(PlanRefusalMessage(LR"({"code":"plan_limit_reached","error":" Limit\nreached "})").value_or(L"")
+                == L"Limit reached",
+            "a plan refusal sentence was not sanitised");
+        Require(!PlanRefusalMessage(LR"({"code":"forbidden","error":"No."})"), "another refusal was read as a plan's");
+        Require(!PlanRefusalMessage(LR"({"code":"plan_required","error":""})"), "an empty plan sentence was surfaced");
+        Require(!PlanRefusalMessage(LR"({"code":"plan_required","error":5})"), "a malformed plan sentence was surfaced");
+        Require(!PlanRefusalMessage(L"not json"), "a body that is not JSON was read as a plan refusal");
+
+        namespace ApiError = HaloDesktop::Api::ApiError;
+        Require(ApiError::IsPlanRefusal(ApiError::MakePlanRefusal(403))
+                && ApiError::HttpStatus(ApiError::MakePlanRefusal(403)).value_or(0) == 403,
+            "a plan refusal lost its HTTP status");
+        Require(!ApiError::IsPlanRefusal(ApiError::MakeHttpStatus(403))
+                && ApiError::HttpStatus(ApiError::MakeHttpStatus(404)).value_or(0) == 404,
+            "an ordinary HTTP error was read as a plan refusal");
+    }
+
+    // Mirrors the tests in the reference's crash_log.rs.
+    void TestCrashLog()
+    {
+        using HaloDesktop::Diagnostics::CrashLog;
+        using HaloDesktop::Diagnostics::CrashLogRotateBytes;
+        using HaloDesktop::Diagnostics::CrashLogTimestamp;
+        auto const at = [](std::int64_t seconds)
+        {
+            return CrashLogTimestamp(std::chrono::system_clock::time_point{ std::chrono::seconds{ seconds } });
+        };
+
+        // Timestamps are UTC calendar dates.
+        Require(at(0) == "1970-01-01T00:00:00Z", "the epoch was misprinted");
+        Require(at(951'782'400) == "2000-02-29T00:00:00Z", "a leap day was misprinted");
+        Require(at(1'700'000'000) == "2023-11-14T22:13:20Z", "a timestamp was misprinted");
+        Require(at(1'735'689'599) == "2024-12-31T23:59:59Z", "the last second of a year was misprinted");
+        Require(at(1'735'689'600) == "2025-01-01T00:00:00Z", "the first second of a year was misprinted");
+        Require(at(4'107'542'400) == "2100-03-01T00:00:00Z", "a century without a leap day was misprinted");
+
+        auto const scratch = [](std::wstring const& name)
+        {
+            auto const directory = std::filesystem::temp_directory_path()
+                / (L"halo-crash-log-" + name + L"-" + std::to_wstring(GetCurrentProcessId()));
+            std::error_code error;
+            std::filesystem::remove_all(directory, error);
+            return directory;
+        };
+        auto const readAll = [](std::filesystem::path const& path)
+        {
+            std::ifstream input{ path, std::ios::binary };
+            return std::string{ std::istreambuf_iterator<char>{ input }, std::istreambuf_iterator<char>{} };
+        };
+
+        // Each record is one line, in a folder it creates.
+        {
+            auto const directory = scratch(L"lines");
+            CrashLog log{ directory / L"logs" };
+            log.Record(L"first");
+            log.Record(L"second\r\nstill second");
+            auto const text = readAll(log.Path());
+            auto const firstEnd = text.find('\n');
+            Require(firstEnd != std::string::npos && text.back() == '\n'
+                    && text.find('\n', firstEnd + 1) == text.size() - 1,
+                "the crash log did not hold exactly two lines");
+            auto const first = text.substr(0, firstEnd);
+            auto const second = text.substr(firstEnd + 1, text.size() - firstEnd - 2);
+            Require(first.ends_with("Z first"), "the first crash line was wrong");
+            Require(second.ends_with("Z second  still second"), "line breaks inside a record were not flattened");
+            std::error_code error;
+            std::filesystem::remove_all(directory, error);
+        }
+
+        // A full log moves aside and starts over.
+        {
+            auto const directory = scratch(L"rotate");
+            CrashLog log{ directory };
+            std::filesystem::create_directories(directory);
+            {
+                std::ofstream full{ log.Path(), std::ios::binary };
+                std::string const filler(static_cast<std::size_t>(CrashLogRotateBytes), 'x');
+                full.write(filler.data(), static_cast<std::streamsize>(filler.size()));
+            }
+            log.Record(L"fresh");
+            Require(readAll(log.Path()).ends_with("Z fresh\n"), "a full crash log did not start over");
+            Require(std::filesystem::file_size(directory / L"crash.old.log") == CrashLogRotateBytes,
+                "a full crash log was not kept aside whole");
+            std::error_code error;
+            std::filesystem::remove_all(directory, error);
+        }
     }
 
     class FakeDiscordTransport final : public HaloDesktop::Services::IDiscordPresenceTransport
@@ -958,6 +1234,10 @@ int main()
         TestStreamVideoSizeValidation();
         TestNumericBoundaryValidation();
         TestSettingsLoadPolicy();
+        TestCatalogExtrasAndAddonFields();
+        TestMetaFieldsAndActionFiltering();
+        TestPlanRefusal();
+        TestCrashLog();
         TestDiscordPresencePolicyAndService();
         TestCatalogDirtySingleFlight();
         TestHomeVisibility();
@@ -974,6 +1254,7 @@ int main()
         RunStandaloneStorageTests();
         RunDownloadTransferStabilityTest();
         RunPlaybackSourceResolverTest();
+        RunApiClientAuthTest();
         std::cout << "StabilityTests passed\n";
         return 0;
     }

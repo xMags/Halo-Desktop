@@ -90,24 +90,46 @@ namespace HaloDesktop::Services
         {
             payload = co_await ReadMirrorAsync();
         }
-        if (!payload)
-        {
-            payload = ::HaloDesktop::Api::Dto::SettingsPayload{
-                .Value = winrt::Windows::Data::Json::JsonObject{},
-                .UpdatedAt = 0,
-            };
-        }
         co_await uiContext;
-        if (accountVersion == m_accountVersion
-            && ShouldApplyLoadedSettings(
-                payload->UpdatedAt,
-                localUpdatedAt,
-                requestWriteVersion,
-                m_writeVersion)
-            && m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
+        if (accountVersion != m_accountVersion)
         {
+            co_return;
+        }
+
+        auto const action = DecideSettingsLoad({
+            .DocumentAlreadyRead = m_documentRead,
+            .ReceivedDocument = payload.has_value(),
+            .IsLatestRequest = m_queryCache->IsLatest(SettingsCacheKey, requestId),
+            .PayloadUpdatedAt = payload ? payload->UpdatedAt : 0,
+            .LocalUpdatedAt = localUpdatedAt,
+            .RequestWriteVersion = requestWriteVersion,
+            .CurrentWriteVersion = m_writeVersion,
+        });
+        switch (action)
+        {
+        case SettingsLoadAction::AdoptFirstRead:
+            // Committed when this is still the latest request; an older read is
+            // as real a document, so it is adopted either way.
+            static_cast<void>(m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings));
             Apply(*payload);
+            m_documentRead = true;
             static_cast<void>(WriteMirrorAsync(*payload));
+            ReplayUnreadEdits();
+            break;
+        case SettingsLoadAction::ApplyNewer:
+            if (m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
+            {
+                Apply(*payload);
+                static_cast<void>(WriteMirrorAsync(*payload));
+            }
+            break;
+        case SettingsLoadAction::DiscardUnreadEdits:
+            // The waiting edits were only ever shown on an empty document.
+            m_unreadEdits.clear();
+            m_value = winrt::Windows::Data::Json::JsonObject{};
+            break;
+        case SettingsLoadAction::Keep:
+            break;
         }
     }
 
@@ -145,9 +167,10 @@ namespace HaloDesktop::Services
     }
     void SettingsSyncService::SubtitleScalePercent(std::int32_t value)
     {
-        m_value.Insert(L"subtitleScalePercent", winrt::Windows::Data::Json::JsonValue::CreateNumberValue(
-            std::clamp(value, 50, 200)));
-        Touch(true);
+        ApplyEdit(
+            L"subtitleScalePercent",
+            winrt::Windows::Data::Json::JsonValue::CreateNumberValue(std::clamp(value, 50, 200)),
+            true);
     }
     winrt::hstring SettingsSyncService::SubtitleFontFamily() const { return OptionalString(m_value, L"subtitleFontFamily", 64).value_or(L"Segoe UI"); }
     void SettingsSyncService::SubtitleFontFamily(winrt::hstring value)
@@ -316,20 +339,77 @@ namespace HaloDesktop::Services
         std::optional<winrt::hstring> value,
         bool debounce)
     {
-        if (value && !value->empty())
+        ApplyEdit(
+            key,
+            value && !value->empty()
+                ? winrt::Windows::Data::Json::JsonValue::CreateStringValue(*value)
+                : winrt::Windows::Data::Json::IJsonValue{ nullptr },
+            debounce);
+    }
+
+    void SettingsSyncService::SetBoolean(wchar_t const* key, bool value)
+    {
+        ApplyEdit(key, winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(value), false);
+    }
+
+    void SettingsSyncService::ApplyEdit(
+        wchar_t const* key,
+        winrt::Windows::Data::Json::IJsonValue const& value,
+        bool debounce)
+    {
+        if (value)
         {
-            m_value.Insert(key, winrt::Windows::Data::Json::JsonValue::CreateStringValue(*value));
+            m_value.Insert(key, value);
         }
         else if (m_value.HasKey(key))
         {
             m_value.Remove(key);
         }
-        Touch(debounce);
+        if (CanSaveSettings(m_documentRead))
+        {
+            Touch(debounce);
+            return;
+        }
+
+        // Shown at once, saved only on top of a document that was read.
+        auto const existing = std::find_if(m_unreadEdits.begin(), m_unreadEdits.end(), [key](UnreadEdit const& edit)
+        {
+            return edit.Key == key;
+        });
+        if (existing != m_unreadEdits.end())
+        {
+            existing->Value = value;
+            return;
+        }
+        m_unreadEdits.push_back({ key, value });
+        if (m_unreadEdits.size() == 1)
+        {
+            // The first waiting edit starts a read of its own, so it never
+            // depends on some page happening to load the settings.
+            static_cast<void>(LoadAsync());
+        }
     }
 
-    void SettingsSyncService::SetBoolean(wchar_t const* key, bool value)
+    void SettingsSyncService::ReplayUnreadEdits()
     {
-        m_value.Insert(key, winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(value));
+        if (m_unreadEdits.empty())
+        {
+            return;
+        }
+        auto edits = std::move(m_unreadEdits);
+        m_unreadEdits.clear();
+        for (auto const& edit : edits)
+        {
+            if (edit.Value)
+            {
+                m_value.Insert(edit.Key, edit.Value);
+            }
+            else if (m_value.HasKey(edit.Key))
+            {
+                m_value.Remove(edit.Key);
+            }
+        }
+        // One save for all of them, stamped newer than the document read.
         Touch(false);
     }
 
@@ -371,6 +451,8 @@ namespace HaloDesktop::Services
         ++m_writeVersion;
         m_value = winrt::Windows::Data::Json::JsonObject{};
         m_updatedAt = 0;
+        m_documentRead = false;
+        m_unreadEdits.clear();
         m_queryCache->Invalidate(SettingsCacheKey);
         m_mirrorPath = userId.empty()
             ? std::filesystem::path{}

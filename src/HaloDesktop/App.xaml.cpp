@@ -3,6 +3,7 @@
 #include "Api/ApiClient.h"
 #include "Api/HttpExecutor.h"
 #include "Config/ServerConfig.h"
+#include "Diagnostics/CrashLog.h"
 #include "Models/Models.h"
 #include "Playback/MpvEngine.h"
 #include "Playback/MpvScrubPreviewSource.h"
@@ -43,7 +44,10 @@
 
 #include <shobjidl_core.h>
 
+#include <iomanip>
 #include <memory>
+#include <sstream>
+#include <string_view>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -57,6 +61,7 @@ namespace winrt::HaloDesktop::implementation
         static_cast<void>(SetCurrentProcessExplicitAppUserModelID(L"HaloDesktop.App"));
 
         m_storagePaths = std::make_shared<::HaloDesktop::Storage::AppStoragePaths>();
+        m_crashLog = std::make_shared<::HaloDesktop::Diagnostics::CrashLog>(m_storagePaths->Root() / L"logs");
         auto legacySource = std::make_shared<::HaloDesktop::Storage::InstalledLegacyPackageDataSource>();
         ::HaloDesktop::Storage::PackagedDataMigrator migrator{ m_storagePaths, legacySource };
         static_cast<void>(migrator.Migrate());
@@ -138,7 +143,8 @@ namespace winrt::HaloDesktop::implementation
             continueNextEpisodeService);
         m_services.Catalog = catalogService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
-            m_storagePaths->LocalState());
+            m_storagePaths->LocalState(),
+            [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });
         auto downloadArtworkService = std::make_shared<::HaloDesktop::Services::DownloadArtworkService>(
             m_apiClient);
         m_downloadService = std::make_shared<::HaloDesktop::Services::DownloadService>(
@@ -215,16 +221,24 @@ namespace winrt::HaloDesktop::implementation
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
         m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();
 
-#if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
-        UnhandledException([](winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::UnhandledExceptionEventArgs const& e)
+        // Only the error code is written: an exception's message can carry a
+        // server sentence, a path or a URL, none of which belong in the log.
+        UnhandledException([crashLog = m_crashLog](
+            [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::UnhandledExceptionEventArgs const& e)
         {
+            std::wostringstream line;
+            line << L"unhandled exception 0x" << std::hex << std::setw(8) << std::setfill(L'0')
+                 << static_cast<std::uint32_t>(e.Exception().value);
+            crashLog->Record(line.str());
+#if defined _DEBUG && !defined DISABLE_XAML_GENERATED_BREAK_ON_UNHANDLED_EXCEPTION
             if (IsDebuggerPresent())
             {
-                auto errorMessage = e.Message();
+                [[maybe_unused]] auto const errorMessage = e.Message();
                 __debugbreak();
             }
-        });
 #endif
+        });
     }
 
     ::HaloDesktop::Services::AppServices& App::Services()

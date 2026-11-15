@@ -12,4 +12,29 @@ namespace HaloDesktop::Services
         return requestWriteVersion == currentWriteVersion
             && payloadUpdatedAt > localUpdatedAt;
     }
+
+    SettingsLoadAction DecideSettingsLoad(SettingsLoadResult const& result) noexcept
+    {
+        if (!result.DocumentAlreadyRead)
+        {
+            // Edits made before the first read never advance the write
+            // generation (they wait instead of saving), so the first document
+            // is adopted whatever its timestamp, and the edits land on it.
+            if (result.ReceivedDocument) return SettingsLoadAction::AdoptFirstRead;
+            return result.IsLatestRequest ? SettingsLoadAction::DiscardUnreadEdits : SettingsLoadAction::Keep;
+        }
+        if (!result.ReceivedDocument) return SettingsLoadAction::Keep;
+        return ShouldApplyLoadedSettings(
+                   result.PayloadUpdatedAt,
+                   result.LocalUpdatedAt,
+                   result.RequestWriteVersion,
+                   result.CurrentWriteVersion)
+            ? SettingsLoadAction::ApplyNewer
+            : SettingsLoadAction::Keep;
+    }
+
+    bool CanSaveSettings(bool documentRead) noexcept
+    {
+        return documentRead;
+    }
 }

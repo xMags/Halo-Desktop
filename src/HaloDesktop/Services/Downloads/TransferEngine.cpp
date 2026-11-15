@@ -640,13 +640,27 @@ namespace HaloDesktop::Services::Downloads
         DownloadFailureCode Failure{ DownloadFailureCode::Unknown };
     };
 
-    TransferEngine::TransferEngine(std::filesystem::path dataRoot)
+    TransferEngine::TransferEngine(
+        std::filesystem::path dataRoot,
+        LaunchRecoveryReporter const& launchRecovery)
         : m_store(std::move(dataRoot)),
           m_vault(m_store.Paths().VaultDirectory)
     {
         for (auto& record : m_store.Load())
         {
             m_records.emplace(record.JobId, std::move(record));
+        }
+        if (m_store.TakeLoadRecoveryNotice() && launchRecovery)
+        {
+            try
+            {
+                launchRecovery(
+                    L"The download index could not be read at launch. It was kept aside and "
+                    + std::to_wstring(m_records.size()) + L" downloads were recovered from it.");
+            }
+            catch (...)
+            {
+            }
         }
         std::vector<std::wstring> pendingDeletionIds;
         for (auto const& [jobId, record] : m_records)

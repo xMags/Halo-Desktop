@@ -6,6 +6,7 @@
 #include "Security/ProtectedHttpHeaders.h"
 #include "Services/DownloadSourceMatch.h"
 #include "Services/Downloads/DownloadPreparation.h"
+#include "Services/LanguagePolicy.h"
 #include "Services/SettingsSyncService.h"
 
 #include <algorithm>
@@ -87,27 +88,11 @@ namespace
         return std::wstring(first, last);
     }
 
-    std::wstring NormalizedLanguage(winrt::hstring const& language)
+    // An empty preference names no language, so it matches nothing.
+    bool LanguageMatches(winrt::hstring const& subtitleLanguage, winrt::hstring const& preferred)
     {
-        auto value = std::wstring{ language.c_str() };
-        std::transform(value.begin(), value.end(), value.begin(), [](wchar_t character)
-        {
-            return static_cast<wchar_t>(std::towlower(character));
-        });
-        if (value == L"fre") return L"fra";
-        if (value == L"ger") return L"deu";
-        if (value == L"chi") return L"zho";
-        if (value == L"cze") return L"ces";
-        if (value == L"dut") return L"nld";
-        if (value == L"gre") return L"ell";
-        if (value == L"rum") return L"ron";
-        if (value == L"slo") return L"slk";
-        return value;
-    }
-
-    bool LanguageMatches(winrt::hstring const& left, winrt::hstring const& right)
-    {
-        return NormalizedLanguage(left) == NormalizedLanguage(right);
+        return !preferred.empty()
+            && HaloDesktop::Services::LanguageTagsMatch(subtitleLanguage, preferred);
     }
 
     std::map<std::wstring, std::wstring, std::less<>> DownloadHeaders(

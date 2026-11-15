@@ -1,6 +1,7 @@
 #include "Playback/PlaybackPolicy.h"
 
 #include "Security/ProtectedHttpHeaders.h"
+#include "Services/LanguagePolicy.h"
 
 #include <algorithm>
 #include <cmath>
@@ -10,7 +11,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string_view>
-#include <unordered_map>
 
 namespace
 {
@@ -81,6 +81,10 @@ namespace
 
 namespace HaloDesktop::Playback
 {
+    // Kept to its original short table on purpose: its only reader in the app
+    // is the subtitle fingerprint, which is stored in the remembered subtitle
+    // choices, so widening it would orphan every choice already saved.
+    // Matching and naming use the full tables in Services/LanguagePolicy.
     std::wstring NormalizeLanguage(std::wstring value)
     {
         std::transform(value.begin(), value.end(), value.begin(), [](wchar_t character)
@@ -111,17 +115,12 @@ namespace HaloDesktop::Playback
 
     bool LanguageMatches(std::wstring const& left, std::wstring const& right)
     {
-        return !left.empty() && !right.empty() && NormalizeLanguage(left) == NormalizeLanguage(right);
+        return !left.empty() && !right.empty() && ::HaloDesktop::Services::LanguageTagsMatch(left, right);
     }
 
     std::wstring LanguageDisplayName(std::wstring const&code)
     {
-        static std::unordered_map<std::wstring,wchar_t const*>const labels{
-            {L"eng",L"English"},{L"jpn",L"Japanese"},{L"spa",L"Spanish"},{L"fra",L"French"},
-            {L"deu",L"German"},{L"por",L"Portuguese"},{L"pob",L"Portuguese (BR)"},{L"ita",L"Italian"},
-            {L"rus",L"Russian"},{L"zho",L"Chinese"}};
-        auto const found=labels.find(NormalizeLanguage(code));
-        return found==labels.end()?code:std::wstring{found->second};
+        return ::HaloDesktop::Services::LanguageNameForTag(code).value_or(code);
     }
 
     std::optional<std::int64_t> FindLanguageTrack(

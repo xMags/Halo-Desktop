@@ -7,6 +7,8 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <string>
+#include <vector>
 #include <pplawait.h>
 #include <ppltasks.h>
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -28,6 +30,12 @@ namespace HaloDesktop::Services
 
     // UI-thread-only raw-document settings repository. Unknown JSON keys are
     // retained across every typed mutation and mirrored locally for offline use.
+    //
+    // A save replaces the whole document, so nothing is saved or mirrored for
+    // an account until a real document (the server's, or that account's
+    // mirror) has been read. A change made before then is shown at once and
+    // kept waiting while a read runs; it is applied on top of the document
+    // when one arrives, and dropped when none can be had.
     class SettingsSyncService final
     {
     public:
@@ -71,6 +79,9 @@ namespace HaloDesktop::Services
         void Apply(::HaloDesktop::Api::Dto::SettingsPayload payload);
         void SetString(wchar_t const* key, std::optional<winrt::hstring> value, bool debounce);
         void SetBoolean(wchar_t const* key, bool value);
+        // A null value removes the key.
+        void ApplyEdit(wchar_t const* key, winrt::Windows::Data::Json::IJsonValue const& value, bool debounce);
+        void ReplayUnreadEdits();
         void Touch(bool debounce);
         [[nodiscard]] std::int64_t NextTimestamp() const noexcept;
         [[nodiscard]] winrt::Windows::Data::Json::JsonObject Snapshot() const;
@@ -85,5 +96,17 @@ namespace HaloDesktop::Services
         std::uint64_t m_writeVersion{};
         std::mutex m_mirrorMutex;
         std::uint64_t m_accountVersion{};
+
+        struct UnreadEdit final
+        {
+            std::wstring Key;
+            // Null when the edit removes the key.
+            winrt::Windows::Data::Json::IJsonValue Value{ nullptr };
+        };
+
+        // Whether this account's document has been read yet.
+        bool m_documentRead{};
+        // Edits made before that, newest value per key, in first-edit order.
+        std::vector<UnreadEdit> m_unreadEdits;
     };
 }

@@ -2,6 +2,7 @@
 #include "Api/ApiClient.h"
 #include <winrt/Windows.Web.Http.Headers.h>
 #include "Api/ApiError.h"
+#include "Api/BoundedHttpContent.h"
 #include "Api/HttpExecutor.h"
 #include "Services/Auth/ITokenProvider.h"
 
@@ -115,6 +116,52 @@ namespace HaloDesktop::Api
         co_return Mappers::ParseMe(value);
     }
 
+    concurrency::task<std::optional<std::vector<std::uint8_t>>> ApiClient::GetAvatarAsync()
+    {
+        // The same token and refresh policy as SendAuthenticatedJsonAsync, for
+        // a body that is an image rather than JSON.
+        auto const generation = m_tokenProvider->SessionGeneration();
+        co_await winrt::resume_background();
+        if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
+        auto token = co_await m_tokenProvider->AccessTokenAsync();
+        if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
+        if (!token)
+        {
+            co_await m_tokenProvider->RejectSessionAsync(generation);
+            ThrowSessionRejected();
+        }
+
+        auto const uri = Endpoint(L"/auth/avatar");
+        for (int attempt = 0; attempt < 2; ++attempt)
+        {
+            winrt::Windows::Web::Http::HttpRequestMessage request{ winrt::Windows::Web::Http::HttpMethod::Get(), uri };
+            request.Headers().TryAppendWithoutValidation(L"Authorization", winrt::hstring{ L"Bearer " } + *token);
+            auto const response = co_await m_executor->SendForStreamAsync(request);
+            if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
+            auto const status = static_cast<std::uint16_t>(response.StatusCode());
+            // No picture, or a server that keeps none.
+            if (status == 404) co_return std::nullopt;
+            if (status >= 200 && status < 300)
+            {
+                co_return co_await ReadBoundedBytesAsync(response.Content(), MaximumAvatarBytes);
+            }
+            // A second 401 follows a successful refresh, so it fails this
+            // request without ending the session.
+            if (status != 401 || attempt == 1)
+            {
+                throw winrt::hresult_error{ ApiError::MakeHttpStatus(status), L"The account picture could not be loaded." };
+            }
+            token = co_await m_tokenProvider->RefreshAccessTokenAsync();
+            if (generation != m_tokenProvider->SessionGeneration()) throw winrt::hresult_canceled{};
+            if (!token)
+            {
+                co_await m_tokenProvider->RejectSessionAsync(generation);
+                ThrowSessionRejected();
+            }
+        }
+        throw winrt::hresult_error{ ApiError::SessionRejected };
+    }
+
     concurrency::task<Dto::AddonsPayload> ApiClient::GetAddonsAsync()
     {
         auto const value = co_await SendAuthenticatedJsonAsync(
@@ -210,7 +257,7 @@ namespace HaloDesktop::Api
     concurrency::task<std::vector<Dto::WatchEntry>> ApiClient::PutWatchStateAsync(std::vector<Dto::WatchEntry> rows)
     {
         winrt::Windows::Data::Json::JsonArray body;
-        for(auto const&row:rows){winrt::Windows::Data::Json::JsonObject object;object.Insert(L"videoId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.VideoId));object.Insert(L"itemId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.ItemId));object.Insert(L"positionSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.PositionSec));object.Insert(L"durationSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.DurationSec));object.Insert(L"watched",winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(row.Watched));if(row.Name)object.Insert(L"name",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Name));if(row.Poster)object.Insert(L"poster",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Poster));object.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(row.UpdatedAt)));body.Append(object);}
+        for(auto const&row:rows){winrt::Windows::Data::Json::JsonObject object;object.Insert(L"videoId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.VideoId));object.Insert(L"itemId",winrt::Windows::Data::Json::JsonValue::CreateStringValue(row.ItemId));object.Insert(L"positionSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.PositionSec));object.Insert(L"durationSec",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(row.DurationSec));object.Insert(L"watched",winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(row.Watched));if(row.Name)object.Insert(L"name",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Name));if(row.Poster)object.Insert(L"poster",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*row.Poster));if(row.RemovedAt)object.Insert(L"removedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(*row.RemovedAt)));object.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(row.UpdatedAt)));body.Append(object);}
         auto const response=co_await SendAuthenticatedJsonAsync(winrt::Windows::Web::Http::HttpMethod::Put(),L"/watch-state",body.Stringify());
         co_return Mappers::ParseWatchState(response);
     }
@@ -338,6 +385,12 @@ namespace HaloDesktop::Api
             ThrowSessionRejected();
         }
 
+        // The refresh succeeded, so the session is alive: a server can briefly
+        // refuse a token the identity provider has just issued (after a
+        // signing-key rotation, until its cached key set refreshes). This
+        // request fails with its 401 and the session is kept; the next request
+        // tries again. Only a refresh that returned nothing above, which the
+        // provider reserves for a definitive rejection, ends the session.
         try
         {
             auto response = co_await send(*token);
@@ -347,21 +400,14 @@ namespace HaloDesktop::Api
             }
             co_return response;
         }
-        catch (winrt::hresult_error const& error)
+        catch (winrt::hresult_error const&)
         {
             if (generation != m_tokenProvider->SessionGeneration())
             {
                 throw winrt::hresult_canceled{};
             }
-            auto const status = ApiError::HttpStatus(error.code());
-            if (!status || *status != 401)
-            {
-                throw;
-            }
+            throw;
         }
-
-        co_await m_tokenProvider->RejectSessionAsync(generation);
-        ThrowSessionRejected();
     }
 
     void ApiClient::ThrowSessionRejected()

@@ -2,6 +2,7 @@
 #include "Services/MetadataService.h"
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
+#include "Services/RatingPolicy.h"
 #include "Services/WatchStateService.h"
 #include <algorithm>
 #include <cwctype>
@@ -82,7 +83,10 @@ namespace
             result.append(value);
         };
         append(preview.ReleaseInfo.value_or(L""));
-        if (preview.Rating && !preview.Rating->empty()) append(L"★ " + *preview.Rating);
+        auto const rating = preview.Rating
+            ? HaloDesktop::Services::RatingLabel(std::wstring_view{ *preview.Rating })
+            : std::nullopt;
+        if (rating) append(winrt::hstring{ *rating });
         return winrt::hstring{ result };
     }
 }
@@ -136,7 +140,7 @@ namespace HaloDesktop::Services
         m_runtimeMinutes = RuntimeMinutesFrom(meta.Runtime);
         std::vector<winrt::hstring> facts;
         if (meta.Runtime) facts.push_back(L"Runtime · " + *meta.Runtime);
-        if (!meta.Genres.empty()) facts.push_back(L"Genres · " + Join(meta.Genres));
+        if (!meta.Preview.Genres.empty()) facts.push_back(L"Genres · " + Join(meta.Preview.Genres));
         if (!meta.Cast.empty()) facts.push_back(L"Cast · " + Join(meta.Cast));
 
         m_detail = winrt::make<winrt::HaloDesktop::implementation::MediaDetail>(

@@ -30,6 +30,10 @@ namespace HaloDesktop::Services::Downloads
         explicit DownloadIndexStore(std::filesystem::path dataRoot);
 
         [[nodiscard]] std::vector<DownloadRecord> Load(bool recoverInterrupted = true);
+        // True once after a Load that found the index unreadable, set it aside
+        // and started from what could be salvaged. Lets the caller report the
+        // recovery without holding the store's lock.
+        [[nodiscard]] bool TakeLoadRecoveryNotice();
         void Save(std::vector<DownloadRecord> const& records, std::uint64_t generation);
         void Apply(
             std::vector<DownloadRecord> const& upserts,
@@ -59,5 +63,6 @@ namespace HaloDesktop::Services::Downloads
         std::vector<std::filesystem::path> m_approvedRoots;
         std::set<std::wstring, std::less<>> m_observedJobIds;
         std::uint64_t m_savedGeneration{};
+        bool m_loadRecovered{};
     };
 }

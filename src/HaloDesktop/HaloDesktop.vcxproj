@@ -109,12 +109,15 @@
       <AdditionalIncludeDirectories>$(GeneratedFilesDir)Controls;$(GeneratedFilesDir)Shell;$(GeneratedFilesDir)Views;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &gt;= '18.0'">stdcpp20</LanguageStandard>
       <LanguageStandard Condition="'$(VisualStudioVersion)' &lt; '18.0'">stdcpp17</LanguageStandard>
+      <!-- EntryPoint.cpp supplies wWinMain so the extension-point policy is set before the
+           XAML framework creates any window; the generated main becomes wXamlGeneratedMain. -->
+      <PreprocessorDefinitions>DISABLE_XAML_GENERATED_MAIN;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <!-- Sources are UTF-8 without a BOM. Without /utf-8 MSVC decodes them with the system
            ANSI code page, which turns literals like L"·" into mojibake at runtime. -->
       <AdditionalOptions>%(AdditionalOptions) /bigobj /utf-8</AdditionalOptions>
     </ClCompile>
     <Link>
-      <AdditionalDependencies>bcrypt.lib;crypt32.lib;gdi32.lib;ole32.lib;shell32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>bcrypt.lib;crypt32.lib;dwmapi.lib;gdi32.lib;ole32.lib;shell32.lib;uuid.lib;winhttp.lib;ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <PropertyGroup Condition="'$(Platform)'=='x64'">
@@ -319,6 +322,16 @@
     <ClInclude Include="Controls\QualityMedal.xaml.h"><DependentUpon>QualityMedal.xaml</DependentUpon></ClInclude>
     <ClInclude Include="ViewModels\QualityMedalPolicy.h" />
     <ClInclude Include="ViewModels\QualityMedalProjection.h" />
+    <ClInclude Include="Api\ActionEntryPolicy.h" />
+    <ClInclude Include="Api\CatalogExtrasPolicy.h" />
+    <ClInclude Include="Controls\ArtworkUrlPolicy.h" />
+    <ClInclude Include="Diagnostics\CrashLog.h" />
+    <ClInclude Include="Security\InjectionGuard.h" />
+    <ClInclude Include="Services\AccountLabelPolicy.h" />
+    <ClInclude Include="Services\AddonListPolicy.h" />
+    <ClInclude Include="Services\LanguagePolicy.h" />
+    <ClInclude Include="Services\RatingPolicy.h" />
+    <ClInclude Include="Shell\WindowReveal.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -552,6 +565,33 @@
     <ClCompile Include="ViewModels\QualityMedalPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Api\ActionEntryPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Api\CatalogExtrasPolicy.cpp" />
+    <ClCompile Include="Controls\ArtworkUrlPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Diagnostics\CrashLog.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="EntryPoint.cpp" />
+    <ClCompile Include="Security\InjectionGuard.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\AccountLabelPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\AddonListPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\LanguagePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\RatingPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Shell\WindowReveal.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

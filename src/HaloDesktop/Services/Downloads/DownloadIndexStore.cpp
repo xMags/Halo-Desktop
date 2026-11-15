@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
+#include <utility>
 #include <wil/resource.h>
 #include <winrt/Windows.Data.Json.h>
 
@@ -570,7 +571,13 @@ namespace
         return recovered;
     }
 
-    std::vector<HaloDesktop::Services::Downloads::DownloadRecord> LoadRecovering(
+    struct LoadedIndex final
+    {
+        std::vector<HaloDesktop::Services::Downloads::DownloadRecord> Records;
+        bool Recovered{};
+    };
+
+    LoadedIndex LoadRecovering(
         std::filesystem::path const& target,
         bool recoverInterrupted)
     {
@@ -581,15 +588,15 @@ namespace
         }
         catch (std::length_error const&)
         {
-            return RecoverCorruptIndex(target, {}, recoverInterrupted);
+            return { RecoverCorruptIndex(target, {}, recoverInterrupted), true };
         }
         try
         {
-            return ParseRecords(raw, recoverInterrupted);
+            return { ParseRecords(raw, recoverInterrupted), false };
         }
         catch (...)
         {
-            return RecoverCorruptIndex(target, raw, recoverInterrupted);
+            return { RecoverCorruptIndex(target, raw, recoverInterrupted), true };
         }
     }
 
@@ -721,13 +728,21 @@ namespace HaloDesktop::Services::Downloads
     {
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto records = LoadRecovering(m_paths.IndexFile, recoverInterrupted);
+        auto loaded = LoadRecovering(m_paths.IndexFile, recoverInterrupted);
+        auto records = std::move(loaded.Records);
+        m_loadRecovered = m_loadRecovered || loaded.Recovered;
         m_observedJobIds.clear();
         for (auto const& record : records)
         {
             m_observedJobIds.insert(record.JobId);
         }
         return records;
+    }
+
+    bool DownloadIndexStore::TakeLoadRecoveryNotice()
+    {
+        std::scoped_lock const lock{ m_mutex };
+        return std::exchange(m_loadRecovered, false);
     }
 
     void DownloadIndexStore::Save(
@@ -740,7 +755,7 @@ namespace HaloDesktop::Services::Downloads
             return;
         }
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto const persistedRecords = LoadRecovering(m_paths.IndexFile, false);
+        auto const persistedRecords = LoadRecovering(m_paths.IndexFile, false).Records;
         std::set<std::wstring, std::less<>> persistedIds;
         for (auto const& persisted : persistedRecords)
         {
@@ -782,7 +797,7 @@ namespace HaloDesktop::Services::Downloads
     {
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto records = LoadRecovering(m_paths.IndexFile, false);
+        auto records = LoadRecovering(m_paths.IndexFile, false).Records;
         for (auto const& jobId : removals)
         {
             std::erase_if(records, [&jobId](DownloadRecord const& record)
@@ -833,7 +848,7 @@ namespace HaloDesktop::Services::Downloads
         }
         std::scoped_lock const lock{ m_mutex };
         ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
-        auto records = LoadRecovering(m_paths.IndexFile, false);
+        auto records = LoadRecovering(m_paths.IndexFile, false).Records;
         auto const found = std::find_if(records.begin(), records.end(), [&jobId](DownloadRecord const& record)
         {
             return record.JobId == jobId;

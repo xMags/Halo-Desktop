@@ -9,6 +9,7 @@
 #include "Services/ContinueNextEpisodeService.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/LibraryService.h"
+#include "Services/RatingPolicy.h"
 #include "Services/WatchStateService.h"
 #include "ViewModels/HomeStatePolicy.h"
 
@@ -16,10 +17,12 @@
 #include <cmath>
 #include <cwctype>
 #include <iomanip>
+#include <optional>
 #include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <utility>
 
@@ -37,14 +40,19 @@ namespace
         return type == L"series" ? winrt::HaloDesktop::MediaKind::Series : winrt::HaloDesktop::MediaKind::Movie;
     }
 
+    std::optional<std::wstring_view> RatingText(::HaloDesktop::Api::Dto::MetaPreview const& item)
+    {
+        return item.Rating ? std::optional<std::wstring_view>{ *item.Rating } : std::nullopt;
+    }
+
     winrt::hstring MetaLine(::HaloDesktop::Api::Dto::MetaPreview const& item)
     {
         std::wstring result;
         if (item.ReleaseInfo) result.append(*item.ReleaseInfo);
-        if (item.Rating)
+        if (auto const rating = ::HaloDesktop::Services::RatingLabel(RatingText(item)))
         {
             if (!result.empty()) result.append(L" · ");
-            result.append(L"★ ").append(*item.Rating);
+            result.append(*rating);
         }
         return winrt::hstring{ result };
     }
@@ -57,7 +65,8 @@ namespace
         return winrt::make<winrt::HaloDesktop::implementation::MediaSummary>(
             item.Id, item.Name, MetaLine(item), Kind(item.Type), item.Type,
             item.Poster.value_or(L""), item.Background.value_or(L""), item.Description.value_or(L""),
-            item.Rating.value_or(L""), item.ReleaseInfo.value_or(L""), addedAt, updatedAt);
+            winrt::hstring{ ::HaloDesktop::Services::RatedValue(RatingText(item)).value_or(L"") },
+            item.ReleaseInfo.value_or(L""), addedAt, updatedAt);
     }
 
     winrt::hstring TypeLabel(winrt::hstring const& type)

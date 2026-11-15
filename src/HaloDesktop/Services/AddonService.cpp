@@ -10,6 +10,7 @@
 #include <stdexcept>
 #include <string>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -112,7 +113,7 @@ namespace HaloDesktop::Services
 
     bool AddonService::CanEditLists() const noexcept
     {
-        return m_canEditLists;
+        return m_editability.User;
     }
 
     concurrency::task<void> AddonService::LoadAsync()
@@ -168,15 +169,37 @@ namespace HaloDesktop::Services
         m_seedAttempted = true;
         if (shouldSeed)
         {
-            co_await m_apiClient->PutAddonsAsync({
-                L"https://v3-cinemeta.strem.io/manifest.json",
-                L"https://opensubtitles-v3.strem.io/manifest.json",
-            }, false);
-            payload = co_await m_apiClient->GetAddonsAsync();
+            std::vector<winrt::hstring> defaults;
+            defaults.reserve(DefaultAddonUrls.size());
+            for (auto const url : DefaultAddonUrls)
+            {
+                defaults.emplace_back(url);
+            }
+            // Best effort, as the reference client seeds: the server validates
+            // every manifest, so one built-in host being down refuses the whole
+            // list, and that must not fail the first load. The empty list
+            // already read is applied instead.
+            std::optional<::HaloDesktop::Api::Dto::AddonsPayload> seeded;
+            try
+            {
+                co_await m_apiClient->PutAddonsAsync(std::move(defaults), false);
+                seeded = co_await m_apiClient->GetAddonsAsync();
+            }
+            catch (winrt::hresult_canceled const&)
+            {
+                throw;
+            }
+            catch (...)
+            {
+            }
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
                 co_return;
+            }
+            if (seeded)
+            {
+                payload = std::move(*seeded);
             }
         }
         if (accountVersion == m_accountVersion
@@ -213,7 +236,7 @@ namespace HaloDesktop::Services
             }
 
             auto const url = Trimmed(transportUrl);
-            if (!m_canEditLists)
+            if (!m_editability.User)
             {
                 throw std::runtime_error{ "The addon list cannot be edited safely." };
             }
@@ -281,8 +304,8 @@ namespace HaloDesktop::Services
             {
                 return record.Id == addonId;
             });
-            if (found == m_records.end() || !found->TransportUrl || !m_canEditLists
-                || (found->IsGlobal && !m_session->IsAdmin()))
+            if (found == m_records.end() || !found->TransportUrl
+                || !CanEditAddonInScope(m_editability, found->IsGlobal))
             {
                 throw std::runtime_error{ "The addon cannot be removed safely." };
             }
@@ -367,15 +390,18 @@ namespace HaloDesktop::Services
         m_records.reserve(payload.Global.size() + payload.User.size());
         m_records.insert(m_records.end(), payload.Global.begin(), payload.Global.end());
         m_records.insert(m_records.end(), payload.User.begin(), payload.User.end());
-        m_canEditLists = std::all_of(m_records.begin(), m_records.end(), [](auto const& record)
+        std::vector<AddonEditInput> editInputs;
+        editInputs.reserve(m_records.size());
+        for (auto const& record : m_records)
         {
-            return record.TransportUrl.has_value();
-        });
+            editInputs.push_back({ record.IsGlobal, record.TransportUrl.has_value() });
+        }
+        m_editability = EvaluateAddonEditability(editInputs, m_session->IsAdmin());
 
         m_items.Clear();
         for (auto const& record : m_records)
         {
-            auto const canEdit = m_canEditLists && (!record.IsGlobal || m_session->IsAdmin());
+            auto const canEdit = CanEditAddonInScope(m_editability, record.IsGlobal);
             m_items.Append(winrt::make<winrt::HaloDesktop::implementation::Addon>(
                 record.Id,
                 record.TransportUrl.value_or(L""),
@@ -414,7 +440,7 @@ namespace HaloDesktop::Services
         m_mutationTail.reset();
         m_records.clear();
         m_items.Clear();
-        m_canEditLists = false;
+        m_editability = {};
         m_seedAttempted = false;
     }
 }

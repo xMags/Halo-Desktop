@@ -1,4 +1,5 @@
 #include "pch.h"
+#include "Api/ActionEntryPolicy.h"
 #include "Api/Dto.h"
 #include "Api/JsonNumberPolicy.h"
 
@@ -183,26 +184,191 @@ namespace
         return static_cast<std::int32_t>(value);
     }
 
+    // The helpers below serve fields added after the original wire contract.
+    // Each one is fail-soft: a value of the wrong type, out of bounds or
+    // malformed is dropped, so an addon's odd optional field can never fail a
+    // payload that parsed before the field was read.
+
+    std::optional<winrt::Windows::Data::Json::JsonObject> OptionalObject(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) return std::nullopt;
+        return value.GetObject();
+    }
+
+    std::optional<winrt::Windows::Data::Json::JsonArray> OptionalArray(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::Array) return std::nullopt;
+        return value.GetArray();
+    }
+
+    bool OptionalBoolean(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        bool fallback)
+    {
+        if (!object.HasKey(key)) return fallback;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::Boolean) return fallback;
+        return value.GetBoolean();
+    }
+
+    // The string exactly as sent, for the action-entry patterns, which judge
+    // what the addon wrote rather than its display form. Empty when absent.
+    winrt::hstring RawString(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        if (!object.HasKey(key)) return {};
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) return {};
+        return value.GetString();
+    }
+
+    // Trimmed, control characters replaced, and rejected rather than cut when
+    // longer than the bound: a clipped id or name would name something else.
+    std::optional<winrt::hstring> BoundedText(
+        winrt::Windows::Data::Json::IJsonValue const& value,
+        std::size_t maximumLength)
+    {
+        if (!value || value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) return std::nullopt;
+        std::wstring text{ Trimmed(value.GetString()) };
+        if (text.empty() || text.size() > maximumLength) return std::nullopt;
+        std::replace_if(text.begin(), text.end(), [](wchar_t character) { return std::iswcntrl(character) != 0; }, L' ');
+        return winrt::hstring{ text };
+    }
+
+    std::optional<winrt::hstring> OptionalBoundedText(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        std::size_t maximumLength)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        return BoundedText(object.GetNamedValue(key), maximumLength);
+    }
+
+    // Strings, or objects naming one (`{ "name": ... }`), the way addons list
+    // genres and options; anything else in the array is skipped.
+    std::vector<winrt::hstring> TolerantStringArray(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        std::size_t maximumItems,
+        std::size_t maximumLength)
+    {
+        std::vector<winrt::hstring> result;
+        auto const array = OptionalArray(object, key);
+        if (!array) return result;
+        for (auto const& item : *array)
+        {
+            if (result.size() == maximumItems) break;
+            auto const text = item.ValueType() == winrt::Windows::Data::Json::JsonValueType::Object
+                ? OptionalBoundedText(item.GetObject(), L"name", maximumLength)
+                : BoundedText(item, maximumLength);
+            if (text) result.push_back(*text);
+        }
+        return result;
+    }
+
+    std::optional<winrt::hstring> OptionalHttpsUrl(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        std::size_t maximumLength)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) return std::nullopt;
+        auto const text = value.GetString();
+        if (text.empty() || text.size() > maximumLength) return std::nullopt;
+        try
+        {
+            winrt::Windows::Foundation::Uri const uri{ text };
+            if (!uri.Host().empty() && uri.SchemeName() == L"https") return text;
+        }
+        catch (...) {}
+        return std::nullopt;
+    }
+
+    // `tt` and digits: the bare IMDb id shape.
+    bool IsImdbId(winrt::hstring const& value)
+    {
+        std::wstring_view const text{ value };
+        if (text.size() < 3 || !text.starts_with(L"tt")) return false;
+        return std::all_of(text.begin() + 2, text.end(), [](wchar_t character)
+        {
+            return character >= L'0' && character <= L'9';
+        });
+    }
+
     ::HaloDesktop::Api::Dto::MetaVideo ParseMetaVideo(
         winrt::Windows::Data::Json::JsonObject const& video)
     {
-        auto const title = OptionalDisplayString(video, L"title", 512)
-            .value_or(OptionalDisplayString(video, L"name", 512).value_or(L"Episode"));
+        auto const ownTitle = OptionalDisplayString(video, L"title", 512);
+        auto const ownName = OptionalDisplayString(video, L"name", 512);
         return {
             DisplayString(video, L"id", 2048),
-            title,
+            ownTitle.value_or(ownName.value_or(L"Episode")),
             OptionalDisplayString(video, L"released", 128),
             OptionalHttpUrl(video, L"thumbnail"),
             OptionalDisplayString(video, L"overview", 4096),
             OptionalNonNegativeInteger(video, L"season"),
-            OptionalNonNegativeInteger(video, L"episode") };
+            OptionalNonNegativeInteger(video, L"episode"),
+            ownTitle.has_value() || ownName.has_value() };
+    }
+
+    // The fields a catalog preview and a title's details share. Genres are
+    // read by each caller, since the details always parsed them more strictly.
+    ::HaloDesktop::Api::Dto::MetaPreview ParsePreview(
+        winrt::Windows::Data::Json::JsonObject const& object)
+    {
+        ::HaloDesktop::Api::Dto::MetaPreview preview{
+            .Id = DisplayString(object, L"id", 1024),
+            .Type = DisplayString(object, L"type", 128),
+            .Name = DisplayString(object, L"name", 512),
+            .Poster = OptionalHttpUrl(object, L"poster"),
+            .Background = OptionalHttpUrl(object, L"background"),
+            .Description = OptionalDisplayString(object, L"description", 4096),
+            .ReleaseInfo = OptionalDisplayString(object, L"releaseInfo", 128),
+            .Rating = OptionalDisplayString(object, L"imdbRating", 32),
+            .Logo = OptionalHttpUrl(object, L"logo"),
+        };
+        if (auto const hints = OptionalObject(object, L"behaviorHints"))
+        {
+            preview.DefaultVideoId = OptionalBoundedText(*hints, L"defaultVideoId", 2048);
+        }
+        if (auto const imdbId = OptionalBoundedText(object, L"imdb_id", 32); imdbId && IsImdbId(*imdbId))
+        {
+            preview.ImdbId = imdbId;
+        }
+        return preview;
+    }
+
+    // A stream that acts instead of playing, judged on the fields as sent.
+    bool IsActionStreamObject(winrt::Windows::Data::Json::JsonObject const& stream)
+    {
+        auto const url = RawString(stream, L"url");
+        auto const name = RawString(stream, L"name");
+        auto const title = RawString(stream, L"title");
+        auto const description = RawString(stream, L"description");
+        return ::HaloDesktop::Api::IsActionStream({
+            .Url = url,
+            .Name = name,
+            .Title = title,
+            .Description = description,
+        });
     }
 
     std::optional<::HaloDesktop::Api::Dto::StreamRecord> ParseStreamRecord(
         winrt::Windows::Data::Json::JsonObject const& stream)
     {
         auto const url = OptionalHttpUrl(stream, L"url");
-        if (!url)
+        if (!url || IsActionStreamObject(stream))
         {
             return std::nullopt;
         }
@@ -282,21 +448,49 @@ namespace
             auto const type = OptionalDisplayString(object, L"type", 128);
             auto const id = OptionalDisplayString(object, L"id", 512);
             if (!type || !id) continue;
+            // The reads that derive SupportsSearch and HasRequiredExtra keep their
+            // original strictness; only the values added beside them are fail-soft.
             auto supportsSearch = false;
             auto hasRequired = false;
+            std::vector<::HaloDesktop::Api::Dto::AddonRecord::CatalogExtra> extras;
             for (auto const& extra : object.GetNamedArray(L"extra", winrt::Windows::Data::Json::JsonArray{}))
             {
                 if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
                 auto const extraObject = extra.GetObject();
-                supportsSearch = supportsSearch || extraObject.GetNamedString(L"name", L"") == L"search";
-                hasRequired = hasRequired || extraObject.GetNamedBoolean(L"isRequired", false);
+                auto const name = extraObject.GetNamedString(L"name", L"");
+                auto const isRequired = extraObject.GetNamedBoolean(L"isRequired", false);
+                supportsSearch = supportsSearch || name == L"search";
+                hasRequired = hasRequired || isRequired;
+                if (name.empty() || name.size() > 128 || extras.size() == 32) continue;
+                extras.push_back({ name, isRequired, TolerantStringArray(extraObject, L"options", 512, 128) });
             }
+            std::vector<winrt::hstring> extraSupported;
             for (auto const& extra : object.GetNamedArray(L"extraSupported", winrt::Windows::Data::Json::JsonArray{}))
             {
-                supportsSearch = supportsSearch || (extra.ValueType() == winrt::Windows::Data::Json::JsonValueType::String && extra.GetString() == L"search");
+                if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) continue;
+                auto const name = extra.GetString();
+                supportsSearch = supportsSearch || name == L"search";
+                if (!name.empty() && name.size() <= 128 && extraSupported.size() < 32) extraSupported.push_back(name);
             }
-            hasRequired = hasRequired || object.GetNamedArray(L"extraRequired", winrt::Windows::Data::Json::JsonArray{}).Size() > 0;
-            result.push_back({ *type, *id, OptionalDisplayString(object, L"name", 512), supportsSearch, hasRequired });
+            auto const requiredArray = object.GetNamedArray(L"extraRequired", winrt::Windows::Data::Json::JsonArray{});
+            hasRequired = hasRequired || requiredArray.Size() > 0;
+            std::vector<winrt::hstring> extraRequired;
+            for (auto const& extra : requiredArray)
+            {
+                if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) continue;
+                auto const name = extra.GetString();
+                if (!name.empty() && name.size() <= 128 && extraRequired.size() < 32) extraRequired.push_back(name);
+            }
+            result.push_back({
+                *type,
+                *id,
+                OptionalDisplayString(object, L"name", 512),
+                supportsSearch,
+                hasRequired,
+                std::move(extras),
+                std::move(extraSupported),
+                std::move(extraRequired),
+            });
         }
         return result;
     }
@@ -336,6 +530,7 @@ namespace
             .Position = static_cast<std::int32_t>(position),
             .HideCatalogs = object.GetNamedBoolean(L"hideCatalogs", false),
             .IsGlobal = isGlobal,
+            .ProvidedGlobally = !isGlobal && OptionalBoolean(object, L"providedGlobally", false),
         };
     }
 }
@@ -407,6 +602,8 @@ namespace HaloDesktop::Api::Mappers
             .Username = RequireString(object, L"username"),
             .IsAdmin = object.GetNamedBoolean(L"isAdmin"),
             .CreatedAt = RequirePositiveInteger(object, L"createdAt"),
+            .Plan = OptionalBoundedText(object, L"plan", 64),
+            .AvatarVersion = OptionalBoundedText(object, L"avatarVersion", 256),
         };
     }
 
@@ -450,16 +647,15 @@ namespace HaloDesktop::Api::Mappers
         {
             if (result.size() == 30) break;
             auto const object = RequireObject(item, L"A catalog item must be an object.");
-            result.push_back(Dto::MetaPreview{
-                .Id = DisplayString(object, L"id", 1024),
-                .Type = DisplayString(object, L"type", 128),
-                .Name = DisplayString(object, L"name", 512),
-                .Poster = OptionalHttpUrl(object, L"poster"),
-                .Background = OptionalHttpUrl(object, L"background"),
-                .Description = OptionalDisplayString(object, L"description", 4096),
-                .ReleaseInfo = OptionalDisplayString(object, L"releaseInfo", 128),
-                .Rating = OptionalDisplayString(object, L"imdbRating", 32),
-            });
+            auto preview = ParsePreview(object);
+            // Validated first, so a malformed entry fails the page as it always
+            // has; an action entry is then dropped without taking a slot.
+            if (::HaloDesktop::Api::IsActionEntry(RawString(object, L"id"), RawString(object, L"name")))
+            {
+                continue;
+            }
+            preview.Genres = TolerantStringArray(object, L"genres", 32, 128);
+            result.push_back(std::move(preview));
         }
         return result;
     }
@@ -511,10 +707,16 @@ namespace HaloDesktop::Api::Mappers
             {
                 continue;
             }
+            std::optional<std::int64_t> removedAt;
+            if (object.HasKey(L"removedAt")
+                && object.GetNamedValue(L"removedAt").ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+            {
+                removedAt = ::HaloDesktop::Api::CheckedPositiveInt64(object.GetNamedNumber(L"removedAt"));
+            }
             result.push_back({
                 DisplayString(object, L"videoId", 2048), DisplayString(object, L"itemId", 2048), position, duration,
                 object.GetNamedBoolean(L"watched"), OptionalDisplayString(object, L"name", 512), OptionalHttpUrl(object, L"poster"),
-                RequirePositiveInteger(object, L"updatedAt") });
+                RequirePositiveInteger(object, L"updatedAt"), removedAt });
         }
         return result;
     }
@@ -523,8 +725,57 @@ namespace HaloDesktop::Api::Mappers
     {
         auto const root=RequireObject(value,L"The metadata response must be an object.");auto const object=root.GetNamedObject(L"meta");
         Dto::MetaDetail result;
-        result.Preview={DisplayString(object,L"id",1024),DisplayString(object,L"type",128),DisplayString(object,L"name",512),OptionalHttpUrl(object,L"poster"),OptionalHttpUrl(object,L"background"),OptionalDisplayString(object,L"description",4096),OptionalDisplayString(object,L"releaseInfo",128),OptionalDisplayString(object,L"imdbRating",32)};
-        result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Genres=OptionalStringArray(object,L"genres");result.Cast=OptionalStringArray(object,L"cast");result.Director=OptionalStringArray(object,L"director");result.Writer=OptionalStringArray(object,L"writer");
+        result.Preview=ParsePreview(object);
+        result.Preview.Genres=OptionalStringArray(object,L"genres");
+        result.Runtime=OptionalDisplayString(object,L"runtime",128);result.Cast=OptionalStringArray(object,L"cast");result.Director=OptionalStringArray(object,L"director");result.Writer=OptionalStringArray(object,L"writer");
+        result.Released = OptionalBoundedText(object, L"released", 128);
+        result.AgeRating = OptionalBoundedText(object, L"ageRating", 64);
+        result.Country = OptionalBoundedText(object, L"country", 256);
+        result.Language = OptionalBoundedText(object, L"language", 256);
+        result.Awards = OptionalBoundedText(object, L"awards", 1024);
+        if (auto const trailerStreams = OptionalArray(object, L"trailerStreams"))
+        {
+            for (auto const& item : *trailerStreams)
+            {
+                if (result.TrailerStreamIds.size() == 16) break;
+                if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
+                if (auto const id = OptionalBoundedText(item.GetObject(), L"ytId", 64)) result.TrailerStreamIds.push_back(*id);
+            }
+        }
+        if (auto const trailers = OptionalArray(object, L"trailers"))
+        {
+            for (auto const& item : *trailers)
+            {
+                if (result.Trailers.size() == 16) break;
+                if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
+                auto const trailer = item.GetObject();
+                if (auto const source = OptionalBoundedText(trailer, L"source", 64))
+                {
+                    result.Trailers.push_back({ *source, OptionalBoundedText(trailer, L"type", 64) });
+                }
+            }
+        }
+        // The reference client's cast rules: at most 40 people, names and parts
+        // as bounded text, photos only as https URLs.
+        if (auto const extras = OptionalObject(object, L"app_extras"))
+        {
+            if (auto const cast = OptionalArray(*extras, L"cast"))
+            {
+                for (auto const& item : *cast)
+                {
+                    if (result.PicturedCast.size() == 40) break;
+                    if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
+                    auto const person = item.GetObject();
+                    auto const name = OptionalBoundedText(person, L"name", 200);
+                    if (!name) continue;
+                    result.PicturedCast.push_back({
+                        *name,
+                        OptionalBoundedText(person, L"character", 200),
+                        OptionalHttpsUrl(person, L"photo", 1000),
+                    });
+                }
+            }
+        }
         auto const videos = object.GetNamedValue(
             L"videos",
             winrt::Windows::Data::Json::JsonValue::CreateNullValue());
@@ -557,6 +808,8 @@ namespace HaloDesktop::Api::Mappers
         {
             result.Video = ParseMetaVideo(root.GetNamedObject(L"video"));
         }
+        // ParseStreamRecord drops a stream that would act rather than play,
+        // which leaves the caller on the stream picker as a missing match does.
         if (root.HasKey(L"stream")
             && root.GetNamedValue(L"stream").ValueType() == winrt::Windows::Data::Json::JsonValueType::Object)
         {
@@ -570,5 +823,25 @@ namespace HaloDesktop::Api::Mappers
         auto const root=RequireObject(value,L"The subtitles response must be an object.");Dto::SubtitlesPayload result;result.HashMatched=root.GetNamedBoolean(L"hashMatched",false);
         for(auto const&entry:root.GetNamedArray(L"results")){auto const object=RequireObject(entry,L"A subtitle group must be an object.");auto const addon=object.GetNamedObject(L"addon");Dto::SubtitleGroup group{DisplayString(addon,L"id",1024),DisplayString(addon,L"name",80),{}};for(auto const&item:object.GetNamedArray(L"subtitles")){auto const subtitle=RequireObject(item,L"A subtitle must be an object.");auto const url=OptionalHttpUrl(subtitle,L"url");auto id=OptionalDisplayString(subtitle,L"id",512);auto lang=OptionalDisplayString(subtitle,L"lang",32);if(url&&id&&lang)group.Subtitles.push_back({*id,*url,*lang});}result.Results.push_back(std::move(group));}
         for(auto const&entry:root.GetNamedArray(L"errors")){auto const object=RequireObject(entry,L"An addon error must be an object.");result.Errors.push_back({OptionalDisplayString(object,L"name",80),OptionalDisplayString(object,L"code",32)});}return result;
+    }
+
+    std::optional<winrt::hstring> PlanRefusalMessage(winrt::hstring const& body)
+    {
+        winrt::Windows::Data::Json::JsonObject object{ nullptr };
+        if (body.empty() || !winrt::Windows::Data::Json::JsonObject::TryParse(body, object) || !object)
+        {
+            return std::nullopt;
+        }
+        auto const code = RawString(object, L"code");
+        if (code != L"plan_required" && code != L"plan_limit_reached")
+        {
+            return std::nullopt;
+        }
+        std::wstring message{ RawString(object, L"error") };
+        std::replace_if(message.begin(), message.end(), [](wchar_t character) { return std::iswcntrl(character) != 0; }, L' ');
+        std::wstring trimmed{ Trimmed(winrt::hstring{ message }) };
+        if (trimmed.empty()) return std::nullopt;
+        if (trimmed.size() > 512) trimmed.resize(512);
+        return winrt::hstring{ trimmed };
     }
 }

@@ -2,6 +2,7 @@
 #include "Api/HttpExecutor.h"
 #include "Api/ApiError.h"
 #include "Api/BoundedHttpContent.h"
+#include "Api/Dto.h"
 
 #include <algorithm>
 #include <cwctype>
@@ -165,6 +166,15 @@ namespace HaloDesktop::Api
             }
             catch (...)
             {
+            }
+            // As the reference client does, a 401 is never read as a plan
+            // refusal: it belongs to the session's refresh policy.
+            auto const planRefusal = status != 401
+                ? Mappers::PlanRefusalMessage(responseBody)
+                : std::nullopt;
+            if (planRefusal)
+            {
+                throw winrt::hresult_error{ ApiError::MakePlanRefusal(status), *planRefusal };
             }
             throw winrt::hresult_error{
                 ApiError::MakeHttpStatus(status),

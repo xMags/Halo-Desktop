@@ -56,6 +56,7 @@
     <ClCompile Include="DownloadTransferTest.cpp" />
     <ClCompile Include="PlaybackSourceResolverTest.cpp" />
     <ClCompile Include="StorageTests.cpp" />
+    <ClCompile Include="ApiClientAuthTest.cpp" />
     <ClCompile Include="..\..\src\HaloDesktop\Services\CatalogRefreshPolicy.cpp">
       <Link>CatalogRefreshPolicy.cpp</Link>
     </ClCompile>
@@ -128,11 +129,39 @@
     <ClCompile Include="..\..\src\HaloDesktop\ViewModels\HomeStatePolicy.cpp">
       <Link>HomeStatePolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\ActionEntryPolicy.cpp">
+      <Link>ActionEntryPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\CatalogExtrasPolicy.cpp">
+      <Link>CatalogExtrasPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Diagnostics\CrashLog.cpp">
+      <Link>CrashLog.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\ApiClient.cpp">
+      <Link>ApiClient.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\HttpExecutor.cpp">
+      <Link>HttpExecutor.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\BoundedHttpContent.cpp">
+      <Link>BoundedHttpContent.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\ResponseSizePolicy.cpp">
+      <Link>ResponseSizePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\OpenSubtitlesHash.cpp">
+      <Link>OpenSubtitlesHash.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\OpenSubtitlesHashPolicy.cpp">
+      <Link>OpenSubtitlesHashPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
     <ClInclude Include="PlaybackSourceResolverTest.h" />
     <ClInclude Include="StorageTests.h" />
+    <ClInclude Include="ApiClientAuthTest.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

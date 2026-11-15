@@ -12,6 +12,11 @@ namespace HaloDesktop::Api
     class HttpExecutor;
 }
 
+namespace HaloDesktop::Diagnostics
+{
+    class CrashLog;
+}
+
 namespace HaloDesktop::Services
 {
     class DownloadService;
@@ -57,6 +62,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> m_httpExecutor;
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths> m_storagePaths;
+        std::shared_ptr<::HaloDesktop::Diagnostics::CrashLog> m_crashLog;
         std::shared_ptr<::HaloDesktop::Services::DevicePreferencesStore> m_devicePreferences;
         std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
         std::shared_ptr<::HaloDesktop::Services::DiscordPresenceService> m_discordPresence;

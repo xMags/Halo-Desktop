@@ -3,6 +3,8 @@
 #include "Api/Dto.h"
 #include "Api/OpenSubtitlesHash.h"
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -32,6 +34,8 @@ namespace HaloDesktop::Api
     class ApiClient final
     {
     public:
+        static constexpr std::size_t MaximumAvatarBytes = 4u * 1024u * 1024u;
+
         ApiClient(
             winrt::hstring baseUrl,
             std::shared_ptr<HttpExecutor> executor,
@@ -41,6 +45,10 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::HealthStatus> GetHealthAsync();
         [[nodiscard]] concurrency::task<Dto::AuthConfig> GetAuthConfigAsync();
         [[nodiscard]] concurrency::task<Dto::Me> GetMeAsync();
+        // The account's profile picture as the server sent it (an image file),
+        // or empty when it has none. Fetch it again only when
+        // Dto::Me::AvatarVersion changes. Larger than MaximumAvatarBytes fails.
+        [[nodiscard]] concurrency::task<std::optional<std::vector<std::uint8_t>>> GetAvatarAsync();
         [[nodiscard]] concurrency::task<Dto::AddonsPayload> GetAddonsAsync();
         [[nodiscard]] concurrency::task<void> PutAddonsAsync(
             std::vector<winrt::hstring> transportUrls,

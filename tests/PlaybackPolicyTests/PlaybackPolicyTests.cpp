@@ -1,4 +1,10 @@
+#include "Api/ActionEntryPolicy.h"
+#include "Controls/ArtworkUrlPolicy.h"
 #include "Controls/HaloMarkGeometry.h"
+#include "Services/AccountLabelPolicy.h"
+#include "Services/AddonListPolicy.h"
+#include "Services/LanguagePolicy.h"
+#include "Services/RatingPolicy.h"
 #include "ViewModels/QualityMedalPolicy.h"
 #include "Api/OpenSubtitlesHashPolicy.h"
 #include "Api/ResponseSizePolicy.h"
@@ -21,9 +27,11 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <vector>
 
 namespace
@@ -668,6 +676,231 @@ namespace
         Require(window.Record(origin + tick * 43, megabyte) == 0,
                 "a rewound byte count did not reset the window");
     }
+
+    // Mirrors packages/core/test/actionEntries.test.ts. The reference's last
+    // case (streams filtered as they are read) is the mapper's, in StabilityTests.
+    void TestActionEntries()
+    {
+        using HaloDesktop::Api::IsActionEntry;
+        using HaloDesktop::Api::IsActionStream;
+
+        // MediaFusion's delete-all entry is not a title.
+        Require(IsActionEntry(L"dltorbox", L"\U0001F5D1️\U0001F4A9 Delete all files"), "the delete-all entry was kept");
+        Require(IsActionEntry(L"dlrealdebrid", L"Anything"), "an action id was kept");
+
+        // An action named any other way is still caught.
+        for (auto const name : { L"\U0001F5D1 Empty", L"Clear all watched", L"Remove all torrents", L"Wipe the library", L"Purge cache" })
+        {
+            Require(IsActionEntry(L"x:1", name), "an action named another way was kept");
+        }
+
+        // Real titles stay, whatever their id or name.
+        std::vector<std::pair<std::wstring_view, std::wstring_view>> const titles{
+            { L"tt12735488", L"Kalki 2898-AD" },
+            { L"kitsu:1234", L"Delete" },
+            { L"dl:42", L"Download Days" },
+            { L"tt1", L"All Clear" },
+            { L"tt2", L"Deleted Scenes" },
+            { L"tt3", L"The Purge: Election Year" },
+            { L"tt4", L"Delete History" },
+        };
+        for (auto const& [id, name] : titles)
+        {
+            Require(!IsActionEntry(id, name), "a real title was taken for an action");
+        }
+
+        // A stream that would delete is never offered, however it is labelled.
+        Require(IsActionStream({ .Url = L"https://mf.test/streaming_provider/s/delete_all_watchlist?provider=torbox", .Name = L"TorBox" }),
+            "a delete link was offered as a stream");
+        Require(IsActionStream({ .Url = L"https://cdn.test/v.mkv", .Description = L"\U0001F6A8\U0001F480⚠ Delete all files in TorBox watchlist." }),
+            "a stream described as a deletion was offered");
+        Require(!IsActionStream({ .Url = L"https://cdn.test/Delete.History.2024.1080p.mkv", .Name = L"Delete History" }),
+            "a film named Delete History was dropped");
+        Require(!IsActionStream({ .Url = L"https://cdn.test/Deleted.Scenes.mkv", .Title = L"Deleted Scenes" }),
+            "a film named Deleted Scenes was dropped");
+
+        // The JavaScript pattern semantics the port keeps.
+        Require(HaloDesktop::Api::MatchesActionText(L"DELETE ALL"), "the text pattern was case sensitive");
+        Require(!HaloDesktop::Api::MatchesActionText(L"Delete\nall files"), "the gap crossed a line break");
+        // The gap is everything between the verb and its target, spaces included.
+        Require(HaloDesktop::Api::MatchesActionText(L"Delete " + std::wstring(38, L'x') + L" all"),
+            "a forty-character gap was not crossed");
+        Require(!HaloDesktop::Api::MatchesActionText(L"Delete " + std::wstring(39, L'x') + L" all"),
+            "a gap longer than forty characters was crossed");
+        Require(!HaloDesktop::Api::MatchesActionId(L"dl"), "a bare dl prefix was taken for an action id");
+        Require(!HaloDesktop::Api::MatchesActionId(L"dlTorbox"), "the action id pattern was case insensitive");
+        Require(HaloDesktop::Api::MatchesActionUrl(L"https://x.test/PURGE-EVERYTHING"), "the URL pattern was case sensitive");
+    }
+
+    // Mirrors packages/core/test/languages.test.ts, plus the tables around it.
+    void TestLanguagePolicy()
+    {
+        using HaloDesktop::Services::LanguageCodeVariants;
+        using HaloDesktop::Services::LanguageTagsMatch;
+
+        // A track tagged with a two-letter or regional code matches the three-letter preference.
+        Require(LanguageTagsMatch(L"en", L"eng"), "en did not match eng");
+        Require(LanguageTagsMatch(L"en-US", L"eng"), "en-US did not match eng");
+        Require(LanguageTagsMatch(L"EN_gb", L"eng"), "EN_gb did not match eng");
+        Require(LanguageTagsMatch(L"de", L"ger"), "de did not match ger");
+        Require(LanguageTagsMatch(L"deu", L"ger"), "deu did not match ger");
+        Require(LanguageTagsMatch(L"English", L"eng"), "a label did not match its code");
+
+        // Different languages do not match, including ones that share letters.
+        Require(!LanguageTagsMatch(L"por", L"eng"), "por matched eng");
+        Require(!LanguageTagsMatch(L"es", L"eng"), "es matched eng");
+        Require(!LanguageTagsMatch(L"und", L"eng"), "und matched eng");
+        Require(!LanguageTagsMatch(L"enm", L"eng"), "enm matched eng");
+
+        // Brazilian Portuguese stays apart from Portuguese.
+        Require(LanguageTagsMatch(L"pt-BR", L"pob"), "pt-BR did not match pob");
+        Require(LanguageTagsMatch(L"pt", L"por"), "pt did not match por");
+        Require(!LanguageTagsMatch(L"pt-BR", L"por"), "pt-BR matched por");
+        Require(!LanguageTagsMatch(L"pt", L"pob"), "pt matched pob");
+
+        // A preference lists every spelling of its language, its own first.
+        Require(LanguageCodeVariants(L"eng") == std::vector<std::wstring>{ L"eng", L"en" }, "eng variants were wrong");
+        Require(LanguageCodeVariants(L"ger") == std::vector<std::wstring>{ L"ger", L"deu", L"de" }, "ger variants were wrong");
+        Require(LanguageCodeVariants(L"pob") == std::vector<std::wstring>{ L"pob", L"pt-br" }, "pob variants were wrong");
+        Require(LanguageCodeVariants(L"").empty(), "an empty preference had variants");
+        Require(LanguageCodeVariants(L"nor") == std::vector<std::wstring>{ L"nor", L"no", L"nb" }, "nor variants were wrong");
+
+        // Labels: exact codes only for languageLabel; any spelling for the name of a tag.
+        Require(HaloDesktop::Services::LanguageLabel(L" KOR ") == L"Korean", "a padded code did not find its label");
+        Require(HaloDesktop::Services::LanguageLabel(L"ko") == L"ko", "languageLabel resolved a two-letter code");
+        Require(HaloDesktop::Services::LanguageNameForTag(L"ko-KR").value_or(L"") == L"Korean", "a regional tag had no name");
+        Require(HaloDesktop::Services::LanguageNameForTag(L"pt_BR").value_or(L"") == L"Portuguese (BR)", "pt_BR was not Brazilian Portuguese");
+        Require(!HaloDesktop::Services::LanguageNameForTag(L"und"), "an unknown tag was given a name");
+        auto const options = HaloDesktop::Services::LanguageOptions();
+        Require(options.size() == 39 && options.front().Code == L"eng" && options.back().Code == L"lit",
+            "the language options were not the reference list");
+
+        // The player's helpers now read the full tables.
+        Require(HaloDesktop::Playback::LanguageDisplayName(L"ko") == L"Korean", "the player did not name a two-letter Korean track");
+        Require(HaloDesktop::Playback::LanguageDisplayName(L"xx") == L"xx", "an unknown tag was not shown as given");
+        Require(HaloDesktop::Playback::LanguageMatches(L"sv", L"swe"), "the player did not match sv to swe");
+        Require(!HaloDesktop::Playback::LanguageMatches(L"", L""), "two empty tags matched in the player");
+    }
+
+    // Mirrors the rating case of apps/desktop/tests/format.test.ts.
+    void TestRatings()
+    {
+        using HaloDesktop::Services::RatedValue;
+        using HaloDesktop::Services::RatingLabel;
+        Require(RatingLabel(std::wstring_view{ L"6.8" }).value_or(L"") == L"\x2605 6.8", "a rating was not labelled");
+        Require(!RatingLabel(std::wstring_view{ L"0.0" }), "0.0 was labelled as a rating");
+        Require(!RatingLabel(std::wstring_view{ L"0" }), "0 was labelled as a rating");
+        Require(!RatingLabel(std::wstring_view{ L"" }), "an empty rating was labelled");
+        Require(!RatingLabel(std::nullopt), "a missing rating was labelled");
+        Require(!RatingLabel(std::wstring_view{ L"N/A" }), "N/A was labelled as a rating");
+        Require(RatedValue(std::wstring_view{ L" 7.2 " }).value_or(L"") == L"7.2", "a padded rating was not trimmed");
+        // parseFloat reads a leading number and stops at the rest.
+        Require(RatedValue(std::wstring_view{ L"7.2/10" }).value_or(L"") == L"7.2/10", "a rating with a scale was dropped");
+        Require(RatedValue(std::wstring_view{ L".5" }).value_or(L"") == L".5", "a bare fraction was dropped");
+        Require(!RatedValue(std::wstring_view{ L"-1" }), "a negative rating was kept");
+        Require(!RatedValue(std::wstring_view{ L"1e999" }), "an infinite rating was kept");
+    }
+
+    // Mirrors apps/desktop/tests/artworkUrl.test.ts, plus the control's source order.
+    void TestArtworkUrls()
+    {
+        using HaloDesktop::Controls::CardArtworkUrl;
+        using HaloDesktop::Controls::MetahubPosterUrl;
+
+        // A TMDB original image is asked for at card size.
+        Require(CardArtworkUrl(L"https://image.tmdb.org/t/p/original/n8Df1H1TmcmZfjGgWh5uQyRFzHy.jpg")
+                == L"https://image.tmdb.org/t/p/w500/n8Df1H1TmcmZfjGgWh5uQyRFzHy.jpg",
+            "a TMDB original was not asked for at card size");
+        Require(CardArtworkUrl(L"https://image.tmdb.org/t/p/original/a.jpg", 342) == L"https://image.tmdb.org/t/p/w342/a.jpg",
+            "a TMDB original was not asked for at the given width");
+
+        // Other images and TMDB sizes already chosen are left alone.
+        for (auto const url : {
+                 L"https://image.tmdb.org/t/p/w342/a.jpg",
+                 L"https://images.metahub.space/poster/medium/tt1/img",
+                 L"https://m.media-amazon.com/images/M/x._V1_UY396_.jpg",
+                 L"http://image.tmdb.org/t/p/original/a.jpg",
+                 L"https://example.com/image.tmdb.org/t/p/original/a.jpg",
+             })
+        {
+            Require(CardArtworkUrl(url) == url, "an image that needed no rewrite was changed");
+        }
+
+        // An IMDb title falls back on its metahub poster; other ids have none.
+        Require(MetahubPosterUrl(L"tt12735488").value_or(L"") == L"https://images.metahub.space/poster/medium/tt12735488/img",
+            "an IMDb id had no metahub poster");
+        for (auto const id : { L"", L"tt", L"tmdb:1234", L"mf:42", L"tt1:1:2", L"xtt1" })
+        {
+            Require(!MetahubPosterUrl(id), "an id that is not an IMDb id had a metahub poster");
+        }
+
+        // The control's order: the artwork, the caller's fallback, metahub, each once.
+        auto const ordered = HaloDesktop::Controls::ArtworkCandidates(L"https://a.test/p.jpg", L"https://a.test/b.jpg", L"tt1");
+        Require(ordered == std::vector<std::wstring>{
+                    L"https://a.test/p.jpg", L"https://a.test/b.jpg", L"https://images.metahub.space/poster/medium/tt1/img" },
+            "the artwork sources were not in order");
+        Require(HaloDesktop::Controls::ArtworkCandidates(L"", L"", L"tt1")
+                == std::vector<std::wstring>{ L"https://images.metahub.space/poster/medium/tt1/img" },
+            "a missing poster did not fall through to metahub");
+        Require(HaloDesktop::Controls::ArtworkCandidates(L"https://a.test/p.jpg", L"https://a.test/p.jpg", L"kitsu:1").size() == 1,
+            "a repeated source was tried twice");
+        Require(HaloDesktop::Controls::UsesCardArtwork(148.0) && HaloDesktop::Controls::UsesCardArtwork(500.0),
+            "a card-sized slot did not ask for the card copy");
+        Require(!HaloDesktop::Controls::UsesCardArtwork(0.0) && !HaloDesktop::Controls::UsesCardArtwork(544.0),
+            "a backdrop or a slot wider than the card copy asked for it");
+    }
+
+    // Mirrors apps/desktop/tests/accountLabel.test.ts.
+    void TestAccountLabel()
+    {
+        using HaloDesktop::Services::AccountLabel;
+        using HaloDesktop::Services::AccountLabelInput;
+
+        // A server's account tier replaces the account caption.
+        Require(AccountLabel(AccountLabelInput{ .IsAdmin = true, .Plan = L"premium" }) == L"PREMIUM", "the tier did not replace the caption");
+        Require(AccountLabel(AccountLabelInput{ .IsAdmin = false, .Plan = L"free" }) == L"FREE", "the free tier was not shown");
+
+        // Without a tier the caption names the account and its admin role.
+        Require(AccountLabel(AccountLabelInput{ .IsAdmin = true }) == L"ADMIN \x00B7 HALO ACCOUNT", "the admin caption was wrong");
+        Require(AccountLabel(AccountLabelInput{ .IsAdmin = false }) == L"HALO ACCOUNT", "the account caption was wrong");
+        Require(AccountLabel(std::nullopt) == L"HALO ACCOUNT", "no account did not read as a Halo account");
+
+        Require(HaloDesktop::Services::AccountDisplayName(L"kenneth") == L"Kenneth", "the username was not capitalised");
+        Require(HaloDesktop::Services::AccountDisplayName(L"élodie") == L"Élodie", "a non-ASCII first letter was not raised");
+        Require(HaloDesktop::Services::AccountDisplayName(L"").empty(), "an empty username gained text");
+        Require(HaloDesktop::Services::DeviceAccountName == L"This PC" && HaloDesktop::Services::DeviceAccountLabel == L"NOT SIGNED IN",
+            "the device account copy was wrong");
+    }
+
+    void TestAddonListPolicy()
+    {
+        using HaloDesktop::Services::AddonEditInput;
+        using HaloDesktop::Services::CanEditAddonInScope;
+        using HaloDesktop::Services::EvaluateAddonEditability;
+
+        Require(HaloDesktop::Services::DefaultAddonUrls.size() == 3
+                && HaloDesktop::Services::IsDefaultAddonUrl(L"https://tmdb.elfhosted.com/manifest.json")
+                && !HaloDesktop::Services::IsDefaultAddonUrl(L"https://tmdb.elfhosted.com/x/manifest.json"),
+            "the built-in addons were not the reference three");
+
+        // A non-admin never receives global transport URLs and keeps their own list.
+        std::vector<AddonEditInput> const asUser{ { true, false }, { false, true }, { false, true } };
+        auto const user = EvaluateAddonEditability(asUser, false);
+        Require(user.User && !user.Global, "hidden global URLs locked a user out of their own list");
+        Require(CanEditAddonInScope(user, false) && !CanEditAddonInScope(user, true), "a row was judged by the wrong scope");
+
+        // An admin edits both lists when every URL is present.
+        std::vector<AddonEditInput> const asAdmin{ { true, true }, { false, true } };
+        auto const admin = EvaluateAddonEditability(asAdmin, true);
+        Require(admin.User && admin.Global, "an admin could not edit complete lists");
+
+        // A missing URL blocks only its own scope.
+        std::vector<AddonEditInput> const brokenUser{ { true, true }, { false, false } };
+        auto const broken = EvaluateAddonEditability(brokenUser, true);
+        Require(!broken.User && broken.Global, "a missing personal URL blocked the wrong list");
+        Require(!EvaluateAddonEditability(asAdmin, false).Global, "a non-admin could edit the global list");
+        Require(EvaluateAddonEditability({}, false).User, "an empty list could not be added to");
+    }
 }
 
 int main()
@@ -696,6 +929,12 @@ int main()
         TestPlaybackTimeFormatting();
         TestReleaseFileMatching();
         TestTransferRateWindow();
+        TestActionEntries();
+        TestLanguagePolicy();
+        TestRatings();
+        TestArtworkUrls();
+        TestAccountLabel();
+        TestAddonListPolicy();
         std::cout<<"Playback policy tests passed.\n";
         return 0;
     }

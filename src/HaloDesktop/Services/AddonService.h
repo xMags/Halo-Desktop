@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Services/AddonListPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <cstdint>
@@ -49,7 +50,7 @@ namespace HaloDesktop::Services
         std::vector<::HaloDesktop::Api::Dto::AddonRecord> m_records;
         std::optional<concurrency::task<void>> m_loadTask;
         std::optional<concurrency::task<void>> m_mutationTail;
-        bool m_canEditLists{};
+        AddonListEditability m_editability{};
         bool m_seedAttempted{};
         std::uint64_t m_accountVersion{};
         std::uint64_t m_loadTaskAccountVersion{};

@@ -6,6 +6,7 @@ namespace HaloDesktop
         ArtworkImage();
         String SourceUrl;
         String FallbackUrl;
+        String MetaId;
         Double DecodeWidth;
         Microsoft.UI.Xaml.UIElement Placeholder;
     }

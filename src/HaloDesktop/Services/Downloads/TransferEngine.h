@@ -16,6 +16,7 @@
 #include <set>
 #include <stop_token>
 #include <string>
+#include <string_view>
 #include <thread>
 #include <vector>
 
@@ -23,6 +24,10 @@ namespace HaloDesktop::Services::Downloads
 {
     using DownloadChangedToken = std::uint64_t;
     using DownloadChangedHandler = std::function<void(DownloadRecord const&)>;
+    // Told, outside every engine and store lock, about a workaround the engine
+    // had to apply at launch. The text names what happened, never a path,
+    // URL or record content.
+    using LaunchRecoveryReporter = std::function<void(std::wstring_view)>;
 
     // Thread-safe, single-worker FIFO transfer engine. Public calls may come
     // from any thread. Changed handlers run on the worker or calling thread and
@@ -32,7 +37,9 @@ namespace HaloDesktop::Services::Downloads
     class TransferEngine final
     {
     public:
-        explicit TransferEngine(std::filesystem::path dataRoot);
+        explicit TransferEngine(
+            std::filesystem::path dataRoot,
+            LaunchRecoveryReporter const& launchRecovery = {});
         ~TransferEngine();
 
         TransferEngine(TransferEngine const&) = delete;

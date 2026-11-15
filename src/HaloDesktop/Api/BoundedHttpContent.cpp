@@ -68,6 +68,14 @@ namespace HaloDesktop::Api
     concurrency::task<winrt::hstring> ReadBoundedJsonTextAsync(
         winrt::Windows::Web::Http::IHttpContent const& content)
     {
+        auto const bytes = co_await ReadBoundedBytesAsync(content, MaximumJsonResponseBytes);
+        co_return DecodeUtf8(bytes);
+    }
+
+    concurrency::task<std::vector<std::uint8_t>> ReadBoundedBytesAsync(
+        winrt::Windows::Web::Http::IHttpContent const& content,
+        std::size_t maximumBytes)
+    {
         if (!content)
         {
             throw std::invalid_argument{ "The server returned no response body." };
@@ -79,7 +87,7 @@ namespace HaloDesktop::Api
         {
             declaredBytes = declaredLength.Value();
         }
-        ValidateDeclaredResponseSize(declaredBytes);
+        ValidateDeclaredResponseSize(declaredBytes, maximumBytes);
 
         auto input = co_await content.ReadAsInputStreamAsync();
         winrt::Windows::Storage::Streams::DataReader reader{ input };
@@ -92,7 +100,7 @@ namespace HaloDesktop::Api
         }
         for (;;)
         {
-            auto const probeBytes = MaximumJsonResponseBytes + 1u - bytes.size();
+            auto const probeBytes = maximumBytes + 1u - bytes.size();
             auto const requested = static_cast<std::uint32_t>((std::min)(
                 probeBytes,
                 static_cast<std::size_t>(ReadChunkBytes)));
@@ -102,7 +110,7 @@ namespace HaloDesktop::Api
                 break;
             }
 
-            auto const nextSize = CheckedResponseSize(bytes.size(), loaded);
+            auto const nextSize = CheckedResponseSize(bytes.size(), loaded, maximumBytes);
             auto const offset = bytes.size();
             bytes.resize(nextSize);
             reader.ReadBytes(winrt::array_view<std::uint8_t>{
@@ -110,6 +118,6 @@ namespace HaloDesktop::Api
                 bytes.data() + nextSize,
             });
         }
-        co_return DecodeUtf8(bytes);
+        co_return bytes;
     }
 }

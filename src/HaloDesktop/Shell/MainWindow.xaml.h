@@ -3,6 +3,7 @@
 #include "MainWindow.g.h"
 
 #include "Services/NavigationService.h"
+#include "Shell/WindowReveal.h"
 #include "Shell/WindowSizing.h"
 
 #include <memory>
@@ -26,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         void UpdateCaptionButtonColors();
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
+        std::shared_ptr<::HaloDesktop::Shell::WindowReveal> m_reveal;
         winrt::event_token m_appWindowClosingToken{};
         winrt::event_token m_activatedToken{};
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChangedRevoker{};

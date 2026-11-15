@@ -2,6 +2,8 @@
 
 #include "ArtworkImage.g.h"
 
+#include <string>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -9,6 +11,12 @@ namespace winrt::HaloDesktop::implementation
 {
     // Converts validated URL text to BitmapImage in native code. A failed load
     // stays transparent so the caller's placeholder remains visible.
+    //
+    // The sources are tried in order: SourceUrl, then FallbackUrl, then
+    // metahub's poster when MetaId is an IMDb id, then the placeholder. A
+    // missing source is skipped rather than ending the chain. A slot whose
+    // DecodeWidth fits the card-sized copy asks TMDB for that copy instead of
+    // the original upload.
     //
     // Hand it that placeholder and it will also take it away once the artwork is
     // up. The placeholder is opaque, so one left behind a loaded image means the
@@ -21,6 +29,9 @@ namespace winrt::HaloDesktop::implementation
         void SourceUrl(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring FallbackUrl() const;
         void FallbackUrl(winrt::hstring const& value);
+        // The id of the title the artwork belongs to, for metahub's poster.
+        [[nodiscard]] winrt::hstring MetaId() const;
+        void MetaId(winrt::hstring const& value);
         // Logical pixels. Zero leaves the source at full resolution, which is
         // right for a full-bleed backdrop and wasteful for anything smaller.
         [[nodiscard]] double DecodeWidth() const noexcept;
@@ -41,13 +52,19 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         void Refresh();
-        void SetImageSource(winrt::hstring const& value);
+        void TryNextSource();
+        // False when the URL could not even be handed to the bitmap.
+        [[nodiscard]] bool SetImageSource(winrt::hstring const& value);
         void ShowPlaceholder(bool visible);
 
         winrt::hstring m_sourceUrl;
         winrt::hstring m_fallbackUrl;
+        winrt::hstring m_metaId;
         double m_decodeWidth{};
-        bool m_fallbackAttempted{};
+        // The sources already tried since the last refresh, as given (before
+        // the card-size rewrite), so a source changing mid-chain is still tried.
+        std::vector<std::wstring> m_attempted;
+        bool m_exhausted{};
         bool m_opened{};
         Microsoft::UI::Xaml::UIElement m_placeholder{ nullptr };
     };
