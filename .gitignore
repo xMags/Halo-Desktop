@@ -19,3 +19,6 @@ external/vulkan/*
 installer/Output/
 tools/nuget.exe
 src/HaloDesktop/Config/ServerConfig.local.h
+
+# Private, local-only sign-in add-ons and other machine-specific sources.
+src/HaloDesktop/Local/
