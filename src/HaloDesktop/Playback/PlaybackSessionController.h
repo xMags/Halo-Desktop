@@ -48,6 +48,7 @@ namespace HaloDesktop::Playback
     private:
         void OnEngineChanged();
         void ReportNow()noexcept;
+        void StageNow()noexcept;
         [[nodiscard]] concurrency::task<void> ReportWithTimeoutAsync(bool sendNewReport = true);
         [[nodiscard]] concurrency::task<void> LoadWatchStateAsync(std::uint64_t version);
         [[nodiscard]] bool IsPlaying(PlaybackState const& state)const noexcept;
@@ -67,6 +68,8 @@ namespace HaloDesktop::Playback
         std::optional<Api::Dto::WatchEntry>m_prior;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_reportTimer{nullptr};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_reportTickRevoker{};
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_stageTimer{nullptr};
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_stageTickRevoker{};
         PlaybackChangedToken m_engineToken{};
         PlaybackState m_lastState;
         std::function<void()>m_errorHandler;

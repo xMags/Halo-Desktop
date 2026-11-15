@@ -43,6 +43,9 @@ namespace HaloDesktop::Services
             std::shared_ptr<ContinueArtworkService> artwork,
             std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
             std::shared_ptr<SettingsSyncService> settings);
+        ~CatalogService();
+        CatalogService(CatalogService const&) = delete;
+        CatalogService& operator=(CatalogService const&) = delete;
 
         [[nodiscard]] concurrency::task<void> LoadAsync() override;
         [[nodiscard]] bool HasLoaded() const override;
@@ -147,6 +150,9 @@ namespace HaloDesktop::Services
         // these land rather than waiting on an addon before it can be shown.
         void BeginContinueNextFill(std::vector<ContinueNextRequest> requests);
         void NotifyContinueChanged();
+        // The watch-state service's one change notification, relayed to every
+        // user-state subscriber with the rows rebuilt first.
+        void OnWatchRowsChanged();
         static void InvokeHandlers(
             std::unordered_map<CatalogChangedToken, CatalogChangedHandler> const& registered);
         // The language the account currently asks language catalogs for.
@@ -159,6 +165,7 @@ namespace HaloDesktop::Services
         std::shared_ptr<ContinueArtworkService> m_artwork;
         std::shared_ptr<ContinueNextEpisodeService> m_nextEpisodes;
         std::shared_ptr<SettingsSyncService> m_settings;
+        std::uint64_t m_watchChangedToken{};
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::ContinueItem> m_continue{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_catalogShelves{ nullptr };
         winrt::Windows::Foundation::Collections::IVectorView<winrt::HaloDesktop::Shelf> m_shelves{ nullptr };

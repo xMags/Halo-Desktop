@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64">
@@ -219,6 +219,17 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadSourceMatch.cpp">
       <Link>DownloadSourceMatch.cpp</Link>
     </ClCompile>
+    <ClCompile Include="WatchOutboxTests.cpp" />
+    <ClCompile Include="CallQueueTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Playback\MpvCallQueue.cpp">
+      <Link>MpvCallQueue.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\WatchOutboxPolicy.cpp">
+      <Link>WatchOutboxPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\WatchOutbox.cpp">
+      <Link>WatchOutbox.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -231,6 +242,8 @@
     <ClInclude Include="HistoryRowsTests.h" />
     <ClInclude Include="DetailPageTests.h" />
     <ClInclude Include="SourcesSheetTests.h" />
+    <ClInclude Include="WatchOutboxTests.h" />
+    <ClInclude Include="CallQueueTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

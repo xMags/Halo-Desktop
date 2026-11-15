@@ -179,6 +179,14 @@ namespace
         verify.NavPaneOpen(false);
         Require(!DevicePreferencesStore{ path }.NavPaneOpen(), "the closed navigation pane did not round-trip");
 
+        // The player's fill choice is kept per device and fits until chosen.
+        Require(!verify.FillPicture(), "the picture did not fit by default");
+        verify.FillPicture(true);
+        Require(DevicePreferencesStore{ path }.FillPicture(), "the fill choice did not round-trip");
+        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing the fill choice lost other keys");
+        verify.FillPicture(false);
+        Require(!DevicePreferencesStore{ path }.FillPicture(), "the fit choice did not round-trip");
+
         // A value of the wrong kind falls back to closed rather than opening it.
         auto const wrongPath = temporary.Path() / L"wrong-pane.json";
         HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");

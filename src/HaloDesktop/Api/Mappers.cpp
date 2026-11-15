@@ -2,6 +2,7 @@
 #include "Api/ActionEntryPolicy.h"
 #include "Api/Dto.h"
 #include "Api/JsonNumberPolicy.h"
+#include "Security/ProtectedHttpHeaders.h"
 
 #include <algorithm>
 #include <cmath>
@@ -322,7 +323,10 @@ namespace
         auto const ownName = ownText(L"name");
         return {
             DisplayString(video, L"id", 2048),
-            ownTitle.value_or(ownName.value_or(L"Episode")),
+            // Empty for an untitled episode: each reader picks its own fallback,
+            // as the reference does (the id in episode rows, the show's name in
+            // the sources sheet and the player, nothing on a continue card).
+            ownTitle.value_or(ownName.value_or(winrt::hstring{})),
             OptionalDisplayString(video, L"released", 128),
             OptionalHttpUrl(video, L"thumbnail"),
             OptionalDisplayString(video, L"overview", 4096),
@@ -432,12 +436,24 @@ namespace
             auto const proxyHeaders = hints.GetNamedObject(L"proxyHeaders");
             if (proxyHeaders.HasKey(L"request"))
             {
+                // As the reference's `playbackHeaders`: the first 64 entries are
+                // considered, and each unusable one is dropped on its own, so a bad
+                // header costs only itself and the stream still plays.
+                std::size_t considered{};
                 for (auto const& pair : proxyHeaders.GetNamedObject(L"request"))
                 {
-                    if (pair.Value().ValueType() == winrt::Windows::Data::Json::JsonValueType::String
-                        && record.RequestHeaders.size() < 64)
+                    if (considered++ >= 64)
                     {
-                        record.RequestHeaders.emplace_back(pair.Key(), pair.Value().GetString());
+                        break;
+                    }
+                    if (pair.Value().ValueType() != winrt::Windows::Data::Json::JsonValueType::String)
+                    {
+                        continue;
+                    }
+                    auto const value = pair.Value().GetString();
+                    if (::HaloDesktop::Security::IsUsableProtectedHttpHeader(std::wstring{ pair.Key() }, std::wstring{ value }))
+                    {
+                        record.RequestHeaders.emplace_back(pair.Key(), value);
                     }
                 }
             }

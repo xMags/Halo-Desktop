@@ -79,6 +79,7 @@ namespace
         result.HardwareDecoding = root.GetNamedBoolean(L"hardwareDecoding", true);
         result.DiscordPresence = root.GetNamedBoolean(L"discordPresence", true);
         result.NavPaneOpen = root.GetNamedBoolean(L"navPaneOpen", false);
+        result.FillPicture = root.GetNamedBoolean(L"fillPicture", false);
         return result;
     }
 
@@ -125,6 +126,7 @@ namespace
         root.Insert(L"hardwareDecoding", JsonValue::CreateBooleanValue(value.HardwareDecoding));
         root.Insert(L"discordPresence", JsonValue::CreateBooleanValue(value.DiscordPresence));
         root.Insert(L"navPaneOpen", JsonValue::CreateBooleanValue(value.NavPaneOpen));
+        root.Insert(L"fillPicture", JsonValue::CreateBooleanValue(value.FillPicture));
         return winrt::to_string(root.Stringify());
     }
 
@@ -310,6 +312,19 @@ namespace HaloDesktop::Services
         Mutate(m_path, m_mutex, [value](DevicePreferences& current)
         {
             current.NavPaneOpen = value;
+        });
+    }
+
+    bool DevicePreferencesStore::FillPicture() const noexcept
+    {
+        try { return Read().FillPicture; } catch (...) { return false; }
+    }
+
+    void DevicePreferencesStore::FillPicture(bool value)
+    {
+        Mutate(m_path, m_mutex, [value](DevicePreferences& current)
+        {
+            current.FillPicture = value;
         });
     }
 

@@ -7,6 +7,7 @@
 #include "App.xaml.h"
 #include "Controls/PlayerOsd.xaml.h"
 #include "Controls/VideoHostControl.xaml.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Playback/PlaybackSessionController.h"
 #include "Playback/SubtitleController.h"
 #include "Services/NavigationService.h"
@@ -28,6 +29,7 @@ namespace winrt::HaloDesktop::implementation
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->EnsureSurface();
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();m_viewModel=overlay.ViewModel();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);
         viewModel->SetCloseRequestedHandler([weak=get_weak()](){if(auto self=weak.get())self->BeginClose();});
+        viewModel->SetEndCancelHandler([weak=get_weak()](){if(auto self=weak.get())self->BeginClose();});
         viewModel->SetPlayNextHandler([weak=get_weak()](){if(auto self=weak.get())self->AdvanceUpNextAsync();});
         auto const subtitles=App::Services().Subtitles;
         viewModel->SetSubtitleTrackHandler([subtitles](std::int64_t id){subtitles->SelectTrack(id);});
@@ -42,7 +44,7 @@ namespace winrt::HaloDesktop::implementation
     {
         m_loaded=false;
         if(m_session)m_session->Stop();App::Services().Subtitles->Stop();
-        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetPlayNextHandler({});vm->SetSubtitleTrackHandler({});vm->SetSubtitlesOffHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
+        if(m_viewModel){auto vm=winrt::get_self<PlayerViewModel>(m_viewModel);vm->SetCloseRequestedHandler({});vm->SetEndCancelHandler({});vm->SetPlayNextHandler({});vm->SetSubtitleTrackHandler({});vm->SetSubtitlesOffHandler({});vm->SetAddonSubtitleHandler({});vm->Deactivate();}
         App::Services().Subtitles->CleanupTemporaryFiles();
         auto const videoHost=FindName(L"VideoHost").as<winrt::HaloDesktop::VideoHostControl>();winrt::get_self<VideoHostControl>(videoHost)->ReleaseSurface();
         m_session.reset();
@@ -64,8 +66,8 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::Windows::Foundation::IAsyncAction PlayerPage::StartRequestAsync(winrt::HaloDesktop::PlaybackRequest request)
     {
-        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_advancing=false;
-        auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"",L"",L"");
+        auto lifetime=get_strong();auto const uiContext=winrt::apartment_context{};auto const generation=++m_playbackGeneration;m_request=request;m_upNext.reset();m_upNextSettled=false;m_endAwaitingUpNext=false;m_advancing=false;
+        auto&services=App::Services();auto const viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);viewModel->SetUpNext(L"",L"",L"",L"");viewModel->SetPlayingDownload(request.IsLocalFile());
         auto const overlay=FindName(L"PlayerOverlay").as<winrt::HaloDesktop::PlayerOsd>();winrt::get_self<PlayerOsd>(overlay)->TitleLabel(request.ShowName().empty()?request.Title():request.ShowName());
         // A film has no episode line: its show name, when it has one, is its own
         // title, and the MOVIE a continue card resumes it with is the card's chip.
@@ -75,7 +77,16 @@ namespace winrt::HaloDesktop::implementation
 
         auto session=std::make_shared<::HaloDesktop::Playback::PlaybackSessionController>(services.Playback,services.WatchState,services.SettingsSync,services.PlaybackPreferences,services.ScrubPreview,services.DiscordPresence);m_session=session;
         session->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration)self->ShowMediaPrompt(L"Playback failed for this source. Return to Sources and choose another one.");});
-        session->SetEndOfFileHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_upNext&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->BeginUpNextCountdown();});
+        // The end is acted on after the engine's notification has unwound: closing
+        // the player or advancing tears the session down, which must not happen
+        // from inside the session's own callback. The session has already sent the
+        // end's report by then.
+        session->SetEndOfFileHandler([weak=get_weak(),generation]()
+        {
+            auto const self=weak.get();if(!self||generation!=self->m_playbackGeneration)return;
+            auto const queued=self->DispatcherQueue().TryEnqueue([weak,generation](){if(auto current=weak.get())current->HandleEndOfVideo(generation);});
+            if(!queued)self->HandleEndOfVideo(generation);
+        });
         services.Subtitles->SetChoicesChangedHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&generation==self->m_playbackGeneration&&self->m_viewModel)winrt::get_self<PlayerViewModel>(self->m_viewModel)->SetAddonSubtitles(App::Services().Subtitles->Choices());});
         winrt::get_self<PlayerViewModel>(m_viewModel)->SetAddonSelectionProvider([](){return App::Services().Subtitles->SelectedChoiceKey();});
         services.Subtitles->SetErrorHandler([weak=get_weak(),generation](){if(auto self=weak.get();self&&self->m_loaded&&!self->m_closing&&generation==self->m_playbackGeneration){auto const queued=self->DispatcherQueue().TryEnqueue([weak,generation](){if(auto current=weak.get();current&&current->m_loaded&&!current->m_closing&&generation==current->m_playbackGeneration)current->ShowSubtitleError();});static_cast<void>(queued);}});
@@ -110,13 +121,67 @@ namespace winrt::HaloDesktop::implementation
         auto lifetime=get_strong();
         try
         {
-            auto const uiContext=winrt::apartment_context{};auto result=co_await App::Services().UpNext->ResolveAsync(request);co_await uiContext;
-            if(!m_loaded||m_closing||generation!=m_playbackGeneration||!result)co_return;
-            m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster,m_upNext->Still);
-            if(App::Services().Playback->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)viewModel->BeginUpNextCountdown();
+            auto const uiContext=winrt::apartment_context{};
+            std::optional<::HaloDesktop::Playback::UpNextResult> result;
+            try{result=co_await App::Services().UpNext->ResolveAsync(request);}catch(...){result.reset();}
+            co_await uiContext;
+            if(!m_loaded||m_closing||generation!=m_playbackGeneration)co_return;
+            m_upNextSettled=true;
+            if(result)
+            {
+                m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster,m_upNext->Still);
+            }
+            // The file ended while the lookup was still out: its end was held for this.
+            if(m_endAwaitingUpNext){m_endAwaitingUpNext=false;HandleEndOfVideo(generation);}
         }
         catch(...)
         {
+        }
+    }
+
+    void PlayerPage::HandleEndOfVideo(std::uint64_t generation)
+    {
+        try
+        {
+            if(!m_loaded||m_closing||m_advancing||generation!=m_playbackGeneration||!m_request||!m_viewModel)return;
+            // The next-episode lookup has a fifteen second cap; until it settles
+            // the end cannot tell an episode with a continuation from a film.
+            if(!m_upNextSettled){m_endAwaitingUpNext=true;return;}
+            auto const action=::HaloDesktop::Playback::ResolveEndOfVideo({
+                .Autoplay=App::Services().SettingsSync->AutoplayNextEpisode(),
+                .PlayingDownload=m_request.IsLocalFile(),
+                .NextDownloadReady=m_upNext.has_value()&&static_cast<bool>(m_upNext->Playback),
+                .NextHasStream=m_upNext.has_value()&&m_upNext->HasStream,
+                .NextEpisodeKnown=m_upNext.has_value()&&static_cast<bool>(m_upNext->Sources),
+            });
+            switch(action)
+            {
+            case ::HaloDesktop::Playback::EndOfVideoAction::PlayNextDownload:AdvanceUpNextAsync();break;
+            case ::HaloDesktop::Playback::EndOfVideoAction::ShowUpNext:winrt::get_self<PlayerViewModel>(m_viewModel)->BeginUpNextCountdown();break;
+            case ::HaloDesktop::Playback::EndOfVideoAction::OpenNextSources:OpenNextSourcesAsync();break;
+            case ::HaloDesktop::Playback::EndOfVideoAction::ClosePlayer:default:BeginClose();break;
+            }
+        }
+        catch(...)
+        {
+        }
+    }
+
+    winrt::fire_and_forget PlayerPage::OpenNextSourcesAsync()
+    {
+        auto lifetime=get_strong();
+        try
+        {
+            auto const uiContext=winrt::apartment_context{};
+            if(m_advancing||m_closing||!m_upNext||!m_upNext->Sources)co_return;
+            m_advancing=true;auto const sources=m_upNext->Sources;
+            co_await PrepareForWindowCloseAsync();
+            co_await uiContext;
+            auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,sources);
+        }
+        catch(...)
+        {
+            m_advancing=false;
         }
     }
 

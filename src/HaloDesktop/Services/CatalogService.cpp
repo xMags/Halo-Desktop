@@ -159,6 +159,28 @@ namespace HaloDesktop::Services
         m_catalogShelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_shelves = winrt::single_threaded_vector<winrt::HaloDesktop::Shelf>().GetView();
         m_libraryItems = winrt::single_threaded_vector<winrt::HaloDesktop::MediaSummary>().GetView();
+        // Raw capture: the destructor always removes it, and the watch-state
+        // service only ever calls back on this thread.
+        m_watchChangedToken = m_watchState->AddChangedHandler([this]() { OnWatchRowsChanged(); });
+    }
+
+    CatalogService::~CatalogService()
+    {
+        if (m_watchChangedToken != 0)
+        {
+            m_watchState->RemoveChangedHandler(m_watchChangedToken);
+        }
+    }
+
+    void CatalogService::OnWatchRowsChanged()
+    {
+        // Before Home's first load nothing has been drawn from the rows, and a
+        // refresh in flight publishes them itself as its watch read lands.
+        if (!m_refreshState.HasLoaded() || m_loadTask)
+        {
+            return;
+        }
+        PublishUserStateChange();
     }
 
     concurrency::task<void> CatalogService::LoadAsync()

@@ -52,15 +52,128 @@ namespace HaloDesktop::Playback
         std::uint64_t currentSelectionSerial,
         std::uint64_t initialSelectionSerial,
         std::uint64_t automaticSelectionSerial) noexcept;
-    [[nodiscard]] bool ShouldApplyResume(
-        bool resumeEnabled,
-        bool watched,
-        double positionSeconds,
-        double durationSeconds,
+
+    // The parts of a watch-history row that decide where a video opens.
+    struct SavedPlace final
+    {
+        double PositionSeconds{};
+        bool Watched{};
+        bool Removed{};
+    };
+
+    // The reference client's `resumePosition`: exactly where the video was left,
+    // whenever there is a place to go back to. Nothing for a missing, watched or
+    // removed row, a position that is not above zero, or one at or past the end of
+    // the file being opened (a shorter cut). An unknown length (0) does not stop it.
+    [[nodiscard]] std::optional<double> ResumePosition(
+        std::optional<SavedPlace> const& saved,
+        double durationSeconds) noexcept;
+
+    // Whether the resume may still move the playhead: the watch history can arrive
+    // after the file has started, and by then the viewer may have seeked or watched
+    // on, which a late resume must not undo.
+    [[nodiscard]] bool CanApplyResumeNow(
         double currentPositionSeconds,
         std::uint64_t currentSeekSerial,
         std::uint64_t initialSeekSerial,
         bool withinStartupWindow) noexcept;
+
+    // What a track is called in the player: its trimmed title, else the name of
+    // its language, else "Track {id}".
+    [[nodiscard]] std::wstring TrackDisplayTitle(
+        std::wstring const& title,
+        std::wstring const& language,
+        std::int64_t id);
+
+    // The reference's `subtitleFormat`: which appearance controls can change a
+    // subtitle track, by its codec.
+    enum class SubtitleFormat
+    {
+        Styled,
+        Text,
+        Bitmap,
+        Unknown,
+    };
+
+    struct SubtitleControlAvailability final
+    {
+        bool TrackStyling{};
+        bool Looks{};
+
+        bool operator==(SubtitleControlAvailability const&) const = default;
+    };
+
+    [[nodiscard]] SubtitleFormat SubtitleFormatOf(std::wstring const& codec);
+    // A picture track takes no font, outline or shadow; a plain text track has no
+    // look of its own to keep; a styled track that keeps its look ignores font,
+    // outline and shadow. An unknown codec leaves everything usable.
+    [[nodiscard]] SubtitleControlAvailability SubtitleControlsFor(
+        SubtitleFormat format,
+        bool keepTrackStyling) noexcept;
+    [[nodiscard]] std::wstring TrackStylingNote(SubtitleFormat format, bool keepTrackStyling);
+    [[nodiscard]] std::wstring SubtitleSizeNote(SubtitleFormat format);
+    // Opacity of an appearance control the selected track ignores.
+    inline constexpr double DisabledSubtitleControlOpacity = 0.45;
+
+    // The seek bar has a scale only once the file has a length.
+    [[nodiscard]] bool IsSeekableDuration(double durationSeconds) noexcept;
+
+    // What the end of a file leads to, in the reference player's order.
+    enum class EndOfVideoAction
+    {
+        PlayNextDownload,
+        ShowUpNext,
+        OpenNextSources,
+        ClosePlayer,
+    };
+
+    struct EndOfVideoContext final
+    {
+        bool Autoplay{};
+        bool PlayingDownload{};
+        bool NextDownloadReady{};
+        bool NextHasStream{};
+        bool NextEpisodeKnown{};
+    };
+
+    [[nodiscard]] EndOfVideoAction ResolveEndOfVideo(EndOfVideoContext const& context) noexcept;
+
+    // Up Next's cancel at the real end of a file leaves the player, as the
+    // reference's `upNextCancelAction`; before the end it only dismisses the card.
+    enum class UpNextCancelAction
+    {
+        Dismiss,
+        Exit,
+    };
+
+    [[nodiscard]] UpNextCancelAction ResolveUpNextCancel(bool endReached) noexcept;
+
+    inline constexpr std::int32_t UpNextCountdownSeconds = 8;
+
+    // The next episode's name in the player and the sources sheet: its own title
+    // (the mapper has already fallen back to `name`), else the show's name, else
+    // the title of what is playing. The SxxEyy tag travels separately.
+    [[nodiscard]] std::wstring NextEpisodeTitle(
+        std::wstring const& ownTitle,
+        std::wstring const& showName,
+        std::wstring const& currentTitle);
+
+    // The framing a device preference asks for; fit unless fill was chosen.
+    [[nodiscard]] VideoFitMode VideoFitForPreference(bool fillPicture) noexcept;
+
+    // What `eof-reached` and `end-file` mean under keep-open. A file that plays
+    // out pauses on its last frame and raises eof-reached; a seek back from there
+    // clears it, which lets the end be handled again.
+    enum class EndOfFileSignal
+    {
+        EofReached,
+        EofCleared,
+        EndFileEof,
+        FileLoaded,
+    };
+
+    // Returns whether this signal is a new end to act on, and updates `handled`.
+    [[nodiscard]] bool AcceptEndOfFileSignal(bool& handled, EndOfFileSignal signal) noexcept;
     [[nodiscard]] bool ResolveBufferingState(
         bool current,
         std::optional<bool> pausedForCache,

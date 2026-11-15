@@ -38,6 +38,10 @@ namespace HaloDesktop::Shell
         LONG_PTR m_windowedExtendedStyle{};
         winrt::Microsoft::UI::Xaml::GridLength m_windowedTitleBarHeight{};
         bool m_wasMaximized{};
+        // Fullscreen was entered from maximized by leaving maximized in place;
+        // leaving fullscreen re-maximizes and hands back this normal rectangle.
+        bool m_restoreMaximized{};
+        RECT m_savedNormalRect{};
         bool m_fullscreen{};
         bool m_taskbarFullscreenMarked{};
     };

@@ -19,6 +19,9 @@ namespace HaloDesktop::Services
         void HardwareDecodingEnabled(bool value);
         [[nodiscard]] bool DiscordPresenceEnabled() const noexcept;
         void DiscordPresenceEnabled(bool value);
+        // The player fills the window with the picture rather than fitting it.
+        [[nodiscard]] bool FillPicture() const noexcept;
+        void FillPicture(bool value);
 
     private:
         std::shared_ptr<DevicePreferencesStore> m_store;

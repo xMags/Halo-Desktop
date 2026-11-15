@@ -28,6 +28,22 @@ namespace HaloDesktop::Shell
         return false;
     }
 
+    RECT WorkAreaInWorkspaceCoordinates(RECT const& monitor, RECT const& workArea) noexcept
+    {
+        return {
+            monitor.left,
+            monitor.top,
+            monitor.left + (workArea.right - workArea.left),
+            monitor.top + (workArea.bottom - workArea.top),
+        };
+    }
+
+    bool IsSameRect(RECT const& left, RECT const& right) noexcept
+    {
+        return left.left == right.left && left.top == right.top
+            && left.right == right.right && left.bottom == right.bottom;
+    }
+
     bool ResolveFullscreenState(
         bool currentFullscreen,
         bool requestedFullscreen,

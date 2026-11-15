@@ -196,25 +196,159 @@ namespace
         Require(!HaloDesktop::Playback::CanApplyAutomaticSelection(6,4,5),"newer manual selection did not supersede automatic selection");
     }
 
+    // Mirrors the reference's playerLogic test "resumePosition opens exactly where
+    // the video was left". The old 30-second floor and 95% ceiling are gone: the
+    // reference replaced them, so the old cases that relied on them were replaced
+    // too. The timing guards that keep a late answer from undoing a seek stay.
     void TestResume()
     {
-        using HaloDesktop::Playback::ShouldApplyResume;
-        Require(ShouldApplyResume(true,false,180.0,1200.0,2.0,4,4,true),"eligible resume was rejected");
-        Require(!ShouldApplyResume(true,true,180.0,1200.0,2.0,4,4,true),"watched media resumed");
-        Require(!ShouldApplyResume(true,false,180.0,1200.0,6.0,4,4,true),"late playback position was rewound");
-        Require(!ShouldApplyResume(true,false,180.0,1200.0,2.0,5,4,true),"a user seek was overwritten");
-        Require(!ShouldApplyResume(true,false,1150.0,1200.0,2.0,4,4,true),"near-complete media resumed");
-        Require(!ShouldApplyResume(true,false,180.0,1200.0,2.0,4,4,false),"expired startup resume was applied");
+        using HaloDesktop::Playback::CanApplyResumeNow;
+        using HaloDesktop::Playback::ResumePosition;
+        using HaloDesktop::Playback::SavedPlace;
+        auto const saved=[](double position,bool watched=false,bool removed=false)
+        {
+            return std::optional<SavedPlace>{SavedPlace{.PositionSeconds=position,.Watched=watched,.Removed=removed}};
+        };
+        Require(ResumePosition(saved(1669),9949)==1669.0,"a saved place was not resumed exactly");
+        Require(ResumePosition(saved(12),9949)==12.0,"anything recorded must resume, even near the start");
+        Require(ResumePosition(saved(9400),9949)==9400.0,"close to the end must resume until the row is marked watched");
+        Require(!ResumePosition(saved(9400,true),9949),"a watched row resumed");
+        Require(!ResumePosition(std::nullopt,9949),"nothing saved still resumed");
+        Require(!ResumePosition(saved(0),9949),"a position of zero resumed");
+        Require(!ResumePosition(saved(1669,false,true),9949),"a removed row resumed");
+        Require(!ResumePosition(saved(6000),5400),"a shorter cut than the one watched did not start from the top");
+        Require(ResumePosition(saved(1669),0)==1669.0,"an unknown length stopped the resume");
+        Require(!ResumePosition(saved(std::numeric_limits<double>::quiet_NaN()),9949),"a non-finite position resumed");
+
+        Require(CanApplyResumeNow(2.0,4,4,true),"a resume at startup was refused");
+        Require(!CanApplyResumeNow(6.0,4,4,true),"a playhead already under way was rewound");
+        Require(!CanApplyResumeNow(2.0,5,4,true),"a seek by the viewer was overwritten");
+        Require(!CanApplyResumeNow(2.0,4,4,false),"an expired startup resume was applied");
     }
 
     void TestHeaders()
     {
+        using HaloDesktop::Security::ProtectedHttpHeaders;
+        using HaloDesktop::Security::UsableProtectedHttpHeaders;
         auto const serialized=HaloDesktop::Playback::SerializePlaybackHeaders({{L"X-Test",L"a,b\\c"},{L"Authorization",L"Bearer test"}});
         Require(serialized==L"X-Test: a\\,b\\\\c,Authorization: Bearer test","header list escaping changed");
-        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Range",L"bytes=0-1"}});},"caller range header was accepted");
-        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Keep-Alive",L"timeout=30"}});},"hop-by-hop header was accepted");
-        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"X-Test",L"safe\r\ninjected"}});},"header injection was accepted");
-        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(HaloDesktop::Security::ProtectedHttpHeaders{{L"Bad Header",L"value"}});},"invalid header name was accepted");
+        // Stored records (download requests) are still refused as a set.
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(ProtectedHttpHeaders{{L"Range",L"bytes=0-1"}});},"caller range header was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(ProtectedHttpHeaders{{L"Keep-Alive",L"timeout=30"}});},"hop-by-hop header was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(ProtectedHttpHeaders{{L"X-Test",L"safe\r\ninjected"}});},"header injection was accepted");
+        RequireInvalid([]{HaloDesktop::Security::ValidateProtectedHttpHeaders(ProtectedHttpHeaders{{L"Bad Header",L"value"}});},"invalid header name was accepted");
+
+        // requestHeaders.test.ts: usable headers are kept as they are, commas included.
+        ProtectedHttpHeaders const usable{{L"Referer",L"https://site.test/"},{L"Cookie",L"a=1, b=2"}};
+        Require(UsableProtectedHttpHeaders(usable)==usable,"usable headers were not kept as they are");
+        Require(HaloDesktop::Playback::SerializePlaybackHeaders(UsableProtectedHttpHeaders(usable))
+                    ==L"Referer: https://site.test/,Cookie: a=1\\, b=2","a header value's commas were not kept inside its line");
+        // Headers that could break out of their line or are not plain names are dropped.
+        Require(UsableProtectedHttpHeaders({{L"X-A",L"ok\r\nInjected: 1"},{L"Bad Name",L"x"},{L"X-B:",L"x"},{L"X-N",std::wstring(L"a\0b",3)}}).empty(),
+                "a header that could break out of its line was kept");
+        // Headers the player and the connection own are never taken from an addon,
+        // whatever their case, and a bad one costs only itself.
+        auto const owned=UsableProtectedHttpHeaders({{L"Range",L"bytes=0-1"},{L"HOST",L"evil.test"},{L"Referer",L"https://a.test/"},{L"Accept-Encoding",L"gzip"}});
+        Require(owned.size()==1&&owned[0].Name==L"Referer","an owned header was taken from an addon, or the usable one was lost with it");
+        // Nothing usable means no headers at all.
+        Require(UsableProtectedHttpHeaders({}).empty(),"no headers produced some");
+        // The limits: a name up to 128, a value up to 4096, the first 64 headers.
+        Require(UsableProtectedHttpHeaders({{std::wstring(128,L'a'),L"v"}}).size()==1,"a 128-character name was dropped");
+        Require(UsableProtectedHttpHeaders({{std::wstring(129,L'a'),L"v"}}).empty(),"a 129-character name was kept");
+        Require(UsableProtectedHttpHeaders({{L"X-Long",std::wstring(4096,L'v')}}).size()==1,"a 4096-character value was dropped");
+        Require(UsableProtectedHttpHeaders({{L"X-Long",std::wstring(4097,L'v')}}).empty(),"a 4097-character value was kept");
+        ProtectedHttpHeaders many;
+        for(int index=0;index<70;++index)many.push_back({L"X-H"+std::to_wstring(index),L"v"});
+        auto const bounded=UsableProtectedHttpHeaders(many);
+        Require(bounded.size()==64&&bounded.back().Name==L"X-H63","only the first 64 headers were not the ones considered");
+        Require(UsableProtectedHttpHeaders({{L"X-Surrogate",std::wstring(1,static_cast<wchar_t>(0xD800))}}).empty(),"a value that cannot be encoded was kept");
+        // Everything this app refused before the reference's list is still refused.
+        for(auto const*name:{L"connection",L"content-length",L"host",L"if-range",L"keep-alive",L"proxy-authenticate",
+                               L"proxy-authorization",L"proxy-connection",L"range",L"te",L"trailer",L"transfer-encoding",
+                               L"upgrade",L"accept-encoding"})
+        {
+            Require(!HaloDesktop::Security::IsUsableProtectedHttpHeader(name,L"x"),"a reserved header name was usable");
+        }
+    }
+
+    void TestTrackNaming()
+    {
+        using HaloDesktop::Playback::TrackDisplayTitle;
+        Require(TrackDisplayTitle(L"  Director's commentary  ",L"eng",3)==L"Director's commentary","a track title was not trimmed");
+        Require(TrackDisplayTitle(L"   ",L"fre",2)==L"French","a blank title did not fall back to the language");
+        Require(TrackDisplayTitle(L"",L"",7)==L"Track 7","a track with neither title nor language was not named by its id");
+        Require(TrackDisplayTitle(L"",L"xx-unknown",4)==L"xx-unknown","an unknown language code was not shown as given");
+    }
+
+    // Mirrors playerLogic's "subtitle controls grey out what cannot change the
+    // selected track", plus the notes under Track styling and Size.
+    void TestSubtitleControls()
+    {
+        using namespace HaloDesktop::Playback;
+        Require(SubtitleFormatOf(L"hdmv_pgs_subtitle")==SubtitleFormat::Bitmap,"PGS was not a bitmap track");
+        Require(SubtitleFormatOf(L"subrip")==SubtitleFormat::Text,"subrip was not a text track");
+        Require(SubtitleFormatOf(L"ASS")==SubtitleFormat::Styled,"an upper-case ASS codec was not a styled track");
+        Require(SubtitleFormatOf(L"HDMV_PGS_SUBTITLE")==SubtitleFormat::Bitmap,"an upper-case PGS codec was not a bitmap track");
+        Require(SubtitleFormatOf(L"")==SubtitleFormat::Unknown,"no codec was not unknown");
+
+        Require(SubtitleControlsFor(SubtitleFormat::Bitmap,true)==SubtitleControlAvailability{false,false},"bitmap controls were wrong");
+        Require(SubtitleControlsFor(SubtitleFormat::Text,true)==SubtitleControlAvailability{false,true},"text controls were wrong");
+        Require(SubtitleControlsFor(SubtitleFormat::Styled,true)==SubtitleControlAvailability{true,false},"styled controls keeping the look were wrong");
+        Require(SubtitleControlsFor(SubtitleFormat::Styled,false)==SubtitleControlAvailability{true,true},"styled controls overriding the look were wrong");
+        Require(SubtitleControlsFor(SubtitleFormat::Unknown,true)==SubtitleControlAvailability{true,true},"unknown controls were not all usable");
+
+        Require(TrackStylingNote(SubtitleFormat::Styled,true)==L"Keeping the track's own fonts and positions; only size applies.","styled keep note changed");
+        Require(TrackStylingNote(SubtitleFormat::Styled,false)==L"Overriding the track with the settings here.","styled override note changed");
+        Require(TrackStylingNote(SubtitleFormat::Text,true)==L"Plain text track: the settings here always apply.","text note changed");
+        Require(TrackStylingNote(SubtitleFormat::Bitmap,false)==L"PGS is rendered images: font, outline and shadow do not apply.","bitmap note changed");
+        Require(TrackStylingNote(SubtitleFormat::Unknown,true)==L"On, a styled track keeps its own look. A plain text track always follows the settings here.","default note changed");
+        Require(SubtitleSizeNote(SubtitleFormat::Bitmap)==L"Bitmap track, scaled but not restyled","bitmap size note changed");
+        Require(SubtitleSizeNote(SubtitleFormat::Text)==L"mpv sub-scale, live","size note changed");
+        Require(DisabledSubtitleControlOpacity==0.45,"disabled controls are not drawn at 0.45");
+    }
+
+    // The end of a file in the reference player's order, its Up Next cancel
+    // (playerLogic's "up-next countdown and cancel semantics"), and the keep-open
+    // end signal that drives it.
+    void TestEndOfVideo()
+    {
+        using namespace HaloDesktop::Playback;
+        Require(ResolveEndOfVideo({.Autoplay=true,.PlayingDownload=true,.NextDownloadReady=true,.NextHasStream=true,.NextEpisodeKnown=true})
+                    ==EndOfVideoAction::PlayNextDownload,"a download with its next episode downloaded did not play it");
+        Require(ResolveEndOfVideo({.Autoplay=true,.PlayingDownload=false,.NextDownloadReady=true,.NextHasStream=true,.NextEpisodeKnown=true})
+                    ==EndOfVideoAction::ShowUpNext,"a next download was played for a stream");
+        Require(ResolveEndOfVideo({.Autoplay=true,.NextHasStream=true,.NextEpisodeKnown=true})==EndOfVideoAction::ShowUpNext,
+                "a next episode with a stream did not show Up Next");
+        Require(ResolveEndOfVideo({.Autoplay=true,.NextEpisodeKnown=true})==EndOfVideoAction::OpenNextSources,
+                "a next episode without a stream did not open its sources");
+        Require(ResolveEndOfVideo({.Autoplay=true})==EndOfVideoAction::ClosePlayer,"a film did not close the player");
+        Require(ResolveEndOfVideo({.Autoplay=false,.PlayingDownload=true,.NextDownloadReady=true,.NextHasStream=true,.NextEpisodeKnown=true})
+                    ==EndOfVideoAction::ClosePlayer,"autoplay off did not close the player");
+        Require(ResolveUpNextCancel(false)==UpNextCancelAction::Dismiss,"a cancel before the end left the player");
+        Require(ResolveUpNextCancel(true)==UpNextCancelAction::Exit,"a cancel at the end did not leave the player");
+        Require(UpNextCountdownSeconds==8,"the Up Next countdown is not 8 seconds");
+
+        bool handled{};
+        Require(AcceptEndOfFileSignal(handled,EndOfFileSignal::EofReached),"the first eof-reached was not an end");
+        Require(!AcceptEndOfFileSignal(handled,EndOfFileSignal::EofReached),"a repeated eof-reached was handled twice");
+        Require(!AcceptEndOfFileSignal(handled,EndOfFileSignal::EndFileEof),"end-file eof after eof-reached was handled twice");
+        Require(!AcceptEndOfFileSignal(handled,EndOfFileSignal::EofCleared),"a seek back was taken as an end");
+        Require(AcceptEndOfFileSignal(handled,EndOfFileSignal::EofReached),"the end after a seek back was not re-armed");
+        Require(!AcceptEndOfFileSignal(handled,EndOfFileSignal::FileLoaded),"a new file was taken as an end");
+        Require(AcceptEndOfFileSignal(handled,EndOfFileSignal::EndFileEof),"end-file eof of a new file was not an end");
+    }
+
+    void TestPlayerSmallRules()
+    {
+        using namespace HaloDesktop::Playback;
+        Require(NextEpisodeTitle(L"Pilot",L"Show",L"Previous")==L"Pilot","the next episode's own title was not used");
+        Require(NextEpisodeTitle(L"",L"Show",L"Previous")==L"Show","an untitled next episode did not take the show's name");
+        Require(NextEpisodeTitle(L"",L"",L"Previous")==L"Previous","with no show name the current title was not used");
+        Require(VideoFitForPreference(false)==VideoFitMode::Fit,"the default framing was not fit");
+        Require(VideoFitForPreference(true)==VideoFitMode::Fill,"a fill preference did not fill");
+        Require(!IsSeekableDuration(0.0)&&!IsSeekableDuration(-1.0)&&!IsSeekableDuration(std::numeric_limits<double>::quiet_NaN()),
+                "a file without a length was seekable");
+        Require(IsSeekableDuration(0.5),"a file with a length was not seekable");
     }
 
     void TestPlaybackTransitions()
@@ -334,6 +468,28 @@ namespace
         Require(CheckedResponseSize(MaximumJsonResponseBytes-1u,1u)==MaximumJsonResponseBytes,"exact JSON response limit was rejected");
         RequireThrows([]{static_cast<void>(HaloDesktop::Api::CheckedResponseSize(HaloDesktop::Api::MaximumJsonResponseBytes,1u));},"streamed JSON response exceeded its limit");
         RequireThrows([]{static_cast<void>(HaloDesktop::Api::CheckedResponseSize((std::numeric_limits<std::size_t>::max)(),1u));},"JSON response size overflow was accepted");
+    }
+
+    // The rectangle fullscreen's in-place restore from maximized hands to
+    // SetWindowPlacement, on the primary monitor and on one beside it.
+    void TestUnmaximizeInPlaceRectangle()
+    {
+        using HaloDesktop::Shell::IsSameRect;
+        using HaloDesktop::Shell::WorkAreaInWorkspaceCoordinates;
+        // The reference's (0, 0, width, height) on the primary monitor, whichever
+        // edge the taskbar is on.
+        Require(IsSameRect(WorkAreaInWorkspaceCoordinates({0,0,1920,1080},{0,0,1920,1040}),{0,0,1920,1040}),
+                "a bottom taskbar did not give the reference's rectangle");
+        Require(IsSameRect(WorkAreaInWorkspaceCoordinates({0,0,1920,1080},{0,48,1920,1080}),{0,0,1920,1032}),
+                "a top taskbar did not give the reference's rectangle");
+        Require(IsSameRect(WorkAreaInWorkspaceCoordinates({0,0,1920,1080},{64,0,1920,1080}),{0,0,1856,1080}),
+                "a left taskbar did not give the reference's rectangle");
+        // A second monitor keeps its own origin, so the window stays on it.
+        Require(IsSameRect(WorkAreaInWorkspaceCoordinates({1920,-200,4480,1240},{1920,-200,4480,1192}),{1920,-200,4480,1192}),
+                "a second monitor's work area lost its origin");
+        Require(IsSameRect(WorkAreaInWorkspaceCoordinates({-2560,0,0,1440},{-2560,40,0,1440}),{-2560,0,0,1400}),
+                "a monitor to the left lost its origin");
+        Require(!IsSameRect({0,0,10,10},{0,0,10,11}),"different rectangles compared equal");
     }
 
     void TestWindowPresentationPolicy()
@@ -914,11 +1070,16 @@ int main()
         TestLanguages();
         TestResume();
         TestHeaders();
+        TestTrackNaming();
+        TestSubtitleControls();
+        TestEndOfVideo();
+        TestPlayerSmallRules();
         TestPlaybackTransitions();
         TestSubtitleIntents();
         TestProtectedHashPolicy();
         TestResponseSizePolicy();
         TestWindowPresentationPolicy();
+        TestUnmaximizeInPlaceRectangle();
         TestQualityMedals();
         TestQualityMedalsFromPicture();
         TestHaloMarkGeometry();

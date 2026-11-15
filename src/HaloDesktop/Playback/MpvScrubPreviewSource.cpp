@@ -2,6 +2,7 @@
 #include "Playback/MpvScrubPreviewSource.h"
 #include "Playback/MpvCommand.h"
 #include "Playback/ScrubPreviewPolicy.h"
+#include "Security/ProtectedHttpHeaders.h"
 
 #include <mpv/client.h>
 
@@ -211,6 +212,9 @@ namespace HaloDesktop::Playback
         Close();
 
         auto const dispatcher = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();
+        // The same usable set the engine plays with: one bad header is dropped
+        // rather than leaving the preview unable to load the file at all.
+        source.Headers = Security::UsableProtectedHttpHeaders(source.Headers);
         std::lock_guard const guard{ m_mutex };
         m_source = std::move(source);
         m_dispatcher = dispatcher;

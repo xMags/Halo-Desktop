@@ -903,10 +903,12 @@ namespace winrt::HaloDesktop::implementation
     void DetailViewModel::OpenSourcesFor(winrt::HaloDesktop::Episode const& episode)
     {
         if (!m_params || !episode) return;
+        // An untitled episode goes to the sheet and the player under the show's name.
+        auto const episodeTitle = episode.Title().empty() ? Title() : episode.Title();
         m_navigation->ShowSheet(
             ::HaloDesktop::Services::Page::Sources,
             winrt::make<implementation::SourcesNavParams>(
-                m_params.Type(), m_params.MetaId(), episode.VideoId(), ItemId(), episode.Title(), Title(), episode.Tag(), PosterUrl()));
+                m_params.Type(), m_params.MetaId(), episode.VideoId(), ItemId(), episodeTitle, Title(), episode.Tag(), PosterUrl()));
     }
 
     bool DetailViewModel::OwnsMetadata() const

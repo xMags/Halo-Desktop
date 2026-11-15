@@ -17,6 +17,7 @@ namespace HaloDesktop::Services
 namespace HaloDesktop::Playback
 {
     class MpvClient;
+    struct MpvCommandFailure;
     struct PlaybackUpdate;
 
     // UI-thread-only adapter that keeps libmpv behind the player engine contract.
@@ -62,6 +63,8 @@ namespace HaloDesktop::Playback
 
     private:
         void ApplyUpdate(PlaybackUpdate update);
+        // A queued command libmpv refused, answered on the UI thread.
+        void ApplyFailedCommand(MpvCommandFailure const& failure);
         // Hands the host panel the swapchain libmpv presents into, or 0 when it
         // is about to go away. Runs on the UI thread and never throws outward.
         void PublishSwapChain(std::uintptr_t address) noexcept;
@@ -85,8 +88,14 @@ namespace HaloDesktop::Playback
         std::chrono::steady_clock::time_point m_seekIssuedAt{};
         std::optional<double> m_seekTarget;
         bool m_seekRestarted{};
+        // The generations of the latest load and seek handed to the client, so a
+        // failure that arrives late for an older one is ignored.
+        std::uint64_t m_loadGeneration{};
+        std::uint64_t m_seekGeneration{};
         bool m_running{};
         bool m_pausedForCache{};
+        // This file's end has been acted on; re-armed by a new file or a seek back.
+        bool m_endHandled{};
         std::uint64_t m_audioSessionSerial{};
         SubtitleStyle m_subtitleStyle;
     };

@@ -30,6 +30,9 @@ namespace HaloDesktop::Playback
         // The next episode's own still, when the addon supplies one. Empty for a
         // downloaded continuation, which is resolved from the local index alone.
         winrt::hstring Still;
+        // The lookup also found a playable stream for the next episode, so its end
+        // leads to the Up Next countdown rather than straight to the sources sheet.
+        bool HasStream{};
     };
 
     // Resolves only the server-authoritative metadata chain. Local-file

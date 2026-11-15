@@ -26,6 +26,9 @@ namespace HaloDesktop::Services
         // The navigation pane is expanded. Closed until the viewer first opens
         // it, then as they last left it.
         bool NavPaneOpen{};
+        // The player crops the picture to fill the window (mpv panscan) rather than
+        // fitting it. Kept across files and sessions, fit until first chosen.
+        bool FillPicture{};
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
@@ -61,6 +64,8 @@ namespace HaloDesktop::Services
         void DiscordPresence(bool value);
         [[nodiscard]] bool NavPaneOpen() const noexcept;
         void NavPaneOpen(bool value);
+        [[nodiscard]] bool FillPicture() const noexcept;
+        void FillPicture(bool value);
         // Zero until a transfer has been observed. Cached in memory after the
         // first read, because callers ask per rendered row.
         [[nodiscard]] double MeasuredLineMbps() const noexcept;

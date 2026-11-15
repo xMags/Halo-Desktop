@@ -47,6 +47,11 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget RefreshPlaybackSettingsAsync(std::uint64_t generation);
         winrt::fire_and_forget PrefetchUpNextAsync(winrt::HaloDesktop::PlaybackRequest request, std::uint64_t generation);
         winrt::fire_and_forget AdvanceUpNextAsync();
+        // What the end of the file leads to, in the reference player's order: the
+        // next download, the Up Next countdown, the next episode's sources, or the
+        // player closing.
+        void HandleEndOfVideo(std::uint64_t generation);
+        winrt::fire_and_forget OpenNextSourcesAsync();
         winrt::fire_and_forget BeginClose();
         void ShowMediaPrompt(winrt::hstring const& message);
         void ShowSubtitleError();
@@ -61,6 +66,10 @@ namespace winrt::HaloDesktop::implementation
         bool m_loaded{};
         bool m_closing{};
         bool m_advancing{};
+        // The next-episode lookup for this file has answered, with or without one.
+        bool m_upNextSettled{};
+        // The file ended before that lookup answered; the end is decided when it does.
+        bool m_endAwaitingUpNext{};
     };
 } // namespace winrt::HaloDesktop::implementation
 

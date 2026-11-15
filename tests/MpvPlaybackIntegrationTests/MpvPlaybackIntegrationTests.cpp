@@ -473,6 +473,60 @@ namespace
         }
     }
 
+    // The end of a file under keep-open, as MpvClient configures it: the file
+    // stays loaded on its last frame, eof-reached turns true instead of an EOF
+    // end-file, a seek back clears it, and playing out again sets it again.
+    void VerifyKeepOpenEnd(ProtectedHttpServer&server)
+    {
+        auto*handle=mpv_create();Require(handle!=nullptr,"keep-open mpv_create returned null");
+        try
+        {
+            CheckMpv(mpv_set_option_string(handle,"vo","null"),"keep-open set vo");
+            CheckMpv(mpv_set_option_string(handle,"ao","null"),"keep-open set ao");
+            CheckMpv(mpv_set_option_string(handle,"idle","yes"),"keep-open set idle");
+            CheckMpv(mpv_set_option_string(handle,"keep-open","yes"),"keep-open set keep-open");
+            CheckMpv(mpv_set_option_string(handle,"terminal","no"),"keep-open disable terminal");
+            CheckMpv(mpv_initialize(handle),"keep-open mpv_initialize");
+            CheckMpv(mpv_observe_property(handle,0,"eof-reached",MPV_FORMAT_FLAG),"observe eof-reached");
+
+            // Waits for eof-reached to take `expected`, failing on an EOF end-file,
+            // which keep-open must not produce for a file that plays out.
+            auto const waitForEof=[handle](bool expected,char const*timeoutMessage)
+            {
+                auto const deadline=std::chrono::steady_clock::now()+std::chrono::seconds(10);
+                while(std::chrono::steady_clock::now()<deadline)
+                {
+                    auto const event=mpv_wait_event(handle,0.1);
+                    if(!event)continue;
+                    if(event->event_id==MPV_EVENT_END_FILE)
+                    {
+                        auto const end=static_cast<mpv_event_end_file const*>(event->data);
+                        Require(!end||end->reason!=MPV_END_FILE_REASON_EOF,"keep-open still ended the file at its end");
+                    }
+                    if(event->event_id!=MPV_EVENT_PROPERTY_CHANGE)continue;
+                    auto const property=static_cast<mpv_event_property const*>(event->data);
+                    if(!property||!property->name||std::string_view{property->name}!="eof-reached")continue;
+                    if(property->format==MPV_FORMAT_FLAG&&property->data
+                        &&(*static_cast<int const*>(property->data)!=0)==expected)return;
+                }
+                throw std::runtime_error(timeoutMessage);
+            };
+
+            HaloDesktop::Playback::LoadMpvSource(handle,{server.PublicUrl(),{}});
+            waitForEof(true,"eof-reached never turned true at the end of the file");
+            HaloDesktop::Playback::RunMpvCommand(handle,{"seek","0","absolute"});
+            waitForEof(false,"a seek back from the end did not clear eof-reached");
+            int playing{0};
+            CheckMpv(mpv_set_property(handle,"pause",MPV_FORMAT_FLAG,&playing),"keep-open resume");
+            waitForEof(true,"playing out again did not set eof-reached again");
+        }
+        catch(...)
+        {
+            mpv_terminate_destroy(handle);throw;
+        }
+        mpv_terminate_destroy(handle);
+    }
+
     // MpvClient::SetVideoFit writes panscan and nothing ever reads it back, so a
     // renamed or mistyped property would surface only as a button that throws in
     // the player. The two values here are the ones that client writes.
@@ -544,9 +598,10 @@ int main()
         }
         mpv_terminate_destroy(handle);
         VerifyStreamingShutdown(server);
+        VerifyKeepOpenEnd(server);
         VerifyScrubPreviewDecoding();
         VerifyPictureFillProperty();
-        std::cout<<"mpv protected playback, replay, streaming shutdown, scrub preview, and picture fill tests passed.\n";
+        std::cout<<"mpv protected playback, replay, streaming shutdown, keep-open end, scrub preview, and picture fill tests passed.\n";
         return 0;
     }
     catch(std::exception const&error)

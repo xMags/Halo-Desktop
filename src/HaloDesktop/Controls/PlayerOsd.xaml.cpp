@@ -189,25 +189,32 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        UpdateScrubPreview(sender.as<Microsoft::UI::Xaml::Controls::Slider>(), args);
-        if (m_seekPointerActive)
+        auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
+        UpdateScrubPreview(slider, args);
+        if (m_seekPointerActive || !m_viewModel.IsSeekable())
+        {
+            return;
+        }
+        // The primary button only, as the reference's bar: a right or middle press
+        // is not a seek. Touch and pen contacts are primary by nature.
+        auto const point = args.GetCurrentPoint(slider);
+        if (args.Pointer().PointerDeviceType() == winrt::Microsoft::UI::Input::PointerDeviceType::Mouse
+            && !point.Properties().IsLeftButtonPressed())
         {
             return;
         }
 
         m_seekPointerActive = true;
+        m_seekPointerId = args.Pointer().PointerId();
+        ++m_seekGeneration;
         m_viewModel.BeginScrub();
     }
     void PlayerOsd::OnSeekPointerMoved(winrt::Windows::Foundation::IInspectable const& sender,
                                        Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
-        auto const point = args.GetCurrentPoint(slider);
-        if (!m_seekPointerActive && (point.IsInContact() || point.Properties().IsLeftButtonPressed()))
-        {
-            m_seekPointerActive = true;
-            m_viewModel.BeginScrub();
-        }
+        // A press that began somewhere else and is dragged over the bar is not a
+        // scrub: only a press that began on the bar moves it.
         UpdateScrubPreview(slider, args);
         if (m_seekPointerActive)
         {
@@ -224,12 +231,13 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         auto const slider = sender.as<Microsoft::UI::Xaml::Controls::Slider>();
-        if (!m_seekPointerActive)
+        // Only a press that began on the bar seeks; releasing a drag from
+        // elsewhere over it must not.
+        if (m_seekPointerActive && args.Pointer().PointerId() == m_seekPointerId)
         {
-            m_viewModel.BeginScrub();
+            m_seekPointerActive = false;
+            m_viewModel.EndScrub(slider.Value());
         }
-        m_seekPointerActive = false;
-        m_viewModel.EndScrub(slider.Value());
         // Releasing away from the bar produces no later exit event, so the card would
         // otherwise be left hanging over a pointer that has gone.
         auto const position = args.GetCurrentPoint(slider).Position();
@@ -259,7 +267,7 @@ namespace winrt::HaloDesktop::implementation
         }
     }
     void PlayerOsd::OnSeekPointerTerminated(
-        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
         if (!m_seekPointerActive)
@@ -267,12 +275,38 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
-        m_seekPointerActive = false;
-        m_viewModel.EndScrub(sender.as<Microsoft::UI::Xaml::Controls::Slider>().Value());
-        if (auto const preview = m_viewModel.ScrubPreview())
+        // A capture lost without a release (a cancel, a focus change) drops the
+        // drag, as the reference's lostpointercapture does: nothing is seeked and
+        // its preview goes, so it cannot pin the controls. The slider's thumb
+        // releases its capture while it handles the release itself, so the loss
+        // can arrive just before the release that ends an ordinary drag; the
+        // decision waits until that input has been dispatched.
+        auto const generation = m_seekGeneration;
+        auto const cancel = [weak = get_weak(), generation]()
         {
-            preview.Hide();
+            auto const self = weak.get();
+            if (!self || !self->m_seekPointerActive || self->m_seekGeneration != generation)
+            {
+                return;
+            }
+            self->m_seekPointerActive = false;
+            self->m_viewModel.CancelScrub();
+            if (auto const preview = self->m_viewModel.ScrubPreview())
+            {
+                preview.Hide();
+            }
+        };
+        try
+        {
+            if (DispatcherQueue().TryEnqueue(Microsoft::UI::Dispatching::DispatcherQueuePriority::Low, cancel))
+            {
+                return;
+            }
         }
+        catch (winrt::hresult_error const&)
+        {
+        }
+        cancel();
     }
     void PlayerOsd::OnFullscreenClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
                                       [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)

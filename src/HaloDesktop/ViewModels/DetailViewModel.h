@@ -42,7 +42,8 @@ namespace winrt::HaloDesktop::implementation
         DetailEpisodeViewModel(winrt::HaloDesktop::Episode episode, ::HaloDesktop::Api::Dto::WatchEntry const* row, DetailEpisodeState state);
 
         [[nodiscard]] winrt::hstring Tag() const { return m_episode.Tag(); }
-        [[nodiscard]] winrt::hstring Title() const { return m_episode.Title(); }
+        // An untitled episode is shown by its id, as the reference's episode rows show it.
+        [[nodiscard]] winrt::hstring Title() const { return m_episode.Title().empty() ? m_episode.VideoId() : m_episode.Title(); }
         [[nodiscard]] winrt::hstring Blurb() const { return m_episode.Blurb(); }
         [[nodiscard]] winrt::hstring Aside() const { return m_aside; }
         [[nodiscard]] winrt::hstring Aired() const { return m_aired; }

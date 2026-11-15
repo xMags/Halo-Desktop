@@ -125,6 +125,11 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_scrubPreviewChangedRevoker{};
         std::optional<winrt::Windows::Foundation::Point> m_lastPointerPosition;
         std::uint32_t m_lastPointerId{};
+        // The pointer whose press on the bar started the scrub in progress.
+        std::uint32_t m_seekPointerId{};
+        // Counts presses on the bar, so a deferred capture-loss check from one drag
+        // cannot end the next.
+        std::uint64_t m_seekGeneration{};
         bool m_seekHandlersRegistered{};
         bool m_seekPointerActive{};
     };

@@ -79,6 +79,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double PreviewShadowOffset() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewOutlineVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PreviewShadowVisibility() const noexcept;
+        [[nodiscard]] bool LooksEnabled() const noexcept;
+        [[nodiscard]] double LooksOpacity() const noexcept;
+        [[nodiscard]] bool TrackStylingEnabled() const noexcept;
+        [[nodiscard]] double TrackStylingOpacity() const noexcept;
+        [[nodiscard]] winrt::hstring TrackStylingNote() const;
+        [[nodiscard]] winrt::hstring SizeNote() const;
+        // The selected subtitle track's kind, from its codec; Unknown when none.
+        void SetTrackFormat(::HaloDesktop::Playback::SubtitleFormat format);
         void SetFont(std::int32_t index);
         void SetOutline(std::int32_t index);
         void Refresh();
@@ -88,8 +96,10 @@ namespace winrt::HaloDesktop::implementation
     private:
         void Raise(wchar_t const* propertyName);
         void RaisePreviewMetrics();
+        void RaiseTrackControls();
         void Apply();
         void WatchForRevert();
+        [[nodiscard]] ::HaloDesktop::Playback::SubtitleControlAvailability Controls() const noexcept;
 
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;
         std::shared_ptr<::HaloDesktop::Playback::SubtitleController> m_subtitles;
@@ -99,6 +109,7 @@ namespace winrt::HaloDesktop::implementation
         std::int32_t m_outlineIndex{ 2 };
         bool m_shadow{ true };
         bool m_trackStyling{ true };
+        ::HaloDesktop::Playback::SubtitleFormat m_trackFormat{ ::HaloDesktop::Playback::SubtitleFormat::Unknown };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
@@ -183,6 +194,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SpeedPanelVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility UpNextAvailableVisibility() const noexcept;
+        [[nodiscard]] bool IsSeekable() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonSubtitlesUnavailableVisibility() const noexcept;
+        // Whether the file playing is a download, which never asks addons for subtitles.
+        void SetPlayingDownload(bool download);
+        // Raised when Up Next's cancel is pressed at the real end of a file, which
+        // leaves the player rather than leaving it on the last frame.
+        void SetEndCancelHandler(std::function<void()> handler);
         void SetPlayNextHandler(std::function<void()> handler);
         void SetCloseRequestedHandler(std::function<void()> handler);
         void SetSubtitleTrackHandler(std::function<void(std::int64_t)> handler);
@@ -202,6 +220,9 @@ namespace winrt::HaloDesktop::implementation
         void BeginScrub();
         void ScrubTo(double seconds);
         void EndScrub(double seconds);
+        // A drag whose pointer capture was lost without a release: nothing is
+        // seeked, and the bar goes back to the live position.
+        void CancelScrub();
         void SeekRelative(double seconds);
         void ChangeVolume(double delta);
         void SetSpeed(double speed);
@@ -236,6 +257,8 @@ namespace winrt::HaloDesktop::implementation
         void Raise(wchar_t const* propertyName);
         void RestartHideTimer();
         void StopUpNextTimer() noexcept;
+        // Hides the Up Next card without leaving the player, whatever the position.
+        void DismissUpNext();
         void ApplyBufferingState();
         void SetBufferingVisible(bool visible);
         void StartBufferingTimer(std::chrono::milliseconds delay);
@@ -246,6 +269,7 @@ namespace winrt::HaloDesktop::implementation
         static winrt::hstring FormatTime(double seconds, bool withHours);
 
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> m_engine;
+        std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> m_windowPresentation;
         ::HaloDesktop::Playback::PlaybackChangedToken m_engineToken{};
         ::HaloDesktop::Playback::PlaybackState m_state;
@@ -271,6 +295,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_upNextPoster;
         winrt::hstring m_upNextStill;
         std::function<void()> m_playNextHandler;
+        std::function<void()> m_endCancelHandler;
         std::function<void()> m_closeRequestedHandler;
         std::function<void(std::int64_t)> m_subtitleTrackHandler;
         std::function<void()> m_subtitlesOffHandler;
@@ -291,6 +316,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_upNextCountdown{};
         bool m_upNextClaimed{};
         bool m_active{};
+        bool m_playingDownload{};
         winrt::HaloDesktop::SubtitleAppearanceViewModel m_subtitleAppearance{ nullptr };
         winrt::HaloDesktop::ScrubPreviewViewModel m_scrubPreview{ nullptr };
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;

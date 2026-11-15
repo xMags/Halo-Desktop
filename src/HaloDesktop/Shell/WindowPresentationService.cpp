@@ -3,6 +3,7 @@
 
 #include "Shell/WindowPresentationPolicy.h"
 
+#include <dwmapi.h>
 #include <optional>
 #include <shobjidl_core.h>
 #include <stdexcept>
@@ -236,6 +237,93 @@ namespace
         auto const titleBarRestored = TrySetTitleBarHeight(titleBarRow, presentation.TitleBarHeight);
         return windowRestored && titleBarRestored;
     }
+
+    // Windows' minimise, maximise and restore animations for this window, off for
+    // the length of one fullscreen switch. The leave from maximized and the
+    // re-maximize around a switch would each otherwise play the shrinking,
+    // cross-fading animation. The destructor turns them back on whatever path the
+    // switch took, a failure included, so they can never be left off.
+    class TransitionsSuppressed final
+    {
+    public:
+        explicit TransitionsSuppressed(HWND window) noexcept : m_window(window)
+        {
+            BOOL disabled{ TRUE };
+            static_cast<void>(DwmSetWindowAttribute(m_window, DWMWA_TRANSITIONS_FORCEDISABLED, &disabled, sizeof(disabled)));
+        }
+        ~TransitionsSuppressed()
+        {
+            BOOL disabled{ FALSE };
+            static_cast<void>(DwmSetWindowAttribute(m_window, DWMWA_TRANSITIONS_FORCEDISABLED, &disabled, sizeof(disabled)));
+        }
+        TransitionsSuppressed(TransitionsSuppressed const&) = delete;
+        TransitionsSuppressed& operator=(TransitionsSuppressed const&) = delete;
+
+    private:
+        HWND m_window{};
+    };
+
+    // Leaves maximized without moving the window (the reference's
+    // `unmaximize_in_place`): the normal rectangle becomes the work area it
+    // already fills and the window is shown normal. Returns the window's own
+    // normal rectangle, for the re-maximize, when it did; nothing when the window
+    // was not maximized or did not land on its work area, in which case it has
+    // been put back exactly as it was.
+    [[nodiscard]] std::optional<RECT> TryUnmaximizeInPlace(HWND window) noexcept
+    {
+        if (!IsZoomed(window))
+        {
+            return std::nullopt;
+        }
+        WINDOWPLACEMENT placement{ sizeof(WINDOWPLACEMENT) };
+        auto const monitor = TryMonitorInfoForWindow(window);
+        if (!monitor || !GetWindowPlacement(window, &placement))
+        {
+            return std::nullopt;
+        }
+        auto const original = placement;
+        placement.rcNormalPosition = HaloDesktop::Shell::WorkAreaInWorkspaceCoordinates(monitor->rcMonitor, monitor->rcWork);
+        placement.showCmd = SW_SHOWNORMAL;
+        if (!SetWindowPlacement(window, &placement))
+        {
+            return std::nullopt;
+        }
+        RECT bounds{};
+        if (GetWindowRect(window, &bounds) && !IsZoomed(window)
+            && HaloDesktop::Shell::IsSameRect(bounds, monitor->rcWork))
+        {
+            return original.rcNormalPosition;
+        }
+        static_cast<void>(SetWindowPlacement(window, &original));
+        return std::nullopt;
+    }
+
+    // Marks the window maximized again where it stands, with its own normal
+    // rectangle back (the reference's `remaximize`). Two steps, in this order:
+    // handed the saved rectangle and the maximized state in one call, Windows
+    // applies the rectangle first and shows the window at its small normal size
+    // for a couple of frames. So it is maximized first, from the work area it
+    // already fills, and only then given back the rectangle a maximized window
+    // merely remembers for its next restore.
+    [[nodiscard]] bool TryRemaximizeInPlace(HWND window, RECT const& savedNormal) noexcept
+    {
+        WINDOWPLACEMENT placement{ sizeof(WINDOWPLACEMENT) };
+        if (!GetWindowPlacement(window, &placement))
+        {
+            return false;
+        }
+        placement.showCmd = SW_SHOWMAXIMIZED;
+        auto succeeded = SetWindowPlacement(window, &placement) != FALSE;
+        placement = { sizeof(WINDOWPLACEMENT) };
+        if (!GetWindowPlacement(window, &placement))
+        {
+            return false;
+        }
+        placement.rcNormalPosition = savedNormal;
+        placement.showCmd = SW_SHOWMAXIMIZED;
+        succeeded = SetWindowPlacement(window, &placement) != FALSE && succeeded;
+        return succeeded;
+    }
 } // namespace
 
 namespace HaloDesktop::Shell
@@ -276,6 +364,8 @@ namespace HaloDesktop::Shell
         m_windowedExtendedStyle = 0;
         m_windowedTitleBarHeight = {};
         m_wasMaximized = false;
+        m_restoreMaximized = false;
+        m_savedNormalRect = {};
         m_fullscreen = false;
         m_taskbarFullscreenMarked = false;
     }
@@ -293,11 +383,26 @@ namespace HaloDesktop::Shell
         }
 
         auto const window = NativeWindow(m_windowHandle);
+        // Held for the whole switch; turns the transitions back on as it unwinds,
+        // whichever return below is taken.
+        TransitionsSuppressed const transitions{ window };
         if (fullscreen)
         {
+            // From maximized, leave maximized first, in place, so the popup style
+            // and the monitor rectangle apply to a normal window and fullscreen
+            // reaches over the taskbar. Leaving fullscreen puts it back.
+            auto const savedNormal = TryUnmaximizeInPlace(window);
+            auto const putBackMaximized = [window, &savedNormal]() noexcept
+            {
+                if (savedNormal)
+                {
+                    static_cast<void>(TryRemaximizeInPlace(window, *savedNormal));
+                }
+            };
             auto const windowed = TryCaptureWindowedPresentation(window, m_titleBarRow);
             if (!windowed)
             {
+                putBackMaximized();
                 return false;
             }
 
@@ -307,6 +412,7 @@ namespace HaloDesktop::Shell
             {
                 if (TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow))
                 {
+                    putBackMaximized();
                     m_fullscreen = ResolveFullscreenState(
                         m_fullscreen,
                         fullscreen,
@@ -316,6 +422,7 @@ namespace HaloDesktop::Shell
                 if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
                 {
                     static_cast<void>(TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow));
+                    putBackMaximized();
                     m_fullscreen = ResolveFullscreenState(
                         m_fullscreen,
                         fullscreen,
@@ -323,6 +430,8 @@ namespace HaloDesktop::Shell
                     return false;
                 }
             }
+            m_restoreMaximized = savedNormal.has_value();
+            m_savedNormalRect = savedNormal.value_or(RECT{});
 
             m_windowedPlacement = windowed->Placement;
             m_windowedBounds = windowed->Bounds;
@@ -377,6 +486,13 @@ namespace HaloDesktop::Shell
         if (TryMarkTaskbarFullscreen(window, false))
         {
             m_taskbarFullscreenMarked = false;
+        }
+        // Back on the work area it was taken from, and maximized there again.
+        if (m_restoreMaximized)
+        {
+            static_cast<void>(TryRemaximizeInPlace(window, m_savedNormalRect));
+            m_restoreMaximized = false;
+            m_savedNormalRect = {};
         }
 
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };

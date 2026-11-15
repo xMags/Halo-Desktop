@@ -76,7 +76,7 @@ namespace HaloDesktop::Playback
             }
             if (!m_source.Location.empty())
             {
-                m_client->Open(m_source);
+                m_loadGeneration = m_client->Open(m_source, MpvClient::TrackChoice::Automatic);
             }
         }
         catch (...)
@@ -107,6 +107,7 @@ namespace HaloDesktop::Playback
         m_state.SeekPending = false;
         m_state.FirstFrameReady = false;
         m_pausedForCache = false;
+        m_endHandled = false;
         m_state.TracksReady = false;
         m_state.Tracks.clear();
         m_state.Video.reset();
@@ -126,7 +127,9 @@ namespace HaloDesktop::Playback
         {
             throw std::invalid_argument("Local playback sources cannot include HTTP request headers");
         }
-        Security::ValidateProtectedHttpHeaders(source.Headers);
+        // A header the source asked for that cannot be sent is dropped on its own,
+        // so the stream still plays without it (the reference's `playbackHeaders`).
+        source.Headers = Security::UsableProtectedHttpHeaders(source.Headers);
 
         source.Location = remote ? std::move(source.Location) : path.wstring();
         m_source = std::move(source);
@@ -145,14 +148,13 @@ namespace HaloDesktop::Playback
         // property change carries nothing to translate, so the previous file's
         // format has to be dropped here or it would describe the next one.
         m_state.Video.reset();
-        // Framing is a per-file choice. A crop chosen for one film must not follow
-        // the next file in, including the episode up-next opens without the player
-        // page ever reactivating.
-        m_state.VideoFit = VideoFitMode::Fit;
+        m_endHandled = false;
+        // Framing is the viewer's device preference and is kept across files,
+        // as the reference keeps `fillPicture`: the player sets it on activation
+        // and on every toggle, and nothing here resets it.
         if (m_client)
         {
-            m_client->SetVideoFit(m_state.VideoFit);
-            m_client->Open(m_source);
+            m_loadGeneration = m_client->Open(m_source, MpvClient::TrackChoice::Automatic);
         }
         NotifyChanged();
     }
@@ -184,10 +186,9 @@ namespace HaloDesktop::Playback
         {
             return;
         }
-        // The size is committed only once the client has accepted it. Recording
-        // it first would let a failed request be swallowed by the guard above,
-        // leaving the swapchain at the stale size until the panel happens to
-        // resize to some other value.
+        // Committed once the request is queued. A request libmpv later refuses
+        // clears the recorded size (ApplyFailedCommand), so the guard above cannot
+        // swallow the next one and leave the swapchain at a stale size.
         if (m_client)
         {
             m_client->SetSurfaceSize(size);
@@ -255,14 +256,9 @@ namespace HaloDesktop::Playback
         {
             m_seekTarget.reset();
             m_seekRestarted = false;
-            try
-            {
-                m_client->SeekAbsolute(next);
-            }
-            catch (std::runtime_error const&)
-            {
-                return;
-            }
+            // Queued; a seek libmpv refuses comes back as a failed command, which
+            // releases the target held below.
+            m_seekGeneration = m_client->SeekAbsolute(next);
             BeginSeek(next);
         }
         ++m_state.SeekSerial;
@@ -285,14 +281,7 @@ namespace HaloDesktop::Playback
         {
             m_seekTarget.reset();
             m_seekRestarted = false;
-            try
-            {
-                m_client->SeekRelative(seconds);
-            }
-            catch (std::runtime_error const&)
-            {
-                return;
-            }
+            m_seekGeneration = m_client->SeekRelative(seconds);
             BeginSeek(next);
         }
         ++m_state.SeekSerial;
@@ -421,8 +410,57 @@ namespace HaloDesktop::Playback
         m_handlers.erase(token);
     }
 
+    void MpvEngine::ApplyFailedCommand(MpvCommandFailure const& failure)
+    {
+        switch (failure.Kind)
+        {
+        case MpvCommandKind::Load:
+            // Only the latest load can fail the file on screen; an older one was
+            // already replaced. Answered as libmpv answers a file that cannot
+            // play, so the page shows the same prompt.
+            if (failure.Generation != m_loadGeneration)
+            {
+                return;
+            }
+            m_state.EndReason = PlaybackEndReason::Error;
+            ++m_state.EndSerial;
+            m_state.Paused = true;
+            m_state.Buffering = false;
+            m_state.SeekPending = false;
+            m_seekTarget.reset();
+            m_seekRestarted = false;
+            break;
+        case MpvCommandKind::Seek:
+            // The playhead stops waiting for a target libmpv never took.
+            if (failure.Generation != m_seekGeneration)
+            {
+                return;
+            }
+            m_seekTarget.reset();
+            m_seekRestarted = false;
+            break;
+        case MpvCommandKind::Subtitle:
+            ++m_state.SubtitleCommandFailureSerial;
+            break;
+        case MpvCommandKind::SurfaceSize:
+            // Forgotten, so the panel's next size is sent again rather than being
+            // taken as already applied.
+            m_surfaceSize = { 0, 0 };
+            return;
+        case MpvCommandKind::Other:
+        default:
+            return;
+        }
+        NotifyChanged();
+    }
+
     void MpvEngine::ApplyUpdate(PlaybackUpdate update)
     {
+        if (update.FailedCommand)
+        {
+            ApplyFailedCommand(*update.FailedCommand);
+            return;
+        }
         if (update.SwapChainAddress)
         {
             PublishSwapChain(*update.SwapChainAddress);
@@ -499,10 +537,37 @@ namespace HaloDesktop::Playback
             m_state.Tracks = std::move(*update.Tracks);
             m_state.TracksReady = true;
         }
-        if(update.FileLoaded&&*update.FileLoaded){++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;}
+        if(update.FileLoaded&&*update.FileLoaded)
+        {
+            ++m_state.FileSerial;m_state.EndReason=PlaybackEndReason::None;m_audioSessionSerial=0;
+            static_cast<void>(AcceptEndOfFileSignal(m_endHandled,EndOfFileSignal::FileLoaded));
+        }
+        // Under keep-open the end of a file is eof-reached turning true, handled
+        // once; a seek back clears it and re-arms the end. An end-file eof (no
+        // keep-open) is the same end and is not handled twice.
+        std::optional<PlaybackEndReason> endReason;
+        if(update.EofReached)
+        {
+            if(*update.EofReached)
+            {
+                if(AcceptEndOfFileSignal(m_endHandled,EndOfFileSignal::EofReached))endReason=PlaybackEndReason::Eof;
+            }
+            else
+            {
+                static_cast<void>(AcceptEndOfFileSignal(m_endHandled,EndOfFileSignal::EofCleared));
+                if(m_state.EndReason==PlaybackEndReason::Eof)m_state.EndReason=PlaybackEndReason::None;
+            }
+        }
         if(update.EndReason)
         {
-            m_state.EndReason=*update.EndReason;
+            if(*update.EndReason!=PlaybackEndReason::Eof||AcceptEndOfFileSignal(m_endHandled,EndOfFileSignal::EndFileEof))
+            {
+                endReason=*update.EndReason;
+            }
+        }
+        if(endReason)
+        {
+            m_state.EndReason=*endReason;
             ++m_state.EndSerial;
             m_state.Paused=true;
             m_state.Buffering=false;
@@ -529,11 +594,12 @@ namespace HaloDesktop::Playback
         m_state.TracksReady = false;
         m_state.EndReason = PlaybackEndReason::None;
         m_state.Tracks.clear();
+        m_endHandled = false;
         // The format survives on purpose: a replay reopens the same file, so
         // clearing it would blink the quality badge off and straight back on.
         if (m_client)
         {
-            m_client->Open(m_source);
+            m_loadGeneration = m_client->Open(m_source, MpvClient::TrackChoice::Keep);
         }
         NotifyChanged();
     }

@@ -140,29 +140,12 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> TitleActions::PublishAfterRemovalAsync(
         concurrency::task<void> removal,
-        std::uint64_t generation)
+        [[maybe_unused]] std::uint64_t generation)
     {
-        auto const uiContext = winrt::apartment_context{};
-        std::exception_ptr failure;
-        try
-        {
-            co_await removal;
-        }
-        catch (...)
-        {
-            failure = std::current_exception();
-        }
-        co_await uiContext;
-        // Published after a failure too: the history was read again, and a batch
-        // that landed before the failure did remove its rows.
-        if (m_session->Generation() == generation)
-        {
-            m_catalog->PublishUserStateChange();
-        }
-        if (failure)
-        {
-            std::rethrow_exception(failure);
-        }
+        // Nothing to publish here any more: the watch-state service raises its
+        // change notification for every batch that landed and for the read that
+        // follows, a failure included, and the catalog relays it to every page.
+        co_await removal;
     }
 
     concurrency::task<void> TitleActions::SetWatchedAsync(WatchMarkTarget target, bool watched)
@@ -194,12 +177,8 @@ namespace HaloDesktop::Services
         auto row = watched
             ? WatchedRow(target, existing, runtime, stamp)
             : UnwatchedRow(target, existing, stamp);
+        // The watch-state service tells every page once the server has the row.
         co_await m_watchState->PutAsync(std::move(row));
-        co_await uiContext;
-        if (m_session->Generation() == generation)
-        {
-            m_catalog->PublishUserStateChange();
-        }
     }
 
     concurrency::task<void> TitleActions::MarkWatchedInOrderAsync(std::vector<WatchMarkTarget> targets)
@@ -228,13 +207,9 @@ namespace HaloDesktop::Services
         {
             co_return;
         }
+        // The watch-state service tells every page once the server has the rows.
         co_await m_watchState->PutRowsAsync(WatchedRowsInOrder(
             targets, rows, runtime, m_watchState->IssueTimestamp(NowMilliseconds())));
-        co_await uiContext;
-        if (m_session->Generation() == generation)
-        {
-            m_catalog->PublishUserStateChange();
-        }
     }
 
     concurrency::task<bool> TitleActions::SetInLibraryAsync(

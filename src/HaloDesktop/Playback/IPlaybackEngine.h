@@ -16,6 +16,10 @@ namespace HaloDesktop::Playback
     {
         std::wstring Location;
         std::vector<PlaybackHeader> Headers;
+        // Every code that names the viewer's preferred audio language, so the
+        // engine picks that track from the first frame however the file tags it.
+        // Empty when there is no preference.
+        std::vector<std::wstring> PreferredAudioLanguages;
     };
 
     enum class TrackType
@@ -98,6 +102,10 @@ namespace HaloDesktop::Playback
         std::uint64_t SeekSerial{};
         std::uint64_t AudioSelectionSerial{};
         std::uint64_t SubtitleSelectionSerial{};
+        // Counts subtitle commands the engine refused after accepting them: the
+        // engine runs them off the UI thread, so a refusal arrives later than the
+        // call that asked for it.
+        std::uint64_t SubtitleCommandFailureSerial{};
         PlaybackEndReason EndReason{ PlaybackEndReason::None };
         VideoFitMode VideoFit{ VideoFitMode::Fit };
         // Empty until the engine reports the first decoded video frame of the open

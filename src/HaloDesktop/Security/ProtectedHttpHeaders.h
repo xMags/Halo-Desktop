@@ -23,4 +23,13 @@ namespace HaloDesktop::Security
     void ValidateProtectedHttpHeaders(ProtectedHttpHeaders const& headers);
     void ValidateProtectedHttpHeaders(
         std::map<std::wstring, std::wstring, std::less<>> const& headers);
+
+    // Whether one header an addon asked for may be sent: a token name of at most
+    // 128 characters that the player or the connection does not own, and a value
+    // of at most 4096 characters that cannot break out of its line.
+    [[nodiscard]] bool IsUsableProtectedHttpHeader(std::wstring const& name, std::wstring const& value);
+
+    // The reference client's `playbackHeaders`: the first 64 headers, with every
+    // unusable one dropped on its own so the stream still plays without it.
+    [[nodiscard]] ProtectedHttpHeaders UsableProtectedHttpHeaders(ProtectedHttpHeaders const& headers);
 }

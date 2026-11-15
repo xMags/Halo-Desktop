@@ -3,6 +3,7 @@
 
 #include "Api/ApiClient.h"
 #include "Models/Models.h"
+#include "Playback/PlaybackPolicy.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/StreamInfo.h"
@@ -85,6 +86,8 @@ namespace
     {
         namespace Services = HaloDesktop::Services;
         auto const info = Services::ParseStreamInfo(stream);
+        auto const title = winrt::hstring{ HaloDesktop::Playback::NextEpisodeTitle(
+            std::wstring{ video.Title }, std::wstring{ request.ShowName() }, std::wstring{ request.Title() }) };
         return winrt::make<winrt::HaloDesktop::implementation::PlaybackRequest>(
             stream.Url,
             false,
@@ -94,7 +97,7 @@ namespace
             video.Id,
             request.ItemId(),
             request.MetaId(),
-            video.Title,
+            title,
             request.ShowName(),
             EpisodeLabel(video),
             request.Poster(),
@@ -156,6 +159,7 @@ namespace HaloDesktop::Playback
                 (*next).Title(),
                 (*next).EpisodeLabel(),
                 L"",
+                false,
             };
         }
 
@@ -167,20 +171,24 @@ namespace HaloDesktop::Playback
 
         auto const& video = *payload->Video;
         auto const episodeLabel = EpisodeLabel(video);
+        auto const title = winrt::hstring{ NextEpisodeTitle(
+            std::wstring{ video.Title }, std::wstring{ request.ShowName() }, std::wstring{ request.Title() }) };
         auto const sources = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
             request.MediaType(),
             request.MetaId(),
             video.Id,
             request.ItemId(),
-            video.Title,
+            title,
             request.ShowName(),
             episodeLabel,
             request.Poster());
 
         // The stream this lookup may have returned is deliberately dropped. It
         // would be minutes to an hour old by the time anyone advanced, and addon
-        // URLs are usually signed with a much shorter life than that.
-        co_return UpNextResult{ sources, nullptr, video.Title, episodeLabel, video.Thumbnail.value_or(L"") };
+        // URLs are usually signed with a much shorter life than that. Whether
+        // there was one is kept: it decides what the end of this episode leads to.
+        auto const hasStream = payload->Stream.has_value() && !payload->Stream->Url.empty();
+        co_return UpNextResult{ sources, nullptr, title, episodeLabel, video.Thumbnail.value_or(L""), hasStream };
     }
 
     concurrency::task<winrt::HaloDesktop::PlaybackRequest> UpNextResolver::ResolveNextPlaybackAsync(

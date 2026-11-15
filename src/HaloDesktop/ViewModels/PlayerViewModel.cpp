@@ -15,6 +15,7 @@
 
 #include "Shell/WindowPresentationService.h"
 #include "Playback/PlaybackPolicy.h"
+#include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
 #include "ViewModels/QualityMedalProjection.h"
@@ -92,6 +93,7 @@ namespace winrt::HaloDesktop::implementation
             Raise(property);
         }
         RaisePreviewMetrics();
+        RaiseTrackControls();
     }
     SubtitleAppearanceViewModel::~SubtitleAppearanceViewModel()
     {
@@ -193,6 +195,7 @@ namespace winrt::HaloDesktop::implementation
         m_trackStyling = value;
         m_settings->SubtitleTrackStyling(value);
         Raise(L"TrackStyling");
+        RaiseTrackControls();
         Apply();
     }
     // Long enough to wrap in the panel, so the preview shows what a real two-line caption
@@ -216,6 +219,42 @@ namespace winrt::HaloDesktop::implementation
     double SubtitleAppearanceViewModel::PreviewShadowOffset() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewShadowOffset(m_size); }
     Microsoft::UI::Xaml::Visibility SubtitleAppearanceViewModel::PreviewOutlineVisibility() const noexcept { return m_outlineIndex > 0 ? Visible : Collapsed; }
     Microsoft::UI::Xaml::Visibility SubtitleAppearanceViewModel::PreviewShadowVisibility() const noexcept { return m_shadow ? Visible : Collapsed; }
+    ::HaloDesktop::Playback::SubtitleControlAvailability SubtitleAppearanceViewModel::Controls() const noexcept
+    {
+        return ::HaloDesktop::Playback::SubtitleControlsFor(m_trackFormat, m_trackStyling);
+    }
+    bool SubtitleAppearanceViewModel::LooksEnabled() const noexcept { return Controls().Looks; }
+    double SubtitleAppearanceViewModel::LooksOpacity() const noexcept
+    {
+        return Controls().Looks ? 1.0 : ::HaloDesktop::Playback::DisabledSubtitleControlOpacity;
+    }
+    bool SubtitleAppearanceViewModel::TrackStylingEnabled() const noexcept { return Controls().TrackStyling; }
+    double SubtitleAppearanceViewModel::TrackStylingOpacity() const noexcept
+    {
+        return Controls().TrackStyling ? 1.0 : ::HaloDesktop::Playback::DisabledSubtitleControlOpacity;
+    }
+    winrt::hstring SubtitleAppearanceViewModel::TrackStylingNote() const
+    {
+        return winrt::hstring{ ::HaloDesktop::Playback::TrackStylingNote(m_trackFormat, m_trackStyling) };
+    }
+    winrt::hstring SubtitleAppearanceViewModel::SizeNote() const
+    {
+        return winrt::hstring{ ::HaloDesktop::Playback::SubtitleSizeNote(m_trackFormat) };
+    }
+    void SubtitleAppearanceViewModel::SetTrackFormat(::HaloDesktop::Playback::SubtitleFormat format)
+    {
+        if (format == m_trackFormat) return;
+        m_trackFormat = format;
+        RaiseTrackControls();
+    }
+    void SubtitleAppearanceViewModel::RaiseTrackControls()
+    {
+        for (auto const property : { L"LooksEnabled", L"LooksOpacity", L"TrackStylingEnabled",
+                                     L"TrackStylingOpacity", L"TrackStylingNote", L"SizeNote" })
+        {
+            Raise(property);
+        }
+    }
     void SubtitleAppearanceViewModel::RaisePreviewMetrics()
     {
         for (auto const property : { L"PreviewFontSize", L"PreviewOutlineOffset",
@@ -240,6 +279,7 @@ namespace winrt::HaloDesktop::implementation
 
     PlayerViewModel::PlayerViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_engine(services.Playback),
+          m_playbackPreferences(services.PlaybackPreferences),
           m_windowPresentation(services.WindowPresentation), m_state(services.Playback->State()),
           m_audioTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_subtitleTracks(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),m_addonSubtitles(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -329,6 +369,11 @@ namespace winrt::HaloDesktop::implementation
         try
         {
             m_engine->SetSpeed(1.0);
+            // Framing is kept per device, as the reference keeps `fillPicture`.
+            if (m_playbackPreferences)
+            {
+                m_engine->SetVideoFit(::HaloDesktop::Playback::VideoFitForPreference(m_playbackPreferences->FillPicture()));
+            }
             m_engine->Start();
             SynchronizeEngine();
             RestartHideTimer();
@@ -677,10 +722,25 @@ namespace winrt::HaloDesktop::implementation
         m_playNextHandler = std::move(handler);
         if (!HasUpNext() && m_upNextOpen)
         {
-            CancelUpNext();
+            DismissUpNext();
         }
         Raise(L"UpNextAvailableVisibility");
     }
+    bool PlayerViewModel::IsSeekable() const noexcept
+    {
+        return ::HaloDesktop::Playback::IsSeekableDuration(m_state.DurationSeconds);
+    }
+    Microsoft::UI::Xaml::Visibility PlayerViewModel::AddonSubtitlesUnavailableVisibility() const noexcept
+    {
+        return m_playingDownload ? Visible : Collapsed;
+    }
+    void PlayerViewModel::SetPlayingDownload(bool download)
+    {
+        if (m_playingDownload == download) return;
+        m_playingDownload = download;
+        Raise(L"AddonSubtitlesUnavailableVisibility");
+    }
+    void PlayerViewModel::SetEndCancelHandler(std::function<void()> handler){m_endCancelHandler=std::move(handler);}
     void PlayerViewModel::SetCloseRequestedHandler(std::function<void()> handler){m_closeRequestedHandler=std::move(handler);}
     void PlayerViewModel::SetSubtitleTrackHandler(std::function<void(std::int64_t)>handler){m_subtitleTrackHandler=std::move(handler);}
     void PlayerViewModel::SetSubtitlesOffHandler(std::function<void()>handler){m_subtitlesOffHandler=std::move(handler);}
@@ -726,7 +786,8 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::BeginScrub()
     {
-        if (m_scrubbing)
+        // Until the file has a length the bar has no scale, so it takes no input.
+        if (m_scrubbing || !IsSeekable())
         {
             return;
         }
@@ -769,6 +830,18 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"PositionText");
         NotifyUserActivity();
     }
+    void PlayerViewModel::CancelScrub()
+    {
+        if (!m_scrubbing)
+        {
+            return;
+        }
+        m_scrubbing = false;
+        ApplyBufferingState();
+        Raise(L"Position");
+        Raise(L"PositionText");
+        NotifyUserActivity();
+    }
     void PlayerViewModel::SeekRelative(double seconds)
     {
         m_engine->SeekRelative(seconds);
@@ -793,7 +866,7 @@ namespace winrt::HaloDesktop::implementation
         m_panelIndex = m_panelIndex == index ? -1 : index;
         if (m_panelIndex >= 0)
         {
-            CancelUpNext();
+            DismissUpNext();
         }
         RaisePanelState();
         NotifyUserActivity();
@@ -876,7 +949,7 @@ namespace winrt::HaloDesktop::implementation
         }
         if (m_upNextOpen)
         {
-            CancelUpNext();
+            DismissUpNext();
             return;
         }
         m_panelIndex = -1;
@@ -887,6 +960,23 @@ namespace winrt::HaloDesktop::implementation
         NotifyUserActivity();
     }
     void PlayerViewModel::CancelUpNext()
+    {
+        if (!m_upNextOpen || m_upNextClaimed)
+        {
+            return;
+        }
+        auto const endReached = m_state.EndReason == ::HaloDesktop::Playback::PlaybackEndReason::Eof;
+        DismissUpNext();
+        // At the real end of the file there is nothing left to watch here, so the
+        // cancel leaves the player, as the reference's upNextCancelAction does.
+        if (::HaloDesktop::Playback::ResolveUpNextCancel(endReached) == ::HaloDesktop::Playback::UpNextCancelAction::Exit
+            && m_endCancelHandler)
+        {
+            auto const handler = m_endCancelHandler;
+            handler();
+        }
+    }
+    void PlayerViewModel::DismissUpNext()
     {
         if (!m_upNextOpen || m_upNextClaimed)
         {
@@ -929,8 +1019,20 @@ namespace winrt::HaloDesktop::implementation
     }
     void PlayerViewModel::ToggleVideoFit()
     {
-        using ::HaloDesktop::Playback::VideoFitMode;
-        m_engine->SetVideoFit(IsVideoFilled() ? VideoFitMode::Fit : VideoFitMode::Fill);
+        auto const fill = !IsVideoFilled();
+        m_engine->SetVideoFit(::HaloDesktop::Playback::VideoFitForPreference(fill));
+        // Kept for the next file and the next session. A preference that cannot be
+        // written leaves this file framed as asked.
+        if (m_playbackPreferences)
+        {
+            try
+            {
+                m_playbackPreferences->FillPicture(fill);
+            }
+            catch (...)
+            {
+            }
+        }
         // The engine notification is what refreshes the icon; this only keeps the
         // OSD from fading out from under the press that caused it.
         NotifyUserActivity();
@@ -984,6 +1086,11 @@ namespace winrt::HaloDesktop::implementation
         auto const tracksChanged = nextState.Tracks != m_state.Tracks;
         auto const videoChanged = nextState.Video != m_state.Video;
         auto const fileChanged = nextState.FileSerial != m_state.FileSerial;
+        auto const endCleared = m_state.EndReason == ::HaloDesktop::Playback::PlaybackEndReason::Eof
+            && nextState.EndReason == ::HaloDesktop::Playback::PlaybackEndReason::None
+            && nextState.FileSerial == m_state.FileSerial;
+        auto const seekableChanged = ::HaloDesktop::Playback::IsSeekableDuration(nextState.DurationSeconds)
+            != ::HaloDesktop::Playback::IsSeekableDuration(m_state.DurationSeconds);
         m_state = std::move(nextState);
         if (fileChanged && m_scrubPreview)
         {
@@ -992,6 +1099,31 @@ namespace winrt::HaloDesktop::implementation
         if (tracksChanged)
         {
             RebuildTracks();
+            auto const selected = std::find_if(m_state.Tracks.begin(), m_state.Tracks.end(), [](auto const& track)
+            {
+                return track.Type == ::HaloDesktop::Playback::TrackType::Subtitle && track.Selected;
+            });
+            if (m_subtitleAppearance)
+            {
+                winrt::get_self<SubtitleAppearanceViewModel>(m_subtitleAppearance)->SetTrackFormat(
+                    selected == m_state.Tracks.end()
+                        ? ::HaloDesktop::Playback::SubtitleFormat::Unknown
+                        : ::HaloDesktop::Playback::SubtitleFormatOf(selected->Codec));
+            }
+        }
+        // A seek back from the end clears the end, so a countdown that was running
+        // for it stops; reaching the end again starts it again.
+        if (endCleared && m_upNextCountdown)
+        {
+            StopUpNextTimer();
+            m_upNextCountdown = false;
+            m_upNextOpen = false;
+            m_upNextRemaining = ::HaloDesktop::Playback::UpNextCountdownSeconds;
+            RaisePanelState();
+        }
+        if (seekableChanged)
+        {
+            Raise(L"IsSeekable");
         }
         if (videoChanged)
         {

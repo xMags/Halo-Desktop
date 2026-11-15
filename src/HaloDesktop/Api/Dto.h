@@ -129,8 +129,8 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> Overview;
         std::optional<std::int32_t> Season;
         std::optional<std::int32_t> Episode;
-        // False when the addon sent neither `title` nor `name`, so Title holds
-        // the generic "Episode" and a caller may prefer the show's name.
+        // False when the addon sent neither `title` nor `name`; Title is then
+        // empty and each reader picks its own fallback.
         bool HasTitle{};
     };
 

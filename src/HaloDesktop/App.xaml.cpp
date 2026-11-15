@@ -35,8 +35,10 @@
 #include "Services/SessionService.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/SourceService.h"
+#include "Services/WatchOutbox.h"
 #include "Services/WatchStateService.h"
 #include "Services/ThemeService.h"
+#include "Services/Downloads/DownloadTypes.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
 #include "Shell/WindowPresentationService.h"
@@ -125,8 +127,13 @@ namespace winrt::HaloDesktop::implementation
         m_services.Addons = addonService;
         auto libraryService = std::make_shared<::HaloDesktop::Services::LibraryService>(m_apiClient);
         m_services.Library = libraryService;
-        auto watchStateService = std::make_shared<::HaloDesktop::Services::WatchStateService>(m_apiClient);
+        auto watchStateService = std::make_shared<::HaloDesktop::Services::WatchStateService>(
+            m_apiClient,
+            std::make_shared<::HaloDesktop::Services::WatchOutbox>(m_storagePaths->LocalState()));
         m_services.WatchState = watchStateService;
+        // Progress left unsent (offline, or a report the window closed on) goes out
+        // again as soon as the network returns.
+        watchStateService->StartNetworkWatch(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         // Owned by the catalog service alone: nothing else needs a continue still,
         // and the cache is only useful next to the shelf that reads it.
         auto continueArtworkService = std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(
@@ -211,7 +218,26 @@ namespace winrt::HaloDesktop::implementation
                 queryCache->Clear();
                 if (auto const addons = weakAddons.lock()) addons->OnAccountChanged();
                 if (auto const library = weakLibrary.lock()) library->OnAccountChanged();
-                if (auto const watchState = weakWatchState.lock()) watchState->OnAccountChanged();
+                if (auto const watchState = weakWatchState.lock())
+                {
+                    // The unsent progress belongs to one account on one server; the
+                    // key names both, so a change of either clears it before
+                    // anything can be sent. Empty while nobody is signed in.
+                    std::wstring accountKey;
+                    if (auto const session = weakSession.lock(); session && session->IsSignedIn() && !session->UserId().empty())
+                    {
+                        try
+                        {
+                            accountKey = ::HaloDesktop::Services::Downloads::MakeAccountKey(
+                                std::wstring{ session->ServerUrl() }, std::wstring{ session->UserId() });
+                        }
+                        catch (...)
+                        {
+                            accountKey.clear();
+                        }
+                    }
+                    watchState->OnAccountChanged(std::move(accountKey));
+                }
                 if (auto const catalog = weakCatalog.lock()) catalog->OnAccountChanged();
                 if (auto const search = weakSearch.lock()) search->OnAccountChanged();
                 if (auto const metadata = weakMetadata.lock()) metadata->OnAccountChanged();

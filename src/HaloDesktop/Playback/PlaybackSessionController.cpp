@@ -5,12 +5,15 @@
 #include "Playback/PlaybackPolicy.h"
 #include "Playback/PlaybackSourceResolver.h"
 #include "Playback/WatchReporter.h"
+#include "Security/ProtectedHttpHeaders.h"
+#include "Services/LanguagePolicy.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/DiscordPresence.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/WatchStateService.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <utility>
@@ -31,6 +34,11 @@ namespace HaloDesktop::Playback
         auto const implementation=winrt::get_self<winrt::HaloDesktop::implementation::PlaybackRequest>(request);
         source.Headers.reserve(implementation->RequestHeaders().size());
         for(auto const&[name,value]:implementation->RequestHeaders())source.Headers.push_back({std::wstring(name.c_str()),std::wstring(value.c_str())});
+        // Dropped one by one rather than refused as a set, so a single bad header
+        // never stops the stream; the redirect probe, the scrub preview and the
+        // engine all receive the same usable set.
+        source.Headers=Security::UsableProtectedHttpHeaders(source.Headers);
+        if(auto const preferred=m_settings->PreferredAudioLanguage();preferred&&!preferred->empty())source.PreferredAudioLanguages=Services::LanguageCodeVariants(std::wstring_view{*preferred});
         if(!source.Headers.empty())
         {
             // Settle the redirect chain before the engine sees it, so credentials
@@ -46,6 +54,12 @@ namespace HaloDesktop::Playback
         m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel()),std::wstring(request.MediaType()),std::wstring(request.Poster())});
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
+        // Between reports the position is kept on this PC only, so closing the
+        // window mid-playback (when nothing gets to run) costs two seconds at most;
+        // the next launch sends it. The reporter skips a position that has not moved.
+        m_stageTimer=dispatcher.CreateTimer();m_stageTimer.Interval(std::chrono::seconds(2));m_stageTimer.IsRepeating(true);
+        m_stageTickRevoker=m_stageTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->StageNow();});
+        m_stageTimer.Start();
         m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
         m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;
         RefreshPreferences();
@@ -69,6 +83,8 @@ namespace HaloDesktop::Playback
         ++m_startVersion;m_started=false;
         try{if(m_reportTimer)m_reportTimer.Stop();}catch(...){}
         m_reportTickRevoker.revoke();m_reportTimer=nullptr;
+        try{if(m_stageTimer)m_stageTimer.Stop();}catch(...){}
+        m_stageTickRevoker.revoke();m_stageTimer=nullptr;
         if(m_engineToken){m_engine->RemoveChangedHandler(m_engineToken);m_engineToken=0;}
         m_reporter.reset();m_reportTask.reset();m_prior.reset();m_fileReady=false;
         m_scrubPreview->Close();
@@ -116,30 +132,55 @@ namespace HaloDesktop::Playback
         });
     }
 
+    void PlaybackSessionController::StageNow()noexcept
+    {
+        if(!m_reporter)return;
+        try{m_reporter->Stage(m_engine->State());}catch(...){}
+    }
+
     concurrency::task<void> PlaybackSessionController::ReportWithTimeoutAsync(bool sendNewReport)
     {
         if(!m_reporter)co_return;
         concurrency::task_completion_event<void>completion;
         if (sendNewReport)
         {
+            // The report stages its row before it sends, so the position is
+            // already on its way to disk before anything below is awaited.
             m_reportTask = std::make_shared<concurrency::task<void>>(
                 m_reporter->ReportAsync(m_engine->State()));
         }
+        // The window's final report waits for two things, under the same two
+        // seconds: the send, and the staged rows reaching the disk, so a send that
+        // does not make it in time still goes out at the next launch.
+        auto const outstanding=std::make_shared<std::atomic_int>(2);
+        auto const settleOne=[completion,outstanding](){if(outstanding->fetch_sub(1)==1)completion.set();};
         auto task = m_reportTask;
         if (!task)
         {
-            completion.set();
+            settleOne();
         }
         else
         {
             m_reportTask = task;
             auto reporter = m_reporter;
-            task->then([completion, reporter](concurrency::task<void>completed)mutable
+            task->then([settleOne, reporter](concurrency::task<void>completed)mutable
             {
                 static_cast<void>(reporter);
                 try{completed.get();}catch(...){ }
-                completion.set();
+                settleOne();
             });
+        }
+        try
+        {
+            m_watchState->FlushOutboxAsync().then([settleOne](concurrency::task<void>written)mutable
+            {
+                try{written.get();}catch(...){}
+                settleOne();
+            });
+        }
+        catch(...)
+        {
+            settleOne();
         }
         auto const dispatcher=winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();if(!dispatcher)co_return;
         auto timer=dispatcher.CreateTimer();timer.Interval(std::chrono::seconds(2));timer.IsRepeating(false);timer.Tick([completion](auto const&,auto const&)mutable{completion.set();});timer.Start();
@@ -157,8 +198,15 @@ namespace HaloDesktop::Playback
     void PlaybackSessionController::ApplyResume()
     {
         if(!m_fileReady||!m_prior)return;auto const state=m_engine->State();auto const withinWindow=std::chrono::steady_clock::now()<=m_resumeDeadline;
-        if(ShouldApplyResume(m_preferences->ResumeEnabled(),m_prior->Watched,m_prior->PositionSec,m_engine->DurationNow(),state.PositionSeconds,state.SeekSerial,m_initialSeekSerial,withinWindow))m_engine->SeekAbsolute(static_cast<double>(m_prior->PositionSec));
-        if(m_watchLoadFinished||!withinWindow||m_prior->Watched||m_prior->PositionSec<=30)m_prior.reset();
+        auto const target=ResumePosition(SavedPlace{.PositionSeconds=m_prior->PositionSec,.Watched=m_prior->Watched,.Removed=m_prior->RemovedAt.has_value()},m_engine->DurationNow());
+        if(target&&m_preferences->ResumeEnabled()&&CanApplyResumeNow(state.PositionSeconds,state.SeekSerial,m_initialSeekSerial,withinWindow))
+        {
+            m_engine->SeekAbsolute(*target);
+            // Applied once per file: a later answer from the history must not seek again.
+            m_prior.reset();
+            return;
+        }
+        if(m_watchLoadFinished||!withinWindow||!target)m_prior.reset();
     }
 
     void PlaybackSessionController::ApplyAudioPreference()

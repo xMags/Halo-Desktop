@@ -110,6 +110,8 @@ namespace HaloDesktop::Playback
         m_appliedSerial=0;
         m_appliedPreferenceRevision=0;
         m_discoveryComplete=false;
+        // A refusal from before this file is not this file's error.
+        m_seenSubtitleFailureSerial=m_engine->State().SubtitleCommandFailureSerial;
         ApplyStyle();
         SweepExternalTracks();
         CleanupTemporaryFiles();
@@ -143,7 +145,7 @@ namespace HaloDesktop::Playback
                 {
                     headers.push_back({std::wstring{name.c_str()},std::wstring{value.c_str()}});
                 }
-                auto computed=co_await m_api->ComputeVideoHashAsync(request.Url(),std::move(headers));
+                auto computed=co_await m_api->ComputeVideoHashAsync(request.Url(),Security::UsableProtectedHttpHeaders(headers));
                 hash=computed.Hash;
                 videoSize=computed.Size;
             }
@@ -397,6 +399,13 @@ namespace HaloDesktop::Playback
         }
 
         auto const state=m_engine->State();
+        // The engine runs subtitle commands off the UI thread, so one it refuses
+        // is reported here, later than the call, rather than thrown from it.
+        if(state.SubtitleCommandFailureSerial!=m_seenSubtitleFailureSerial)
+        {
+            m_seenSubtitleFailureSerial=state.SubtitleCommandFailureSerial;
+            if(m_request)NotifyError();
+        }
         if(!m_request||state.FileSerial==0)return;
         if(state.FileSerial!=m_fileSerial)
         {
@@ -447,7 +456,10 @@ namespace HaloDesktop::Playback
 
             if(resolution==SubtitleIntentResolution::Disable)
             {
-                disable();
+                // Downloading with a subtitle is a newer choice than an "Off" made
+                // before, as in the reference: the download's own file is shown.
+                if(m_localSubtitlePath)addSidecar();
+                else disable();
             }
             else if(resolution==SubtitleIntentResolution::ExactOnly)
             {

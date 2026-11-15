@@ -46,4 +46,14 @@ namespace HaloDesktop::Services
     {
         m_store->DiscordPresence(value);
     }
+
+    bool PlaybackPreferences::FillPicture() const noexcept
+    {
+        return m_store->FillPicture();
+    }
+
+    void PlaybackPreferences::FillPicture(bool value)
+    {
+        m_store->FillPicture(value);
+    }
 }

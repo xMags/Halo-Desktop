@@ -173,22 +173,139 @@ namespace HaloDesktop::Playback
         return currentSelectionSerial==initialSelectionSerial||currentSelectionSerial==automaticSelectionSerial;
     }
 
-    bool ShouldApplyResume(
-        bool resumeEnabled,
-        bool watched,
-        double positionSeconds,
-        double durationSeconds,
+    std::optional<double> ResumePosition(std::optional<SavedPlace> const& saved, double durationSeconds) noexcept
+    {
+        // A removal from the history is a removal of the place too.
+        if (!saved || saved->Watched || saved->Removed) return std::nullopt;
+        auto const position = saved->PositionSeconds;
+        if (!std::isfinite(position) || position <= 0.0) return std::nullopt;
+        if (std::isfinite(durationSeconds) && durationSeconds > 0.0 && position >= durationSeconds) return std::nullopt;
+        return position;
+    }
+
+    bool CanApplyResumeNow(
         double currentPositionSeconds,
         std::uint64_t currentSeekSerial,
         std::uint64_t initialSeekSerial,
         bool withinStartupWindow) noexcept
     {
-        if (!resumeEnabled || watched || positionSeconds <= 30 || durationSeconds <= 0.0
-            || currentPositionSeconds > 5.0 || currentSeekSerial != initialSeekSerial || !withinStartupWindow)
+        return withinStartupWindow && currentSeekSerial == initialSeekSerial && currentPositionSeconds <= 5.0;
+    }
+
+    std::wstring TrackDisplayTitle(std::wstring const& title, std::wstring const& language, std::int64_t id)
+    {
+        // A blank title is no title: some files name their tracks with empty strings.
+        auto const first = std::find_if_not(title.begin(), title.end(), [](wchar_t character)
         {
+            return std::iswspace(character) != 0;
+        });
+        auto const last = std::find_if_not(title.rbegin(), title.rend(), [](wchar_t character)
+        {
+            return std::iswspace(character) != 0;
+        }).base();
+        if (first < last) return std::wstring(first, last);
+        if (!language.empty())
+        {
+            auto label = LanguageDisplayName(language);
+            if (!label.empty()) return label;
+        }
+        return L"Track " + std::to_wstring(id);
+    }
+
+    SubtitleFormat SubtitleFormatOf(std::wstring const& codec)
+    {
+        std::wstring lower;
+        lower.reserve(codec.size());
+        for (auto const character : codec)
+        {
+            lower.push_back(character >= L'A' && character <= L'Z' ? static_cast<wchar_t>(character - L'A' + L'a') : character);
+        }
+        if (lower == L"ass" || lower == L"ssa" || lower == L"ass-text") return SubtitleFormat::Styled;
+        if (lower == L"subrip" || lower == L"srt" || lower == L"webvtt" || lower == L"vtt" || lower == L"text")
+        {
+            return SubtitleFormat::Text;
+        }
+        if (lower == L"hdmv_pgs_subtitle" || lower == L"pgssub" || lower == L"pgs") return SubtitleFormat::Bitmap;
+        return SubtitleFormat::Unknown;
+    }
+
+    SubtitleControlAvailability SubtitleControlsFor(SubtitleFormat format, bool keepTrackStyling) noexcept
+    {
+        auto const bitmap = format == SubtitleFormat::Bitmap;
+        return {
+            .TrackStyling = format != SubtitleFormat::Bitmap && format != SubtitleFormat::Text,
+            .Looks = !bitmap && !(format == SubtitleFormat::Styled && keepTrackStyling),
+        };
+    }
+
+    std::wstring TrackStylingNote(SubtitleFormat format, bool keepTrackStyling)
+    {
+        switch (format)
+        {
+        case SubtitleFormat::Styled:
+            return keepTrackStyling
+                ? L"Keeping the track's own fonts and positions; only size applies."
+                : L"Overriding the track with the settings here.";
+        case SubtitleFormat::Text:
+            return L"Plain text track: the settings here always apply.";
+        case SubtitleFormat::Bitmap:
+            return L"PGS is rendered images: font, outline and shadow do not apply.";
+        case SubtitleFormat::Unknown:
+        default:
+            return L"On, a styled track keeps its own look. A plain text track always follows the settings here.";
+        }
+    }
+
+    std::wstring SubtitleSizeNote(SubtitleFormat format)
+    {
+        return format == SubtitleFormat::Bitmap ? L"Bitmap track, scaled but not restyled" : L"mpv sub-scale, live";
+    }
+
+    bool IsSeekableDuration(double durationSeconds) noexcept
+    {
+        return std::isfinite(durationSeconds) && durationSeconds > 0.0;
+    }
+
+    EndOfVideoAction ResolveEndOfVideo(EndOfVideoContext const& context) noexcept
+    {
+        if (context.Autoplay && context.PlayingDownload && context.NextDownloadReady) return EndOfVideoAction::PlayNextDownload;
+        if (context.Autoplay && context.NextEpisodeKnown && context.NextHasStream) return EndOfVideoAction::ShowUpNext;
+        if (context.Autoplay && context.NextEpisodeKnown) return EndOfVideoAction::OpenNextSources;
+        return EndOfVideoAction::ClosePlayer;
+    }
+
+    UpNextCancelAction ResolveUpNextCancel(bool endReached) noexcept
+    {
+        return endReached ? UpNextCancelAction::Exit : UpNextCancelAction::Dismiss;
+    }
+
+    std::wstring NextEpisodeTitle(std::wstring const& ownTitle, std::wstring const& showName, std::wstring const& currentTitle)
+    {
+        if (!ownTitle.empty()) return ownTitle;
+        if (!showName.empty()) return showName;
+        return currentTitle;
+    }
+
+    VideoFitMode VideoFitForPreference(bool fillPicture) noexcept
+    {
+        return fillPicture ? VideoFitMode::Fill : VideoFitMode::Fit;
+    }
+
+    bool AcceptEndOfFileSignal(bool& handled, EndOfFileSignal signal) noexcept
+    {
+        switch (signal)
+        {
+        case EndOfFileSignal::EofReached:
+        case EndOfFileSignal::EndFileEof:
+            if (handled) return false;
+            handled = true;
+            return true;
+        case EndOfFileSignal::EofCleared:
+        case EndOfFileSignal::FileLoaded:
+        default:
+            handled = false;
             return false;
         }
-        return positionSeconds / durationSeconds < 0.95;
     }
 
     bool ResolveBufferingState(

@@ -369,6 +369,9 @@
     <ClInclude Include="Views\SourceDetailsPanel.xaml.h"><DependentUpon>SourceDetailsPanel.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\SourceSaveButton.xaml.h"><DependentUpon>SourceSaveButton.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\SourcesSheetFooter.xaml.h"><DependentUpon>SourcesSheetFooter.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Services\WatchOutboxPolicy.h" />
+    <ClInclude Include="Services\WatchOutbox.h" />
+    <ClInclude Include="Playback\MpvCallQueue.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -707,6 +710,13 @@
     <ClCompile Include="Views\SourceDetailsPanel.xaml.cpp"><DependentUpon>SourceDetailsPanel.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Views\SourceSaveButton.xaml.cpp"><DependentUpon>SourceSaveButton.xaml</DependentUpon></ClCompile>
     <ClCompile Include="Views\SourcesSheetFooter.xaml.cpp"><DependentUpon>SourcesSheetFooter.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Services\WatchOutboxPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\WatchOutbox.cpp" />
+    <ClCompile Include="Playback\MpvCallQueue.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

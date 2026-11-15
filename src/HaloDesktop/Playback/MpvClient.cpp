@@ -173,15 +173,7 @@ namespace
                     identity=decoded->first;title=decoded->second;
                 }
             }
-            if (title.empty())
-            {
-                title = HaloDesktop::Playback::LanguageDisplayName(language);
-            }
-            if (title.empty())
-            {
-                title = (trackType == HaloDesktop::Playback::TrackType::Audio ? L"Audio " : L"Subtitle ") +
-                        std::to_wstring(*id);
-            }
+            title = HaloDesktop::Playback::TrackDisplayTitle(title, language, *id);
 
             auto note = L"Track " + std::to_wstring(*id);
             if (!language.empty() && language != title)
@@ -252,6 +244,10 @@ namespace
         {
             update.Buffering = *static_cast<int const*>(property->data) != 0;
         }
+        else if (name == "eof-reached" && property->format == MPV_FORMAT_FLAG)
+        {
+            update.EofReached = *static_cast<int const*>(property->data) != 0;
+        }
         else if (name == "track-list" && property->format == MPV_FORMAT_NODE)
         {
             update.Tracks = ReadTracks(*static_cast<mpv_node const*>(property->data));
@@ -292,7 +288,11 @@ namespace
             if (!end) return std::nullopt;
             if (end->reason == MPV_END_FILE_REASON_EOF) update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Eof;
             else if (end->reason == MPV_END_FILE_REASON_ERROR) update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Error;
-            else update.EndReason = HaloDesktop::Playback::PlaybackEndReason::Stopped;
+            // Every other reason is this app's own doing: under keep-open a file
+            // that played out is still loaded, so the next loadfile (Up Next, a
+            // replay) stops it, and that stop lands after the new file was opened.
+            // Taken as an end it would mark the new file paused and ended.
+            else return std::nullopt;
             return update;
         }
         default:
@@ -358,9 +358,11 @@ namespace HaloDesktop::Playback
                 handle,
                 "hwdec",
                 hardwareDecoding ? "auto-safe" : "no"));
-            // keep-open suppresses the EOF end-file event on the retained last
-            // frame. Up-next is deliberately driven only by that real event.
             CheckMpv("set idle", mpv_set_option_string(handle, "idle", "yes"));
+            // As the reference player: a file that plays out pauses on its last
+            // frame and raises eof-reached instead of unloading, so the picture
+            // stays up under Up Next and a seek back can play the end again.
+            CheckMpv("set keep-open", mpv_set_option_string(handle, "keep-open", "yes"));
             CheckMpv("disable input bindings", mpv_set_option_string(handle, "input-default-bindings", "no"));
             CheckMpv("disable video keyboard", mpv_set_option_string(handle, "input-vo-keyboard", "no"));
             CheckMpv("disable cursor input", mpv_set_option_string(handle, "input-cursor", "no"));
@@ -385,6 +387,7 @@ namespace HaloDesktop::Playback
             CheckMpv("observe paused-for-cache", mpv_observe_property(handle, 0, "paused-for-cache", MPV_FORMAT_FLAG));
             CheckMpv("observe display-swapchain",
                      mpv_observe_property(handle, 0, "display-swapchain", MPV_FORMAT_INT64));
+            CheckMpv("observe eof-reached", mpv_observe_property(handle, 0, "eof-reached", MPV_FORMAT_FLAG));
             return handle;
         }
         catch (...)
@@ -394,80 +397,241 @@ namespace HaloDesktop::Playback
         }
     }
 
-    void MpvClient::Open(PlaybackSource const& source)
+    namespace
     {
-        LoadMpvSource(m_handle,source);
+        // Each runs on the command worker, on the handle it was given.
+        void SetFlag(mpv_handle* handle, char const* name, bool value)
+        {
+            int flag = value ? 1 : 0;
+            CheckMpv("set flag property", mpv_set_property(handle, name, MPV_FORMAT_FLAG, &flag));
+        }
+
+        void SetDouble(mpv_handle* handle, char const* name, double value)
+        {
+            CheckMpv("set double property", mpv_set_property(handle, name, MPV_FORMAT_DOUBLE, &value));
+        }
+
+        void SetInt64(mpv_handle* handle, char const* name, std::int64_t value)
+        {
+            CheckMpv("set integer property", mpv_set_property(handle, name, MPV_FORMAT_INT64, &value));
+        }
+
+        void SetString(mpv_handle* handle, char const* name, std::string const& value)
+        {
+            CheckMpv("set string property", mpv_set_property_string(handle, name, value.c_str()));
+        }
+    }
+
+    std::uint64_t MpvClient::Submit(MpvCommandKind kind, std::function<void(mpv_handle*)> call)
+    {
+        auto const generation = ++m_nextGeneration;
+        auto* const handle = m_handle;
+        if (!handle || m_stopping.load())
+        {
+            return generation;
+        }
+        auto const alive = m_dispatchAlive;
+        auto const dispatcher = m_dispatcher;
+        auto const handler = m_updateHandler;
+        // Runs on the command worker and touches only what it captured. The
+        // handle stays valid for it: Shutdown joins the worker before destroying
+        // the handle. A failure is handed back to the UI thread as an update, and
+        // only while this client is alive.
+        auto job = [handle, call = std::move(call), kind, generation, alive, dispatcher, handler]()
+        {
+            try
+            {
+                call(handle);
+                return;
+            }
+            catch (...)
+            {
+            }
+            if (!alive->load())
+            {
+                return;
+            }
+            PlaybackUpdate update;
+            update.FailedCommand = MpvCommandFailure{ kind, generation };
+            try
+            {
+                static_cast<void>(dispatcher.TryEnqueue([alive, handler, update = std::move(update)]() mutable
+                {
+                    if (alive->load())
+                    {
+                        try { handler(std::move(update)); } catch (...) {}
+                    }
+                }));
+            }
+            catch (...)
+            {
+            }
+        };
+        static_cast<void>(m_calls.Enqueue(std::move(job)));
+        return generation;
+    }
+
+    std::uint64_t MpvClient::Open(PlaybackSource const& source, TrackChoice trackChoice)
+    {
+        // Checked here, on the caller's thread, so a source that cannot be handed
+        // to mpv at all still fails its caller at once, as it did when the load
+        // itself ran on this thread.
+        static_cast<void>(EncodeMpvUtf8(source.Location));
+        static_cast<void>(EncodeMpvUtf8(SerializePlaybackHeaders(source.Headers)));
+        std::optional<std::string> languages;
+        if (trackChoice == TrackChoice::Automatic)
+        {
+            std::wstring joined;
+            for (auto const& code : source.PreferredAudioLanguages)
+            {
+                if (!joined.empty()) joined.push_back(L',');
+                joined += code;
+            }
+            try
+            {
+                languages = EncodeMpvUtf8(joined);
+            }
+            catch (std::exception const&)
+            {
+                languages = std::string{};
+            }
+        }
+        return Submit(MpvCommandKind::Load, [source, languages](mpv_handle* handle)
+        {
+            if (languages)
+            {
+                // Track choices are per file. mpv keeps a chosen track number as
+                // its setting, so the number picked for the last video would
+                // select that number in this one, whatever language it is. Both go
+                // back to automatic, and mpv is told the preferred audio language
+                // so the right track plays from the first frame. Best effort, as
+                // in the reference: the session still corrects the audio track
+                // once the tracks are known.
+                static_cast<void>(mpv_set_property_string(handle, "aid", "auto"));
+                static_cast<void>(mpv_set_property_string(handle, "sid", "auto"));
+                static_cast<void>(mpv_set_property_string(handle, "alang", languages->c_str()));
+            }
+            LoadMpvSource(handle, source);
+        });
     }
 
     void MpvClient::SetPaused(bool paused)
     {
-        auto value = paused ? 1 : 0;
-        CheckMpv("set pause", mpv_set_property(m_handle, "pause", MPV_FORMAT_FLAG, &value));
+        static_cast<void>(Submit(MpvCommandKind::Other, [paused](mpv_handle* handle) { SetFlag(handle, "pause", paused); }));
     }
 
-    void MpvClient::SeekAbsolute(double seconds)
+    std::uint64_t MpvClient::SeekAbsolute(double seconds)
     {
-        Command({ "seek", std::to_string(seconds), "absolute" });
+        return Submit(MpvCommandKind::Seek, [target = std::to_string(seconds)](mpv_handle* handle)
+        {
+            RunMpvCommand(handle, { "seek", target, "absolute" });
+        });
     }
 
-    void MpvClient::SeekRelative(double seconds)
+    std::uint64_t MpvClient::SeekRelative(double seconds)
     {
-        Command({ "seek", std::to_string(seconds), "relative" });
+        return Submit(MpvCommandKind::Seek, [offset = std::to_string(seconds)](mpv_handle* handle)
+        {
+            RunMpvCommand(handle, { "seek", offset, "relative" });
+        });
     }
 
     void MpvClient::SetVolume(double volume)
     {
-        SetDoubleProperty("volume", volume);
+        static_cast<void>(Submit(MpvCommandKind::Other, [volume](mpv_handle* handle) { SetDouble(handle, "volume", volume); }));
     }
 
     void MpvClient::SetSpeed(double speed)
     {
-        SetDoubleProperty("speed", speed);
+        static_cast<void>(Submit(MpvCommandKind::Other, [speed](mpv_handle* handle) { SetDouble(handle, "speed", speed); }));
     }
 
     void MpvClient::SetAudioTrack(std::int64_t id)
     {
-        SetInt64Property("aid", id);
+        static_cast<void>(Submit(MpvCommandKind::Other, [id](mpv_handle* handle) { SetInt64(handle, "aid", id); }));
     }
 
     void MpvClient::SetSubtitleTrack(std::optional<std::int64_t> id)
     {
-        if (id)
+        static_cast<void>(Submit(MpvCommandKind::Subtitle, [id](mpv_handle* handle)
         {
-            SetInt64Property("sid", *id);
-            return;
-        }
-        CheckMpv("disable subtitles", mpv_set_property_string(m_handle, "sid", "no"));
+            if (id)
+            {
+                SetInt64(handle, "sid", *id);
+                return;
+            }
+            CheckMpv("disable subtitles", mpv_set_property_string(handle, "sid", "no"));
+        }));
     }
 
     void MpvClient::SetSubtitleDelay(double seconds)
     {
-        SetDoubleProperty("sub-delay", seconds);
+        static_cast<void>(Submit(MpvCommandKind::Other, [seconds](mpv_handle* handle) { SetDouble(handle, "sub-delay", seconds); }));
     }
 
     void MpvClient::SetAudioDelay(double seconds)
     {
-        SetDoubleProperty("audio-delay", seconds);
+        static_cast<void>(Submit(MpvCommandKind::Other, [seconds](mpv_handle* handle) { SetDouble(handle, "audio-delay", seconds); }));
     }
 
+    // A read rather than a command: answered at once by the player core, and
+    // asked for by the resume and the seek clamp in the moment they decide.
     double MpvClient::DurationSeconds() const noexcept
     {
         double value{};
         return m_handle&&mpv_get_property(m_handle,"duration",MPV_FORMAT_DOUBLE,&value)>=0?value:0.0;
     }
-    void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language){Command({"sub-add",winrt::to_string(winrt::hstring(path)),"select",winrt::to_string(winrt::hstring(EncodeExternalSubtitleTrackTitle(identity,displayTitle))),winrt::to_string(winrt::hstring(language))});}
-    void MpvClient::RemoveTrack(std::int64_t id){Command({"sub-remove",std::to_string(id)});}
+
+    void MpvClient::AddExternalSubtitle(std::wstring const&path,std::wstring const&identity,std::wstring const&displayTitle,std::wstring const&language)
+    {
+        // `sub-add` parses the whole file before it returns, which is the call
+        // most likely to take long; on the worker it no longer holds the window.
+        std::vector<std::string> arguments{
+            "sub-add",
+            winrt::to_string(winrt::hstring(path)),
+            "select",
+            winrt::to_string(winrt::hstring(EncodeExternalSubtitleTrackTitle(identity,displayTitle))),
+            winrt::to_string(winrt::hstring(language)),
+        };
+        static_cast<void>(Submit(MpvCommandKind::Subtitle, [arguments = std::move(arguments)](mpv_handle* handle)
+        {
+            RunMpvCommand(handle, arguments);
+        }));
+    }
+
+    void MpvClient::RemoveTrack(std::int64_t id)
+    {
+        static_cast<void>(Submit(MpvCommandKind::Subtitle, [track = std::to_string(id)](mpv_handle* handle)
+        {
+            RunMpvCommand(handle, { "sub-remove", track });
+        }));
+    }
+
     void MpvClient::ApplySubtitleStyle(SubtitleStyle const&style)
     {
-        SetDoubleProperty("sub-scale",style.Scale);
         // An empty face means "whatever mpv would have picked", so the property is left
         // alone rather than being set to an empty name mpv would fail to resolve.
-        if(!style.Font.empty())SetStringProperty("sub-font",style.Font);
-        SetDoubleProperty("sub-border-size",style.BorderSize);
-        SetDoubleProperty("sub-shadow-offset",style.ShadowOffset);
-        // scale is mpv's own default: a styled track keeps its presentation and only
-        // follows sub-scale. force hands the whole presentation to the options above.
-        SetStringProperty("sub-ass-override",style.KeepTrackStyling?L"scale":L"force");
+        std::optional<std::string> font;
+        if(!style.Font.empty())font=winrt::to_string(winrt::hstring(style.Font));
+        static_cast<void>(Submit(MpvCommandKind::Other, [style, font](mpv_handle* handle)
+        {
+            SetDouble(handle,"sub-scale",style.Scale);
+            if(font)SetString(handle,"sub-font",*font);
+            SetDouble(handle,"sub-border-size",style.BorderSize);
+            SetDouble(handle,"sub-shadow-offset",style.ShadowOffset);
+            // scale is mpv's own default: a styled track keeps its presentation and only
+            // follows sub-scale. force hands the whole presentation to the options above.
+            if(!style.KeepTrackStyling)
+            {
+                SetString(handle,"sub-ass-override","force");
+                return;
+            }
+            // An mpv older than `scale` (0.37) rejects it; `yes` is the nearest it knows.
+            if(mpv_set_property_string(handle,"sub-ass-override","scale")<0)
+            {
+                SetString(handle,"sub-ass-override","yes");
+            }
+        }));
     }
 
     void MpvClient::SetVideoFit(VideoFitMode mode)
@@ -476,7 +640,10 @@ namespace HaloDesktop::Playback
         // the bars alone, 1 covers the window and crops what no longer fits. libmpv
         // derives the zoom from the video and window geometry itself, so this works
         // before any frame has been decoded.
-        SetDoubleProperty("panscan", mode == VideoFitMode::Fill ? 1.0 : 0.0);
+        static_cast<void>(Submit(MpvCommandKind::Other, [mode](mpv_handle* handle)
+        {
+            SetDouble(handle, "panscan", mode == VideoFitMode::Fill ? 1.0 : 0.0);
+        }));
     }
 
     void MpvClient::SetSurfaceSize(VideoSurfaceSize size)
@@ -484,16 +651,17 @@ namespace HaloDesktop::Playback
         // Changing this option at runtime makes libmpv resize the composition
         // swapchain; there is no window for it to watch.
         //
-        // The request is queued rather than set synchronously because this runs
-        // on the UI thread for every resize event. A synchronous set waits for
-        // the player core, which was measured blocking for over a tenth of a
-        // second while the video output reconfigured, long enough to visibly
-        // stall a resize drag. libmpv copies the value and applies queued
-        // requests in order, so the final size still wins.
-        auto value = FormatSurfaceSize(size);
-        auto* raw = value.data();
-        CheckMpv("set d3d11-composition-size",
-                 mpv_set_property_async(m_handle, 0, "d3d11-composition-size", MPV_FORMAT_STRING, &raw));
+        // Still sent as an asynchronous request from the worker: a synchronous set
+        // waits for the player core, which was measured blocking for over a tenth
+        // of a second while the video output reconfigured, and that would hold up
+        // every command queued behind it. libmpv copies the value and applies
+        // queued requests in order, so the final size still wins.
+        static_cast<void>(Submit(MpvCommandKind::SurfaceSize, [value = FormatSurfaceSize(size)](mpv_handle* handle) mutable
+        {
+            auto* raw = value.data();
+            CheckMpv("set d3d11-composition-size",
+                     mpv_set_property_async(handle, 0, "d3d11-composition-size", MPV_FORMAT_STRING, &raw));
+        }));
     }
 
     void MpvClient::Shutdown() noexcept
@@ -503,7 +671,14 @@ namespace HaloDesktop::Playback
             return;
         }
 
+        // The order is the point, and nothing else is safe:
+        // 1. No update, result or failure reaches the UI from here on.
         m_dispatchAlive->store(false);
+        // 2. The command worker stops accepting calls, drops the ones not yet
+        //    started, waits for the one in progress to return and is joined. From
+        //    here nothing but this function calls into the handle.
+        m_calls.Shutdown();
+        // 3. quit, then the event thread is woken and joined, then the handle goes.
         char const* quitArguments[] = { "quit", nullptr };
         static_cast<void>(mpv_command(m_handle, quitArguments));
         // quit is asynchronous. Wake the blocking event wait even when mpv
@@ -565,27 +740,4 @@ namespace HaloDesktop::Playback
         {
         }
     }
-
-    void MpvClient::Command(std::vector<std::string> const& arguments)
-    {
-        std::vector<char const*> values;
-        values.reserve(arguments.size() + 1);
-        for (auto const& argument : arguments)
-        {
-            values.push_back(argument.c_str());
-        }
-        values.push_back(nullptr);
-        CheckMpv("mpv command", mpv_command(m_handle, values.data()));
-    }
-
-    void MpvClient::SetDoubleProperty(char const* name, double value)
-    {
-        CheckMpv("set double property", mpv_set_property(m_handle, name, MPV_FORMAT_DOUBLE, &value));
-    }
-
-    void MpvClient::SetInt64Property(char const* name, std::int64_t value)
-    {
-        CheckMpv("set integer property", mpv_set_property(m_handle, name, MPV_FORMAT_INT64, &value));
-    }
-    void MpvClient::SetStringProperty(char const*name,std::wstring const&value){CheckMpv("set string property",mpv_set_property_string(m_handle,name,winrt::to_string(winrt::hstring(value)).c_str()));}
 } // namespace HaloDesktop::Playback

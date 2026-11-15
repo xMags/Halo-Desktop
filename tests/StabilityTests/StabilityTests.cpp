@@ -26,9 +26,12 @@
 #include "HistoryRowsTests.h"
 #include "DetailPageTests.h"
 #include "SourcesSheetTests.h"
+#include "WatchOutboxTests.h"
+#include "CallQueueTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
+#include <algorithm>
 #include <cstddef>
 #include <chrono>
 #include <condition_variable>
@@ -309,6 +312,26 @@ namespace
         })"));
         Require(next.Video && !next.Stream, "an action stream was kept as the next episode's source");
 
+        // requestHeaders.test.ts at the mapper boundary: each unusable header is
+        // dropped on its own, so the stream keeps the rest and still plays.
+        auto const headered = HaloDesktop::Api::Mappers::ParseNextEpisode(Json(LR"({
+            "video": { "id": "tt1:1:2", "title": "Two" },
+            "stream": { "url": "https://cdn.test/two.mkv", "behaviorHints": { "proxyHeaders": { "request": {
+                "Referer": "https://site.test/", "Range": "bytes=0-1", "Bad Name": "x",
+                "X-Injected": "ok\r\nEvil: 1", "X-Number": 5, "Cookie": "a=1, b=2" } } } }
+        })"));
+        Require(headered.Stream.has_value(), "a stream with some unusable headers was dropped");
+        auto const& kept = headered.Stream->RequestHeaders;
+        auto const keeps = [&kept](wchar_t const* name, wchar_t const* value)
+        {
+            return std::any_of(kept.begin(), kept.end(), [name, value](auto const& header)
+            {
+                return header.first == name && header.second == value;
+            });
+        };
+        Require(kept.size() == 2 && keeps(L"Referer", L"https://site.test/") && keeps(L"Cookie", L"a=1, b=2"),
+            "the usable headers were not kept on their own");
+
         // An action entry is dropped without taking one of the page's thirty slots.
         std::wstring catalog = LR"({"metas":[{"id":"dltorbox","type":"movie","name":"Delete all files"})";
         for (int index = 0; index < 30; ++index)
@@ -358,10 +381,13 @@ namespace
         Require(meta.PicturedCast.size() == 2 && meta.PicturedCast[0].Photo && meta.PicturedCast[0].Character
                 && !meta.PicturedCast[1].Photo,
             "the pictured cast did not follow the reference rules");
+        // An untitled episode no longer reads "Episode": as the reference, each
+        // reader picks its own fallback (the id in rows, the show's name in the
+        // sources sheet and the player), so the mapper leaves the title empty.
         Require(meta.Videos.size() == 4 && meta.Videos[0].HasTitle && meta.Videos[0].Title == L"Pilot"
-                && !meta.Videos[1].HasTitle && meta.Videos[1].Title == L"Episode",
-            "a video's own name was not told apart from the placeholder");
-        Require(!meta.Videos[2].HasTitle && meta.Videos[2].Title == L"Episode",
+                && !meta.Videos[1].HasTitle && meta.Videos[1].Title.empty(),
+            "a video's own name was not told apart from an untitled video");
+        Require(!meta.Videos[2].HasTitle && meta.Videos[2].Title.empty(),
             "a title of nothing but spaces was kept as the video's title");
         Require(meta.Videos[3].HasTitle && meta.Videos[3].Title == L"Finale",
             "a blank title did not fall back to the video's trimmed name");
@@ -1352,6 +1378,8 @@ int main()
         RunHistoryRowsTests();
         RunDetailPageTests();
         RunSourcesSheetTests();
+        RunWatchOutboxTests();
+        RunCallQueueTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

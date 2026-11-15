@@ -230,6 +230,7 @@ namespace HaloDesktop::Playback
                         return source;
                     }
                     PlaybackSource resolved{ .Location = std::move(currentUrl) };
+                    resolved.PreferredAudioLanguages = std::move(source.PreferredAudioLanguages);
                     if (forwardHeaders)
                     {
                         resolved.Headers = std::move(source.Headers);

@@ -50,6 +50,15 @@ namespace HaloDesktop
         Double PreviewShadowOffset { get; };
         Microsoft.UI.Xaml.Visibility PreviewOutlineVisibility { get; };
         Microsoft.UI.Xaml.Visibility PreviewShadowVisibility { get; };
+        // What the selected track lets these controls change: font, outline and
+        // shadow ("looks"), and the track styling switch. A control the track
+        // ignores is disabled and drawn at the reference's 0.45 opacity.
+        Boolean LooksEnabled { get; };
+        Double LooksOpacity { get; };
+        Boolean TrackStylingEnabled { get; };
+        Double TrackStylingOpacity { get; };
+        String TrackStylingNote { get; };
+        String SizeNote { get; };
         void SetFont(Int32 index);
         void SetOutline(Int32 index);
         void Refresh();
@@ -143,10 +152,15 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SpeedPanelVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
         Microsoft.UI.Xaml.Visibility UpNextAvailableVisibility { get; };
+        // The seek bar has a scale, and takes input, only once the file has a length.
+        Boolean IsSeekable { get; };
+        // A download plays offline, so its addons are never asked for subtitles.
+        Microsoft.UI.Xaml.Visibility AddonSubtitlesUnavailableVisibility { get; };
         void TogglePause();
         void BeginScrub();
         void ScrubTo(Double seconds);
         void EndScrub(Double seconds);
+        void CancelScrub();
         void SeekRelative(Double seconds);
         void ChangeVolume(Double delta);
         void SetSpeed(Double speed);

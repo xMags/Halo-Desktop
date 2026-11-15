@@ -47,4 +47,21 @@ namespace HaloDesktop::Shell
     [[nodiscard]] bool ResolveFullscreenTopmost(
         FullscreenZOrder zOrder,
         WindowActivation activation) noexcept;
+
+    // A maximized window keeps its maximized state through a style switch, and
+    // Windows holds a maximized window to the work area, so fullscreen entered
+    // from maximized can stop short of the taskbar. As the reference's
+    // window_placement.rs, the window leaves maximized first, in place: its
+    // normal rectangle is set to the work area it already fills and it is shown
+    // normal, so nothing on screen moves. This is that rectangle in the
+    // workspace coordinates SetWindowPlacement takes for a top-level window:
+    // screen coordinates less the offset of the monitor's work area from the
+    // monitor's corner. On the primary monitor this is (0, 0, width, height), the
+    // reference's rectangle; on another monitor it keeps that monitor's origin.
+    [[nodiscard]] RECT WorkAreaInWorkspaceCoordinates(RECT const& monitor, RECT const& workArea) noexcept;
+
+    // Whether the window landed exactly where the in-place restore meant it to.
+    // When it did not, the coordinate assumption above did not hold and the
+    // restore is undone rather than leaving the window somewhere else.
+    [[nodiscard]] bool IsSameRect(RECT const& left, RECT const& right) noexcept;
 } // namespace HaloDesktop::Shell
