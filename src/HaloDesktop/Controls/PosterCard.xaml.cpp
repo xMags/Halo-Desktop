@@ -191,7 +191,7 @@ namespace winrt::HaloDesktop::implementation
         Translation({ 0.0F, hovered ? ::HaloDesktop::Controls::CardHoverLift : 0.0F, 0.0F });
         if (auto const ring = ArtHoverRing()) ring.Opacity(hovered ? 1.0 : 0.0);
         if (auto const rest = ArtRestRing()) rest.Opacity(hovered ? 0.0 : 1.0);
-        if (auto const host = ShadowHost()) host.Opacity(hovered ? 1.0 : 0.0);
+        if (auto const fade = ShadowFade()) fade.Opacity(hovered ? 1.0 : 0.0);
     }
 
     // The placeholder is opaque and sits directly behind the artwork, so leaving

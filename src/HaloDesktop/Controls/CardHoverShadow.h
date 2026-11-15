@@ -33,10 +33,13 @@ namespace HaloDesktop::Controls
             winrt::Microsoft::UI::Xaml::FrameworkElement const& themeScope);
 
     private:
+        void Build(winrt::Microsoft::UI::Xaml::FrameworkElement const& host);
         void Resize(winrt::Microsoft::UI::Xaml::FrameworkElement const& host);
 
         winrt::Microsoft::UI::Composition::SpriteVisual m_visual{ nullptr };
         winrt::Microsoft::UI::Composition::DropShadow m_shadow{ nullptr };
         winrt::Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_sizeChanged;
+        // Set once XAML has refused the shadow, so later hovers do not ask again.
+        bool m_unavailable{};
     };
 }

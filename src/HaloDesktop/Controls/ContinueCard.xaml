@@ -43,14 +43,19 @@
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
       </Grid.RowDefinitions>
-      <!-- The hover shadow is drawn into this host, which fades in with the stroke. -->
+      <!--
+        The hover shadow fades in with the stroke. The fade and the shadow sit on
+        two elements on purpose: XAML refuses a composition visual on an element
+        that also uses a property transition, and that refusal ends the process.
+      -->
       <Border
-        x:Name="ShadowHost"
+        x:Name="ShadowFade"
         IsHitTestVisible="False"
         Opacity="0">
         <Border.OpacityTransition>
           <ScalarTransition Duration="0:0:0.12" />
         </Border.OpacityTransition>
+        <Border x:Name="ShadowHost" />
       </Border>
       <!--
         The border is what clips the still, the chips and the progress track to
