@@ -1303,7 +1303,13 @@ namespace
         Fixture fixture{ server.Url() };
         std::atomic_bool cancel{};
         FakeHost host;
-        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        // The ramp is by the clock alone, so with the 20 ms step every
+        // connection can already be asking when the first refusal sets the
+        // ceiling, and each of those is refused too. A step long enough for an
+        // answer to arrive first keeps the count about the ceiling.
+        auto transfer = Quick();
+        transfer.Tuning.RampInterval = std::chrono::milliseconds{ 100 };
+        auto const outcome = Run(fixture.Job(), cancel, host, transfer);
         Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), lost);
         auto const log = server.Log();
         auto const refused = std::count_if(log.begin(), log.end(), [refusal](LoggedRequest const& entry)
