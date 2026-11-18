@@ -849,6 +849,12 @@ namespace
             {
                 result.Total = m_job.SizeHint.value_or(0);
             }
+            // Refused before a byte is kept: taken as the film, the stand-in
+            // would finish as a complete download that plays a few seconds.
+            if (result.TotalStated && Downloads::IsStandInForVideo(result.Total, m_job.SizeHint))
+            {
+                throw Permanent(DownloadFailureCode::SourceNotReady);
+            }
             auto validator = responseValidator;
             if (!validator && start)
             {

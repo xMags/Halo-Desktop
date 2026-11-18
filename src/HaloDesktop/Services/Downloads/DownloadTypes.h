@@ -33,6 +33,7 @@ namespace HaloDesktop::Services::Downloads
         ServerUnavailable,
         SourceRejected,
         ProtectedRequestCorrupt,
+        SourceNotReady,
         Unknown,
     };
 
@@ -177,6 +178,13 @@ namespace HaloDesktop::Services::Downloads
 
     [[nodiscard]] bool IsActive(DownloadStatus status) noexcept;
     [[nodiscard]] bool RequiresNewSource(DownloadFailureCode failure) noexcept;
+    // A resolver that has not prepared a video yet answers its link with a
+    // short stand-in clip, a complete and valid file of a few hundred
+    // kilobytes. True when the size the source states is that small against
+    // the size the addon gave for the video. Both bounds must hold: the
+    // addon's size can be a whole season pack's, so a real episode may be a
+    // small share of it, but never a few megabytes of a film-sized stream.
+    [[nodiscard]] bool IsStandInForVideo(std::uint64_t statedTotal, std::optional<std::uint64_t> sizeHint) noexcept;
     [[nodiscard]] DownloadStatus RecoverStatus(DownloadStatus status, bool explicitPause) noexcept;
     [[nodiscard]] std::wstring FailureMessage(DownloadFailureCode failure);
     [[nodiscard]] std::wstring Sha256Hex(std::wstring const& value);

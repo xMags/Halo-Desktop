@@ -197,6 +197,17 @@ namespace HaloDesktop::Services::Downloads
             || failure == DownloadFailureCode::MissingFile;
     }
 
+    bool IsStandInForVideo(std::uint64_t statedTotal, std::optional<std::uint64_t> sizeHint) noexcept
+    {
+        constexpr std::uint64_t SmallestJudgedHint = 500ull * 1024ull * 1024ull;
+        constexpr std::uint64_t LargestStandIn = 5ull * 1024ull * 1024ull;
+        if (statedTotal == 0 || !sizeHint || *sizeHint < SmallestJudgedHint)
+        {
+            return false;
+        }
+        return statedTotal < LargestStandIn && statedTotal < *sizeHint / 100;
+    }
+
     DownloadStatus RecoverStatus(DownloadStatus status, bool explicitPause) noexcept
     {
         if (status == DownloadStatus::Downloading)
@@ -226,6 +237,8 @@ namespace HaloDesktop::Services::Downloads
             return L"The source refused this download.";
         case DownloadFailureCode::ProtectedRequestCorrupt:
             return L"The protected download request could not be read. Choose the source again.";
+        case DownloadFailureCode::SourceNotReady:
+            return L"This source is not ready yet: it sent a short placeholder instead of the video. Try again later or choose another source.";
         case DownloadFailureCode::Unknown:
             return L"This download could not be completed.";
         }

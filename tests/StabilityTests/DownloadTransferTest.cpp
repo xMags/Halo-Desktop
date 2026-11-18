@@ -1251,6 +1251,40 @@ namespace
         Require(!std::filesystem::exists(fixture.Table()), "the table outlived the download");
     }
 
+    // A resolver's "not ready yet" clip is a whole, valid, tiny file. Against a
+    // film-sized stream it is refused; with no size to judge by, or a small
+    // stated video, the same answer is an ordinary download.
+    void AStandInClipIsNotTakenForTheVideo()
+    {
+        constexpr std::uint64_t FilmBytes = 90ull * 1024ull * 1024ull * 1024ull;
+        Require(Downloads::IsStandInForVideo(148'989, FilmBytes), "a stand-in clip against a film was accepted");
+        Require(!Downloads::IsStandInForVideo(148'989, std::nullopt), "a small file with no stated size was refused");
+        Require(!Downloads::IsStandInForVideo(148'989, 20ull * 1024ull * 1024ull), "a small file of a small video was refused");
+        Require(!Downloads::IsStandInForVideo(600ull * 1024ull * 1024ull, FilmBytes), "an episode of a season pack was refused");
+        Require(!Downloads::IsStandInForVideo(0, FilmBytes), "an unstated total was judged");
+
+        FileServer server{ FileServerOptions{ .Body = Content(148'989) } };
+        {
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto job = fixture.Job();
+            job.SizeHint = FilmBytes;
+            auto const outcome = Run(job, cancel, host, Quick());
+            Require(Failed(outcome, TransferFailureKind::Permanent, DownloadFailureCode::SourceNotReady),
+                "a stand-in clip finished as the video");
+            Require(!fixture.PartMatches(server.Body()), "the stand-in clip was kept as the part");
+        }
+        {
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()),
+                "a small file with no stated size was not downloaded");
+        }
+    }
+
     // The first connection reaches the split point long before the probe is
     // answered, so it must wait there instead of stopping: when the answer is a
     // 206 it stops after the overlap, and when it is a 200 it takes the range
@@ -1582,6 +1616,7 @@ namespace
         SeveralConnectionsDeliverTheExactFile();
         ProgressReportsHowManyConnectionsAreReceiving();
         ASourceThatIgnoresRangesIsReadThroughOnOneConnection();
+        AStandInClipIsNotTakenForTheVideo();
         TheFirstConnectionWaitsAtTheSplitForTheProbesAnswer();
         ARefusedProbeKeepsTheRunOnOneConnection();
         ARefusalAfterRangesAreProvenSetsTheCeiling();

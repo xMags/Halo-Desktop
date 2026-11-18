@@ -42,6 +42,7 @@ namespace HaloDesktop::Services::DownloadsLogic
         case DownloadFailureCode::ServerUnavailable: return L"The source remained unavailable after several retries.";
         case DownloadFailureCode::SourceRejected: return L"The source refused this download.";
         case DownloadFailureCode::ProtectedRequestCorrupt: return L"Choose the source again to rebuild the protected request.";
+        case DownloadFailureCode::SourceNotReady: return L"This source sent a short placeholder instead of the video. Try again later or choose another source.";
         case DownloadFailureCode::Unknown: return L"The download could not be completed.";
         }
         return L"The download could not be completed.";

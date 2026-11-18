@@ -389,10 +389,12 @@ namespace
         Require(RowOf(With(View(), DownloadStatus::Done)).Lead == L"READY FOR OFFLINE PLAYBACK", "a ready lead was wrong");
     }
 
-    // The nine sentences the lead line prints, as the reference words them.
+    // The sentences the lead line prints: nine as the reference words them,
+    // and this app's own for a source that sent a placeholder clip.
     void TestFailureSentences()
     {
-        std::array<std::pair<DownloadFailureCode, wchar_t const*>, 9> const sentences{ {
+        std::array<std::pair<DownloadFailureCode, wchar_t const*>, 10> const sentences{ {
+            { DownloadFailureCode::SourceNotReady, L"This source is not ready yet: it sent a short placeholder instead of the video. Try again later or choose another source." },
             { DownloadFailureCode::SourceExpired, L"This source has expired. Choose a source again to continue." },
             { DownloadFailureCode::StorageFull, L"The device ran out of storage while downloading." },
             { DownloadFailureCode::InvalidRange, L"The source could not safely resume this download." },

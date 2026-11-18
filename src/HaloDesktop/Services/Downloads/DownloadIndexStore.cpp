@@ -93,6 +93,7 @@ namespace
         case DownloadFailureCode::ServerUnavailable: return L"server_unavailable";
         case DownloadFailureCode::SourceRejected: return L"source_rejected";
         case DownloadFailureCode::ProtectedRequestCorrupt: return L"protected_request_corrupt";
+        case DownloadFailureCode::SourceNotReady: return L"source_not_ready";
         case DownloadFailureCode::Unknown: return L"unknown";
         }
         throw std::invalid_argument{ "The download failure is invalid." };
@@ -109,6 +110,7 @@ namespace
         if (value == L"server_unavailable") return DownloadFailureCode::ServerUnavailable;
         if (value == L"source_rejected") return DownloadFailureCode::SourceRejected;
         if (value == L"protected_request_corrupt") return DownloadFailureCode::ProtectedRequestCorrupt;
+        if (value == L"source_not_ready") return DownloadFailureCode::SourceNotReady;
         if (value == L"unknown") return DownloadFailureCode::Unknown;
         throw std::invalid_argument{ "The download index contains an invalid failure." };
     }
