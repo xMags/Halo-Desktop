@@ -254,7 +254,13 @@
           Tag="{x:Bind ViewModel.TopMatch, Mode=OneWay}"
           Tapped="OnTopMatchTapped"
           Visibility="{x:Bind ViewModel.TopMatchVisibility, Mode=OneWay}">
-          <Grid IsHitTestVisible="False">
+          <!--
+            The art never sets the card's height: measured freely, an image
+            that fills its box asks for its width over its aspect ratio, which
+            on a wide window is taller than the page. The code-behind keeps
+            this layer at the height of the content below.
+          -->
+          <Grid x:Name="TopMatchArt" Height="0" VerticalAlignment="Top" IsHitTestVisible="False">
             <Rectangle Fill="{ThemeResource HaloCardBrush}" />
             <!-- No backdrop of its own: the poster, decoded tiny and stretched, so it reads as colour and light. -->
             <local:ArtworkImage
@@ -264,7 +270,7 @@
             <local:ArtworkImage SourceUrl="{x:Bind ViewModel.TopMatchBackdrop, Mode=OneWay}" />
             <Rectangle Fill="{ThemeResource HaloTopMatchScrimBrush}" />
           </Grid>
-          <Grid x:Name="TopMatchContent" Padding="26,22" ColumnSpacing="26">
+          <Grid x:Name="TopMatchContent" Padding="26,22" ColumnSpacing="26" SizeChanged="OnTopMatchContentSizeChanged">
             <Grid.ColumnDefinitions>
               <ColumnDefinition x:Name="TopMatchPosterColumn" Width="132" />
               <ColumnDefinition Width="*" />

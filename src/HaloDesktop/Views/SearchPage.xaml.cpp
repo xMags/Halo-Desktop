@@ -296,6 +296,12 @@ namespace winrt::HaloDesktop::implementation
         TopMatchHoverRing().Opacity(0.0);
     }
 
+    void SearchPage::OnTopMatchContentSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        // The content decides the card's height; the art fills exactly that.
+        TopMatchArt().Height(args.NewSize().Height);
+    }
+
     void SearchPage::OnTopMatchPlayClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.PlayTopMatch(); }
     void SearchPage::OnTopMatchDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenTopMatch(); }
 
