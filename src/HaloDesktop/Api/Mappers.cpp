@@ -548,7 +548,9 @@ namespace
             .ManifestId = OptionalDisplayString(manifest, L"id", 512).value_or(L""),
             .TransportUrl = transportUrl,
             .Name = DisplayString(manifest, L"name", 512),
-            .Version = DisplayString(manifest, L"version", 64),
+            // The server accepts a manifest with an empty version, and one
+            // such addon must not fail the whole list.
+            .Version = OptionalDisplayString(manifest, L"version", 64).value_or(L""),
             .Description = OptionalDisplayString(manifest, L"description", 512).value_or(L""),
             .Resources = StringArray(manifest, L"resources"),
             .Types = StringArray(manifest, L"types"),
@@ -734,8 +736,15 @@ namespace HaloDesktop::Api::Mappers
         for (auto const& item : array)
         {
             auto const object = RequireObject(item, L"A watch-state row must be an object.");
-            auto const position = object.GetNamedNumber(L"positionSec");
+            auto position = object.GetNamedNumber(L"positionSec");
             auto const duration = object.GetNamedNumber(L"durationSec");
+            // Another client may save a position slightly past the end. The
+            // server keeps such a row and it means finished, so it is read as
+            // being at the end rather than dropped.
+            if (std::isfinite(position) && std::isfinite(duration) && duration > 0 && position > duration)
+            {
+                position = duration;
+            }
             constexpr double MaximumWatchSeconds = static_cast<double>((std::numeric_limits<std::int32_t>::max)());
             if (!std::isfinite(position) || !std::isfinite(duration)
                 || position < 0 || duration < 0
