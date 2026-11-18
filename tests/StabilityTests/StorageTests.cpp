@@ -27,6 +27,7 @@
 #include <vector>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.Foundation.Collections.h>
+#include <wil/resource.h>
 
 namespace
 {
@@ -191,6 +192,96 @@ namespace
         auto const wrongPath = temporary.Path() / L"wrong-pane.json";
         HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");
         Require(!DevicePreferencesStore{ wrongPath }.NavPaneOpen(), "an invalid pane value did not fall back to closed");
+    }
+
+    // A preferences file that cannot be read is never replaced by defaults:
+    // the write is refused and the file stays as it was. A missing file, or
+    // one that is read but holds no preferences, starts from the defaults.
+    void TestUnreadablePreferencesAreNotReplaced()
+    {
+        TemporaryDirectory temporary;
+        auto const path = temporary.Path() / L"preferences.json";
+        std::string const original =
+            R"({"version":1,"theme":0,"lastServerAddress":"saved.test","sessionServerUrl":"https://saved.test"})";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(path, original);
+        DevicePreferencesStore store{ path };
+
+        auto const refuses = [](auto const& call)
+        {
+            try
+            {
+                call();
+            }
+            catch (...)
+            {
+                return true;
+            }
+            return false;
+        };
+        {
+            // Another program holding the file open without sharing.
+            wil::unique_hfile held{ CreateFileW(path.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr) };
+            Require(static_cast<bool>(held), "the test could not hold the preferences file");
+            Require(refuses([&store]() { store.Theme(1); }), "a theme was written over a file that could not be read");
+            Require(refuses([&store]() { store.LastServerAddress(L"other.test"); }),
+                "a server address was written over a file that could not be read");
+        }
+        auto const kept = ReadBytes(path);
+        Require(std::string(kept.begin(), kept.end()) == original, "a preferences file that could not be read was changed");
+        store.Theme(1);
+        Require(store.Theme() == 1 && store.LastServerAddress() == L"saved.test" && store.SessionServerUrl() == L"https://saved.test",
+            "the write after the file became readable again did not keep the other keys");
+
+        // Over the size limit: refused, and left alone.
+        std::string oversized = R"({"version":1,"lastServerAddress":"saved.test","pad":")";
+        oversized.append(1024u * 1024u, 'x');
+        oversized += R"("})";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(path, oversized);
+        Require(refuses([&store]() { store.NavPaneOpen(true); }), "a preference was written over an oversized file");
+        Require(ReadBytes(path).size() == oversized.size(), "an oversized preferences file was replaced");
+
+        // Read, but not preferences: the defaults, as before.
+        HaloDesktop::Storage::WriteUtf8FileAtomic(path, "not json");
+        store.NavPaneOpen(true);
+        Require(store.NavPaneOpen() && store.Theme() == 2, "a corrupt preferences file did not start again from the defaults");
+
+        auto const missing = temporary.Path() / L"missing" / L"preferences.json";
+        DevicePreferencesStore fresh{ missing };
+        fresh.LastServerAddress(L"new.test");
+        Require(DevicePreferencesStore{ missing }.LastServerAddress() == L"new.test", "a missing preferences file was not created");
+    }
+
+    // The subtitle memory is bounded in the bytes it takes in the file, so a
+    // memory the store accepted always reads back.
+    void TestSubtitleMemoryFitsTheFile()
+    {
+        TemporaryDirectory temporary;
+        auto const path = temporary.Path() / L"preferences.json";
+        DevicePreferencesStore store{ path };
+        store.SearchHistory({ { std::wstring(120, L'\x1'), 1 } });
+
+        // 400 000 characters, under the old character cap, but 1.2 MB once
+        // written as UTF-8: a file the next read would refuse.
+        winrt::Windows::Data::Json::JsonObject wide;
+        wide.Insert(L"v", winrt::Windows::Data::Json::JsonValue::CreateStringValue(winrt::hstring(std::wstring(400000, L'\x4E2D'))));
+        auto refused = false;
+        try
+        {
+            store.SubtitleSelectionMemory(wide);
+        }
+        catch (std::invalid_argument const&)
+        {
+            refused = true;
+        }
+        Require(refused, "a subtitle memory too large for the file was accepted");
+
+        winrt::Windows::Data::Json::JsonObject large;
+        large.Insert(L"v", winrt::Windows::Data::Json::JsonValue::CreateStringValue(winrt::hstring(std::wstring(170000, L'\x4E2D'))));
+        store.SubtitleSelectionMemory(large);
+        store.LastServerAddress(std::wstring(512, L'\x4E2D'));
+        Require(DevicePreferencesStore{ path }.SubtitleSelectionMemory().HasKey(L"v")
+                && DevicePreferencesStore{ path }.LastServerAddress().size() == 512,
+            "a subtitle memory the store accepted did not read back");
     }
 
     // The history became `{ term, at }` rows. A file an older build wrote
@@ -716,6 +807,8 @@ void RunStandaloneStorageTests()
 {
     TestSavedIdentityProfile();
     TestPreferenceValidationAndConcurrentMerge();
+    TestUnreadablePreferencesAreNotReplaced();
+    TestSubtitleMemoryFitsTheFile();
     TestSearchHistoryShapes();
     TestMigrationNoSource();
     TestMigrationSuccessRetryAndIdempotency();

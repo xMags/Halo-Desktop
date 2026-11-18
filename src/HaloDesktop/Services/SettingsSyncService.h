@@ -38,6 +38,12 @@ namespace HaloDesktop::Services
     // mirror) has been read. A change made before then is shown at once and
     // kept waiting while a read runs; it is applied on top of the document
     // when one arrives, and dropped when none can be had.
+    //
+    // A save that fails leaves the document marked unsent, here and in the
+    // mirror. The next load that reaches the server (this session or a later
+    // one) sends it again while it is still newer than the server's, and a
+    // newer server document replaces it; the next edit sends it as well.
+    // Nothing retries on a timer.
     class SettingsSyncService final
     {
     public:
@@ -91,9 +97,19 @@ namespace HaloDesktop::Services
         void RemoveRevertedHandler(std::uint64_t token) noexcept;
 
     private:
+        // The account's mirror: its document, and whether that document's
+        // save had not reached the server when it was written.
+        struct MirrorDocument final
+        {
+            ::HaloDesktop::Api::Dto::SettingsPayload Payload;
+            bool Unsent{};
+        };
+
+        // `mayResend` is false only for the load a failed save starts.
+        [[nodiscard]] concurrency::task<void> LoadCoreAsync(bool mayResend);
         void NotifyReverted();
-        [[nodiscard]] concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> ReadMirrorAsync();
-        [[nodiscard]] concurrency::task<void> WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload);
+        [[nodiscard]] concurrency::task<std::optional<MirrorDocument>> ReadMirrorAsync();
+        [[nodiscard]] concurrency::task<void> WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload, bool unsent);
         [[nodiscard]] concurrency::task<void> SaveAsync(
             winrt::Windows::Data::Json::JsonObject snapshot,
             std::int64_t updatedAt);
@@ -129,6 +145,9 @@ namespace HaloDesktop::Services
 
         // Whether this account's document has been read yet.
         bool m_documentRead{};
+        // The document held now was edited here and its save has not been
+        // confirmed by the server. It belongs to this account only.
+        bool m_unsent{};
         // Edits made before that, newest value per key, in first-edit order.
         std::vector<UnreadEdit> m_unreadEdits;
         std::unordered_map<std::uint64_t, std::function<void()>> m_revertedHandlers;

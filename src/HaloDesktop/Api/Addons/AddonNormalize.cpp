@@ -269,7 +269,14 @@ namespace HaloDesktop::Api::Addons
         auto const manifest = value.GetObject();
         auto const id = StringField(manifest, L"id");
         auto const name = StringField(manifest, L"name");
-        if (!id || id->empty() || !StringField(manifest, L"version") || !name || name->empty()) return std::nullopt;
+        if (!id || id->empty() || !StringField(manifest, L"version") || !name) return std::nullopt;
+        // Stricter than the reference, which takes a name of nothing but
+        // white space: an addon is installed only with a name it can be shown
+        // and removed by.
+        if (auto const trimmedName = JsTrim(*name); trimmedName.empty() || trimmedName.size() > MaximumLabelLength)
+        {
+            return std::nullopt;
+        }
 
         auto const types = Field(manifest, L"types");
         if (!IsArray(types)) return std::nullopt;

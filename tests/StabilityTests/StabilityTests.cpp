@@ -39,6 +39,7 @@
 #include "StorageTests.h"
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
 #include <chrono>
 #include <condition_variable>
@@ -154,18 +155,13 @@ namespace
                 LR"([{"videoId":"video","itemId":"movie:item","positionSec":1,"durationSec":9223372036854775808,"watched":false,"updatedAt":1}])"));
         Require(oversizedWatch.empty(), "an oversized watch duration was accepted");
 
-        auto removalRejected = false;
-        try
-        {
-            static_cast<void>(HaloDesktop::Api::Mappers::ParseLibrary(
-                winrt::Windows::Data::Json::JsonValue::Parse(
-                    LR"([{"id":"movie:item","type":"movie","name":"Item","addedAt":1,"removedAt":9223372036854775808,"updatedAt":1}])")));
-        }
-        catch (...)
-        {
-            removalRejected = true;
-        }
-        Require(removalRejected, "an oversized library removal timestamp was accepted");
+        // The row is refused on its own; the rest of the list still reads.
+        auto const oversizedRemoval = HaloDesktop::Api::Mappers::ParseLibrary(
+            winrt::Windows::Data::Json::JsonValue::Parse(
+                LR"([{"id":"movie:item","type":"movie","name":"Item","addedAt":1,"removedAt":9223372036854775808,"updatedAt":1},)"
+                LR"({"id":"movie:kept","type":"movie","name":"Kept","addedAt":1,"updatedAt":1}])"));
+        Require(oversizedRemoval.size() == 1 && oversizedRemoval.front().Id == L"movie:kept",
+            "an oversized library removal timestamp was accepted");
 
         HaloDesktop::Api::Dto::StreamRecord stream;
         stream.Url = L"https://example.test/video";
@@ -220,6 +216,37 @@ namespace
                     .PayloadUpdatedAt = 101, .LocalUpdatedAt = 100, .RequestWriteVersion = 2, .CurrentWriteVersion = 3 })
                 == SettingsLoadAction::Keep,
             "a document read before a local edit replaced the edit");
+
+        // A document whose save failed is sent again only while it is newer
+        // than the server's; a newer server document replaces it through the
+        // ordinary rule above.
+        using HaloDesktop::Services::ShouldResendUnsentSettings;
+        using HaloDesktop::Services::UnsentSettingsAreNewer;
+        Require(UnsentSettingsAreNewer(true, 101, 100), "a newer unsent document was not sent again");
+        Require(!UnsentSettingsAreNewer(true, 100, 100), "an unsent document was sent over an equally new server one");
+        Require(!UnsentSettingsAreNewer(true, 99, 100), "an unsent document was sent over a newer server one");
+        Require(!UnsentSettingsAreNewer(false, 101, 100), "a document the server already holds was sent again");
+        Require(DecideSettingsLoad({ .DocumentAlreadyRead = true, .ReceivedDocument = true, .IsLatestRequest = true,
+                    .PayloadUpdatedAt = 120, .LocalUpdatedAt = 110, .RequestWriteVersion = 4, .CurrentWriteVersion = 4 })
+                == SettingsLoadAction::ApplyNewer,
+            "a newer server document did not replace an unsent local one");
+
+        HaloDesktop::Services::SettingsResendCheck const resend{
+            .FromServer = true, .MayResend = true, .Unsent = true,
+            .LocalUpdatedAt = 110, .ServerUpdatedAt = 100, .RequestWriteVersion = 4, .CurrentWriteVersion = 4 };
+        Require(ShouldResendUnsentSettings(resend), "a successful load did not send the unsent document again");
+        auto fromMirror = resend;
+        fromMirror.FromServer = false;
+        Require(!ShouldResendUnsentSettings(fromMirror), "an offline load (the mirror) tried to send");
+        auto afterFailedSave = resend;
+        afterFailedSave.MayResend = false;
+        Require(!ShouldResendUnsentSettings(afterFailedSave), "the load a failed save starts sent again, which can loop");
+        auto editedMeanwhile = resend;
+        editedMeanwhile.CurrentWriteVersion = 5;
+        Require(!ShouldResendUnsentSettings(editedMeanwhile), "a load sent a document an edit is already saving");
+        auto serverNewer = resend;
+        serverNewer.ServerUpdatedAt = 111;
+        Require(!ShouldResendUnsentSettings(serverNewer), "an unsent document was sent over a newer server document");
     }
 
     winrt::Windows::Data::Json::IJsonValue Json(std::wstring_view text)
@@ -286,6 +313,48 @@ namespace
             "a null or malformed transport URL was read as a URL");
         Require(hidden.User[0].TransportUrl.value_or(L"") == L"https://u.test/manifest.json",
             "a row beside a hidden URL lost its own");
+
+        // One unreadable row costs only itself: a blank name falls back to the
+        // manifest id, then "Addon"; a row without an id, a non-object row, a
+        // bad position or a manifest that is not an object is left out; a
+        // catalog whose extra lists are not lists is dropped, the addon kept;
+        // odd extra fields are read without failing anything.
+        auto const mixed = HaloDesktop::Api::Mappers::ParseAddons(Json(LR"({
+            "global": [ 5, { "id": "g1", "manifest": { "id": "g", "name": "G", "version": "1" }, "position": 0 } ],
+            "user": [
+                { "id": "u1", "manifest": { "id": "spaces", "name": "  \t ", "version": "1" }, "position": 0 },
+                { "id": "u2", "manifest": { "name": 7, "version": "1" }, "position": 1 },
+                { "manifest": { "id": "noid", "name": "No id", "version": "1" }, "position": 2 },
+                { "id": "u4", "manifest": "x", "position": 3 },
+                { "id": "u5", "manifest": { "id": "p", "name": "P" }, "position": -1 },
+                { "id": "u6", "hideCatalogs": "yes", "manifest": { "id": "c", "name": " Cats ", "catalogs": [
+                    { "type": "movie", "id": "odd", "extra": [ { "name": 5, "isRequired": "yes" }, { "name": "genre", "isRequired": 1 } ] },
+                    { "type": "movie", "id": "plain", "extra": null },
+                    { "type": "movie", "id": "broken", "extra": { "name": "genre" } },
+                    { "type": "movie", "id": "broken2", "extraRequired": "search" } ] }, "position": 5 }
+            ]
+        })"));
+        Require(mixed.Global.size() == 1 && mixed.Global[0].Id == L"g1", "a malformed global row failed the list");
+        Require(mixed.User.size() == 3 && mixed.User[0].Id == L"u1" && mixed.User[1].Id == L"u2" && mixed.User[2].Id == L"u6",
+            "unreadable addon rows were kept, or readable ones lost");
+        Require(mixed.User[0].Name == L"spaces" && mixed.User[1].Name == L"Addon" && mixed.User[2].Name == L"Cats",
+            "a blank or malformed addon name did not fall back");
+        auto const& oddCatalogs = mixed.User[2].Catalogs;
+        Require(!mixed.User[2].HideCatalogs && oddCatalogs.size() == 2
+                && oddCatalogs[0].Id == L"odd" && oddCatalogs[0].HasRequiredExtra && oddCatalogs[0].Extras.size() == 1
+                && oddCatalogs[0].Extras[0].IsRequired && oddCatalogs[1].Id == L"plain" && !oddCatalogs[1].HasRequiredExtra,
+            "odd catalog extras failed the addon, or a catalog with unknown needs was kept");
+
+        bool notAList = false;
+        try
+        {
+            static_cast<void>(HaloDesktop::Api::Mappers::ParseAddons(Json(LR"({ "global": [], "user": {} })")));
+        }
+        catch (...)
+        {
+            notAList = true;
+        }
+        Require(notAList, "an addons answer without its lists was read as a Halo answer");
 
         auto const me = HaloDesktop::Api::Mappers::ParseMe(Json(
             LR"({"id":"u","username":"kenneth","isAdmin":false,"createdAt":1,"plan":" premium ","avatarVersion":"v2"})"));
@@ -413,6 +482,39 @@ namespace
         ])"));
         Require(watch.size() == 3 && watch[0].RemovedAt.value_or(0) == 4 && !watch[1].RemovedAt && !watch[2].RemovedAt,
             "a watch-state removal stamp was misread or failed the row");
+
+        // A malformed row is left out and the rest kept, so a PUT's answer
+        // still settles the rows that were sent.
+        auto const partly = HaloDesktop::Api::Mappers::ParseWatchState(Json(LR"([
+            {"videoId":"a","itemId":"movie:a","positionSec":1,"durationSec":10,"updatedAt":5},
+            {"videoId":"b","itemId":"movie:b","positionSec":1,"durationSec":10,"watched":"yes","updatedAt":5},
+            {"videoId":" ","itemId":"movie:c","positionSec":1,"durationSec":10,"watched":false,"updatedAt":5},
+            {"videoId":"d","itemId":"movie:d","positionSec":1,"durationSec":10,"watched":false,"updatedAt":0},
+            "row",
+            {"videoId":"e","itemId":"movie:e","positionSec":"1","durationSec":10,"watched":false,"updatedAt":5},
+            {"videoId":"f","itemId":"movie:f","positionSec":12,"durationSec":10,"watched":true,"updatedAt":5},
+            {"videoId":"g","itemId":"movie:g","positionSec":2,"durationSec":10,"watched":false,"updatedAt":6}
+        ])"));
+        Require(partly.size() == 2 && partly[0].VideoId == L"f" && partly[0].PositionSec == 10 && partly[1].VideoId == L"g",
+            "a malformed watch-state row failed the list or was kept");
+        auto const library = HaloDesktop::Api::Mappers::ParseLibrary(Json(LR"([
+            {"id":"movie:a","type":"movie","addedAt":1,"updatedAt":1},
+            7,
+            {"id":"movie:b","type":"movie","name":"B","addedAt":1,"removedAt":"x","updatedAt":1},
+            {"id":"movie:c","type":"movie","name":"C","addedAt":1,"removedAt":null,"updatedAt":2}
+        ])"));
+        Require(library.size() == 1 && library[0].Id == L"movie:c" && !library[0].RemovedAt,
+            "a malformed library row failed the list or was kept");
+        bool libraryNotAList = false;
+        try
+        {
+            static_cast<void>(HaloDesktop::Api::Mappers::ParseLibrary(Json(LR"({"items":[]})")));
+        }
+        catch (...)
+        {
+            libraryNotAList = true;
+        }
+        Require(libraryNotAList, "a library answer that is not a list was read");
     }
 
     void TestPlanRefusal()
@@ -1075,6 +1177,72 @@ namespace
         Require(stalledCancelled,
             "a stalled browser sign-in listener completed successfully after cancellation");
     }
+
+    // The first line the listener answers a request with.
+    std::string SendToSignInListener(std::string const& path)
+    {
+        auto const client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        Require(client != INVALID_SOCKET, "the listener test could not create a client");
+        sockaddr_in address{};
+        address.sin_family = AF_INET;
+        address.sin_port = htons(17871);
+        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+        std::string answer;
+        if (connect(client, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != SOCKET_ERROR)
+        {
+            auto const request = "GET " + path + " HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
+            static_cast<void>(send(client, request.data(), static_cast<int>(request.size()), 0));
+            std::array<char, 4096> buffer{};
+            int received{};
+            while ((received = recv(client, buffer.data(), static_cast<int>(buffer.size()), 0)) > 0)
+            {
+                answer.append(buffer.data(), static_cast<std::size_t>(received));
+            }
+        }
+        closesocket(client);
+        return answer.substr(0, answer.find("\r\n"));
+    }
+
+    // Another program or page on this PC can reach the port: neither `/cancel`
+    // nor a callback for another sign-in ends this one.
+    void TestBrowserSignInListenerOnlyAnswersItsOwnCallback()
+    {
+        using HaloDesktop::Services::Auth::CallbackCarriesState;
+        Require(CallbackCarriesState("/callback?code=a&state=s1", L"s1"), "the sign-in's own state was not recognised");
+        Require(CallbackCarriesState("/callback?state=a%2Bb", L"a+b"), "an encoded state was not decoded");
+        Require(CallbackCarriesState("/callback?error=access_denied&state=s1", L"s1"), "a provider error with the state was refused");
+        Require(!CallbackCarriesState("/callback?code=a&state=s2", L"s1"), "another sign-in's state was accepted");
+        Require(!CallbackCarriesState("/callback?code=a", L"s1"), "a callback without a state was accepted");
+        Require(!CallbackCarriesState("/callback", L"s1"), "a callback without a query was accepted");
+        Require(!CallbackCarriesState("/callback?state=s1x", L"s1"), "a longer state was accepted");
+
+        using HaloDesktop::Services::Auth::LoopbackListener;
+        {
+            LoopbackListener listener{ std::chrono::seconds{ 10 }, std::wstring{ L"s1" } };
+            auto pending = listener.WaitAsync();
+            Require(SendToSignInListener("/cancel").starts_with("HTTP/1.1 404"), "a request for /cancel was not refused");
+            Require(SendToSignInListener("/callback?code=x&state=other").starts_with("HTTP/1.1 404"),
+                "a callback for another sign-in was not refused");
+            Require(SendToSignInListener("/callback?code=x").starts_with("HTTP/1.1 404"),
+                "a callback without the state was not refused");
+            Require(!pending.is_done(), "a request that was not this sign-in's callback ended it");
+            Require(SendToSignInListener("/callback?error=access_denied&state=s1").starts_with("HTTP/1.1 200"),
+                "the provider's error answer for this sign-in was not accepted");
+            Require(pending.get() == L"/callback?error=access_denied&state=s1",
+                "the sign-in did not complete with its own callback");
+        }
+        {
+            // Without an expected state the first callback still completes it,
+            // as before; only the cancel path is gone.
+            LoopbackListener listener{ std::chrono::seconds{ 10 } };
+            auto pending = listener.WaitAsync();
+            Require(SendToSignInListener("/cancel").starts_with("HTTP/1.1 404"), "a request for /cancel was not refused");
+            Require(!pending.is_done(), "a request for /cancel ended the sign-in");
+            Require(SendToSignInListener("/callback?code=x&state=any").starts_with("HTTP/1.1 200"),
+                "a callback was refused without an expected state");
+            Require(pending.get() == L"/callback?code=x&state=any", "the first callback did not complete the sign-in");
+        }
+    }
     void TestEpisodePositionParsing()
     {
         using HaloDesktop::Services::Downloads::ParseEpisodePosition;
@@ -1423,6 +1591,7 @@ int main()
         TestReadyCardBindingsFollowTheRow();
         TestLandscapeArtworkSelection();
         TestBrowserSignInListenerCancellation();
+        TestBrowserSignInListenerOnlyAnswersItsOwnCallback();
         RunStandaloneStorageTests();
         RunSegmentPlannerTests();
         RunDownloadTransferStabilityTest();

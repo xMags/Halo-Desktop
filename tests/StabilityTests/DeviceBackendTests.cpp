@@ -215,6 +215,43 @@ namespace
                           404, "patching an unknown addon was not a 404");
     }
 
+    // An addon stored before installs required a shown name (blank after
+    // trimming) lists under its manifest id and can be removed again; a stored
+    // row that still cannot be read costs only itself.
+    void TestStoredBlankNamedAddonStaysUsable()
+    {
+        auto const harness = MakeBackend({});
+        auto const blank = Json::JsonObject::Parse(
+            LR"({"id":"blank","version":"1","name":"   ","resources":["stream"],"types":["movie"],"catalogs":[]})");
+        auto const nameless = Json::JsonObject::Parse(
+            LR"({"id":"","version":"1","name":"\t","resources":["stream"],"types":["movie"],"catalogs":[]})");
+        auto const unreadable = Json::JsonObject::Parse(
+            LR"({"id":"odd","version":"1","name":"Odd","resources":"stream","types":["movie"],"catalogs":[]})");
+        harness.Store->WriteAsync(Device::DeviceCollection::Addons, Device::WriteAddonsDocument({
+            { L"id-a", L"https://blank.test/manifest.json", blank, false, 1 },
+            { L"id-b", L"https://nameless.test/manifest.json", nameless, false, 2 },
+            { L"id-c", L"https://odd.test/manifest.json", unreadable, false, 3 },
+            { L"id-d", StreamA, Json::JsonObject::Parse(StreamManifest(L"stream-a")), false, 4 },
+        })).get();
+
+        auto const listed = harness.Backend->GetAddonsAsync().get();
+        Require(listed.User.size() == 3
+                    && listed.User[0].Name == L"blank" && listed.User[1].Name == L"Addon"
+                    && listed.User[2].Name == L"stream-a",
+                "a stored addon with a blank name failed the list or kept no shown name");
+
+        harness.Backend->PutAddonsAsync(Urls({ StreamA })).get();
+        auto const after = harness.Backend->GetAddonsAsync().get();
+        Require(after.User.size() == 1 && after.User[0].TransportUrl == winrt::hstring{ StreamA },
+                "a stored addon with a blank name could not be removed");
+
+        // New installs refuse such a name instead of storing it.
+        auto const strict = MakeBackend({ { L"https://spaces.test/manifest.json",
+            AddonTests::Json(LR"({"id":"spaces","version":"1","name":"  ","resources":[],"types":[],"catalogs":[]})") } });
+        RejectsWithStatus([&strict]() { strict.Backend->PutAddonsAsync(Urls({ L"https://spaces.test/manifest.json" })).get(); },
+                          400, "an addon whose name is only spaces was installed");
+    }
+
     /* Resolution */
 
     void TestCatalogs()
@@ -803,6 +840,7 @@ void RunDeviceBackendTests()
     TestOneBadManifestFailsTheInstall();
     TestAddonListsAreRefused();
     TestHiddenCatalogs();
+    TestStoredBlankNamedAddonStaysUsable();
     TestCatalogs();
     TestMetaFirstAddonThatDescribes();
     TestStreamsAskEveryCapableAddon();

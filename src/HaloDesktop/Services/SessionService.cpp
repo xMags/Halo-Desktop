@@ -315,6 +315,11 @@ namespace HaloDesktop::Services
         return m_controller->SessionGeneration() + m_modeSwitches;
     }
 
+    std::uint64_t SessionService::AccountSessionGeneration() const noexcept
+    {
+        return m_controller->SessionGeneration();
+    }
+
     concurrency::task<void> SessionService::RestoreAsync()
     {
         auto const uiContext = winrt::apartment_context{};

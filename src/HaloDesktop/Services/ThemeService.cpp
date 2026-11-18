@@ -49,7 +49,15 @@ namespace HaloDesktop::Services
         }
 
         m_preference = preference;
-        m_preferences->Theme(static_cast<std::int32_t>(preference));
+        try
+        {
+            m_preferences->Theme(static_cast<std::int32_t>(preference));
+        }
+        catch (...)
+        {
+            // The theme still applies for this session; the file is left as
+            // it was when it could not be read or written.
+        }
         Apply();
     }
 

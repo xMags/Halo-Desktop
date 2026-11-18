@@ -124,6 +124,128 @@ namespace HaloDesktop::Services::Device
         co_return result;
     }
 
+    AccountChangedDuringMove::AccountChangedDuringMove()
+        : std::runtime_error{ "The signed-in account changed while this PC's data was moving." }
+    {
+    }
+
+    OwnerCheckedBackend::OwnerCheckedBackend(std::shared_ptr<Api::IHaloBackend> inner, std::function<bool()> isStillOwner)
+        : m_inner(std::move(inner)),
+          m_isStillOwner(std::move(isStillOwner))
+    {
+        if (!m_inner || !m_isStillOwner)
+        {
+            throw std::invalid_argument{ "An owner-checked backend needs a backend and an owner check." };
+        }
+    }
+
+    void OwnerCheckedBackend::RequireOwner() const
+    {
+        if (!m_isStillOwner()) throw AccountChangedDuringMove{};
+    }
+
+    concurrency::task<Api::Dto::AddonsPayload> OwnerCheckedBackend::GetAddonsAsync()
+    {
+        RequireOwner();
+        return m_inner->GetAddonsAsync();
+    }
+
+    concurrency::task<void> OwnerCheckedBackend::PutAddonsAsync(std::vector<winrt::hstring> transportUrls)
+    {
+        RequireOwner();
+        return m_inner->PutAddonsAsync(std::move(transportUrls));
+    }
+
+    concurrency::task<void> OwnerCheckedBackend::PatchAddonAsync(winrt::hstring addonId, bool hideCatalogs)
+    {
+        RequireOwner();
+        return m_inner->PatchAddonAsync(std::move(addonId), hideCatalogs);
+    }
+
+    concurrency::task<std::vector<Api::Dto::MetaPreview>> OwnerCheckedBackend::GetCatalogAsync(
+        winrt::hstring addonId,
+        winrt::hstring type,
+        winrt::hstring catalogId,
+        std::vector<std::pair<winrt::hstring, winrt::hstring>> extras)
+    {
+        RequireOwner();
+        return m_inner->GetCatalogAsync(std::move(addonId), std::move(type), std::move(catalogId), std::move(extras));
+    }
+
+    concurrency::task<Api::Dto::MetaDetail> OwnerCheckedBackend::GetMetaAsync(winrt::hstring type, winrt::hstring metaId)
+    {
+        RequireOwner();
+        return m_inner->GetMetaAsync(std::move(type), std::move(metaId));
+    }
+
+    concurrency::task<Api::Dto::StreamsPayload> OwnerCheckedBackend::GetStreamsAsync(winrt::hstring type, winrt::hstring videoId)
+    {
+        RequireOwner();
+        return m_inner->GetStreamsAsync(std::move(type), std::move(videoId));
+    }
+
+    concurrency::task<Api::Dto::NextEpisodePayload> OwnerCheckedBackend::GetNextEpisodeAsync(
+        winrt::hstring type,
+        winrt::hstring metaId,
+        winrt::hstring videoId,
+        winrt::hstring addonId,
+        winrt::hstring bingeGroup)
+    {
+        RequireOwner();
+        return m_inner->GetNextEpisodeAsync(
+            std::move(type), std::move(metaId), std::move(videoId), std::move(addonId), std::move(bingeGroup));
+    }
+
+    concurrency::task<Api::Dto::SubtitlesPayload> OwnerCheckedBackend::GetSubtitlesAsync(
+        winrt::hstring type,
+        winrt::hstring videoId,
+        std::optional<winrt::hstring> videoHash,
+        std::optional<std::uint64_t> videoSize,
+        std::optional<winrt::hstring> filename)
+    {
+        RequireOwner();
+        return m_inner->GetSubtitlesAsync(
+            std::move(type), std::move(videoId), std::move(videoHash), videoSize, std::move(filename));
+    }
+
+    concurrency::task<std::vector<Api::Dto::LibraryRow>> OwnerCheckedBackend::GetLibraryAsync()
+    {
+        RequireOwner();
+        return m_inner->GetLibraryAsync();
+    }
+
+    concurrency::task<std::vector<Api::Dto::LibraryRow>> OwnerCheckedBackend::PutLibraryAsync(std::vector<Api::Dto::LibraryRow> rows)
+    {
+        RequireOwner();
+        return m_inner->PutLibraryAsync(std::move(rows));
+    }
+
+    concurrency::task<std::vector<Api::Dto::WatchEntry>> OwnerCheckedBackend::GetWatchStateAsync()
+    {
+        RequireOwner();
+        return m_inner->GetWatchStateAsync();
+    }
+
+    concurrency::task<std::vector<Api::Dto::WatchEntry>> OwnerCheckedBackend::PutWatchStateAsync(std::vector<Api::Dto::WatchEntry> rows)
+    {
+        RequireOwner();
+        return m_inner->PutWatchStateAsync(std::move(rows));
+    }
+
+    concurrency::task<Api::Dto::SettingsPayload> OwnerCheckedBackend::GetSettingsAsync()
+    {
+        RequireOwner();
+        return m_inner->GetSettingsAsync();
+    }
+
+    concurrency::task<Api::Dto::SettingsPayload> OwnerCheckedBackend::PutSettingsAsync(
+        winrt::Windows::Data::Json::JsonObject value,
+        std::int64_t updatedAt)
+    {
+        RequireOwner();
+        return m_inner->PutSettingsAsync(std::move(value), updatedAt);
+    }
+
     std::wstring FailedAddonsTitle(std::size_t count)
     {
         return count == 1 ? L"An addon was not moved" : L"Some addons were not moved";

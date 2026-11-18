@@ -94,6 +94,10 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::optional<winrt::hstring> Plan() const override;
         [[nodiscard]] std::optional<winrt::hstring> AvatarVersion() const override;
         [[nodiscard]] std::uint64_t Generation() const noexcept override;
+        // Safe on any thread, unlike Generation(): moves whenever the
+        // signed-in session ends or another begins, for work off the UI thread
+        // that must stop when the account changes.
+        [[nodiscard]] std::uint64_t AccountSessionGeneration() const noexcept;
         [[nodiscard]] concurrency::task<void> RestoreAsync() override;
         [[nodiscard]] concurrency::task<SignInDiscovery> DiscoverAuthenticationAsync() override;
         [[nodiscard]] concurrency::task<std::wstring> CheckServerModeAsync(winrt::hstring serverUrl) override;

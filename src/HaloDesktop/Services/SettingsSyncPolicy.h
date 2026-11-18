@@ -50,4 +50,36 @@ namespace HaloDesktop::Services
     // A save replaces the whole settings document, so it may only be sent once
     // the document it patches has really been read.
     [[nodiscard]] bool CanSaveSettings(bool documentRead) noexcept;
+
+    // A local document whose save never reached the server ("unsent") is sent
+    // again only while it is strictly newer than the document the server
+    // answered with: the same newer-wins rule the server applies to a save. A
+    // server document as new or newer replaces it instead. Used both for the
+    // document held this session and for the one an earlier session left in
+    // the account's mirror.
+    [[nodiscard]] bool UnsentSettingsAreNewer(
+        bool unsent,
+        std::int64_t localUpdatedAt,
+        std::int64_t serverUpdatedAt) noexcept;
+
+    // A finished load, as far as sending an unsent document again goes.
+    struct SettingsResendCheck final
+    {
+        // The document came from the server, not the mirror: only then is the
+        // server known to be reachable and its timestamp known.
+        bool FromServer{};
+        // False for the load a failed save starts itself, so a server that
+        // answers reads but fails saves is not asked again and again; the
+        // next load from elsewhere, or the next edit, sends it.
+        bool MayResend{};
+        bool Unsent{};
+        std::int64_t LocalUpdatedAt{};
+        std::int64_t ServerUpdatedAt{};
+        std::uint64_t RequestWriteVersion{};
+        std::uint64_t CurrentWriteVersion{};
+    };
+
+    // Whether a load that kept the local document sends it again. An edit
+    // made while the load ran sends the document itself.
+    [[nodiscard]] bool ShouldResendUnsentSettings(SettingsResendCheck const& check) noexcept;
 }

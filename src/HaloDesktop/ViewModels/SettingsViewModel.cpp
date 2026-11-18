@@ -407,15 +407,24 @@ namespace winrt::HaloDesktop::implementation
     bool SettingsViewModel::SubtitleTrackStyling() const noexcept { return m_subtitleTrackStyling; }
     void SettingsViewModel::SubtitleTrackStyling(bool value) { if (m_subtitleTrackStyling != value) { m_subtitleTrackStyling = value; m_settings->SubtitleTrackStyling(value); Raise(L"SubtitleTrackStyling"); } }
     bool SettingsViewModel::ResumePlayback() const noexcept { return m_resumePlayback; }
-    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; m_playbackPreferences->ResumeEnabled(value); Raise(L"ResumePlayback"); } }
+    // These setters run from two-way toggle bindings, where an exception would
+    // end the app. A preference file that cannot be read or written is left as
+    // it was and the change is simply not saved.
+    void SettingsViewModel::ResumePlayback(bool value) { if (m_resumePlayback != value) { m_resumePlayback = value; try { m_playbackPreferences->ResumeEnabled(value); } catch (...) {} Raise(L"ResumePlayback"); } }
     bool SettingsViewModel::HardwareDecoding() const noexcept { return m_hardwareDecoding; }
-    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; m_playbackPreferences->HardwareDecodingEnabled(value); Raise(L"HardwareDecoding"); } }
+    void SettingsViewModel::HardwareDecoding(bool value) { if (m_hardwareDecoding != value) { m_hardwareDecoding = value; try { m_playbackPreferences->HardwareDecodingEnabled(value); } catch (...) {} Raise(L"HardwareDecoding"); } }
     bool SettingsViewModel::DiscordPresence() const noexcept { return m_discordPresence; }
     void SettingsViewModel::DiscordPresence(bool value)
     {
         if (m_discordPresence == value) return;
         m_discordPresence = value;
-        m_playbackPreferences->DiscordPresenceEnabled(value);
+        try
+        {
+            m_playbackPreferences->DiscordPresenceEnabled(value);
+        }
+        catch (...)
+        {
+        }
         m_discordPresenceService->SetEnabled(value);
         if (value) m_discordPresenceService->Update(m_playback->State());
         Raise(L"DiscordPresence");

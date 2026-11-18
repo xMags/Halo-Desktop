@@ -100,7 +100,13 @@ namespace HaloDesktop::Services::Device
             return m_session->Generation() == generation && pending && pending->Id == profile->Id;
         };
 
-        std::shared_ptr<Api::IHaloBackend> const account = m_account;
+        // Checked again before every request to the account, off the UI thread,
+        // so a switch mid-move stops it at the next request rather than after
+        // the rest of this PC's data reached someone else's account.
+        auto const accountGeneration = m_session->AccountSessionGeneration();
+        std::shared_ptr<Api::IHaloBackend> const account = std::make_shared<OwnerCheckedBackend>(
+            m_account,
+            [session = m_session, accountGeneration]() { return session->AccountSessionGeneration() == accountGeneration; });
         auto const device = std::make_shared<DeviceBackend>(DeviceBackendOptions{ .Store = m_store, .Fetcher = m_fetcher });
         std::optional<MoveResult> result;
         try

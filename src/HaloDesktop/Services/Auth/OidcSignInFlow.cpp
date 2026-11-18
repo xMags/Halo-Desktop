@@ -400,7 +400,10 @@ namespace HaloDesktop::Services::Auth
                 : L"&";
             auto const authorizationUrl = discovery.AuthorizationEndpoint + separator + query;
 
-            auto const callback = co_await SignInInBrowserAsync(authorizationUrl, cancellation, std::move(onOpened));
+            // Only a callback carrying this state ends the wait; the check below
+            // stays as the last word.
+            auto const callback = co_await SignInInBrowserAsync(
+                authorizationUrl, cancellation, std::move(onOpened), state);
             if (auto const error = callback.Value(L"error"))
             {
                 auto const description = callback.Value(L"error_description");

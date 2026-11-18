@@ -1,22 +1,22 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Api/HaloBackend.h"
 
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <span>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 #include <pplawait.h>
 #include <ppltasks.h>
-
-namespace HaloDesktop::Api
-{
-    class IHaloBackend;
-}
+#include <winrt/Windows.Data.Json.h>
 
 namespace HaloDesktop::Services::Device
 {
@@ -87,6 +87,64 @@ namespace HaloDesktop::Services::Device
         std::shared_ptr<Api::IHaloBackend> device,
         StoredWatchStatesReader storedWatchStates,
         std::shared_ptr<Api::IHaloBackend> account);
+
+    // The account side of a move, refusing every request once the account it
+    // started for is no longer the signed-in one: a sign-out and sign-in as
+    // someone else mid-move must not write the rest of this PC's data into
+    // the second account. `isStillOwner` runs on whatever thread makes the
+    // request, so it must be thread-safe. A refused call throws
+    // AccountChangedDuringMove (never an HTTP error, so no step mistakes it
+    // for an addon the account refused) before anything is sent.
+    class AccountChangedDuringMove final : public std::runtime_error
+    {
+    public:
+        AccountChangedDuringMove();
+    };
+
+    class OwnerCheckedBackend final : public Api::IHaloBackend
+    {
+    public:
+        OwnerCheckedBackend(std::shared_ptr<Api::IHaloBackend> inner, std::function<bool()> isStillOwner);
+
+        [[nodiscard]] concurrency::task<Api::Dto::AddonsPayload> GetAddonsAsync() override;
+        [[nodiscard]] concurrency::task<void> PutAddonsAsync(std::vector<winrt::hstring> transportUrls) override;
+        [[nodiscard]] concurrency::task<void> PatchAddonAsync(winrt::hstring addonId, bool hideCatalogs) override;
+        [[nodiscard]] concurrency::task<std::vector<Api::Dto::MetaPreview>> GetCatalogAsync(
+            winrt::hstring addonId,
+            winrt::hstring type,
+            winrt::hstring catalogId,
+            std::vector<std::pair<winrt::hstring, winrt::hstring>> extras = {}) override;
+        [[nodiscard]] concurrency::task<Api::Dto::MetaDetail> GetMetaAsync(winrt::hstring type, winrt::hstring metaId) override;
+        [[nodiscard]] concurrency::task<Api::Dto::StreamsPayload> GetStreamsAsync(winrt::hstring type, winrt::hstring videoId) override;
+        [[nodiscard]] concurrency::task<Api::Dto::NextEpisodePayload> GetNextEpisodeAsync(
+            winrt::hstring type,
+            winrt::hstring metaId,
+            winrt::hstring videoId,
+            winrt::hstring addonId,
+            winrt::hstring bingeGroup) override;
+        [[nodiscard]] concurrency::task<Api::Dto::SubtitlesPayload> GetSubtitlesAsync(
+            winrt::hstring type,
+            winrt::hstring videoId,
+            std::optional<winrt::hstring> videoHash,
+            std::optional<std::uint64_t> videoSize,
+            std::optional<winrt::hstring> filename) override;
+        [[nodiscard]] concurrency::task<std::vector<Api::Dto::LibraryRow>> GetLibraryAsync() override;
+        [[nodiscard]] concurrency::task<std::vector<Api::Dto::LibraryRow>> PutLibraryAsync(
+            std::vector<Api::Dto::LibraryRow> rows) override;
+        [[nodiscard]] concurrency::task<std::vector<Api::Dto::WatchEntry>> GetWatchStateAsync() override;
+        [[nodiscard]] concurrency::task<std::vector<Api::Dto::WatchEntry>> PutWatchStateAsync(
+            std::vector<Api::Dto::WatchEntry> rows) override;
+        [[nodiscard]] concurrency::task<Api::Dto::SettingsPayload> GetSettingsAsync() override;
+        [[nodiscard]] concurrency::task<Api::Dto::SettingsPayload> PutSettingsAsync(
+            winrt::Windows::Data::Json::JsonObject value,
+            std::int64_t updatedAt) override;
+
+    private:
+        void RequireOwner() const;
+
+        std::shared_ptr<Api::IHaloBackend> m_inner;
+        std::function<bool()> m_isStillOwner;
+    };
 
     // The dialog after a move that skipped addons.
     [[nodiscard]] std::wstring FailedAddonsTitle(std::size_t count);

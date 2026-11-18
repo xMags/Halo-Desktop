@@ -461,6 +461,40 @@ namespace
         return record;
     }
 
+    // A catalog's list field: absent or null is an empty list, as the
+    // reference's `?? []`; any other non-list leaves the catalog's needs
+    // unknown, so the caller drops that catalog rather than guess them.
+    std::optional<winrt::Windows::Data::Json::JsonArray> CatalogList(
+        winrt::Windows::Data::Json::JsonObject const& catalog,
+        wchar_t const* key)
+    {
+        if (!catalog.HasKey(key)) return winrt::Windows::Data::Json::JsonArray{};
+        auto const value = catalog.GetNamedValue(key);
+        if (value.ValueType() == winrt::Windows::Data::Json::JsonValueType::Null) return winrt::Windows::Data::Json::JsonArray{};
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::Array) return std::nullopt;
+        return value.GetArray();
+    }
+
+    // `isRequired` read as the reference reads it (JavaScript truthiness), so
+    // an odd value never makes a catalog look requestable without its extra.
+    bool IsRequiredExtra(winrt::Windows::Data::Json::JsonObject const& extra)
+    {
+        if (!extra.HasKey(L"isRequired")) return false;
+        auto const value = extra.GetNamedValue(L"isRequired");
+        switch (value.ValueType())
+        {
+        case winrt::Windows::Data::Json::JsonValueType::Null: return false;
+        case winrt::Windows::Data::Json::JsonValueType::Boolean: return value.GetBoolean();
+        case winrt::Windows::Data::Json::JsonValueType::Number:
+        {
+            auto const number = value.GetNumber();
+            return number != 0 && !std::isnan(number);
+        }
+        case winrt::Windows::Data::Json::JsonValueType::String: return !value.GetString().empty();
+        default: return true;
+        }
+    }
+
     std::vector<::HaloDesktop::Api::Dto::AddonRecord::Catalog> Catalogs(
         winrt::Windows::Data::Json::JsonObject const& manifest)
     {
@@ -475,34 +509,37 @@ namespace
             auto const type = OptionalDisplayString(object, L"type", 128);
             auto const id = OptionalDisplayString(object, L"id", 512);
             if (!type || !id) continue;
+            auto const extraArray = CatalogList(object, L"extra");
+            auto const supportedArray = CatalogList(object, L"extraSupported");
+            auto const requiredArray = CatalogList(object, L"extraRequired");
+            if (!extraArray || !supportedArray || !requiredArray) continue;
             // The reads that derive SupportsSearch and HasRequiredExtra keep their
             // original strictness; only the values added beside them are fail-soft.
             auto supportsSearch = false;
             auto hasRequired = false;
             std::vector<::HaloDesktop::Api::Dto::AddonRecord::CatalogExtra> extras;
-            for (auto const& extra : object.GetNamedArray(L"extra", winrt::Windows::Data::Json::JsonArray{}))
+            for (auto const& extra : *extraArray)
             {
                 if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object) continue;
                 auto const extraObject = extra.GetObject();
-                auto const name = extraObject.GetNamedString(L"name", L"");
-                auto const isRequired = extraObject.GetNamedBoolean(L"isRequired", false);
+                auto const name = RawString(extraObject, L"name");
+                auto const isRequired = IsRequiredExtra(extraObject);
                 supportsSearch = supportsSearch || name == L"search";
                 hasRequired = hasRequired || isRequired;
                 if (name.empty() || name.size() > 128 || extras.size() == 32) continue;
                 extras.push_back({ name, isRequired, TolerantStringArray(extraObject, L"options", 512, 128) });
             }
             std::vector<winrt::hstring> extraSupported;
-            for (auto const& extra : object.GetNamedArray(L"extraSupported", winrt::Windows::Data::Json::JsonArray{}))
+            for (auto const& extra : *supportedArray)
             {
                 if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) continue;
                 auto const name = extra.GetString();
                 supportsSearch = supportsSearch || name == L"search";
                 if (!name.empty() && name.size() <= 128 && extraSupported.size() < 32) extraSupported.push_back(name);
             }
-            auto const requiredArray = object.GetNamedArray(L"extraRequired", winrt::Windows::Data::Json::JsonArray{});
-            hasRequired = hasRequired || requiredArray.Size() > 0;
+            hasRequired = hasRequired || requiredArray->Size() > 0;
             std::vector<winrt::hstring> extraRequired;
-            for (auto const& extra : requiredArray)
+            for (auto const& extra : *requiredArray)
             {
                 if (extra.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) continue;
                 auto const name = extra.GetString();
@@ -522,12 +559,60 @@ namespace
         return result;
     }
 
+    // An addon's name is only shown, so it never costs the row: a blank or
+    // malformed one falls back to the manifest id, then to "Addon". An addon
+    // installed with a blank name thereby stays listed and removable.
+    winrt::hstring AddonName(
+        winrt::Windows::Data::Json::JsonObject const& manifest,
+        winrt::hstring const& manifestId)
+    {
+        auto const sanitized = [](winrt::hstring const& raw)
+        {
+            std::wstring text{ Trimmed(raw) };
+            std::replace_if(text.begin(), text.end(), [](wchar_t character) { return std::iswcntrl(character) != 0; }, L' ');
+            std::wstring trimmed{ Trimmed(winrt::hstring{ text }) };
+            if (trimmed.size() > 512) trimmed.resize(512);
+            return trimmed;
+        };
+        if (auto const name = sanitized(RawString(manifest, L"name")); !name.empty())
+        {
+            return winrt::hstring{ name };
+        }
+        if (auto const id = sanitized(manifestId); !id.empty())
+        {
+            return winrt::hstring{ id };
+        }
+        return L"Addon";
+    }
+
+    // Reads one row of a list. A row that cannot be read (a missing or
+    // wrong-typed required field, a value out of bounds) is left out on its
+    // own, so it never fails the rows beside it. Only the errors the readers
+    // raise for bad data are caught; anything else still propagates.
+    template <typename Row, typename Read>
+    void AppendReadableRow(std::vector<Row>& rows, Read const& read)
+    {
+        try
+        {
+            if (auto row = read()) rows.push_back(std::move(*row));
+        }
+        catch (std::invalid_argument const&)
+        {
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+    }
+
     ::HaloDesktop::Api::Dto::AddonRecord ParseAddon(
         winrt::Windows::Data::Json::IJsonValue const& value,
         bool isGlobal)
     {
         auto const object = RequireObject(value, L"An addon entry must be an object.");
         auto const manifest = object.GetNamedObject(L"manifest");
+        // Fail-soft: an addon that omits its manifest id stays usable and is
+        // simply never merged with another row.
+        auto const manifestId = OptionalDisplayString(manifest, L"id", 512).value_or(L"");
         // A null or non-string URL is a row without one, as a missing key is:
         // the server hides it, and that must not fail the whole list.
         std::optional<winrt::hstring> transportUrl;
@@ -543,11 +628,9 @@ namespace
         }
         return ::HaloDesktop::Api::Dto::AddonRecord{
             .Id = RequireString(object, L"id"),
-            // Fail-soft: an addon that omits its manifest id stays usable and is
-            // simply never merged with another row.
-            .ManifestId = OptionalDisplayString(manifest, L"id", 512).value_or(L""),
+            .ManifestId = manifestId,
             .TransportUrl = transportUrl,
-            .Name = DisplayString(manifest, L"name", 512),
+            .Name = AddonName(manifest, manifestId),
             // The server accepts a manifest with an empty version, and one
             // such addon must not fail the whole list.
             .Version = OptionalDisplayString(manifest, L"version", 64).value_or(L""),
@@ -556,7 +639,9 @@ namespace
             .Types = StringArray(manifest, L"types"),
             .Catalogs = Catalogs(manifest),
             .Position = static_cast<std::int32_t>(position),
-            .HideCatalogs = object.GetNamedBoolean(L"hideCatalogs", false),
+            // Fail-soft: a malformed flag shows the catalogs rather than costing
+            // the row, which the next addon edit would otherwise drop.
+            .HideCatalogs = OptionalBoolean(object, L"hideCatalogs", false),
             .IsGlobal = isGlobal,
             .ProvidedGlobally = !isGlobal && OptionalBoolean(object, L"providedGlobally", false),
         };
@@ -651,13 +736,14 @@ namespace HaloDesktop::Api::Mappers
     {
         auto const object = RequireObject(value, L"The addons response must be a JSON object.");
         Dto::AddonsPayload result;
+        // The lists themselves must be there; only a row is skipped.
         for (auto const& item : object.GetNamedArray(L"global"))
         {
-            result.Global.push_back(ParseAddon(item, true));
+            AppendReadableRow(result.Global, [&item]() { return std::optional{ ParseAddon(item, true) }; });
         }
         for (auto const& item : object.GetNamedArray(L"user"))
         {
-            result.User.push_back(ParseAddon(item, false));
+            AppendReadableRow(result.User, [&item]() { return std::optional{ ParseAddon(item, false) }; });
         }
         return result;
     }
@@ -702,28 +788,33 @@ namespace HaloDesktop::Api::Mappers
 
     std::vector<Dto::LibraryRow> ParseLibrary(winrt::Windows::Data::Json::IJsonValue const& value)
     {
+        // A response that is not a list still fails as a whole; a row that
+        // cannot be read is left out, keeping the rest.
         auto const array = value.GetArray();
         std::vector<Dto::LibraryRow> result;
         result.reserve(array.Size());
         for (auto const& item : array)
         {
-            auto const object = RequireObject(item, L"A library row must be an object.");
-            std::optional<std::int64_t> removedAt;
-            if (object.HasKey(L"removedAt"))
+            AppendReadableRow(result, [&item]() -> std::optional<Dto::LibraryRow>
             {
-                auto const field = object.GetNamedValue(L"removedAt");
-                if (field.ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+                auto const object = RequireObject(item, L"A library row must be an object.");
+                std::optional<std::int64_t> removedAt;
+                if (object.HasKey(L"removedAt"))
                 {
-                    removedAt = RequirePositiveInteger(object, L"removedAt");
+                    auto const field = object.GetNamedValue(L"removedAt");
+                    if (field.ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+                    {
+                        removedAt = RequirePositiveInteger(object, L"removedAt");
+                    }
+                    else if (field.ValueType() != winrt::Windows::Data::Json::JsonValueType::Null)
+                    {
+                        throw std::invalid_argument{ "The library row contains an invalid removal timestamp." };
+                    }
                 }
-                else if (field.ValueType() != winrt::Windows::Data::Json::JsonValueType::Null)
-                {
-                    throw std::invalid_argument{ "The library row contains an invalid removal timestamp." };
-                }
-            }
-            result.push_back({
-                DisplayString(object, L"id", 2048), DisplayString(object, L"type", 128), DisplayString(object, L"name", 512),
-                OptionalHttpUrl(object, L"poster"), RequirePositiveInteger(object, L"addedAt"), removedAt, RequirePositiveInteger(object, L"updatedAt") });
+                return Dto::LibraryRow{
+                    DisplayString(object, L"id", 2048), DisplayString(object, L"type", 128), DisplayString(object, L"name", 512),
+                    OptionalHttpUrl(object, L"poster"), RequirePositiveInteger(object, L"addedAt"), removedAt, RequirePositiveInteger(object, L"updatedAt") };
+            });
         }
         return result;
     }
@@ -735,35 +826,40 @@ namespace HaloDesktop::Api::Mappers
         result.reserve(array.Size());
         for (auto const& item : array)
         {
-            auto const object = RequireObject(item, L"A watch-state row must be an object.");
-            auto position = object.GetNamedNumber(L"positionSec");
-            auto const duration = object.GetNamedNumber(L"durationSec");
-            // Another client may save a position slightly past the end. The
-            // server keeps such a row and it means finished, so it is read as
-            // being at the end rather than dropped.
-            if (std::isfinite(position) && std::isfinite(duration) && duration > 0 && position > duration)
+            // Every field keeps its rule; a row that breaks one (`watched` not
+            // a boolean included) is left out on its own.
+            AppendReadableRow(result, [&item]() -> std::optional<Dto::WatchEntry>
             {
-                position = duration;
-            }
-            constexpr double MaximumWatchSeconds = static_cast<double>((std::numeric_limits<std::int32_t>::max)());
-            if (!std::isfinite(position) || !std::isfinite(duration)
-                || position < 0 || duration < 0
-                || position > duration
-                || position > MaximumWatchSeconds
-                || duration > MaximumWatchSeconds)
-            {
-                continue;
-            }
-            std::optional<std::int64_t> removedAt;
-            if (object.HasKey(L"removedAt")
-                && object.GetNamedValue(L"removedAt").ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
-            {
-                removedAt = ::HaloDesktop::Api::CheckedPositiveInt64(object.GetNamedNumber(L"removedAt"));
-            }
-            result.push_back({
-                DisplayString(object, L"videoId", 2048), DisplayString(object, L"itemId", 2048), position, duration,
-                object.GetNamedBoolean(L"watched"), OptionalDisplayString(object, L"name", 512), OptionalHttpUrl(object, L"poster"),
-                RequirePositiveInteger(object, L"updatedAt"), removedAt });
+                auto const object = RequireObject(item, L"A watch-state row must be an object.");
+                auto position = object.GetNamedNumber(L"positionSec");
+                auto const duration = object.GetNamedNumber(L"durationSec");
+                // Another client may save a position slightly past the end. The
+                // server keeps such a row and it means finished, so it is read as
+                // being at the end rather than dropped.
+                if (std::isfinite(position) && std::isfinite(duration) && duration > 0 && position > duration)
+                {
+                    position = duration;
+                }
+                constexpr double MaximumWatchSeconds = static_cast<double>((std::numeric_limits<std::int32_t>::max)());
+                if (!std::isfinite(position) || !std::isfinite(duration)
+                    || position < 0 || duration < 0
+                    || position > duration
+                    || position > MaximumWatchSeconds
+                    || duration > MaximumWatchSeconds)
+                {
+                    return std::nullopt;
+                }
+                std::optional<std::int64_t> removedAt;
+                if (object.HasKey(L"removedAt")
+                    && object.GetNamedValue(L"removedAt").ValueType() == winrt::Windows::Data::Json::JsonValueType::Number)
+                {
+                    removedAt = ::HaloDesktop::Api::CheckedPositiveInt64(object.GetNamedNumber(L"removedAt"));
+                }
+                return Dto::WatchEntry{
+                    DisplayString(object, L"videoId", 2048), DisplayString(object, L"itemId", 2048), position, duration,
+                    object.GetNamedBoolean(L"watched"), OptionalDisplayString(object, L"name", 512), OptionalHttpUrl(object, L"poster"),
+                    RequirePositiveInteger(object, L"updatedAt"), removedAt };
+            });
         }
         return result;
     }

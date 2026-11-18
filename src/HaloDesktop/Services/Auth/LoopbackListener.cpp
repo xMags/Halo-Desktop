@@ -15,6 +15,9 @@
 #include <string>
 #include <string_view>
 #include <thread>
+#include <utility>
+#include <winrt/Windows.Foundation.h>
+#include <winrt/Windows.Foundation.Collections.h>
 
 namespace
 {
@@ -102,33 +105,40 @@ namespace
         return std::nullopt;
     }
 
-    void WakeListener() noexcept
-    {
-        auto const client = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-        if (client == INVALID_SOCKET)
-        {
-            return;
-        }
-        sockaddr_in address{};
-        address.sin_family = AF_INET;
-        address.sin_port = htons(CallbackPort);
-        address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
-        if (connect(client, reinterpret_cast<sockaddr*>(&address), sizeof(address)) != SOCKET_ERROR)
-        {
-            constexpr std::string_view cancel =
-                "GET /cancel HTTP/1.1\r\nHost: 127.0.0.1\r\nConnection: close\r\n\r\n";
-            static_cast<void>(send(client, cancel.data(), static_cast<int>(cancel.size()), 0));
-        }
-        closesocket(client);
-    }
+    constexpr char NotFoundResponse[] = "HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n";
 }
 
 namespace HaloDesktop::Services::Auth
 {
+    bool CallbackCarriesState(std::string_view path, std::wstring_view expectedState)
+    {
+        auto const query = path.find('?');
+        if (query == std::string_view::npos || query + 1 >= path.size())
+        {
+            return false;
+        }
+        try
+        {
+            winrt::Windows::Foundation::WwwFormUrlDecoder const decoder{ winrt::to_hstring(path.substr(query + 1)) };
+            for (auto const& entry : decoder)
+            {
+                if (entry.Name() == L"state")
+                {
+                    return std::wstring_view{ entry.Value() } == expectedState;
+                }
+            }
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+        return false;
+    }
+
     struct LoopbackListener::State final
     {
-        explicit State(std::chrono::seconds requestedTimeout)
-            : timeout(requestedTimeout)
+        State(std::chrono::seconds requestedTimeout, std::optional<std::wstring> requestedState)
+            : timeout(requestedTimeout),
+              expectedState(std::move(requestedState))
         {
             try
             {
@@ -216,14 +226,16 @@ namespace HaloDesktop::Services::Auth
             std::scoped_lock const lock{ cancelMutex };
             Fail("Halo sign-in was cancelled.");
             // A closed listener means an earlier Cancel already stopped and
-            // joined the worker. Waking again would connect to whatever owns
-            // the port now, possibly a newer sign-in's listener, and cancel it.
+            // joined the worker.
             if (listener == INVALID_SOCKET)
             {
                 return;
             }
+            // The worker never blocks longer than StopPollInterval (its accept
+            // and read waits are sliced and check the token in between), so it
+            // sees the stop on its own. No wake-up request is sent: a request
+            // that cancels could be sent by any program or page as well.
             worker.request_stop();
-            WakeListener();
             if (worker.joinable() && worker.get_id() != std::this_thread::get_id())
             {
                 worker.join();
@@ -270,7 +282,7 @@ namespace HaloDesktop::Services::Auth
                 fd_set sockets;
                 FD_ZERO(&sockets);
                 FD_SET(listener, &sockets);
-                timeval wait{ 0, 250000 };
+                timeval wait{ 0, static_cast<long>(std::chrono::duration_cast<std::chrono::microseconds>(StopPollInterval).count()) };
                 auto const selected = select(0, &sockets, nullptr, nullptr, &wait);
                 if (selected == SOCKET_ERROR)
                 {
@@ -300,18 +312,13 @@ namespace HaloDesktop::Services::Auth
                 }
                 auto const path = request->empty() ? std::string{ "/" } : RequestPath(*request);
 
-                auto const isCancel = path == "/cancel" || path.starts_with("/cancel?");
-                if (isCancel)
-                {
-                    SendResponse(client, "HTTP/1.1 200 OK\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
-                    CloseClient(client);
-                    Fail("Halo sign-in was cancelled.");
-                    return;
-                }
+                // Another program or a web page can reach this port too, so a
+                // request completes the sign-in only when it is the callback
+                // (and, when the caller gave one, carries the sign-in's state).
                 auto const isCallback = path == "/callback" || path.starts_with("/callback?");
-                if (!isCallback)
+                if (!isCallback || (expectedState && !CallbackCarriesState(path, *expectedState)))
                 {
-                    SendResponse(client, "HTTP/1.1 404 Not Found\r\ncontent-length: 0\r\nconnection: close\r\n\r\n");
+                    SendResponse(client, NotFoundResponse);
                     CloseClient(client);
                     continue;
                 }
@@ -324,6 +331,7 @@ namespace HaloDesktop::Services::Auth
         }
 
         std::chrono::seconds timeout;
+        std::optional<std::wstring> expectedState;
         std::mutex cancelMutex;
         concurrency::task_completion_event<winrt::hstring> completion;
         std::atomic_bool completed{};
@@ -332,8 +340,8 @@ namespace HaloDesktop::Services::Auth
         bool winsockStarted{};
     };
 
-    LoopbackListener::LoopbackListener(std::chrono::seconds timeout)
-        : m_state(std::make_unique<State>(timeout))
+    LoopbackListener::LoopbackListener(std::chrono::seconds timeout, std::optional<std::wstring> expectedState)
+        : m_state(std::make_unique<State>(timeout, std::move(expectedState)))
     {
     }
 

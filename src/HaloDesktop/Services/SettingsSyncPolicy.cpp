@@ -37,4 +37,20 @@ namespace HaloDesktop::Services
     {
         return documentRead;
     }
+
+    bool UnsentSettingsAreNewer(
+        bool unsent,
+        std::int64_t localUpdatedAt,
+        std::int64_t serverUpdatedAt) noexcept
+    {
+        return unsent && localUpdatedAt > serverUpdatedAt;
+    }
+
+    bool ShouldResendUnsentSettings(SettingsResendCheck const& check) noexcept
+    {
+        return check.FromServer
+            && check.MayResend
+            && check.RequestWriteVersion == check.CurrentWriteVersion
+            && UnsentSettingsAreNewer(check.Unsent, check.LocalUpdatedAt, check.ServerUpdatedAt);
+    }
 }

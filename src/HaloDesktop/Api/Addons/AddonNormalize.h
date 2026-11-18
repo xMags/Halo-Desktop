@@ -21,7 +21,8 @@ namespace HaloDesktop::Api::Addons
     // No I/O; safe on any thread.
 
     // The manifest, when its load-bearing fields have the right shape (a
-    // non-empty id and name, a string version, string types, resources as
+    // non-empty id, a name that is not blank and at most 4096 characters once
+    // trimmed, a string version, string types, resources as
     // names or objects with a string name, catalogs with a string type and
     // id). Everything else passes through untouched.
     [[nodiscard]] std::optional<winrt::Windows::Data::Json::JsonObject> ParseManifest(

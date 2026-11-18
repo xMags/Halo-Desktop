@@ -15,7 +15,10 @@ namespace
     constexpr std::size_t MaximumHistoryItems = 20;
     constexpr std::size_t MaximumHistoryItemLength = HaloDesktop::Services::SearchHistoryTermLimit;
     constexpr double MaximumExactMilliseconds = 9007199254740992.0;
-    constexpr std::size_t MaximumSubtitleMemoryCharacters = 512u * 1024u;
+    // Counted in UTF-8 bytes as written, so the memory at its limit plus every
+    // other field at theirs (about 45 KB with JSON escapes) stays well inside
+    // the file limit above and a save that was accepted always reads back.
+    constexpr std::size_t MaximumSubtitleMemoryBytes = 512u * 1024u;
     // A residential line faster than this is not something the warning needs to
     // model, and it keeps a corrupted file from producing an absurd threshold.
     constexpr double MaximumLineMbps = 100000.0;
@@ -39,6 +42,11 @@ namespace
         }
         std::wstring text{ value.GetString() };
         return text.size() > maximumLength ? std::wstring{} : text;
+    }
+
+    std::size_t SerializedBytes(JsonObject const& value)
+    {
+        return winrt::to_string(value.Stringify()).size();
     }
 
     DevicePreferences Parse(std::string const& raw)
@@ -78,7 +86,7 @@ namespace
         if (root.HasKey(L"subtitleSelectionMemory"))
         {
             auto const memory = root.GetNamedObject(L"subtitleSelectionMemory");
-            if (memory.Stringify().size() <= MaximumSubtitleMemoryCharacters)
+            if (SerializedBytes(memory) <= MaximumSubtitleMemoryBytes)
             {
                 result.SubtitleSelectionMemory = JsonObject::Parse(memory.Stringify());
             }
@@ -126,7 +134,7 @@ namespace
         root.Insert(L"searchHistory", history);
 
         auto memory = value.SubtitleSelectionMemory;
-        if (memory && memory.Stringify().size() <= MaximumSubtitleMemoryCharacters)
+        if (memory && SerializedBytes(memory) <= MaximumSubtitleMemoryBytes)
         {
             root.Insert(L"subtitleSelectionMemory", JsonObject::Parse(memory.Stringify()));
         }
@@ -151,7 +159,14 @@ namespace
         {
             root.Insert(L"sessionServerUrl", JsonValue::CreateStringValue(value.SessionServerUrl));
         }
-        return winrt::to_string(root.Stringify());
+        auto serialized = winrt::to_string(root.Stringify());
+        // The bounds above keep this from happening; if they ever drift, no
+        // file is written that the next read would refuse.
+        if (serialized.size() > MaximumPreferencesBytes)
+        {
+            throw std::length_error{ "The device preferences exceed their size limit." };
+        }
+        return serialized;
     }
 
     template <typename Mutation>
@@ -162,13 +177,20 @@ namespace
     {
         std::scoped_lock const processLock{ processMutex };
         HaloDesktop::Storage::FileMutationLock const fileLock{ path };
+        // A file that could not be read (held open by another program, over
+        // the size limit, a disk error) throws out of here and is left as it
+        // is: writing defaults over it would lose every preference it holds.
+        // The next mutation tries again. A missing file reads as empty.
+        auto const raw = HaloDesktop::Storage::ReadUtf8File(path, MaximumPreferencesBytes);
         DevicePreferences current;
         try
         {
-            current = Parse(HaloDesktop::Storage::ReadUtf8File(path, MaximumPreferencesBytes));
+            current = Parse(raw);
         }
         catch (...)
         {
+            // Read, but not a preferences document: nothing in it can be
+            // recovered, so it starts again from the defaults.
             current = {};
         }
         std::invoke(std::forward<Mutation>(mutation), current);
@@ -264,7 +286,7 @@ namespace HaloDesktop::Services
         winrt::Windows::Data::Json::JsonObject const& value)
     {
         auto const snapshot = value ? JsonObject::Parse(value.Stringify()) : JsonObject{};
-        if (snapshot.Stringify().size() > MaximumSubtitleMemoryCharacters)
+        if (SerializedBytes(snapshot) > MaximumSubtitleMemoryBytes)
         {
             throw std::invalid_argument{ "Subtitle selection memory is too large." };
         }

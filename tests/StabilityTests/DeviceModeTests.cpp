@@ -350,6 +350,60 @@ namespace
         Require(account->Calls == std::vector<std::wstring>{ L"library:3" }, "the move went on after the library failed");
     }
 
+    // A sign-out and sign-in as someone else mid-move: the next request to the
+    // account is refused before it is sent, so nothing more reaches the
+    // second account, and the move fails for a later retry.
+    void TestAnAccountSwitchStopsTheMoveAtTheNextRequest()
+    {
+        auto const account = std::make_shared<FakeAccount>();
+        auto const device = std::make_shared<FakeDevice>();
+        device->LibraryRows = ManyLibraryRows(1200);
+        device->WatchStates = { Watch(L"tt1", 3) };
+        device->Settings = Dto::SettingsPayload{ Json::JsonObject::Parse(LR"({"playbackRate":1})"), 9 };
+        device->Addons = { Addon(L"https://a.test/manifest.json", L"A") };
+
+        // The account changes once the first chunk has been sent.
+        auto const checked = std::make_shared<Device::OwnerCheckedBackend>(
+            account, [account]() { return account->Calls.empty(); });
+        auto stopped = false;
+        try
+        {
+            static_cast<void>(Device::MoveRecordsIntoAccountAsync(device, StoredOf(device), checked).get());
+        }
+        catch (Device::AccountChangedDuringMove const&)
+        {
+            stopped = true;
+        }
+        Require(stopped, "a move went on after the account changed");
+        Require(account->Calls == std::vector<std::wstring>{ L"library:500" },
+            "a request reached the account after it changed");
+
+        // A switch just before the addons: the addon is not sent, and the stop
+        // is not mistaken for an addon the account refused.
+        auto const late = std::make_shared<FakeAccount>();
+        auto const lateChecked = std::make_shared<Device::OwnerCheckedBackend>(
+            late, [late]() { return late->Calls.size() < 2; });
+        auto lateStopped = false;
+        try
+        {
+            static_cast<void>(Device::MoveRecordsIntoAccountAsync(device, StoredOf(device), lateChecked).get());
+        }
+        catch (Device::AccountChangedDuringMove const&)
+        {
+            lateStopped = true;
+        }
+        Require(lateStopped && late->Calls == std::vector<std::wstring>{ L"library:500", L"library:500" },
+            "the move did not stop at the request after the switch");
+
+        // While the account stays the same the checked side changes nothing.
+        auto const same = std::make_shared<FakeAccount>();
+        auto const sameChecked = std::make_shared<Device::OwnerCheckedBackend>(same, []() { return true; });
+        auto const result = Device::MoveRecordsIntoAccountAsync(device, StoredOf(device), sameChecked).get();
+        Require(result.FailedAddons.empty() && same->Calls == std::vector<std::wstring>{
+                    L"library:500", L"library:500", L"library:200", L"watch:1", L"settings:9", L"addons:1" },
+            "the owner check changed a move into the same account");
+    }
+
     void TestRemovalsReachTheAccount()
     {
         auto const account = std::make_shared<FakeAccount>();
@@ -782,6 +836,7 @@ void RunDeviceModeTests()
     TestEverythingMovesAndADeadAddonIsNamed();
     TestAnUnreachableAccountStopsTheMove();
     TestALibraryFailureSendsNothingAfterIt();
+    TestAnAccountSwitchStopsTheMoveAtTheNextRequest();
     TestRemovalsReachTheAccount();
     TestOlderDeviceRowsNeverReplaceNewerAccountRows();
     TestFailedAddonsDialogCopy();

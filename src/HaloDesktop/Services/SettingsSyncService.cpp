@@ -89,10 +89,16 @@ namespace HaloDesktop::Services
 
     concurrency::task<void> SettingsSyncService::LoadAsync()
     {
+        return LoadCoreAsync(true);
+    }
+
+    concurrency::task<void> SettingsSyncService::LoadCoreAsync(bool mayResend)
+    {
         auto const uiContext = winrt::apartment_context{};
         auto const accountVersion = m_accountVersion;
         auto const requestWriteVersion = m_writeVersion;
         auto const localUpdatedAt = m_updatedAt;
+        auto const firstRead = !m_documentRead;
         auto const requestId = m_queryCache->Issue(SettingsCacheKey);
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> payload;
         try
@@ -102,9 +108,17 @@ namespace HaloDesktop::Services
         catch (...)
         {
         }
-        if (!payload)
+        auto const fromServer = payload.has_value();
+        // The mirror stands in for an unreachable server, and on the first
+        // read it may also hold an earlier session's unsent document.
+        std::optional<MirrorDocument> mirror;
+        if (!payload || firstRead)
         {
-            payload = co_await ReadMirrorAsync();
+            mirror = co_await ReadMirrorAsync();
+        }
+        if (!payload && mirror)
+        {
+            payload = mirror->Payload;
         }
         co_await uiContext;
         if (accountVersion != m_accountVersion)
@@ -124,19 +138,41 @@ namespace HaloDesktop::Services
         switch (action)
         {
         case SettingsLoadAction::AdoptFirstRead:
+        {
+            // An earlier session's unsent document is the base when it is
+            // newer than the server's; otherwise the server's wins.
+            auto adopted = *payload;
+            auto unsent = !fromServer && mirror && mirror->Unsent;
+            if (fromServer && mirror
+                && UnsentSettingsAreNewer(mirror->Unsent, mirror->Payload.UpdatedAt, payload->UpdatedAt))
+            {
+                adopted = mirror->Payload;
+                unsent = true;
+            }
             // Committed when this is still the latest request; an older read is
             // as real a document, so it is adopted either way.
-            static_cast<void>(m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings));
-            Apply(*payload);
+            static_cast<void>(m_queryCache->Commit(SettingsCacheKey, requestId, adopted, QueryTtl::Settings));
+            Apply(adopted);
             m_documentRead = true;
-            static_cast<void>(WriteMirrorAsync(*payload));
+            m_unsent = unsent;
+            static_cast<void>(WriteMirrorAsync(adopted, m_unsent));
+            auto const replayed = !m_unreadEdits.empty();
             ReplayUnreadEdits();
+            // Replayed edits are saved with the document; otherwise an unsent
+            // one goes now that the server answered.
+            if (!replayed && fromServer && mayResend && m_unsent)
+            {
+                static_cast<void>(SaveAsync(Snapshot(), m_updatedAt));
+            }
             break;
+        }
         case SettingsLoadAction::ApplyNewer:
             if (m_queryCache->Commit(SettingsCacheKey, requestId, *payload, QueryTtl::Settings))
             {
+                // Newer wins: a newer server document replaces an unsent one.
                 Apply(*payload);
-                static_cast<void>(WriteMirrorAsync(*payload));
+                m_unsent = !fromServer && mirror && mirror->Unsent;
+                static_cast<void>(WriteMirrorAsync(*payload, m_unsent));
             }
             break;
         case SettingsLoadAction::DiscardUnreadEdits:
@@ -152,6 +188,18 @@ namespace HaloDesktop::Services
             break;
         }
         case SettingsLoadAction::Keep:
+            if (payload && m_documentRead && ShouldResendUnsentSettings({
+                    .FromServer = fromServer,
+                    .MayResend = mayResend,
+                    .Unsent = m_unsent,
+                    .LocalUpdatedAt = m_updatedAt,
+                    .ServerUpdatedAt = payload->UpdatedAt,
+                    .RequestWriteVersion = requestWriteVersion,
+                    .CurrentWriteVersion = m_writeVersion,
+                }))
+            {
+                static_cast<void>(SaveAsync(Snapshot(), m_updatedAt));
+            }
             break;
         }
     }
@@ -284,7 +332,7 @@ namespace HaloDesktop::Services
         SetString(L"catalogLanguage", std::move(value), false);
     }
 
-    concurrency::task<std::optional<::HaloDesktop::Api::Dto::SettingsPayload>> SettingsSyncService::ReadMirrorAsync()
+    concurrency::task<std::optional<SettingsSyncService::MirrorDocument>> SettingsSyncService::ReadMirrorAsync()
     {
         auto const mirrorPath = m_mirrorPath;
         co_await winrt::resume_background();
@@ -300,8 +348,16 @@ namespace HaloDesktop::Services
             {
                 co_return std::nullopt;
             }
-            co_return ::HaloDesktop::Api::Mappers::ParseSettings(
-                winrt::Windows::Data::Json::JsonValue::Parse(winrt::to_hstring(raw)));
+            auto const root = winrt::Windows::Data::Json::JsonValue::Parse(winrt::to_hstring(raw));
+            auto document = MirrorDocument{ .Payload = ::HaloDesktop::Api::Mappers::ParseSettings(root) };
+            // A mirror written before the marker existed reads as sent.
+            auto const object = root.GetObject();
+            if (auto const unsent = object.TryLookup(L"unsent");
+                unsent && unsent.ValueType() == winrt::Windows::Data::Json::JsonValueType::Boolean)
+            {
+                document.Unsent = unsent.GetBoolean();
+            }
+            co_return document;
         }
         catch (...)
         {
@@ -309,7 +365,7 @@ namespace HaloDesktop::Services
         }
     }
 
-    concurrency::task<void> SettingsSyncService::WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload)
+    concurrency::task<void> SettingsSyncService::WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload payload, bool unsent)
     {
         auto const mirrorPath = m_mirrorPath;
         co_await winrt::resume_background();
@@ -323,6 +379,10 @@ namespace HaloDesktop::Services
             root.Insert(L"value", payload.Value);
             root.Insert(L"updatedAt", winrt::Windows::Data::Json::JsonValue::CreateNumberValue(
                 static_cast<double>(payload.UpdatedAt)));
+            if (unsent)
+            {
+                root.Insert(L"unsent", winrt::Windows::Data::Json::JsonValue::CreateBooleanValue(true));
+            }
             auto const encoded = winrt::to_string(root.Stringify());
 
             std::scoped_lock const lock{ m_mirrorMutex };
@@ -377,22 +437,28 @@ namespace HaloDesktop::Services
         }
         if (!echo)
         {
+            // The document stays unsent (Touch marked it, here and in the
+            // mirror). This load may adopt a newer server document but never
+            // sends again itself, so a failing server is not asked in a loop.
             m_queryCache->Invalidate(SettingsCacheKey);
             if (version == m_writeVersion)
             {
-                static_cast<void>(LoadAsync());
+                static_cast<void>(LoadCoreAsync(false));
             }
             co_return;
         }
         if (echo->UpdatedAt >= m_updatedAt)
         {
+            // The server holds this document or a newer one: nothing is unsent.
+            // A newer local edit made meanwhile keeps its own mark and save.
             Apply(*echo);
+            m_unsent = false;
         }
         m_queryCache->Invalidate(SettingsCacheKey);
         static_cast<void>(WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload{
             .Value = Snapshot(),
             .UpdatedAt = m_updatedAt,
-        }));
+        }, m_unsent));
     }
 
     void SettingsSyncService::Apply(::HaloDesktop::Api::Dto::SettingsPayload payload)
@@ -484,10 +550,13 @@ namespace HaloDesktop::Services
     {
         ++m_writeVersion;
         m_updatedAt = NextTimestamp();
+        // Unsent until the save's answer says otherwise, so a save that never
+        // lands (or an exit before it does) is sent again later.
+        m_unsent = true;
         static_cast<void>(WriteMirrorAsync(::HaloDesktop::Api::Dto::SettingsPayload{
             .Value = Snapshot(),
             .UpdatedAt = m_updatedAt,
-        }));
+        }, m_unsent));
         if (debounce)
         {
             m_debounceTimer.Stop();
@@ -519,6 +588,9 @@ namespace HaloDesktop::Services
         m_value = winrt::Windows::Data::Json::JsonObject{};
         m_updatedAt = 0;
         m_documentRead = false;
+        // The previous account's unsent document is its own; it waits in that
+        // account's mirror and is never sent to this one.
+        m_unsent = false;
         m_unreadEdits.clear();
         m_queryCache->Invalidate(SettingsCacheKey);
         m_mirrorPath = userId.empty()

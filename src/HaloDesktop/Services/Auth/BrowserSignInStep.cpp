@@ -4,6 +4,7 @@
 #include "Services/Auth/LoopbackListener.h"
 #include "Services/Auth/SignInFailurePolicy.h"
 
+#include <chrono>
 #include <exception>
 #include <memory>
 #include <stdexcept>
@@ -63,7 +64,8 @@ namespace HaloDesktop::Services::Auth
     concurrency::task<BrowserCallback> SignInInBrowserAsync(
         winrt::hstring authUrl,
         std::stop_token cancellation,
-        SignInOpenedHandler onOpened)
+        SignInOpenedHandler onOpened,
+        std::optional<winrt::hstring> expectedState)
     {
         co_await winrt::resume_background();
         if (cancellation.stop_requested())
@@ -74,7 +76,9 @@ namespace HaloDesktop::Services::Auth
         std::unique_ptr<LoopbackListener> listener;
         try
         {
-            listener = std::make_unique<LoopbackListener>();
+            listener = std::make_unique<LoopbackListener>(
+                std::chrono::seconds{ 300 },
+                expectedState ? std::optional<std::wstring>{ std::wstring{ *expectedState } } : std::nullopt);
         }
         catch (std::exception const& error)
         {
