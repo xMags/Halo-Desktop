@@ -107,16 +107,14 @@ namespace HaloDesktop::Views
 
     HomeHeroPresenter::~HomeHeroPresenter()
     {
+        // The page is cached, so this runs when the process is closing, after the
+        // XAML core has gone: calling into a storyboard or an element then is an
+        // access violation, which no catch stops. The page stops the clock when
+        // it unloads, and the hosts die with the page, so only the composition
+        // objects this presenter made are released here.
         try
         {
-            StopClock();
-            if (m_pipWidths)
-            {
-                m_pipWidths.Stop();
-            }
             ReleaseLayers();
-            ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, nullptr);
-            ElementCompositionPreview::SetElementChildVisual(m_parts.LogoShadowHost, nullptr);
         }
         catch (...)
         {
