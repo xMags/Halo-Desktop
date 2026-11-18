@@ -25,9 +25,6 @@ namespace
     // The avatar's drawn size; the picture is decoded for it rather than at the
     // size the account uploaded.
     constexpr std::uint32_t AvatarSize = 28;
-    // The compact rail is wider than the pane toggle's own column, so the toggle
-    // moves this far right to sit centred over the icons below it.
-    constexpr double CompactToggleOffset = 4.0;
     constexpr wchar_t AccountToolTip[] = L"Server & account";
 
     winrt::Microsoft::UI::Xaml::FrameworkElement FindNamedDescendant(
@@ -550,7 +547,9 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        toggle.Margin(Microsoft::UI::Xaml::Thickness{ m_paneOpen ? 0.0 : CompactToggleOffset, 0.0, 0.0, 0.0 });
+        // No margin in either pane state: the toggle's own column already centres
+        // it over the rail's icons, and any offset shows as a visible misalignment.
+        toggle.Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, 0.0, 0.0 });
     }
 
     void ShellPage::RememberPaneState(bool open)
