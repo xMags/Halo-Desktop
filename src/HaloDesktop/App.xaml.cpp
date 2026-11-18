@@ -411,7 +411,9 @@ namespace winrt::HaloDesktop::implementation
             // sign-in could not; tried once per launch.
             if (loaded && m_sessionService->HasDeviceDataToMove())
             {
-                static_cast<void>(co_await m_services.DeviceMove->RunAsync(false));
+                // Seeds too: the addon service leaves seeding to the move
+                // while one is pending.
+                static_cast<void>(co_await m_services.DeviceMove->RunAsync(true));
             }
         }
     }

@@ -194,10 +194,18 @@ namespace HaloDesktop::Services
         }
         // Without an account the built-ins are topped up by the session
         // (TopUpDeviceAddonsAsync), which never seeds over the PC's own list;
-        // seeding here as well would only race it.
+        // seeding here as well would only race it. The same holds while this
+        // PC's data is still moving into the account: the move seeds first and
+        // then adds this PC's addons one by one, and a seed from here landing
+        // between two of its writes would replace the list and lose them. The
+        // move reloads account data when it ends, which seeds here if needed.
+        auto const moveOwnsSeeding = m_session->HasDeviceDataToMove();
         auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty()
-            && m_session->Mode() != SessionMode::Device;
-        m_seedAttempted = true;
+            && m_session->Mode() != SessionMode::Device && !moveOwnsSeeding;
+        if (!moveOwnsSeeding)
+        {
+            m_seedAttempted = true;
+        }
         if (shouldSeed)
         {
             std::vector<winrt::hstring> defaults;
