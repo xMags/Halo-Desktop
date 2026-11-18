@@ -9,6 +9,9 @@
 #include "SettingsViewModel.g.cpp"
 #endif
 
+#include "Services/AccountLabelPolicy.h"
+#include "Services/BuildInfoPolicy.h"
+#include "Services/CatalogLanguagePolicy.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -17,7 +20,7 @@
 #include <algorithm>
 #include <cmath>
 #include <cstddef>
-#include <cwctype>
+#include <exception>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -27,22 +30,133 @@ namespace
 {
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
+
+    winrt::Microsoft::UI::Xaml::Visibility VisibleWhen(bool condition) noexcept
+    {
+        return condition ? Visible : Collapsed;
+    }
+
+    std::vector<::HaloDesktop::Services::CatalogExtraDeclaration> ExtraDeclarations(
+        ::HaloDesktop::Api::Dto::AddonRecord::Catalog const& catalog)
+    {
+        std::vector<::HaloDesktop::Services::CatalogExtraDeclaration> declarations;
+        declarations.reserve(catalog.Extras.size());
+        for (auto const& extra : catalog.Extras)
+        {
+            ::HaloDesktop::Services::CatalogExtraDeclaration declaration{ std::wstring{ extra.Name }, extra.IsRequired, {} };
+            declaration.Options.reserve(extra.Options.size());
+            for (auto const& option : extra.Options)
+            {
+                declaration.Options.emplace_back(option);
+            }
+            declarations.push_back(std::move(declaration));
+        }
+        return declarations;
+    }
+
+    // The add field shows the server's own sentence when it gave one.
+    std::wstring AddFailureText(std::exception_ptr const& failure)
+    {
+        try
+        {
+            std::rethrow_exception(failure);
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            std::wstring message{ error.message() };
+            if (!message.empty())
+            {
+                return message;
+            }
+        }
+        catch (std::exception const& error)
+        {
+            std::string const message{ error.what() };
+            if (!message.empty())
+            {
+                return std::wstring{ winrt::to_hstring(message) };
+            }
+        }
+        catch (...)
+        {
+        }
+        return std::wstring{ ::HaloDesktop::Services::InvalidManifestLine };
+    }
+
+    std::vector<winrt::hstring> RowIds(
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& rows)
+    {
+        std::vector<winrt::hstring> ids;
+        ids.reserve(rows.Size());
+        for (auto const& item : rows)
+        {
+            if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+            {
+                ids.push_back(row.Id());
+            }
+        }
+        return ids;
+    }
 }
 
 namespace winrt::HaloDesktop::implementation
 {
-    AddonRowViewModel::AddonRowViewModel(winrt::HaloDesktop::Addon addon) : m_addon(std::move(addon)) {}
-    winrt::hstring AddonRowViewModel::Id() const { return m_addon.Id(); }
-    winrt::hstring AddonRowViewModel::Initials() const { return m_addon.Initials(); }
-    winrt::hstring AddonRowViewModel::Name() const { return m_addon.Name(); }
-    winrt::hstring AddonRowViewModel::Version() const { return m_addon.Version(); }
-    winrt::hstring AddonRowViewModel::Scope() const { return m_addon.Scope(); }
-    winrt::hstring AddonRowViewModel::Provides() const { return m_addon.Provides(); }
-    bool AddonRowViewModel::Enabled() const noexcept { return m_addon.Enabled(); }
-    bool AddonRowViewModel::CanEdit() const noexcept { return m_addon.CanEdit(); }
-    bool AddonRowViewModel::IsGlobal() const noexcept { return m_addon.IsGlobal(); }
-    Microsoft::UI::Xaml::Visibility AddonRowViewModel::GlobalVisibility() const noexcept { return m_addon.Scope() == L"GLOBAL" ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility AddonRowViewModel::YoursVisibility() const noexcept { return m_addon.Scope() == L"YOURS" ? Visible : Collapsed; }
+    AddonRowViewModel::AddonRowViewModel(Content content)
+        : m_content(std::move(content)),
+          m_initials(::HaloDesktop::Services::AddonInitials(std::wstring_view{ m_content.Name }))
+    {
+    }
+    winrt::hstring AddonRowViewModel::Id() const { return m_content.Id; }
+    winrt::hstring AddonRowViewModel::Initials() const { return m_initials; }
+    winrt::hstring AddonRowViewModel::Name() const { return m_content.Name; }
+    winrt::hstring AddonRowViewModel::Version() const { return m_content.Version; }
+    winrt::hstring AddonRowViewModel::Provides() const { return m_content.Provides; }
+    bool AddonRowViewModel::IsGlobal() const noexcept { return m_content.IsGlobal; }
+    bool AddonRowViewModel::IsShadowed() const noexcept { return m_content.Actions.Shadowed; }
+    bool AddonRowViewModel::CatalogsShown() const noexcept { return m_content.CatalogsShown; }
+    bool AddonRowViewModel::CatalogSwitchEnabled() const noexcept { return m_content.Actions.CatalogSwitchEnabled; }
+    winrt::hstring AddonRowViewModel::CatalogSwitchLabel() const
+    {
+        return winrt::hstring{ ::HaloDesktop::Services::AddonCatalogSwitchLabel(std::wstring_view{ m_content.Name }) };
+    }
+    winrt::hstring AddonRowViewModel::GripToolTip() const
+    {
+        return winrt::hstring{ ::HaloDesktop::Services::AddonGripToolTip(m_content.Actions.Grip) };
+    }
+    // A personal copy the global entry answers for is present but not in use.
+    double AddonRowViewModel::IdentityOpacity() const noexcept { return m_content.Actions.Shadowed ? 0.5 : 1.0; }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::GlobalVisibility() const noexcept { return VisibleWhen(m_content.IsGlobal); }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::YoursVisibility() const noexcept { return VisibleWhen(!m_content.IsGlobal); }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::CatalogSwitchVisibility() const noexcept { return VisibleWhen(m_content.Actions.ShowCatalogSwitch); }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::InstallForEveryoneVisibility() const noexcept { return VisibleWhen(m_content.Actions.ShowInstallForEveryone); }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::RemoveVisibility() const noexcept { return VisibleWhen(m_content.Actions.ShowRemove); }
+    bool AddonRowViewModel::ListActionsEnabled() const noexcept { return m_content.Actions.ListActionsEnabled; }
+    Microsoft::UI::Xaml::Thickness AddonRowViewModel::DividerThickness() const noexcept
+    {
+        return Microsoft::UI::Xaml::Thickness{ 0, m_firstInCard ? 0.0 : 1.0, 0, 0 };
+    }
+    winrt::event_token AddonRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
+    void AddonRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
+    bool AddonRowViewModel::IsMovable() const noexcept { return m_content.Actions.Movable; }
+    void AddonRowViewModel::SetListBusy(bool busy)
+    {
+        if (m_content.Actions.ListActionsEnabled == !busy)
+        {
+            return;
+        }
+        m_content.Actions.ListActionsEnabled = !busy;
+        Raise(L"ListActionsEnabled");
+    }
+    void AddonRowViewModel::SetFirstInCard(bool first)
+    {
+        if (m_firstInCard == first)
+        {
+            return;
+        }
+        m_firstInCard = first;
+        Raise(L"DividerThickness");
+    }
+    void AddonRowViewModel::Raise(wchar_t const* propertyName) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, propertyName); }
 
     SettingsViewModel::SettingsViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_session(services.Session),
@@ -53,7 +167,9 @@ namespace winrt::HaloDesktop::implementation
           m_playbackPreferences(services.PlaybackPreferences),
           m_discordPresenceService(services.DiscordPresence),
           m_playback(services.Playback),
-          m_addons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_globalAddons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_ownAddons(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_catalogLanguageOptions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         if (!m_playbackPreferences || !m_discordPresenceService || !m_playback)
         {
@@ -69,37 +185,114 @@ namespace winrt::HaloDesktop::implementation
         if (m_settingsRevertedToken != 0) m_settings->RemoveRevertedHandler(m_settingsRevertedToken);
         if (m_profileChangedToken != 0) m_session->RemoveProfileChangedHandler(m_profileChangedToken);
     }
-    winrt::hstring SettingsViewModel::ServerUrl() const { return m_serverUrl; }
     winrt::hstring SettingsViewModel::UserName() const { return m_userName; }
     winrt::hstring SettingsViewModel::DisplayName() const
     {
-        std::wstring displayName{ m_userName };
-        if (!displayName.empty())
-        {
-            displayName.front() = static_cast<wchar_t>(std::towupper(displayName.front()));
-        }
-        return winrt::hstring{ displayName };
+        return winrt::hstring{ ::HaloDesktop::Services::AccountDisplayName(std::wstring_view{ m_userName }) };
     }
     winrt::hstring SettingsViewModel::SignedInLine() const { return m_userName; }
     winrt::hstring SettingsViewModel::AccountRoleLine() const
     {
-        return m_session->IsAdmin() ? winrt::hstring{ L"ADMIN · HALO ACCOUNT" } : winrt::hstring{ L"HALO ACCOUNT" };
+        // The same caption the shell's account button shows.
+        auto const plan = m_session->Plan();
+        return winrt::hstring{ ::HaloDesktop::Services::AccountLabel(::HaloDesktop::Services::AccountLabelInput{
+            .IsAdmin = m_session->IsAdmin(),
+            .Plan = plan ? std::wstring_view{ *plan } : std::wstring_view{},
+        }) };
     }
+    winrt::hstring SettingsViewModel::VersionLine() const
+    {
+        ::HaloDesktop::Services::BuildInfoLineInput input;
+        input.Loaded = m_buildInfo.has_value();
+        if (m_buildInfo)
+        {
+            input.App = m_buildInfo->App;
+            input.Mpv = m_buildInfo->Mpv;
+        }
+        return winrt::hstring{ ::HaloDesktop::Services::BuildInfoLine(input) };
+    }
+    winrt::hstring SettingsViewModel::AccountPictureVersion() const
+    {
+        return m_session->IsSignedIn() ? m_session->AvatarVersion().value_or(winrt::hstring{}) : winrt::hstring{};
+    }
+    winrt::hstring SettingsViewModel::AccountUserId() const { return m_session->UserId(); }
     winrt::hstring SettingsViewModel::ServerStatusLine() const { return m_serverStatusLine; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerCheckingVisibility() const noexcept { return m_healthState == HealthState::Checking ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerConnectedVisibility() const noexcept { return m_healthState == HealthState::Connected ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerUnavailableVisibility() const noexcept { return m_healthState == HealthState::Unavailable ? Visible : Collapsed; }
-    winrt::Windows::Foundation::IInspectable SettingsViewModel::Addons() const { return m_addons; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::AddonsView() const { return m_addons; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerCheckingVisibility() const noexcept { return VisibleWhen(m_healthState == HealthState::Checking); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerConnectedVisibility() const noexcept { return VisibleWhen(m_healthState == HealthState::Connected); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ServerUnavailableVisibility() const noexcept { return VisibleWhen(m_healthState == HealthState::Unavailable); }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::GlobalAddons() const { return m_globalAddons; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::OwnAddons() const { return m_ownAddons; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::GlobalAddonsVisibility() const noexcept { return VisibleWhen(m_globalAddons.Size() > 0); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::OwnAddonsVisibility() const noexcept { return VisibleWhen(m_ownAddons.Size() > 0); }
+    bool SettingsViewModel::CanReorderGlobal() const noexcept
+    {
+        return ListShown() && !m_listBusy && m_addonService->CanEditScope(true);
+    }
+    bool SettingsViewModel::CanReorderOwn() const noexcept
+    {
+        return ListShown() && !m_listBusy && m_addonService->CanEditScope(false);
+    }
+    winrt::hstring SettingsViewModel::AddonUrl() const { return m_addonUrl; }
+    void SettingsViewModel::AddonUrl(winrt::hstring const& value)
+    {
+        if (value == m_addonUrl)
+        {
+            return;
+        }
+        m_addonUrl = value;
+        Raise(L"AddonUrl");
+        Raise(L"CanAddAddon");
+        // The message was about the URL that was there; editing it moves on.
+        SetAddError({});
+    }
+    bool SettingsViewModel::CanAddAddon() const
+    {
+        return ::HaloDesktop::Services::CanSubmitAddon(::HaloDesktop::Services::AddFieldState{
+            .Adding = m_adding,
+            .ListBusy = m_listBusy,
+            .ListLoaded = ListShown() && m_addonService->CanEditScope(false),
+            .Url = std::wstring_view{ m_addonUrl },
+        });
+    }
+    winrt::hstring SettingsViewModel::AddButtonText() const { return winrt::hstring{ ::HaloDesktop::Services::AddButtonLabel(m_adding) }; }
+    winrt::hstring SettingsViewModel::AddErrorText() const { return winrt::hstring{ m_addError }; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddErrorVisibility() const noexcept { return VisibleWhen(!m_addError.empty()); }
+    winrt::hstring SettingsViewModel::ListErrorText() const { return winrt::hstring{ m_listError }; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::ListErrorVisibility() const noexcept { return VisibleWhen(!m_listError.empty()); }
     winrt::hstring SettingsViewModel::AddonNoticeText() const { return m_addonNoticeText; }
     winrt::hstring SettingsViewModel::AccountNoticeText() const { return m_accountNoticeText; }
-    bool SettingsViewModel::CanEditAddons() const noexcept { return !m_addonsLoading && !m_addonsError && m_addonService->CanEditLists(); }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonNoticeVisibility() const noexcept { return m_addonNoticeVisible ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AccountNoticeVisibility() const noexcept { return m_accountNoticeVisible ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonLoadingVisibility() const noexcept { return m_addonsLoading ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonErrorVisibility() const noexcept { return !m_addonsLoading && m_addonsError ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonEmptyVisibility() const noexcept { return !m_addonsLoading && !m_addonsError && m_addons.Size() == 0 ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonContentVisibility() const noexcept { return !m_addonsLoading && !m_addonsError && m_addons.Size() > 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonNoticeVisibility() const noexcept { return VisibleWhen(m_addonNoticeVisible); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AccountNoticeVisibility() const noexcept { return VisibleWhen(m_accountNoticeVisible); }
+    // A refresh keeps showing the list it already had; only a first load with
+    // nothing to show is a spinner or an error.
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonLoadingVisibility() const noexcept { return VisibleWhen(m_addonsLoading && !ListShown()); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonErrorVisibility() const noexcept { return VisibleWhen(!m_addonsLoading && m_addonsError && !ListShown()); }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonEmptyVisibility() const noexcept
+    {
+        return VisibleWhen(ListShown() && m_globalAddons.Size() + m_ownAddons.Size() == 0);
+    }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::AddonContentVisibility() const noexcept
+    {
+        return VisibleWhen(ListShown() && m_globalAddons.Size() + m_ownAddons.Size() > 0);
+    }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> SettingsViewModel::CatalogLanguageOptions() const { return m_catalogLanguageOptions; }
+    std::int32_t SettingsViewModel::CatalogLanguageIndex() const noexcept { return m_catalogLanguageIndex; }
+    void SettingsViewModel::CatalogLanguageIndex(std::int32_t value)
+    {
+        // The list being rebuilt reports no selection; that is not a choice.
+        if (value < 0 || value == m_catalogLanguageIndex
+            || static_cast<std::size_t>(value) > m_catalogLanguageChoices.size())
+        {
+            return;
+        }
+        m_catalogLanguageIndex = value;
+        auto const language = ::HaloDesktop::Services::CatalogLanguageForIndex(m_catalogLanguageChoices, value);
+        m_settings->CatalogLanguage(language
+            ? std::optional<winrt::hstring>{ winrt::hstring{ *language } }
+            : std::nullopt);
+        Raise(L"CatalogLanguageIndex");
+    }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::CatalogLanguageVisibility() const noexcept { return VisibleWhen(!m_catalogLanguageChoices.empty()); }
     double SettingsViewModel::SubtitleSize() const noexcept { return m_subtitleSize; }
     void SettingsViewModel::SubtitleSize(double value)
     {
@@ -156,7 +349,7 @@ namespace winrt::HaloDesktop::implementation
         m_settings->PreferredSubtitleLanguage(values[value] ? std::optional<winrt::hstring>{ values[value] } : std::nullopt);
         Raise(L"SubtitleLanguageIndex");
     }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewOutlineVisibility() const noexcept { return m_outlineIndex > 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewOutlineVisibility() const noexcept { return VisibleWhen(m_outlineIndex > 0); }
     double SettingsViewModel::PreviewOutlineOffset() const noexcept
     {
         // Border width follows the caption size the way libass scales its outline with
@@ -165,7 +358,7 @@ namespace winrt::HaloDesktop::implementation
             static_cast<std::size_t>(std::clamp(m_outlineIndex, 0, 3)), m_subtitleSize);
     }
     double SettingsViewModel::PreviewOutlineNegativeOffset() const noexcept { return -PreviewOutlineOffset(); }
-    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewShadowVisibility() const noexcept { return m_subtitleShadow ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::PreviewShadowVisibility() const noexcept { return VisibleWhen(m_subtitleShadow); }
     double SettingsViewModel::PreviewShadowOffset() const noexcept { return ::HaloDesktop::ViewModels::SubtitlePreviewShadowOffset(m_subtitleSize); }
     bool SettingsViewModel::AutoplayNext() const noexcept { return m_autoplayNext; }
     void SettingsViewModel::AutoplayNext(bool value) { if (m_autoplayNext != value) { m_autoplayNext = value; m_settings->AutoplayNextEpisode(value); Raise(L"AutoplayNext"); } }
@@ -193,16 +386,27 @@ namespace winrt::HaloDesktop::implementation
         m_accountNoticeText.clear();
         m_discordPresence = m_playbackPreferences->DiscordPresenceEnabled();
         m_discordPresenceService->SetEnabled(m_discordPresence);
-        m_serverUrl = m_session->ServerUrl();
         m_userName = m_session->UserName();
-        Raise(L"ServerUrl");
-        Raise(L"UserName");
-        Raise(L"DisplayName");
-        Raise(L"SignedInLine");
-        Raise(L"AccountRoleLine");
+        RaiseAccountIdentity();
         Raise(L"DiscordPresence");
         Raise(L"AccountNoticeText");
         Raise(L"AccountNoticeVisibility");
+        // What the service already holds for this account is shown at once, as
+        // a cached list is; another account's rows never stay up.
+        if (m_addonService->HasLoaded())
+        {
+            SynchronizeAddons();
+        }
+        else
+        {
+            ClearAddonRows();
+        }
+        RaiseAddonState();
+        if (!m_buildInfoRequested)
+        {
+            m_buildInfoRequested = true;
+            static_cast<void>(ReadBuildInfoAsync());
+        }
         static_cast<void>(LoadAsync());
         ProbeHealth();
     }
@@ -224,29 +428,224 @@ namespace winrt::HaloDesktop::implementation
     {
         ++m_healthRequestVersion;
     }
-    void SettingsViewModel::AddAddon(winrt::hstring const& url)
-    {
-        static_cast<void>(AddAddonAsync(url));
-    }
-    void SettingsViewModel::ToggleAddon(winrt::hstring const& id, bool enabled)
-    {
-        static_cast<void>(ToggleAddonAsync(id, enabled));
-    }
-    void SettingsViewModel::RemoveAddon(winrt::hstring const& id)
-    {
-        static_cast<void>(RemoveAddonAsync(id));
-    }
-    bool SettingsViewModel::IsGlobalAddon(winrt::hstring const& id) const
+
+    std::optional<::HaloDesktop::Api::Dto::AddonRecord> SettingsViewModel::FindRecord(winrt::hstring const& id) const
     {
         for (auto const& record : m_addonService->Records())
         {
             if (record.Id == id)
             {
-                return record.IsGlobal;
+                return record;
             }
         }
-        return false;
+        return std::nullopt;
     }
+
+    bool SettingsViewModel::ListShown() const noexcept { return m_listShown; }
+
+    void SettingsViewModel::AddAddon()
+    {
+        if (!CanAddAddon())
+        {
+            return;
+        }
+        auto const url = ::HaloDesktop::Services::TrimAddonUrl(std::wstring_view{ m_addonUrl });
+        std::vector<std::optional<std::wstring>> installed;
+        for (auto const& record : m_addonService->Records())
+        {
+            installed.push_back(record.TransportUrl
+                ? std::optional<std::wstring>{ std::wstring{ *record.TransportUrl } }
+                : std::nullopt);
+        }
+        if (::HaloDesktop::Services::IsAddonInstalled(installed, url))
+        {
+            SetAddError(std::wstring{ ::HaloDesktop::Services::AlreadyInstalledLine });
+            return;
+        }
+        static_cast<void>(AddAddonAsync(winrt::hstring{ url }));
+    }
+
+    void SettingsViewModel::ToggleAddon(winrt::hstring const& id, bool enabled)
+    {
+        auto const record = FindRecord(id);
+        // Realising a row sets its switch, which reports the value it already
+        // had; only a real change is sent.
+        if (!record || !record->HideCatalogs == enabled)
+        {
+            return;
+        }
+        if (record->IsGlobal && !m_session->IsAdmin())
+        {
+            SynchronizeAddons();
+            return;
+        }
+        SetListError({});
+        static_cast<void>(ToggleAddonAsync(id, record->Name, enabled));
+    }
+
+    std::optional<::HaloDesktop::Services::ConfirmationCopy> SettingsViewModel::RemoveConfirmation(winrt::hstring const& id) const
+    {
+        auto const record = FindRecord(id);
+        if (!record || m_listBusy)
+        {
+            return std::nullopt;
+        }
+        auto const scope = record->IsGlobal ? ::HaloDesktop::Services::AddonScope::Global : ::HaloDesktop::Services::AddonScope::Yours;
+        auto const actions = ::HaloDesktop::Services::EvaluateAddonRow(
+            ::HaloDesktop::Services::AddonRowFacts{
+                .Scope = scope,
+                .TransportUrl = record->TransportUrl ? std::optional<std::wstring_view>{ *record->TransportUrl } : std::nullopt,
+                .ProvidedGlobally = record->ProvidedGlobally,
+            },
+            ::HaloDesktop::Services::AddonRowContext{ .IsAdmin = m_session->IsAdmin() });
+        if (!actions.ShowRemove)
+        {
+            return std::nullopt;
+        }
+        return ::HaloDesktop::Services::RemoveAddonConfirmation(scope, std::wstring_view{ record->Name });
+    }
+
+    void SettingsViewModel::RemoveAddon(winrt::hstring const& id)
+    {
+        if (m_listBusy || !RemoveConfirmation(id))
+        {
+            return;
+        }
+        auto const record = FindRecord(id);
+        SetListError({});
+        SetListBusy(true);
+        static_cast<void>(RemoveAddonAsync(id, record ? record->Name : winrt::hstring{}));
+    }
+
+    std::optional<::HaloDesktop::Services::ConfirmationCopy> SettingsViewModel::BeginInstallForEveryone(winrt::hstring const& id)
+    {
+        auto const record = FindRecord(id);
+        if (!record || record->IsGlobal || m_listBusy)
+        {
+            return std::nullopt;
+        }
+        switch (m_addonService->CheckInstallForEveryone(id))
+        {
+        case ::HaloDesktop::Services::InstallForEveryoneCheck::Proceed:
+            return ::HaloDesktop::Services::InstallForEveryoneConfirmation(std::wstring_view{ record->Name });
+        case ::HaloDesktop::Services::InstallForEveryoneCheck::GlobalListIncomplete:
+            SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                ::HaloDesktop::Services::AddonListFailure::GlobalListIncomplete, {}));
+            return std::nullopt;
+        default:
+            return std::nullopt;
+        }
+    }
+
+    void SettingsViewModel::InstallForEveryone(winrt::hstring const& id)
+    {
+        auto const record = FindRecord(id);
+        if (!record || record->IsGlobal || m_listBusy)
+        {
+            return;
+        }
+        SetListError({});
+        SetListBusy(true);
+        static_cast<void>(InstallForEveryoneAsync(id, record->Name));
+    }
+
+    void SettingsViewModel::CommitReorder(bool global)
+    {
+        auto const rows = global ? m_globalAddons : m_ownAddons;
+        auto ids = RowIds(rows);
+        if (m_listBusy || !m_addonService->CanEditScope(global))
+        {
+            // Put the rows back where the account has them.
+            SynchronizeAddons();
+            return;
+        }
+        std::vector<winrt::hstring> current;
+        for (auto const& record : m_addonService->Records())
+        {
+            if (record.IsGlobal == global)
+            {
+                current.push_back(record.Id);
+            }
+        }
+        RefreshRowDividers();
+        if (ids == current)
+        {
+            return;
+        }
+        SetListError({});
+        SetListBusy(true);
+        static_cast<void>(SaveOrderAsync(global, std::move(ids)));
+    }
+
+    SettingsViewModel::RowMoves SettingsViewModel::MovesFor(winrt::hstring const& id) const
+    {
+        RowMoves moves;
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            auto const ids = RowIds(rows);
+            auto const found = std::find(ids.begin(), ids.end(), id);
+            if (found == ids.end())
+            {
+                continue;
+            }
+            auto const row = rows.GetAt(static_cast<std::uint32_t>(found - ids.begin())).as<winrt::HaloDesktop::AddonRowViewModel>();
+            auto const global = rows == m_globalAddons;
+            auto const canReorder = global ? CanReorderGlobal() : CanReorderOwn();
+            if (!canReorder || !winrt::get_self<AddonRowViewModel>(row)->IsMovable())
+            {
+                return moves;
+            }
+            moves.Offered = true;
+            moves.CanMoveUp = found != ids.begin();
+            moves.CanMoveDown = found + 1 != ids.end();
+            return moves;
+        }
+        return moves;
+    }
+
+    void SettingsViewModel::MoveAddon(winrt::hstring const& id, std::int32_t offset)
+    {
+        auto const moves = MovesFor(id);
+        if (!moves.Offered || (offset < 0 && !moves.CanMoveUp) || (offset > 0 && !moves.CanMoveDown) || offset == 0)
+        {
+            return;
+        }
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            auto const ids = RowIds(rows);
+            std::vector<std::wstring> plain(ids.begin(), ids.end());
+            auto const moved = ::HaloDesktop::Services::MoveAddonId(plain, std::wstring_view{ id }, offset);
+            if (!moved)
+            {
+                continue;
+            }
+            auto const from = static_cast<std::uint32_t>(std::find(ids.begin(), ids.end(), id) - ids.begin());
+            auto const to = static_cast<std::uint32_t>(std::find(moved->begin(), moved->end(), std::wstring{ id }) - moved->begin());
+            auto const item = rows.GetAt(from);
+            rows.RemoveAt(from);
+            rows.InsertAt(to, item);
+            CommitReorder(rows == m_globalAddons);
+            return;
+        }
+    }
+
+    bool SettingsViewModel::CanDragRows(std::vector<winrt::hstring> const& ids) const
+    {
+        if (m_listBusy || ids.empty())
+        {
+            return false;
+        }
+        for (auto const& id : ids)
+        {
+            auto const moves = MovesFor(id);
+            if (!moves.Offered)
+            {
+                return false;
+            }
+        }
+        return true;
+    }
+
     bool SettingsViewModel::IsLightTheme() const noexcept
     {
         return m_theme->Preference() == ::HaloDesktop::Services::ThemePreference::Light;
@@ -323,26 +722,197 @@ namespace winrt::HaloDesktop::implementation
             co_return;
         }
         m_userName.clear();
-        Raise(L"UserName");
-        Raise(L"DisplayName");
-        Raise(L"SignedInLine");
-        Raise(L"AccountRoleLine");
+        RaiseAccountIdentity();
     }
     winrt::event_token SettingsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void SettingsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
+
     void SettingsViewModel::SynchronizeAddons()
     {
-        m_addons.Clear();
-        for (auto const& addon : m_addonService->Items()) m_addons.Append(winrt::make<AddonRowViewModel>(addon));
+        if (!m_addonService->HasLoaded())
+        {
+            ClearAddonRows();
+            return;
+        }
+        auto const isAdmin = m_session->IsAdmin();
+        auto const globalComplete = m_addonService->CanEditScope(true);
+        auto const ownComplete = m_addonService->CanEditScope(false);
+        m_globalAddons.Clear();
+        m_ownAddons.Clear();
+        for (auto const& record : m_addonService->Records())
+        {
+            auto const scope = record.IsGlobal ? ::HaloDesktop::Services::AddonScope::Global : ::HaloDesktop::Services::AddonScope::Yours;
+            // Built without the busy flag, which each row then follows on its own.
+            auto const actions = ::HaloDesktop::Services::EvaluateAddonRow(
+                ::HaloDesktop::Services::AddonRowFacts{
+                    .Scope = scope,
+                    .TransportUrl = record.TransportUrl ? std::optional<std::wstring_view>{ *record.TransportUrl } : std::nullopt,
+                    .ProvidedGlobally = record.ProvidedGlobally,
+                    .HideCatalogs = record.HideCatalogs,
+                    .CatalogCount = record.Catalogs.size(),
+                },
+                ::HaloDesktop::Services::AddonRowContext{
+                    .IsAdmin = isAdmin,
+                    .ListBusy = false,
+                    .ScopeListComplete = record.IsGlobal ? globalComplete : ownComplete,
+                });
+            std::vector<std::wstring> resources(record.Resources.begin(), record.Resources.end());
+            auto const provides = actions.Shadowed
+                ? std::wstring{ ::HaloDesktop::Services::ShadowedAddonLine }
+                : ::HaloDesktop::Services::AddonProvidesLine(record.Catalogs.size(), resources, std::wstring_view{ record.Description });
+            auto row = winrt::make_self<AddonRowViewModel>(AddonRowViewModel::Content{
+                .Id = record.Id,
+                .Name = record.Name,
+                .Version = record.Version,
+                .Provides = winrt::hstring{ provides },
+                .IsGlobal = record.IsGlobal,
+                .CatalogsShown = !record.HideCatalogs,
+                .Actions = actions,
+            });
+            row->SetListBusy(m_listBusy);
+            (record.IsGlobal ? m_globalAddons : m_ownAddons).Append(*row);
+        }
+        m_listShown = true;
+        RefreshRowDividers();
+        RebuildCatalogLanguage();
+        RaiseAddonState();
+    }
+
+    void SettingsViewModel::ClearAddonRows()
+    {
+        m_globalAddons.Clear();
+        m_ownAddons.Clear();
+        m_listShown = false;
+        RebuildCatalogLanguage();
+    }
+
+    void SettingsViewModel::RefreshRowDividers()
+    {
+        // One card holds both lists; only its very first row has no hairline above it.
+        auto first = true;
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            for (auto const& item : rows)
+            {
+                if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+                {
+                    winrt::get_self<AddonRowViewModel>(row)->SetFirstInCard(first);
+                    first = false;
+                }
+            }
+        }
+    }
+
+    void SettingsViewModel::SetListBusy(bool busy)
+    {
+        if (m_listBusy == busy)
+        {
+            return;
+        }
+        m_listBusy = busy;
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            for (auto const& item : rows)
+            {
+                if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+                {
+                    winrt::get_self<AddonRowViewModel>(row)->SetListBusy(busy);
+                }
+            }
+        }
+        RaiseAddonState();
+    }
+
+    void SettingsViewModel::SetAdding(bool adding)
+    {
+        if (m_adding == adding)
+        {
+            return;
+        }
+        m_adding = adding;
+        Raise(L"AddButtonText");
+        Raise(L"CanAddAddon");
+    }
+
+    void SettingsViewModel::SetAddError(std::wstring text)
+    {
+        if (m_addError == text)
+        {
+            return;
+        }
+        m_addError = std::move(text);
+        Raise(L"AddErrorText");
+        Raise(L"AddErrorVisibility");
+    }
+
+    void SettingsViewModel::SetListError(std::wstring text)
+    {
+        if (m_listError == text)
+        {
+            return;
+        }
+        m_listError = std::move(text);
+        Raise(L"ListErrorText");
+        Raise(L"ListErrorVisibility");
+    }
+
+    void SettingsViewModel::RebuildCatalogLanguage()
+    {
+        std::vector<std::vector<::HaloDesktop::Services::CatalogExtraDeclaration>> catalogs;
+        if (m_listShown)
+        {
+            for (auto const& record : m_addonService->Records())
+            {
+                for (auto const& catalog : record.Catalogs)
+                {
+                    catalogs.push_back(ExtraDeclarations(catalog));
+                }
+            }
+        }
+        auto choices = ::HaloDesktop::Services::FirstLanguageChoices(catalogs).value_or(std::vector<std::wstring>{});
+        if (choices != m_catalogLanguageChoices)
+        {
+            m_catalogLanguageChoices = std::move(choices);
+            m_catalogLanguageOptions.Clear();
+            if (!m_catalogLanguageChoices.empty())
+            {
+                m_catalogLanguageOptions.Append(winrt::box_value(winrt::hstring{ ::HaloDesktop::Services::AddonDefaultLanguageLabel }));
+                for (auto const& choice : m_catalogLanguageChoices)
+                {
+                    m_catalogLanguageOptions.Append(winrt::box_value(winrt::hstring{ choice }));
+                }
+            }
+            Raise(L"CatalogLanguageVisibility");
+        }
+        auto const current = m_settings->CatalogLanguage();
+        m_catalogLanguageIndex = ::HaloDesktop::Services::CatalogLanguageIndex(
+            m_catalogLanguageChoices,
+            current ? std::optional<std::wstring_view>{ std::wstring_view{ *current } } : std::nullopt);
+        Raise(L"CatalogLanguageIndex");
     }
 
     void SettingsViewModel::RaiseAddonState()
     {
-        Raise(L"CanEditAddons");
+        Raise(L"CanAddAddon");
+        Raise(L"AddButtonText");
+        Raise(L"CanReorderGlobal");
+        Raise(L"CanReorderOwn");
+        Raise(L"GlobalAddonsVisibility");
+        Raise(L"OwnAddonsVisibility");
         Raise(L"AddonLoadingVisibility");
         Raise(L"AddonErrorVisibility");
         Raise(L"AddonEmptyVisibility");
         Raise(L"AddonContentVisibility");
+    }
+
+    void SettingsViewModel::RaiseAccountIdentity()
+    {
+        Raise(L"UserName");
+        Raise(L"DisplayName");
+        Raise(L"SignedInLine");
+        Raise(L"AccountRoleLine");
+        // Not a bound property: the page redraws the picture when it hears it.
+        Raise(L"AccountPicture");
     }
 
     void SettingsViewModel::RaisePreviewMetrics()
@@ -376,6 +946,17 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"ServerCheckingVisibility");
         Raise(L"ServerConnectedVisibility");
         Raise(L"ServerUnavailableVisibility");
+    }
+
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::ReadBuildInfoAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        co_await winrt::resume_background();
+        auto info = ::HaloDesktop::Services::ReadBuildInfo();
+        co_await uiContext;
+        m_buildInfo = std::move(info);
+        Raise(L"VersionLine");
     }
 
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::LoadAsync()
@@ -415,10 +996,9 @@ namespace winrt::HaloDesktop::implementation
         }
         m_addonsLoading = false;
         m_addonsError = addonsFailed;
-        if (!addonsFailed)
-        {
-            SynchronizeAddons();
-        }
+        // A failed refresh leaves the service's last list in place, which
+        // stays on screen; this account having none yet clears the rows.
+        SynchronizeAddons();
         RaiseAddonState();
 
         if (!settingsFailed)
@@ -432,7 +1012,7 @@ namespace winrt::HaloDesktop::implementation
             Raise(L"AddonNoticeText");
             Raise(L"AddonNoticeVisibility");
         }
-        if (!addonsFailed && !m_addonService->CanEditLists())
+        if (!addonsFailed && m_addonService->HasLoaded() && !m_addonService->CanEditScope(false))
         {
             m_addonNoticeVisible = true;
             m_addonNoticeText = L"This addon list cannot be edited safely because one or more transport URLs are hidden.";
@@ -471,12 +1051,13 @@ namespace winrt::HaloDesktop::implementation
         // Idempotent, so whichever of this and the service's own handler runs
         // first does the work.
         m_addonService->RefreshEditability();
-        if (!m_addonsLoading && !m_addonsError)
+        if (m_listShown)
         {
             SynchronizeAddons();
         }
         RaiseAddonState();
-        Raise(L"AccountRoleLine");
+        m_userName = m_session->UserName();
+        RaiseAccountIdentity();
     }
 
     void SettingsViewModel::ReadSyncedSettings()
@@ -515,37 +1096,42 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"AutoplayNext");
         Raise(L"AudioLanguageIndex");
         Raise(L"SubtitleLanguageIndex");
+        RebuildCatalogLanguage();
     }
 
     winrt::Windows::Foundation::IAsyncAction SettingsViewModel::AddAddonAsync(winrt::hstring url)
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
-        bool failed{};
+        SetAddError({});
+        SetAdding(true);
+        SetListBusy(true);
+        std::exception_ptr failure;
         try
         {
-            co_await m_addonService->AddAsync(std::move(url));
+            co_await m_addonService->AddAsync(url);
         }
         catch (...)
         {
-            failed = true;
+            failure = std::current_exception();
         }
         co_await uiContext;
-        if (!failed)
+        SetAdding(false);
+        SetListBusy(false);
+        if (failure)
+        {
+            SetAddError(AddFailureText(failure));
+        }
+        else
         {
             m_catalog->InvalidateCatalogs();
+            m_addonUrl = winrt::hstring{};
+            Raise(L"AddonUrl");
         }
         SynchronizeAddons();
-        RaiseAddonState();
-        m_addonNoticeVisible = true;
-        m_addonNoticeText = failed
-            ? winrt::hstring{ L"The addon could not be installed. Check the URL and try again." }
-            : winrt::hstring{ L"Addon installed." };
-        Raise(L"AddonNoticeText");
-        Raise(L"AddonNoticeVisibility");
     }
 
-    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::ToggleAddonAsync(winrt::hstring id, bool enabled)
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::ToggleAddonAsync(winrt::hstring id, winrt::hstring name, bool enabled)
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
@@ -559,22 +1145,20 @@ namespace winrt::HaloDesktop::implementation
             failed = true;
         }
         co_await uiContext;
-        if (!failed)
+        if (failed)
+        {
+            SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                ::HaloDesktop::Services::AddonListFailure::Catalogs, std::wstring_view{ name }));
+        }
+        else
         {
             m_catalog->InvalidateCatalogs();
         }
+        // A refused change puts the switch back where the account has it.
         SynchronizeAddons();
-        RaiseAddonState();
-        if (failed)
-        {
-            m_addonNoticeVisible = true;
-            m_addonNoticeText = L"The addon visibility could not be changed.";
-            Raise(L"AddonNoticeText");
-            Raise(L"AddonNoticeVisibility");
-        }
     }
 
-    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::RemoveAddonAsync(winrt::hstring id)
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::RemoveAddonAsync(winrt::hstring id, winrt::hstring name)
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
@@ -588,19 +1172,79 @@ namespace winrt::HaloDesktop::implementation
             failed = true;
         }
         co_await uiContext;
-        if (!failed)
+        SetListBusy(false);
+        if (failed)
+        {
+            SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                ::HaloDesktop::Services::AddonListFailure::Remove, std::wstring_view{ name }));
+        }
+        else
         {
             m_catalog->InvalidateCatalogs();
         }
         SynchronizeAddons();
-        RaiseAddonState();
+    }
+
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::InstallForEveryoneAsync(winrt::hstring id, winrt::hstring name)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        std::optional<::HaloDesktop::Services::InstallForEveryoneOutcome> outcome;
+        try
+        {
+            outcome = co_await m_addonService->InstallForEveryoneAsync(std::move(id));
+        }
+        catch (...)
+        {
+        }
+        co_await uiContext;
+        SetListBusy(false);
+        if (!outcome)
+        {
+            SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                ::HaloDesktop::Services::AddonListFailure::InstallForEveryone, std::wstring_view{ name }));
+        }
+        else
+        {
+            m_catalog->InvalidateCatalogs();
+            if (*outcome == ::HaloDesktop::Services::InstallForEveryoneOutcome::OwnCopyKept)
+            {
+                SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                    ::HaloDesktop::Services::AddonListFailure::OwnCopyKept, std::wstring_view{ name }));
+            }
+        }
+        SynchronizeAddons();
+    }
+
+    winrt::Windows::Foundation::IAsyncAction SettingsViewModel::SaveOrderAsync(bool global, std::vector<winrt::hstring> ids)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        bool failed{};
+        try
+        {
+            co_await m_addonService->SaveOrderAsync(global, std::move(ids));
+        }
+        catch (...)
+        {
+            failed = true;
+        }
+        co_await uiContext;
+        SetListBusy(false);
         if (failed)
         {
-            m_addonNoticeVisible = true;
-            m_addonNoticeText = L"The addon could not be removed.";
-            Raise(L"AddonNoticeText");
-            Raise(L"AddonNoticeVisibility");
+            SetListError(::HaloDesktop::Services::AddonListErrorLine(
+                ::HaloDesktop::Services::AddonListFailure::Reorder, {}));
         }
+        else
+        {
+            // Order is priority, and Home lists catalogs in it.
+            m_catalog->InvalidateCatalogs();
+        }
+        // The rows follow the account's list: the new order once saved, the
+        // old one when the save was refused.
+        SynchronizeAddons();
     }
+
     void SettingsViewModel::Raise(wchar_t const* propertyName) { ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, propertyName); }
 }

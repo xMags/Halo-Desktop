@@ -250,6 +250,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadStreamFacts.cpp">
       <Link>DownloadStreamFacts.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SettingsPageTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AddonRowPolicy.cpp">
+      <Link>AddonRowPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\AddonListPolicy.cpp">
+      <Link>AddonListPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\BuildInfoPolicy.cpp">
+      <Link>BuildInfoPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -266,6 +276,7 @@
     <ClInclude Include="CallQueueTests.h" />
     <ClInclude Include="SegmentPlannerTests.h" />
     <ClInclude Include="DownloadsPageTests.h" />
+    <ClInclude Include="SettingsPageTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

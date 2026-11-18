@@ -76,6 +76,9 @@ namespace HaloDesktop::Api::Dto
         std::optional<winrt::hstring> TransportUrl;
         winrt::hstring Name;
         winrt::hstring Version;
+        // The manifest's own description; Settings shows it for an addon that
+        // declares no catalogs or resources. Empty when it gave none.
+        winrt::hstring Description;
         std::vector<winrt::hstring> Resources;
         std::vector<winrt::hstring> Types;
         std::vector<Catalog> Catalogs;

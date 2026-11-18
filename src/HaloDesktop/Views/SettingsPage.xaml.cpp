@@ -5,6 +5,8 @@
 #endif
 
 #include "App.xaml.h"
+#include "Services/AccountPictureService.h"
+#include "Views/AccountPictureDecoder.h"
 #include "Views/PageDialog.h"
 #include "ViewModels/SettingsRailPolicy.h"
 #include "ViewModels/SettingsViewModel.h"
@@ -12,6 +14,9 @@
 #include <array>
 #include <chrono>
 #include <cstddef>
+#include <vector>
+#include <winrt/Microsoft.UI.Xaml.Controls.Primitives.h>
+#include <winrt/Windows.ApplicationModel.DataTransfer.h>
 #include <winrt/Windows.System.h>
 
 namespace
@@ -42,6 +47,9 @@ namespace
     // the one being read. A band rather than the edge itself, so a boundary resting on
     // the top of the viewport does not flip the selection back and forth.
     constexpr double kAnchorFraction = 0.25;
+
+    // The account card's avatar is drawn 40 pixels square.
+    constexpr std::uint32_t kAccountPictureEdge = 40;
 }
 
 namespace winrt::HaloDesktop::implementation
@@ -53,9 +61,31 @@ namespace winrt::HaloDesktop::implementation
     winrt::HaloDesktop::SettingsViewModel SettingsPage::ViewModel() const { return m_viewModel; }
     void SettingsPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        if (!m_stockAccountPicture)
+        {
+            m_stockAccountPicture = AccountPicture().Source();
+        }
+        if (!m_viewModelChangedRevoker)
+        {
+            // The view model owns the account's identity and says when it moved;
+            // the picture itself is an image, so the page draws it. Weak, because
+            // the page owns the view model. Kept across Unloaded: the page is cached.
+            m_viewModelChangedRevoker = m_viewModel.PropertyChanged(winrt::auto_revoke,
+                [weak = get_weak()](auto const&, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args)
+            {
+                if (args.PropertyName() != L"AccountPicture")
+                {
+                    return;
+                }
+                if (auto const self = weak.get(); self && self->m_loaded)
+                {
+                    self->RefreshAccountPictureAsync();
+                }
+            });
+        }
+        m_loaded = true;
         m_viewModel.Refresh();
-        auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
-        FindName(L"AddonList").as<Microsoft::UI::Xaml::Controls::ItemsControl>().ItemsSource(viewModel->AddonsView());
+        RefreshAccountPictureAsync();
         if (!m_healthTimer)
         {
             m_healthTimer = DispatcherQueue().CreateTimer();
@@ -70,7 +100,6 @@ namespace winrt::HaloDesktop::implementation
             });
         }
         m_healthTimer.Start();
-        m_loaded = true;
         // The rail follows the scroll position from here on, but the page opens at the
         // top, so light the first entry before anything has scrolled.
         UpdateRailSelection();
@@ -96,7 +125,16 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnAccountRailClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ScrollTo(L"AccountSection"); }
     void SettingsPage::OnAddAddonClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        m_viewModel.AddAddon(FindName(L"AddonUrlBox").as<Microsoft::UI::Xaml::Controls::TextBox>().Text());
+        m_viewModel.AddAddon();
+    }
+    void SettingsPage::OnAddonUrlKeyDown([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        if (args.Key() != winrt::Windows::System::VirtualKey::Enter)
+        {
+            return;
+        }
+        args.Handled(true);
+        m_viewModel.AddAddon();
     }
     void SettingsPage::OnRetrySettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Refresh(); }
     void SettingsPage::OnAddonToggled(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -108,6 +146,112 @@ namespace winrt::HaloDesktop::implementation
     void SettingsPage::OnDeleteAddonClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         ShowDeleteAddonDialog(winrt::unbox_value<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag()));
+    }
+    void SettingsPage::OnInstallForEveryoneClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        ShowInstallForEveryoneDialog(winrt::unbox_value<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag()));
+    }
+    void SettingsPage::OnAddonDragStarting([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::DragItemsStartingEventArgs const& args)
+    {
+        // A shadowed copy has no order that means anything, and only one save
+        // runs at a time, so such a drag never starts.
+        try
+        {
+            std::vector<winrt::hstring> ids;
+            for (auto const& item : args.Items())
+            {
+                if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+                {
+                    ids.push_back(row.Id());
+                }
+            }
+            if (!winrt::get_self<SettingsViewModel>(m_viewModel)->CanDragRows(ids))
+            {
+                args.Cancel(true);
+            }
+        }
+        catch (winrt::hresult_error const&)
+        {
+            args.Cancel(true);
+        }
+    }
+    void SettingsPage::OnAddonDragCompleted(Microsoft::UI::Xaml::Controls::ListViewBase const& sender, Microsoft::UI::Xaml::Controls::DragItemsCompletedEventArgs const& args)
+    {
+        if (args.DropResult() != winrt::Windows::ApplicationModel::DataTransfer::DataPackageOperation::Move)
+        {
+            return;
+        }
+        // The list has already moved the row in the view model's collection;
+        // the view model saves that order, or puts the rows back.
+        m_viewModel.CommitReorder(sender == GlobalAddonList());
+    }
+    void SettingsPage::OnAddonRowContextRequested(Microsoft::UI::Xaml::UIElement const& sender, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
+    {
+        // The row menu is how a keyboard reaches the order: the context menu key
+        // or Shift+F10 on a focused row offers Move up and Move down.
+        try
+        {
+            auto const list = sender.as<Microsoft::UI::Xaml::Controls::ListView>();
+            Microsoft::UI::Xaml::Controls::ListViewItem container{ nullptr };
+            auto element = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
+            while (element)
+            {
+                container = element.try_as<Microsoft::UI::Xaml::Controls::ListViewItem>();
+                if (container || element == list)
+                {
+                    break;
+                }
+                element = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetParent(element);
+            }
+            if (!container)
+            {
+                return;
+            }
+            auto const row = list.ItemFromContainer(container).try_as<winrt::HaloDesktop::AddonRowViewModel>();
+            if (!row)
+            {
+                return;
+            }
+            auto const id = row.Id();
+            auto const moves = winrt::get_self<SettingsViewModel>(m_viewModel)->MovesFor(id);
+            if (!moves.Offered)
+            {
+                return;
+            }
+            args.Handled(true);
+
+            Microsoft::UI::Xaml::Controls::MenuFlyout menu;
+            auto const addMove = [&menu, weak = get_weak(), id](wchar_t const* text, wchar_t const* glyph, std::int32_t offset, bool enabled)
+            {
+                Microsoft::UI::Xaml::Controls::MenuFlyoutItem item;
+                item.Text(text);
+                Microsoft::UI::Xaml::Controls::FontIcon icon;
+                icon.Glyph(glyph);
+                item.Icon(icon);
+                item.IsEnabled(enabled);
+                item.Click([weak, id, offset](auto const&, auto const&)
+                {
+                    if (auto const self = weak.get())
+                    {
+                        self->m_viewModel.MoveAddon(id, offset);
+                    }
+                });
+                menu.Items().Append(item);
+            };
+            addMove(L"Move up", L"\xE74A", -1, moves.CanMoveUp);
+            addMove(L"Move down", L"\xE74B", 1, moves.CanMoveDown);
+
+            Microsoft::UI::Xaml::Controls::Primitives::FlyoutShowOptions options;
+            winrt::Windows::Foundation::Point point{};
+            if (args.TryGetPosition(container, point))
+            {
+                options.Position(point);
+            }
+            menu.ShowAt(container, options);
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
     }
     void SettingsPage::OnDefaultFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFont(0); }
     void SettingsPage::OnSystemFontClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFont(1); }
@@ -157,7 +301,7 @@ namespace winrt::HaloDesktop::implementation
         {
         }
     }
-    void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignOut(); }
+    void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowSignOutDialog(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
         auto const scroller = SettingsScroller();
@@ -215,22 +359,30 @@ namespace winrt::HaloDesktop::implementation
         m_railApplied = true;
         Microsoft::UI::Xaml::VisualStateManager::GoToState(*this, kRailStates[active], false);
     }
+    Microsoft::UI::Xaml::Controls::ContentDialog SettingsPage::MakeConfirmation(::HaloDesktop::Services::ConfirmationCopy const& copy)
+    {
+        auto dialog = ::HaloDesktop::Views::MakeDialog(
+            XamlRoot(),
+            ActualTheme(),
+            winrt::hstring{ copy.Title },
+            winrt::hstring{ copy.Body },
+            copy.Destructive ? ::HaloDesktop::Views::DialogTone::Destructive : ::HaloDesktop::Views::DialogTone::Standard);
+        dialog.PrimaryButtonText(winrt::hstring{ copy.Primary });
+        dialog.CloseButtonText(winrt::hstring{ copy.Close });
+        return dialog;
+    }
+
     winrt::fire_and_forget SettingsPage::ShowDeleteAddonDialog(winrt::hstring id)
     {
         auto lifetime = get_strong();
         try
         {
-            auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
-            auto dialog = ::HaloDesktop::Views::MakeDialog(
-                XamlRoot(),
-                ActualTheme(),
-                L"Remove addon?",
-                viewModel->IsGlobalAddon(id)
-                    ? L"This removes the addon for every user on this server."
-                    : L"This removes the addon from your account.",
-                ::HaloDesktop::Views::DialogTone::Destructive);
-            dialog.PrimaryButtonText(L"Remove");
-            dialog.CloseButtonText(L"Cancel");
+            auto const copy = winrt::get_self<SettingsViewModel>(m_viewModel)->RemoveConfirmation(id);
+            if (!copy)
+            {
+                co_return;
+            }
+            auto dialog = MakeConfirmation(*copy);
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
             {
                 m_viewModel.RemoveAddon(id);
@@ -238,6 +390,111 @@ namespace winrt::HaloDesktop::implementation
         }
         catch (...)
         {
+        }
+    }
+
+    winrt::fire_and_forget SettingsPage::ShowInstallForEveryoneDialog(winrt::hstring id)
+    {
+        auto lifetime = get_strong();
+        try
+        {
+            // Checked before asking: a global list read without its URLs cannot
+            // be sent back whole, and says so instead of asking.
+            auto const copy = winrt::get_self<SettingsViewModel>(m_viewModel)->BeginInstallForEveryone(id);
+            if (!copy)
+            {
+                co_return;
+            }
+            auto dialog = MakeConfirmation(*copy);
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.InstallForEveryone(id);
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+
+    winrt::fire_and_forget SettingsPage::ShowSignOutDialog()
+    {
+        auto lifetime = get_strong();
+        try
+        {
+            auto dialog = MakeConfirmation(::HaloDesktop::Services::SignOutConfirmation());
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.SignOut();
+            }
+        }
+        catch (...)
+        {
+        }
+    }
+
+    void SettingsPage::ShowStockAccountPicture()
+    {
+        if (m_stockAccountPicture)
+        {
+            AccountPicture().Source(m_stockAccountPicture);
+        }
+        m_shownPictureVersion.clear();
+        m_shownPictureUser.clear();
+    }
+
+    // The same picture, from the same cache, as the shell's account button.
+    winrt::fire_and_forget SettingsPage::RefreshAccountPictureAsync()
+    {
+        auto lifetime = get_strong();
+        auto const request = ++m_pictureRequest;
+        auto const viewModel = winrt::get_self<SettingsViewModel>(m_viewModel);
+        auto const userId = viewModel->AccountUserId();
+        auto const version = viewModel->AccountPictureVersion();
+        if (version.empty() || userId.empty())
+        {
+            ShowStockAccountPicture();
+            co_return;
+        }
+        if (version == m_shownPictureVersion && userId == m_shownPictureUser)
+        {
+            co_return;
+        }
+        // Another account's picture never stays up while this one's loads.
+        if (userId != m_shownPictureUser)
+        {
+            ShowStockAccountPicture();
+        }
+        auto const uiContext = winrt::apartment_context{};
+        try
+        {
+            auto const bytes = co_await App::Services().AccountPicture->PictureAsync(version);
+            co_await uiContext;
+            if (request != m_pictureRequest)
+            {
+                co_return;
+            }
+            if (!bytes || bytes->empty())
+            {
+                ShowStockAccountPicture();
+                co_return;
+            }
+            auto const picture = co_await ::HaloDesktop::Views::DecodeAccountPictureAsync(bytes, kAccountPictureEdge);
+            co_await uiContext;
+            if (request != m_pictureRequest)
+            {
+                co_return;
+            }
+            AccountPicture().Source(picture);
+            m_shownPictureVersion = version;
+            m_shownPictureUser = userId;
+        }
+        catch (...)
+        {
+            // Not an image, or one that could not be read: the stock avatar stands in.
+        }
+        if (request == m_pictureRequest && m_shownPictureVersion != version)
+        {
+            ShowStockAccountPicture();
         }
     }
 }

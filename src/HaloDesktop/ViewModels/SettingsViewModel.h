@@ -2,52 +2,98 @@
 
 #include "AddonRowViewModel.g.h"
 #include "SettingsViewModel.g.h"
+#include "Services/AddonRowPolicy.h"
 #include "Services/AppServices.h"
+#include "Services/BuildInfoReader.h"
 #include "Services/ServiceInterfaces.h"
 #include "Services/ThemeService.h"
 
 #include <cstdint>
 #include <memory>
+#include <optional>
+#include <string>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 
 namespace winrt::HaloDesktop::implementation
 {
     struct AddonRowViewModel : AddonRowViewModelT<AddonRowViewModel>
     {
-        explicit AddonRowViewModel(winrt::HaloDesktop::Addon addon);
+        struct Content final
+        {
+            winrt::hstring Id;
+            winrt::hstring Name;
+            winrt::hstring Version;
+            winrt::hstring Provides;
+            bool IsGlobal{};
+            bool CatalogsShown{};
+            ::HaloDesktop::Services::AddonRowActions Actions;
+        };
+
+        explicit AddonRowViewModel(Content content);
         [[nodiscard]] winrt::hstring Id() const;
         [[nodiscard]] winrt::hstring Initials() const;
         [[nodiscard]] winrt::hstring Name() const;
         [[nodiscard]] winrt::hstring Version() const;
-        [[nodiscard]] winrt::hstring Scope() const;
         [[nodiscard]] winrt::hstring Provides() const;
-        [[nodiscard]] bool Enabled() const noexcept;
-        [[nodiscard]] bool CanEdit() const noexcept;
         [[nodiscard]] bool IsGlobal() const noexcept;
+        [[nodiscard]] bool IsShadowed() const noexcept;
+        [[nodiscard]] bool CatalogsShown() const noexcept;
+        [[nodiscard]] bool CatalogSwitchEnabled() const noexcept;
+        [[nodiscard]] winrt::hstring CatalogSwitchLabel() const;
+        [[nodiscard]] winrt::hstring GripToolTip() const;
+        [[nodiscard]] double IdentityOpacity() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility GlobalVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility YoursVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CatalogSwitchVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility InstallForEveryoneVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RemoveVisibility() const noexcept;
+        [[nodiscard]] bool ListActionsEnabled() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Thickness DividerThickness() const noexcept;
+        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
+        void PropertyChanged(winrt::event_token const& token) noexcept;
+
+        [[nodiscard]] bool IsMovable() const noexcept;
+        void SetListBusy(bool busy);
+        void SetFirstInCard(bool first);
 
     private:
-        winrt::HaloDesktop::Addon m_addon{ nullptr };
+        void Raise(wchar_t const* propertyName);
+
+        Content m_content;
+        winrt::hstring m_initials;
+        bool m_firstInCard{};
+        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
     struct SettingsViewModel : SettingsViewModelT<SettingsViewModel>
     {
         explicit SettingsViewModel(::HaloDesktop::Services::AppServices const& services);
         ~SettingsViewModel();
-        [[nodiscard]] winrt::hstring ServerUrl() const;
         [[nodiscard]] winrt::hstring UserName() const;
         [[nodiscard]] winrt::hstring DisplayName() const;
         [[nodiscard]] winrt::hstring SignedInLine() const;
         [[nodiscard]] winrt::hstring AccountRoleLine() const;
+        [[nodiscard]] winrt::hstring VersionLine() const;
         [[nodiscard]] winrt::hstring ServerStatusLine() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerCheckingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerConnectedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerUnavailableVisibility() const noexcept;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable Addons() const;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AddonsView() const;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> GlobalAddons() const;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> OwnAddons() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility GlobalAddonsVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility OwnAddonsVisibility() const noexcept;
+        [[nodiscard]] bool CanReorderGlobal() const noexcept;
+        [[nodiscard]] bool CanReorderOwn() const noexcept;
+        [[nodiscard]] winrt::hstring AddonUrl() const;
+        void AddonUrl(winrt::hstring const& value);
+        [[nodiscard]] bool CanAddAddon() const;
+        [[nodiscard]] winrt::hstring AddButtonText() const;
+        [[nodiscard]] winrt::hstring AddErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddErrorVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring ListErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ListErrorVisibility() const noexcept;
         [[nodiscard]] winrt::hstring AddonNoticeText() const;
-        [[nodiscard]] bool CanEditAddons() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonNoticeVisibility() const noexcept;
         [[nodiscard]] winrt::hstring AccountNoticeText() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AccountNoticeVisibility() const noexcept;
@@ -55,6 +101,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonErrorVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonEmptyVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonContentVisibility() const noexcept;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> CatalogLanguageOptions() const;
+        [[nodiscard]] std::int32_t CatalogLanguageIndex() const noexcept;
+        void CatalogLanguageIndex(std::int32_t value);
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility CatalogLanguageVisibility() const noexcept;
         [[nodiscard]] double SubtitleSize() const noexcept;
         void SubtitleSize(double value);
         [[nodiscard]] winrt::hstring SubtitleSizeLabel() const;
@@ -95,10 +145,12 @@ namespace winrt::HaloDesktop::implementation
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();
-        void AddAddon(winrt::hstring const& url);
-        void ToggleAddon(winrt::hstring const& name, bool enabled);
-        void RemoveAddon(winrt::hstring const& name);
-        [[nodiscard]] bool IsGlobalAddon(winrt::hstring const& id) const;
+        void AddAddon();
+        void ToggleAddon(winrt::hstring const& id, bool enabled);
+        void RemoveAddon(winrt::hstring const& id);
+        void InstallForEveryone(winrt::hstring const& id);
+        void CommitReorder(bool global);
+        void MoveAddon(winrt::hstring const& id, std::int32_t offset);
         [[nodiscard]] bool IsLightTheme() const noexcept;
         [[nodiscard]] bool IsDarkTheme() const noexcept;
         [[nodiscard]] bool IsSystemTheme() const noexcept;
@@ -109,27 +161,60 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
-    private:
-        winrt::Windows::Foundation::IAsyncAction LoadAsync();
-        winrt::Windows::Foundation::IAsyncAction ProbeHealthAsync(std::uint64_t version);
-        winrt::Windows::Foundation::IAsyncAction AddAddonAsync(winrt::hstring url);
-        winrt::Windows::Foundation::IAsyncAction ToggleAddonAsync(winrt::hstring id, bool enabled);
-        winrt::Windows::Foundation::IAsyncAction RemoveAddonAsync(winrt::hstring id);
-        winrt::Windows::Foundation::IAsyncAction RunSignOutAsync();
-        void SynchronizeAddons();
-        void RaiseAddonState();
-        void RaisePreviewMetrics();
-        void Raise(wchar_t const* propertyName);
-        void ReadSyncedSettings();
-        void SubscribeToServiceChanges();
-        void OnProfileChanged();
+        // Native-only calls from the page, which asks before it acts.
+        // The confirmation for removing a row, or nothing when it cannot be removed now.
+        [[nodiscard]] std::optional<::HaloDesktop::Services::ConfirmationCopy> RemoveConfirmation(winrt::hstring const& id) const;
+        // The confirmation for sharing a row, or nothing when it cannot be
+        // shared; a global list read without its URLs sets the error line.
+        [[nodiscard]] std::optional<::HaloDesktop::Services::ConfirmationCopy> BeginInstallForEveryone(winrt::hstring const& id);
+        struct RowMoves final
+        {
+            bool Offered{};
+            bool CanMoveUp{};
+            bool CanMoveDown{};
+        };
+        [[nodiscard]] RowMoves MovesFor(winrt::hstring const& id) const;
+        // Whether a drag of these rows may start now.
+        [[nodiscard]] bool CanDragRows(std::vector<winrt::hstring> const& ids) const;
+        // The signed-in account's picture fingerprint, empty without one.
+        [[nodiscard]] winrt::hstring AccountPictureVersion() const;
+        [[nodiscard]] winrt::hstring AccountUserId() const;
 
+    private:
         enum class HealthState
         {
             Checking,
             Connected,
             Unavailable,
         };
+
+        winrt::Windows::Foundation::IAsyncAction LoadAsync();
+        winrt::Windows::Foundation::IAsyncAction ProbeHealthAsync(std::uint64_t version);
+        winrt::Windows::Foundation::IAsyncAction ReadBuildInfoAsync();
+        winrt::Windows::Foundation::IAsyncAction AddAddonAsync(winrt::hstring url);
+        winrt::Windows::Foundation::IAsyncAction ToggleAddonAsync(winrt::hstring id, winrt::hstring name, bool enabled);
+        winrt::Windows::Foundation::IAsyncAction RemoveAddonAsync(winrt::hstring id, winrt::hstring name);
+        winrt::Windows::Foundation::IAsyncAction InstallForEveryoneAsync(winrt::hstring id, winrt::hstring name);
+        winrt::Windows::Foundation::IAsyncAction SaveOrderAsync(bool global, std::vector<winrt::hstring> ids);
+        winrt::Windows::Foundation::IAsyncAction RunSignOutAsync();
+        [[nodiscard]] std::optional<::HaloDesktop::Api::Dto::AddonRecord> FindRecord(winrt::hstring const& id) const;
+        [[nodiscard]] bool ListShown() const noexcept;
+        void SynchronizeAddons();
+        void ClearAddonRows();
+        void RefreshRowDividers();
+        void SetListBusy(bool busy);
+        void SetAdding(bool adding);
+        void SetAddError(std::wstring text);
+        void SetListError(std::wstring text);
+        void RebuildCatalogLanguage();
+        void RaiseAddonState();
+        void RaiseAccountIdentity();
+        void RaisePreviewMetrics();
+        void Raise(wchar_t const* propertyName);
+        void ReadSyncedSettings();
+        void SubscribeToServiceChanges();
+        void OnProfileChanged();
+
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
@@ -138,12 +223,19 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::PlaybackPreferences> m_playbackPreferences;
         std::shared_ptr<::HaloDesktop::Services::DiscordPresenceService> m_discordPresenceService;
         std::shared_ptr<::HaloDesktop::Playback::IPlaybackEngine> m_playback;
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_addons{ nullptr };
-        winrt::hstring m_serverUrl;
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_globalAddons{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_ownAddons{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_catalogLanguageOptions{ nullptr };
+        std::vector<std::wstring> m_catalogLanguageChoices;
+        std::int32_t m_catalogLanguageIndex{};
         winrt::hstring m_userName;
+        winrt::hstring m_addonUrl;
+        std::wstring m_addError;
+        std::wstring m_listError;
         winrt::hstring m_addonNoticeText;
         winrt::hstring m_accountNoticeText;
         winrt::hstring m_serverStatusLine{ L"CHECKING…" };
+        std::optional<::HaloDesktop::Services::BuildInfo> m_buildInfo;
         double m_subtitleSize{ 100.0 };
         std::int32_t m_fontIndex{};
         std::int32_t m_outlineIndex{ 1 };
@@ -153,6 +245,13 @@ namespace winrt::HaloDesktop::implementation
         bool m_accountNoticeVisible{};
         bool m_addonsLoading{};
         bool m_addonsError{};
+        // Rows for this account are on screen: a refresh keeps them, and only
+        // a first load with nothing to show is an error.
+        bool m_listShown{};
+        // One whole-list save at a time; each sends the list as it was read.
+        bool m_listBusy{};
+        bool m_adding{};
+        bool m_buildInfoRequested{};
         bool m_autoplayNext{ true };
         bool m_subtitleShadow{ true };
         bool m_subtitleTrackStyling{ true };

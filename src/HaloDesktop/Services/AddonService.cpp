@@ -332,6 +332,14 @@ namespace HaloDesktop::Services
             {
                 throw std::runtime_error{ "The addon cannot be removed safely." };
             }
+            // Settings offers no remove for a built-in in the own list; this
+            // keeps any other caller from taking away what Halo browses with.
+            if (IsBuiltInAddon(
+                    found->IsGlobal ? AddonScope::Global : AddonScope::Yours,
+                    std::wstring_view{ *found->TransportUrl }))
+            {
+                throw std::runtime_error{ "A built-in addon cannot be removed." };
+            }
 
             auto urls = TransportUrls(found->IsGlobal);
             std::erase(urls, *found->TransportUrl);
@@ -399,6 +407,224 @@ namespace HaloDesktop::Services
             m_queryCache->Invalidate(AddonsCacheKey);
             co_await LoadCoreAsync(m_accountVersion);
             mutationCompleted.set();
+        }
+        catch (...)
+        {
+            mutationCompleted.set();
+            throw;
+        }
+    }
+
+    bool AddonService::HasLoaded() const noexcept
+    {
+        return m_listApplied;
+    }
+
+    bool AddonService::CanEditScope(bool global) const noexcept
+    {
+        return m_listApplied && CanEditAddonInScope(m_editability, global);
+    }
+
+    std::vector<AddonListEntry> AddonService::ListEntries(bool global) const
+    {
+        std::vector<AddonListEntry> entries;
+        for (auto const& record : m_records)
+        {
+            if (record.IsGlobal != global)
+            {
+                continue;
+            }
+            entries.push_back(AddonListEntry{
+                .Id = std::wstring{ record.Id },
+                .TransportUrl = record.TransportUrl
+                    ? std::optional<std::wstring>{ std::wstring{ *record.TransportUrl } }
+                    : std::nullopt,
+            });
+        }
+        return entries;
+    }
+
+    InstallForEveryonePlan AddonService::PlanInstall(winrt::hstring const& addonId) const
+    {
+        auto const global = ListEntries(true);
+        auto const own = ListEntries(false);
+        return PlanInstallForEveryone(global, own, std::wstring_view{ addonId }, m_session->IsAdmin());
+    }
+
+    InstallForEveryoneCheck AddonService::CheckInstallForEveryone(winrt::hstring const& addonId) const
+    {
+        if (!m_listApplied)
+        {
+            return InstallForEveryoneCheck::NotAllowed;
+        }
+        return PlanInstall(addonId).Check;
+    }
+
+    concurrency::task<void> AddonService::SaveOrderAsync(
+        bool global,
+        std::vector<winrt::hstring> orderedIds)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
+        auto const previousMutation = m_mutationTail;
+        concurrency::task_completion_event<void> mutationCompleted;
+        auto const mutationGate = concurrency::create_task(mutationCompleted);
+        m_mutationTail = mutationGate.then([](concurrency::task<void> completed)
+        {
+            try { completed.get(); } catch (...) {}
+        });
+        try
+        {
+            if (previousMutation)
+            {
+                auto pendingMutation = *previousMutation;
+                try { co_await pendingMutation; } catch (...) {}
+            }
+
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+
+            if (!CanEditScope(global))
+            {
+                throw std::runtime_error{ "The addon list cannot be edited safely." };
+            }
+            std::vector<std::wstring> ids;
+            ids.reserve(orderedIds.size());
+            for (auto const& id : orderedIds)
+            {
+                ids.emplace_back(id);
+            }
+            auto const entries = ListEntries(global);
+            auto const urls = ReorderedTransportUrls(entries, ids);
+            if (!urls)
+            {
+                throw std::invalid_argument{ "The new addon order does not match the list." };
+            }
+            std::vector<winrt::hstring> body;
+            body.reserve(urls->size());
+            for (auto const& url : *urls)
+            {
+                body.emplace_back(url);
+            }
+            co_await m_apiClient->PutAddonsAsync(std::move(body), global);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            m_queryCache->Invalidate(AddonsCacheKey);
+            co_await LoadCoreAsync(m_accountVersion);
+            mutationCompleted.set();
+        }
+        catch (...)
+        {
+            mutationCompleted.set();
+            throw;
+        }
+    }
+
+    concurrency::task<InstallForEveryoneOutcome> AddonService::InstallForEveryoneAsync(winrt::hstring addonId)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const accountVersion = m_accountVersion;
+        auto const previousMutation = m_mutationTail;
+        concurrency::task_completion_event<void> mutationCompleted;
+        auto const mutationGate = concurrency::create_task(mutationCompleted);
+        m_mutationTail = mutationGate.then([](concurrency::task<void> completed)
+        {
+            try { completed.get(); } catch (...) {}
+        });
+        try
+        {
+            if (previousMutation)
+            {
+                auto pendingMutation = *previousMutation;
+                try { co_await pendingMutation; } catch (...) {}
+            }
+
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return InstallForEveryoneOutcome::Abandoned;
+            }
+
+            // Planned again here, after any earlier save has landed, so the
+            // lists sent are the ones the account has now.
+            auto const plan = PlanInstall(addonId);
+            if (!m_listApplied || plan.Check != InstallForEveryoneCheck::Proceed)
+            {
+                throw std::runtime_error{ "The addon cannot be installed for every user." };
+            }
+            std::vector<winrt::hstring> globalUrls;
+            globalUrls.reserve(plan.GlobalUrls.size());
+            for (auto const& url : plan.GlobalUrls)
+            {
+                globalUrls.emplace_back(url);
+            }
+            co_await m_apiClient->PutAddonsAsync(std::move(globalUrls), true);
+            co_await uiContext;
+            if (accountVersion != m_accountVersion)
+            {
+                mutationCompleted.set();
+                co_return InstallForEveryoneOutcome::Abandoned;
+            }
+            m_queryCache->Invalidate(AddonsCacheKey);
+
+            auto outcome = InstallForEveryoneOutcome::Installed;
+            if (plan.OwnListIncomplete)
+            {
+                outcome = InstallForEveryoneOutcome::OwnCopyKept;
+            }
+            else if (plan.OwnUrlsAfter)
+            {
+                std::vector<winrt::hstring> ownUrls;
+                ownUrls.reserve(plan.OwnUrlsAfter->size());
+                for (auto const& url : *plan.OwnUrlsAfter)
+                {
+                    ownUrls.emplace_back(url);
+                }
+                try
+                {
+                    co_await m_apiClient->PutAddonsAsync(std::move(ownUrls), false);
+                }
+                catch (winrt::hresult_canceled const&)
+                {
+                    throw;
+                }
+                catch (...)
+                {
+                    outcome = InstallForEveryoneOutcome::OwnCopyKept;
+                }
+                co_await uiContext;
+                if (accountVersion != m_accountVersion)
+                {
+                    mutationCompleted.set();
+                    co_return InstallForEveryoneOutcome::Abandoned;
+                }
+                m_queryCache->Invalidate(AddonsCacheKey);
+            }
+            // The global copy is in place either way, so the list is read
+            // again; a failed read leaves the old rows and is not this
+            // action's failure.
+            try
+            {
+                co_await LoadCoreAsync(m_accountVersion);
+            }
+            catch (winrt::hresult_canceled const&)
+            {
+                throw;
+            }
+            catch (...)
+            {
+            }
+            mutationCompleted.set();
+            co_return outcome;
         }
         catch (...)
         {

@@ -549,6 +549,7 @@ namespace
             .TransportUrl = transportUrl,
             .Name = DisplayString(manifest, L"name", 512),
             .Version = DisplayString(manifest, L"version", 64),
+            .Description = OptionalDisplayString(manifest, L"description", 512).value_or(L""),
             .Resources = StringArray(manifest, L"resources"),
             .Types = StringArray(manifest, L"types"),
             .Catalogs = Catalogs(manifest),

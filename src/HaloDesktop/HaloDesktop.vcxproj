@@ -380,6 +380,11 @@
     <ClInclude Include="Services\DownloadStreamFacts.h" />
     <ClInclude Include="Views\DownloadsChartPresenter.h" />
     <ClInclude Include="Views\DownloadReadyCard.xaml.h"><DependentUpon>DownloadReadyCard.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Services\AddonRowPolicy.h" />
+    <ClInclude Include="Services\BuildInfoPolicy.h" />
+    <ClInclude Include="Services\BuildInfoReader.h" />
+    <ClInclude Include="Playback\MpvVersionProbe.h" />
+    <ClInclude Include="Views\AccountPictureDecoder.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -741,6 +746,15 @@
     <ClCompile Include="Services\DownloadStreamFacts.cpp" />
     <ClCompile Include="Views\DownloadsChartPresenter.cpp" />
     <ClCompile Include="Views\DownloadReadyCard.xaml.cpp"><DependentUpon>DownloadReadyCard.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Services\AddonRowPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\BuildInfoPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\BuildInfoReader.cpp" />
+    <ClCompile Include="Playback\MpvVersionProbe.cpp" />
+    <ClCompile Include="Views\AccountPictureDecoder.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

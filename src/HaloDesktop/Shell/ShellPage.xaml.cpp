@@ -10,6 +10,7 @@
 #include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
+#include "Views/AccountPictureDecoder.h"
 
 #include <algorithm>
 #include <array>
@@ -879,45 +880,13 @@ namespace winrt::HaloDesktop::implementation
                 co_return;
             }
 
-            winrt::Windows::Storage::Streams::InMemoryRandomAccessStream stream;
-            {
-                winrt::Windows::Storage::Streams::DataWriter writer{ stream };
-                writer.WriteBytes(winrt::array_view<std::uint8_t const>{
-                    bytes->data(),
-                    static_cast<std::uint32_t>(bytes->size()) });
-                co_await writer.StoreAsync();
-                writer.DetachStream();
-            }
-
-            // The shape is read first so the shorter side is decoded at the
-            // avatar's size: an upload can be far larger than the 28 pixels drawn,
-            // and decoding both sides would stretch it.
-            stream.Seek(0);
-            auto const decoder = co_await winrt::Windows::Graphics::Imaging::BitmapDecoder::CreateAsync(stream);
-            auto const width = decoder.PixelWidth();
-            auto const height = decoder.PixelHeight();
-            stream.Seek(0);
-
-            Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
-            bitmap.DecodePixelType(Microsoft::UI::Xaml::Media::Imaging::DecodePixelType::Logical);
-            if (width > 0 && height > 0)
-            {
-                if (width <= height)
-                {
-                    bitmap.DecodePixelWidth(static_cast<std::int32_t>((std::min)(width, AvatarSize)));
-                }
-                else
-                {
-                    bitmap.DecodePixelHeight(static_cast<std::int32_t>((std::min)(height, AvatarSize)));
-                }
-            }
-            co_await bitmap.SetSourceAsync(stream);
+            auto const picture = co_await ::HaloDesktop::Views::DecodeAccountPictureAsync(bytes, AvatarSize);
             co_await uiContext;
             if (request != m_pictureRequest)
             {
                 co_return;
             }
-            AccountAvatar().Source(bitmap);
+            AccountAvatar().Source(picture);
             m_shownPictureVersion = version;
             m_shownPictureUser = userId;
         }

@@ -30,6 +30,7 @@
 #include "CallQueueTests.h"
 #include "SegmentPlannerTests.h"
 #include "DownloadsPageTests.h"
+#include "SettingsPageTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1410,6 +1411,7 @@ int main()
         RunWatchOutboxTests();
         RunCallQueueTests();
         RunDownloadsPageTests();
+        RunSettingsPageTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

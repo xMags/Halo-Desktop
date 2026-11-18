@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Services/AddonRowPolicy.h"
 #include "Services/CatalogPagingPolicy.h"
 #include "Services/Downloads/DownloadTypes.h"
 
@@ -52,6 +53,16 @@ namespace HaloDesktop::Services
     {
         DownloadStartOutcome Outcome{ DownloadStartOutcome::Failed };
         std::wstring Reason;
+    };
+
+    // How an admin's "Install for every user" ended once the global list was
+    // saved: the own copy went (or, being built in, stayed on purpose), or it
+    // could not be removed. The account changing midway is Abandoned.
+    enum class InstallForEveryoneOutcome
+    {
+        Installed,
+        OwnCopyKept,
+        Abandoned,
     };
 
     using CatalogChangedToken = std::uint64_t;
@@ -304,6 +315,25 @@ namespace HaloDesktop::Services
         // Re-judges which rows can be edited against the session's admin flag
         // now, rebuilding Items when the answer changed. Cheap and idempotent.
         virtual void RefreshEditability() = 0;
+        // Whether this account's list has been read and applied at least once.
+        // A failed refresh keeps the list it had, so this stays true then.
+        [[nodiscard]] virtual bool HasLoaded() const noexcept = 0;
+        // Whether one scope's list can be sent back whole: every row of it
+        // carries its transport URL (and, for the global list, the caller is
+        // an admin).
+        [[nodiscard]] virtual bool CanEditScope(bool global) const noexcept = 0;
+        // Sends one scope's list in this id order. The ids must be exactly the
+        // scope's rows; anything else throws without saving.
+        [[nodiscard]] virtual concurrency::task<void> SaveOrderAsync(
+            bool global,
+            std::vector<winrt::hstring> orderedIds) = 0;
+        // Whether the admin can share this own row with every user now.
+        [[nodiscard]] virtual InstallForEveryoneCheck CheckInstallForEveryone(
+            winrt::hstring const& addonId) const = 0;
+        // Appends the row's URL to the global list, then removes the own copy
+        // unless it is built in. Throws when the global save fails.
+        [[nodiscard]] virtual concurrency::task<InstallForEveryoneOutcome> InstallForEveryoneAsync(
+            winrt::hstring addonId) = 0;
     };
 
     class ISessionService

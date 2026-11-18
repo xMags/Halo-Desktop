@@ -1,35 +1,54 @@
 namespace HaloDesktop
 {
     [default_interface]
-    runtimeclass AddonRowViewModel
+    runtimeclass AddonRowViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Id { get; };
         String Initials { get; };
         String Name { get; };
         String Version { get; };
-        String Scope { get; };
         String Provides { get; };
-        Boolean Enabled { get; };
-        Boolean CanEdit { get; };
         Boolean IsGlobal { get; };
+        Boolean IsShadowed { get; };
+        Boolean CatalogsShown { get; };
+        Boolean CatalogSwitchEnabled { get; };
+        String CatalogSwitchLabel { get; };
+        String GripToolTip { get; };
+        Double IdentityOpacity { get; };
         Microsoft.UI.Xaml.Visibility GlobalVisibility { get; };
         Microsoft.UI.Xaml.Visibility YoursVisibility { get; };
+        Microsoft.UI.Xaml.Visibility CatalogSwitchVisibility { get; };
+        Microsoft.UI.Xaml.Visibility InstallForEveryoneVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RemoveVisibility { get; };
+        Boolean ListActionsEnabled { get; };
+        Microsoft.UI.Xaml.Thickness DividerThickness { get; };
     }
 
     runtimeclass SettingsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        String ServerUrl { get; };
         String UserName { get; };
         String DisplayName { get; };
         String SignedInLine { get; };
         String AccountRoleLine { get; };
+        String VersionLine { get; };
         String ServerStatusLine { get; };
         Microsoft.UI.Xaml.Visibility ServerCheckingVisibility { get; };
         Microsoft.UI.Xaml.Visibility ServerConnectedVisibility { get; };
         Microsoft.UI.Xaml.Visibility ServerUnavailableVisibility { get; };
-        Object Addons { get; };
+        Windows.Foundation.Collections.IObservableVector<Object> GlobalAddons { get; };
+        Windows.Foundation.Collections.IObservableVector<Object> OwnAddons { get; };
+        Microsoft.UI.Xaml.Visibility GlobalAddonsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility OwnAddonsVisibility { get; };
+        Boolean CanReorderGlobal { get; };
+        Boolean CanReorderOwn { get; };
+        String AddonUrl;
+        Boolean CanAddAddon { get; };
+        String AddButtonText { get; };
+        String AddErrorText { get; };
+        Microsoft.UI.Xaml.Visibility AddErrorVisibility { get; };
+        String ListErrorText { get; };
+        Microsoft.UI.Xaml.Visibility ListErrorVisibility { get; };
         String AddonNoticeText { get; };
-        Boolean CanEditAddons { get; };
         Microsoft.UI.Xaml.Visibility AddonNoticeVisibility { get; };
         String AccountNoticeText { get; };
         Microsoft.UI.Xaml.Visibility AccountNoticeVisibility { get; };
@@ -37,6 +56,9 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility AddonErrorVisibility { get; };
         Microsoft.UI.Xaml.Visibility AddonEmptyVisibility { get; };
         Microsoft.UI.Xaml.Visibility AddonContentVisibility { get; };
+        Windows.Foundation.Collections.IObservableVector<Object> CatalogLanguageOptions { get; };
+        Int32 CatalogLanguageIndex;
+        Microsoft.UI.Xaml.Visibility CatalogLanguageVisibility { get; };
         Double SubtitleSize;
         String SubtitleSizeLabel { get; };
         String PreviewText { get; };
@@ -68,9 +90,12 @@ namespace HaloDesktop
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();
-        void AddAddon(String url);
-        void ToggleAddon(String name, Boolean enabled);
-        void RemoveAddon(String name);
+        void AddAddon();
+        void ToggleAddon(String id, Boolean enabled);
+        void RemoveAddon(String id);
+        void InstallForEveryone(String id);
+        void CommitReorder(Boolean global);
+        void MoveAddon(String id, Int32 offset);
         Boolean IsLightTheme { get; };
         Boolean IsDarkTheme { get; };
         Boolean IsSystemTheme { get; };

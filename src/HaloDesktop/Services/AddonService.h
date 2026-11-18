@@ -1,12 +1,14 @@
 #pragma once
 
 #include "Services/AddonListPolicy.h"
+#include "Services/AddonRowPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <cstdint>
 #include <memory>
 #include <optional>
 #include <ppltasks.h>
+#include <vector>
 
 namespace HaloDesktop::Api
 {
@@ -43,9 +45,20 @@ namespace HaloDesktop::Services
             winrt::hstring addonId,
             bool visible) override;
         void RefreshEditability() override;
+        [[nodiscard]] bool HasLoaded() const noexcept override;
+        [[nodiscard]] bool CanEditScope(bool global) const noexcept override;
+        [[nodiscard]] concurrency::task<void> SaveOrderAsync(
+            bool global,
+            std::vector<winrt::hstring> orderedIds) override;
+        [[nodiscard]] InstallForEveryoneCheck CheckInstallForEveryone(
+            winrt::hstring const& addonId) const override;
+        [[nodiscard]] concurrency::task<InstallForEveryoneOutcome> InstallForEveryoneAsync(
+            winrt::hstring addonId) override;
         void OnAccountChanged();
 
     private:
+        [[nodiscard]] std::vector<AddonListEntry> ListEntries(bool global) const;
+        [[nodiscard]] InstallForEveryonePlan PlanInstall(winrt::hstring const& addonId) const;
         [[nodiscard]] concurrency::task<void> LoadCoreAsync(std::uint64_t accountVersion);
         void Apply(::HaloDesktop::Api::Dto::AddonsPayload payload);
         // Editability and the display rows, from the records and the admin flag.
