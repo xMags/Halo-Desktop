@@ -646,17 +646,38 @@ namespace
         }
     }
 
+    // Opened sharing delete as well as read and write: the engine replaces the
+    // index by renaming a new file over it, and a reader that denies delete
+    // would make that rename fail while a test polls the file.
     [[nodiscard]] std::string ReadText(std::filesystem::path const& path)
     {
-        std::ifstream input(path, std::ios::binary);
-        if (!input)
+        winrt::file_handle const file{ CreateFileW(
+            path.c_str(),
+            GENERIC_READ,
+            FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+            nullptr,
+            OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL,
+            nullptr) };
+        if (!file)
         {
             throw std::runtime_error{ "The transfer test could not read the download index." };
         }
-        return {
-            std::istreambuf_iterator<char>{ input },
-            std::istreambuf_iterator<char>{},
-        };
+        std::string text;
+        char buffer[4096];
+        for (;;)
+        {
+            DWORD read{};
+            if (!ReadFile(file.get(), buffer, sizeof(buffer), &read, nullptr))
+            {
+                throw std::runtime_error{ "The transfer test could not read the download index." };
+            }
+            if (read == 0)
+            {
+                return text;
+            }
+            text.append(buffer, read);
+        }
     }
 
     template <typename Predicate>
