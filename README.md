@@ -26,7 +26,7 @@
 
 Halo Desktop is a native Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
 
-It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering through a DirectX composition swapchain into a XAML SwapChainPanel. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles. Downloads stay on the Windows device and remain available offline.
+It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering through a DirectX composition swapchain into a XAML SwapChainPanel. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles, or, when used without an account, to the addons themselves. Downloads stay on the Windows device and remain available offline.
 
 The upstream project said native desktop apps would come later. One remaining brain cell took that personally.
 
@@ -34,16 +34,18 @@ The upstream project said native desktop apps would come later. One remaining br
 
 | Area | Current behavior |
 | --- | --- |
-| Home | Real addon catalogs, featured media, artwork, and Continue Watching |
-| Search | Searches supported addon catalogs and groups results by source |
-| Library | Synced movies and series with filtering and sorting |
-| Details | Metadata, seasons, episodes, progress, watched state, and artwork |
-| Sources | Fresh addon resolution, source ranking, quality filters, and technical metadata |
+| Home | Real addon catalogs, a featured hero, shelves per catalog and language, Continue Watching, and Recently watched |
+| Search | One merged grid across addon catalogs with a top match, library matches first, suggestions, recent searches, and popular titles |
+| Library | Movies and series with filtering and sorting |
+| History | Everything watched, with resume, removal of single entries, and Clear history |
+| Details | Metadata, seasons, episodes, progress, watched state, cast, trailer, similar titles, and artwork |
+| Sources | Fresh addon resolution, source ranking with quality medals, quality filters, and technical metadata |
 | Player | Native libmpv video, audio and subtitle tracks, seeking, speed, volume, resume, fullscreen, and up next |
 | Subtitles | Embedded tracks, addon subtitles, language preferences, styling, delay, and offline sidecars |
-| Downloads | Device-local transfers, pause and resume, progress, replacement safety, offline playback, and account isolation |
-| Settings | Synced playback preferences, device-local Discord Rich Presence, addon management, theme, health status, and account controls |
-| Authentication | Local Halo accounts plus OIDC browser sign-in support |
+| Downloads | Device-local transfers over several connections, pause and resume, rate chart, replacement safety, offline playback, and owner isolation |
+| Settings | Synced playback preferences, device-local Discord Rich Presence, addon management with reorder, theme, and account controls |
+| Authentication | Username and password for a self-hosted server, plus OIDC browser sign-in |
+| No account | "Continue without an account" keeps library, progress, addons, and downloads on this PC, and moves them into an account at a later sign-in |
 
 ## Native, because apparently I enjoy problems
 
@@ -205,7 +207,7 @@ Use an H.264 MKV or another libmpv-compatible file for playback checks. A file f
 | `F` | Toggle fullscreen |
 | `Escape` | Leave fullscreen first, then close the player |
 
-Playback always starts from a freshly resolved addon source or a completed local download. Watch progress is reported while online. Completed downloads can include a subtitle sidecar for offline playback.
+Playback always starts from a freshly resolved addon source or a completed local download. Watch progress is reported while online; progress made offline waits on the PC and is sent at the next chance. Completed downloads can include a subtitle sidecar for offline playback.
 
 ## Local data and security
 
@@ -216,7 +218,8 @@ Halo Desktop therefore keeps:
 - Authentication state protected with Windows DPAPI.
 - Download source URLs and headers inside per-download DPAPI-protected vault files.
 - The ordinary download index free of raw source URLs and credentials.
-- Download rows scoped to the signed-in server account.
+- Download rows scoped to the signed-in server account, or to this PC's own profile when Halo is used without an account.
+- Addons added without an account protected with Windows DPAPI.
 - Old-account transfers paused and hidden after sign-out.
 - Server configuration local and untracked.
 
@@ -258,7 +261,7 @@ For commercial or other permissions, contact `info@lastprojects.com`.
 
 ## Project status
 
-This is an actively developed personal Windows client, not an official upstream desktop release. It ships native Windows 11 x64 and ARM64 builds and expects a separately running Halo backend.
+This is an actively developed personal Windows client, not an official upstream desktop release. It ships native Windows 11 x64 and ARM64 builds and works either with a separately running Halo backend or without an account, in which case it talks to addons directly and keeps everything on the PC.
 
 Bug reports with exact reproduction steps are welcome. Code contributions are accepted only after a separate Contributor License Agreement is arranged, as required by the license. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
 
