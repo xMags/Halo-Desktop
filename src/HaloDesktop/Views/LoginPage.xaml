@@ -586,8 +586,15 @@
                     Text="GETTING HALO READY ON THIS PC" />
                 </StackPanel>
 
-                <!-- The way on without an account (hidden until this build has it),
-                     then each step's links, in the reference's order. -->
+                <!-- Why Halo could not start on this PC, on the steps that offer it. -->
+                <TextBlock
+                  AutomationProperties.LiveSetting="Polite"
+                  Style="{StaticResource HaloSignInErrorTextStyle}"
+                  Text="{x:Bind ViewModel.DeviceErrorText, Mode=OneWay}"
+                  Visibility="{x:Bind ViewModel.DeviceErrorVisibility, Mode=OneWay}" />
+
+                <!-- The way on without an account ("Back to Halo" when the screen
+                     is open over it), then each step's links, in the reference's order. -->
                 <Button
                   Click="OnNoAccountClick"
                   Content="{x:Bind ViewModel.NoAccountLabel, Mode=OneWay}"

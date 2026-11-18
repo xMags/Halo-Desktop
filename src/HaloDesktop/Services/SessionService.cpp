@@ -1,18 +1,24 @@
 #include "pch.h"
 #include "Services/SessionService.h"
 
+#include "Api/Addons/AddonFetcher.h"
 #include "Api/ApiClient.h"
 #include "Api/ApiError.h"
+#include "Api/HaloBackend.h"
 #include "Services/Auth/BrowserSignInStep.h"
 #include "Services/Auth/OidcSignInFlow.h"
 #include "Services/Auth/ServerAddressPolicy.h"
 #include "Services/Auth/SessionController.h"
 #include "Services/Auth/SessionStore.h"
 #include "Services/Auth/SignInAddonRegistry.h"
+#include "Services/Device/DeviceBackend.h"
+#include "Services/Device/DeviceModePolicy.h"
+#include "Services/Device/DeviceStore.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cwctype>
 #include <exception>
 #include <stdexcept>
@@ -68,6 +74,57 @@ namespace
     {
         return ::HaloDesktop::Services::SignInAttempt{ .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Succeeded };
     }
+
+    std::int64_t NowMilliseconds()
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+    }
+
+    // Best effort, as the reference's topUpDeviceAddons: the next start tries again.
+    concurrency::task<bool> TopUpAddonsAsync(std::shared_ptr<::HaloDesktop::Api::IHaloBackend> backend)
+    {
+        try
+        {
+            auto const payload = co_await backend->GetAddonsAsync();
+            std::vector<std::wstring> installed;
+            for (auto const& addon : payload.User)
+            {
+                if (addon.TransportUrl) installed.emplace_back(*addon.TransportUrl);
+            }
+            auto const next = ::HaloDesktop::Services::Device::TopUpAddonList(installed);
+            if (!next) co_return false;
+            std::vector<winrt::hstring> urls;
+            urls.reserve(next->size());
+            for (auto const& url : *next) urls.emplace_back(url);
+            co_await backend->PutAddonsAsync(std::move(urls));
+            co_return true;
+        }
+        catch (...)
+        {
+        }
+        co_return false;
+    }
+
+    std::wstring DescribeProfileFailure(std::exception_ptr const& failure)
+    {
+        try
+        {
+            std::rethrow_exception(failure);
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            return std::wstring{ error.message() };
+        }
+        catch (std::exception const& error)
+        {
+            return std::wstring{ winrt::to_hstring(error.what()) };
+        }
+        catch (...)
+        {
+        }
+        return L"Unknown error";
+    }
 }
 
 namespace HaloDesktop::Services
@@ -79,20 +136,141 @@ namespace HaloDesktop::Services
         std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
         std::shared_ptr<Auth::SignInAddonRegistry const> addons,
         std::shared_ptr<DevicePreferencesStore> preferences,
-        std::shared_ptr<NavigationService> navigation)
+        std::shared_ptr<NavigationService> navigation,
+        std::shared_ptr<Device::DeviceStore> deviceStore,
+        std::shared_ptr<::HaloDesktop::Api::Addons::IAddonFetcher> addonFetcher)
         : m_apiClient(std::move(apiClient)),
           m_controller(std::move(controller)),
           m_store(std::move(store)),
           m_oidcSignInFlow(std::move(oidcSignInFlow)),
           m_addons(std::move(addons)),
           m_preferences(std::move(preferences)),
-          m_navigation(std::move(navigation))
+          m_navigation(std::move(navigation)),
+          m_deviceStore(std::move(deviceStore)),
+          m_addonFetcher(std::move(addonFetcher))
     {
         if (!m_apiClient || !m_controller || !m_store || !m_oidcSignInFlow || !m_addons
-            || !m_preferences || !m_navigation)
+            || !m_preferences || !m_navigation || !m_deviceStore || !m_addonFetcher)
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
+    }
+
+    SessionMode SessionService::Mode() const noexcept
+    {
+        if (m_deviceBackend)
+        {
+            return SessionMode::Device;
+        }
+        return m_controller->IsSignedIn() ? SessionMode::SignedIn : SessionMode::SignedOut;
+    }
+
+    std::optional<LocalDataOwner> SessionService::DataOwner() const
+    {
+        if (m_deviceBackend && m_deviceProfile)
+        {
+            return LocalDataOwner{ L"device", m_deviceProfile->Id };
+        }
+        if (m_controller->IsSignedIn() && !m_userId.empty())
+        {
+            return LocalDataOwner{ std::wstring{ ServerUrl() }, std::wstring{ m_userId } };
+        }
+        return std::nullopt;
+    }
+
+    bool SessionService::HasDeviceDataToMove() const noexcept
+    {
+        return !m_deviceBackend && m_deviceProfile.has_value() && m_controller->IsSignedIn();
+    }
+
+    std::wstring SessionService::StartupDeviceError() const
+    {
+        return m_startupDeviceError;
+    }
+
+    std::shared_ptr<::HaloDesktop::Api::IHaloBackend> SessionService::ActiveDeviceBackend() const
+    {
+        return m_deviceBackend;
+    }
+
+    std::optional<Device::DeviceProfile> SessionService::PendingDeviceProfile() const
+    {
+        if (m_deviceBackend)
+        {
+            return std::nullopt;
+        }
+        return m_deviceProfile;
+    }
+
+    void SessionService::ForgetDeviceProfile(std::wstring const& profileId)
+    {
+        if (!m_deviceBackend && m_deviceProfile && m_deviceProfile->Id == profileId)
+        {
+            m_deviceProfile.reset();
+        }
+    }
+
+    std::shared_ptr<Device::DeviceBackend> SessionService::MakeDeviceBackend() const
+    {
+        return std::make_shared<Device::DeviceBackend>(Device::DeviceBackendOptions{
+            .Store = m_deviceStore,
+            .Fetcher = m_addonFetcher,
+        });
+    }
+
+    void SessionService::EnterDevice(Device::DeviceProfile profile, std::shared_ptr<Device::DeviceBackend> backend)
+    {
+        m_deviceProfile = std::move(profile);
+        m_deviceBackend = std::move(backend);
+        m_resumeDeviceOnReject = false;
+        m_startupDeviceError.clear();
+        ++m_modeSwitches;
+        NotifyIdentityChanged();
+        NotifyProfileChanged();
+    }
+
+    concurrency::task<void> SessionService::ContinueWithoutAccountAsync()
+    {
+        auto const uiContext = winrt::apartment_context{};
+        if (Mode() != SessionMode::SignedOut)
+        {
+            throw std::logic_error{ "Halo can be used without an account only while signed out." };
+        }
+        // An earlier profile is resumed: its data may still be waiting to move
+        // into an account, or the person signed out after a move that failed.
+        auto profile = m_deviceProfile;
+        auto const store = m_deviceStore;
+        if (!profile)
+        {
+            profile = co_await store->ReadProfileAsync();
+        }
+        if (!profile)
+        {
+            profile = co_await store->CreateProfileAsync(NowMilliseconds());
+        }
+        auto backend = MakeDeviceBackend();
+        static_cast<void>(co_await TopUpAddonsAsync(backend));
+        co_await uiContext;
+        if (Mode() != SessionMode::SignedOut)
+        {
+            throw std::logic_error{ "Another session started while Halo was getting ready on this PC." };
+        }
+        EnterDevice(std::move(*profile), std::move(backend));
+    }
+
+    concurrency::task<bool> SessionService::TopUpDeviceAddonsAsync()
+    {
+        auto backend = m_deviceBackend;
+        if (!backend)
+        {
+            co_return false;
+        }
+        co_return co_await TopUpAddonsAsync(std::move(backend));
+    }
+
+    void SessionService::ReloadAccountData()
+    {
+        NotifyIdentityChanged();
     }
 
     winrt::hstring SessionService::ServerUrl() const
@@ -133,7 +311,8 @@ namespace HaloDesktop::Services
 
     std::uint64_t SessionService::Generation() const noexcept
     {
-        return m_controller->SessionGeneration();
+        // Both counts only grow, so their sum moves whenever either does.
+        return m_controller->SessionGeneration() + m_modeSwitches;
     }
 
     concurrency::task<void> SessionService::RestoreAsync()
@@ -172,8 +351,42 @@ namespace HaloDesktop::Services
         auto identity = m_controller->IsSignedIn()
             ? co_await m_store->LoadIdentityAsync()
             : std::optional<Auth::StoredIdentity>{};
+
+        // The profile decides the first screen (the reference reads it before
+        // its first render). A file that cannot be read is left as it is.
+        auto profileRead = Device::ProfileRead::None;
+        std::optional<Device::DeviceProfile> profile;
+        std::exception_ptr profileFailure;
+        try
+        {
+            profile = co_await m_deviceStore->ReadProfileAsync();
+            profileRead = profile ? Device::ProfileRead::Found : Device::ProfileRead::None;
+        }
+        catch (...)
+        {
+            profileRead = Device::ProfileRead::Unreadable;
+            profileFailure = std::current_exception();
+        }
+        auto const startup = Device::DecideStartup(m_controller->IsSignedIn(), profileRead);
+        auto const deviceBackend = startup.Screen == Device::StartupScreen::Device
+            ? MakeDeviceBackend()
+            : std::shared_ptr<Device::DeviceBackend>{};
+
         co_await uiContext;
         ClearIdentity();
+        if (startup.ShowDeviceError && profileFailure)
+        {
+            m_startupDeviceError = Device::DeviceSetupError(DescribeProfileFailure(profileFailure));
+        }
+        if (startup.RememberProfile)
+        {
+            m_deviceProfile = profile;
+        }
+        if (deviceBackend && profile)
+        {
+            EnterDevice(std::move(*profile), deviceBackend);
+            co_return;
+        }
         if (identity)
         {
             m_userId = identity->UserId;
@@ -472,6 +685,7 @@ namespace HaloDesktop::Services
     void SessionService::AcknowledgeSignIn() noexcept
     {
         m_pendingSessionGeneration.store(0);
+        m_resumeDeviceOnReject = false;
     }
 
     void SessionService::CancelSignIn() noexcept
@@ -510,6 +724,11 @@ namespace HaloDesktop::Services
 
     concurrency::task<std::optional<std::chrono::milliseconds>> SessionService::ProbeHealthAsync()
     {
+        // There is no server to ask without an account.
+        if (m_deviceBackend)
+        {
+            co_return std::nullopt;
+        }
         concurrency::task_completion_event<std::optional<std::chrono::milliseconds>> completion;
         m_apiClient->GetHealthAsync().then([completion](concurrency::task<::HaloDesktop::Api::Dto::HealthStatus> task) mutable
         {
@@ -536,6 +755,11 @@ namespace HaloDesktop::Services
     concurrency::task<void> SessionService::SignOutAsync()
     {
         auto const uiContext = winrt::apartment_context{};
+        // Nothing is signed in without an account.
+        if (m_deviceBackend)
+        {
+            co_return;
+        }
         co_await m_controller->SignOutAsync();
         try { co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration()); } catch (...) {}
         co_await uiContext;
@@ -580,7 +804,17 @@ namespace HaloDesktop::Services
         {
             co_return IdentityRefresh{ .Loaded = false, .Error = L"The session changed while the account was loading." };
         }
-        auto const accountChanged = m_userId != me.Id;
+        // A sign-in started from Halo without an account takes over here, once
+        // the account is known: the identity change below moves every service
+        // off this PC's data. The profile stays, for the move into the account.
+        auto const leavingDevice = m_deviceBackend != nullptr;
+        if (leavingDevice)
+        {
+            m_deviceBackend.reset();
+            m_resumeDeviceOnReject = true;
+            ++m_modeSwitches;
+        }
+        auto const accountChanged = leavingDevice || m_userId != me.Id;
         auto const profileChanged = accountChanged
             || m_userName != me.Username
             || m_isAdmin != me.IsAdmin
@@ -624,11 +858,34 @@ namespace HaloDesktop::Services
 
     void SessionService::HandleSessionRejected()
     {
-        ClearIdentity();
         m_store->ClearIdentityAsync(m_controller->SessionGeneration()).then([](concurrency::task<void> task)
         {
             try { task.get(); } catch (...) {}
         });
+        // A sign-in started from Halo without an account was discarded before
+        // it took over: this PC's data is still in use, and stays.
+        if (m_deviceBackend)
+        {
+            ClearIdentity();
+            return;
+        }
+        // Discarded after it took over but before the sign-in screen took it:
+        // back to this PC's data, as if it had never happened.
+        if (std::exchange(m_resumeDeviceOnReject, false) && m_deviceProfile)
+        {
+            m_deviceBackend = MakeDeviceBackend();
+            ++m_modeSwitches;
+            // ClearIdentity raises both changes when an account was known.
+            auto const raised = !m_userId.empty();
+            ClearIdentity();
+            if (!raised)
+            {
+                NotifyIdentityChanged();
+                NotifyProfileChanged();
+            }
+            return;
+        }
+        ClearIdentity();
         m_navigation->ShowOverlay(Page::Login);
     }
 

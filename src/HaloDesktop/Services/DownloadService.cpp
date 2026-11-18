@@ -122,8 +122,10 @@ namespace HaloDesktop::Services
 
     void DownloadService::RebindAccount()
     {
-        auto const server = std::wstring{ m_session->ServerUrl().c_str() };
-        auto const userId = std::wstring{ m_session->UserId().c_str() };
+        // The account's partition, or this PC's profile's without an account.
+        auto const owner = m_session->DataOwner();
+        auto const server = owner ? owner->Server : std::wstring{};
+        auto const userId = owner ? owner->User : std::wstring{};
         auto const accountVersion = ++m_accountVersion;
         auto const version = ++m_snapshotVersion;
         m_snapshotFloor.store(version);
@@ -355,8 +357,9 @@ namespace HaloDesktop::Services
     concurrency::task<DownloadStartResult> DownloadService::StartDownloadAsync(
         Downloads::DownloadStartRequest request)
     {
-        auto const server = std::wstring{ m_session->ServerUrl().c_str() };
-        auto const userId = std::wstring{ m_session->UserId().c_str() };
+        auto const owner = m_session->DataOwner();
+        auto const server = owner ? owner->Server : std::wstring{};
+        auto const userId = owner ? owner->User : std::wstring{};
         auto const accountVersion = m_accountVersion.load();
         if (server.empty() || userId.empty())
         {
@@ -640,6 +643,29 @@ namespace HaloDesktop::Services
         m_handlers.erase(token);
     }
 
+    concurrency::task<void> DownloadService::AdoptAccountAsync(std::wstring from, std::wstring to)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        auto const engine = m_engine;
+        auto const weak = weak_from_this();
+        co_await winrt::resume_background();
+        {
+            auto const self = weak.lock();
+            if (!self)
+            {
+                co_return;
+            }
+            // Ordered against the account binds, which take the same lock.
+            std::scoped_lock const accountLock{ self->m_accountMutex };
+            engine->AdoptAccount(from, to);
+        }
+        co_await uiContext;
+        if (auto const self = weak.lock(); self && self->m_running)
+        {
+            self->RequestSynchronize();
+        }
+    }
+
     void DownloadService::RequestSynchronize()
     {
         auto const version = ++m_snapshotVersion;
@@ -698,10 +724,8 @@ namespace HaloDesktop::Services
         {
             return;
         }
-        auto const userId = std::wstring{ m_session->UserId().c_str() };
-        if (userId.empty()
-            || record.AccountKey != Downloads::MakeAccountKey(
-                std::wstring{ m_session->ServerUrl().c_str() }, userId))
+        auto const owner = m_session->DataOwner();
+        if (!owner || record.AccountKey != Downloads::MakeAccountKey(owner->Server, owner->User))
         {
             return;
         }

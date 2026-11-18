@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <map>
 #include <mutex>
 #include <optional>
 #include <set>
@@ -42,6 +43,18 @@ namespace HaloDesktop::Services::Downloads
             std::wstring const& jobId,
             std::wstring const& expectedAccount,
             std::wstring artwork);
+        // Gives the named records of `from` to `to` in one atomic rewrite of
+        // the index, and answers them as written. Only the owner (and the
+        // change time) of a record changes: no file is moved or deleted. The
+        // change is remembered for the life of this store, so a copy of one
+        // of those records taken before the rewrite and saved after it (an
+        // engine snapshot that was already on its way) is saved under `to`
+        // and cannot give the record back to `from`.
+        [[nodiscard]] std::vector<DownloadRecord> AdoptAccount(
+            std::wstring const& from,
+            std::wstring const& to,
+            std::vector<std::wstring> const& jobIds,
+            std::uint64_t now);
 
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;
         void SetDownloadDirectory(std::filesystem::path directory);
@@ -55,9 +68,19 @@ namespace HaloDesktop::Services::Downloads
         [[nodiscard]] DownloadStoragePaths const& Paths() const noexcept;
 
     private:
+        struct Adoption final
+        {
+            std::wstring From;
+            std::wstring To;
+        };
+
         void WriteConfigLocked() const;
+        // An adopted record arriving with its old owner gets its new one.
+        void ApplyAdoptionsLocked(DownloadRecord& record) const;
 
         DownloadStoragePaths m_paths;
+        // Job id to the owner change AdoptAccount made, guarded by m_mutex.
+        std::map<std::wstring, Adoption, std::less<>> m_adoptions;
         mutable std::mutex m_mutex;
         std::filesystem::path m_downloadDirectory;
         std::vector<std::filesystem::path> m_approvedRoots;

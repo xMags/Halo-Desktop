@@ -60,6 +60,17 @@ namespace HaloDesktop::Services::Downloads
 
         void SetAccount(std::wstring serverUrl, std::wstring userId);
         void ClearAccount();
+        // Gives the downloads of partition `from` (the account keys MakeAccountKey
+        // makes) to `to`, when someone signs in after using Halo without an
+        // account (the reference's adopt_account). Files and request vault
+        // entries stay where they are; only the owner in the index changes, in
+        // one atomic rewrite, so transfers move as they were. Where both already
+        // hold the same video, one copy stays (Downloads::PlanAdoption) and the
+        // other is then removed like any download; a removal that fails is left
+        // for the next launch and does not undo the adoption. Throws when the
+        // index cannot be rewritten, which changes nothing. Blocking: call it
+        // off the UI thread.
+        void AdoptAccount(std::wstring const& from, std::wstring const& to);
         [[nodiscard]] std::vector<DownloadRecord> List();
 
         [[nodiscard]] DownloadRecord Start(DownloadStartRequest request);
@@ -83,6 +94,9 @@ namespace HaloDesktop::Services::Downloads
         struct TransferResult;
         struct TransferError;
 
+        // Remove, for a record of one of `owners`, or of the active account
+        // when that is null.
+        void RemoveOwned(std::wstring const& jobId, std::vector<std::wstring> const* owners);
         void Worker(std::stop_token stopToken);
         [[nodiscard]] TransferResult TransferWithRetries(
             std::wstring const& jobId,

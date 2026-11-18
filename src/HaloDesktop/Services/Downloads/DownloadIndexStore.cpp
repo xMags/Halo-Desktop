@@ -808,6 +808,7 @@ namespace HaloDesktop::Services::Downloads
             }
             incomingIds.insert(record.JobId);
             merged.push_back(record);
+            ApplyAdoptionsLocked(merged.back());
         }
         for (auto persisted : persistedRecords)
         {
@@ -837,19 +838,21 @@ namespace HaloDesktop::Services::Downloads
                 return record.JobId == jobId;
             });
         }
-        for (auto const& replacement : upserts)
+        for (auto const& incoming : upserts)
         {
+            auto replacement = incoming;
+            ApplyAdoptionsLocked(replacement);
             auto const found = std::find_if(records.begin(), records.end(), [&replacement](DownloadRecord const& record)
             {
                 return record.JobId == replacement.JobId;
             });
             if (found == records.end())
             {
-                records.push_back(replacement);
+                records.push_back(std::move(replacement));
             }
             else
             {
-                auto merged = replacement;
+                auto merged = std::move(replacement);
                 // Artwork enrichment and transfer progress are independent. A
                 // progress snapshot may have been copied before the artwork
                 // lookup completed, so it must not erase a landscape URL that a
@@ -895,6 +898,55 @@ namespace HaloDesktop::Services::Downloads
             WriteAtomic(m_paths.IndexFile, SerializeRecords(records));
         }
         return *found;
+    }
+
+    std::vector<DownloadRecord> DownloadIndexStore::AdoptAccount(
+        std::wstring const& from,
+        std::wstring const& to,
+        std::vector<std::wstring> const& jobIds,
+        std::uint64_t now)
+    {
+        if (from.empty() || to.empty() || from == to)
+        {
+            throw std::invalid_argument{ "Downloads can only change between two different owners." };
+        }
+        std::set<std::wstring, std::less<>> const wanted{ jobIds.begin(), jobIds.end() };
+        std::scoped_lock const lock{ m_mutex };
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ m_paths.IndexFile };
+        auto records = LoadRecovering(m_paths.IndexFile, false).Records;
+        std::vector<DownloadRecord> adopted;
+        for (auto& record : records)
+        {
+            if (record.AccountKey != from || !wanted.contains(record.JobId)) continue;
+            record.AccountKey = to;
+            record.UpdatedAt = (std::max)(record.UpdatedAt, now);
+            adopted.push_back(record);
+        }
+        if (!adopted.empty())
+        {
+            WriteAtomic(m_paths.IndexFile, SerializeRecords(records));
+        }
+        // Remembered only once the rewrite is on disk: before that, nothing
+        // may be saved as if it had happened.
+        for (auto const& record : adopted)
+        {
+            m_adoptions.insert_or_assign(record.JobId, Adoption{ from, to });
+        }
+        m_observedJobIds.clear();
+        for (auto const& record : records)
+        {
+            m_observedJobIds.insert(record.JobId);
+        }
+        return adopted;
+    }
+
+    void DownloadIndexStore::ApplyAdoptionsLocked(DownloadRecord& record) const
+    {
+        auto const found = m_adoptions.find(record.JobId);
+        if (found != m_adoptions.end() && record.AccountKey == found->second.From)
+        {
+            record.AccountKey = found->second.To;
+        }
     }
 
     std::filesystem::path DownloadIndexStore::DownloadDirectory() const

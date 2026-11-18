@@ -84,6 +84,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring DisplayName() const;
         [[nodiscard]] winrt::hstring SignedInLine() const;
         [[nodiscard]] winrt::hstring AccountRoleLine() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility SignedInAccountVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DeviceAccountVisibility() const noexcept;
         [[nodiscard]] winrt::hstring VersionLine() const;
         [[nodiscard]] winrt::hstring ServerStatusLine() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ServerCheckingVisibility() const noexcept;
@@ -168,6 +170,7 @@ namespace winrt::HaloDesktop::implementation
         void SetFont(std::int32_t index);
         void SetOutline(std::int32_t index);
         void SignOut();
+        void SignInToSync();
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
@@ -226,6 +229,7 @@ namespace winrt::HaloDesktop::implementation
         void OnProfileChanged();
 
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
+        std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;

@@ -105,6 +105,25 @@ namespace HaloDesktop::Services
     using IdentityChangedToken = std::uint64_t;
     using IdentityChangedHandler = std::function<void()>;
 
+    // The reference's session states: nobody signed in (the sign-in screen),
+    // Halo used without an account on this PC's data, or an account.
+    enum class SessionMode
+    {
+        SignedOut,
+        Device,
+        SignedIn,
+    };
+
+    // Who the data kept on this PC belongs to: downloads, the settings mirror
+    // and unsent progress are keyed by Downloads::MakeAccountKey(Server, User).
+    // For Halo without an account that is ("device", the profile's id), the
+    // reference's opaqueDownloadOwner("device", id).
+    struct LocalDataOwner final
+    {
+        std::wstring Server;
+        std::wstring User;
+    };
+
     // Home's carousel: the picks, once they can no longer change as slower
     // catalogs answer. Until then Settled is false and Items is empty.
     struct FeaturedSelection final
@@ -296,6 +315,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual bool RevealInExplorer(winrt::hstring const& id) = 0;
         [[nodiscard]] virtual concurrency::task<DownloadStartResult> StartDownloadAsync(
             Downloads::DownloadStartRequest request) = 0;
+        // Gives the downloads of partition `from` to `to` (both account keys)
+        // and reads the list again (Downloads::TransferEngine::AdoptAccount).
+        // Throws when the index cannot be rewritten, which changes nothing.
+        // UI thread in and out.
+        [[nodiscard]] virtual concurrency::task<void> AdoptAccountAsync(std::wstring from, std::wstring to) = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(
             winrt::hstring const& id) const = 0;
         [[nodiscard]] virtual winrt::HaloDesktop::SourcesNavParams BuildSourcesNavigation(
@@ -382,7 +406,26 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
         [[nodiscard]] virtual winrt::hstring UserId() const = 0;
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
+        // Whether an account session exists. Halo used without an account has
+        // none: ask Mode() whether there is anything to show.
         [[nodiscard]] virtual bool IsSignedIn() const noexcept = 0;
+        [[nodiscard]] virtual SessionMode Mode() const noexcept = 0;
+        // Empty while nobody is signed in, and while a signed-in account's id
+        // is not known yet.
+        [[nodiscard]] virtual std::optional<LocalDataOwner> DataOwner() const = 0;
+        // Starts, or resumes, Halo without an account: an earlier profile is
+        // used again (its data may still wait to move into an account), else
+        // a new one is created. Completes once the built-in addons are in (as
+        // far as they can be) and every service answers from this PC. Throws
+        // when this PC's profile cannot be read or created; nothing changes
+        // then. UI thread in and out; only while signed out.
+        [[nodiscard]] virtual concurrency::task<void> ContinueWithoutAccountAsync() = 0;
+        // Signed in while this PC still holds data from Halo without an
+        // account, which has not moved into the account yet.
+        [[nodiscard]] virtual bool HasDeviceDataToMove() const noexcept = 0;
+        // The sign-in screen's line when this PC's profile could not be read
+        // at launch; empty otherwise.
+        [[nodiscard]] virtual std::wstring StartupDeviceError() const = 0;
         [[nodiscard]] virtual bool IsAdmin() const noexcept = 0;
         // The account's tier from a server that has tiers, and the fingerprint of
         // its profile picture. Both are empty until /auth/me has answered for the

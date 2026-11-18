@@ -192,7 +192,11 @@ namespace HaloDesktop::Services
         {
             co_return;
         }
-        auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty();
+        // Without an account the built-ins are topped up by the session
+        // (TopUpDeviceAddonsAsync), which never seeds over the PC's own list;
+        // seeding here as well would only race it.
+        auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty()
+            && m_session->Mode() != SessionMode::Device;
         m_seedAttempted = true;
         if (shouldSeed)
         {
@@ -697,6 +701,11 @@ namespace HaloDesktop::Services
     {
         if (global)
         {
+            // The global list is the admin's, on the server; a device has none.
+            if (m_backends->UsesDevice())
+            {
+                throw std::runtime_error{ "There is no global addon list without an account." };
+            }
             return m_apiClient->PutAddonsAsync(std::move(transportUrls), true);
         }
         return m_backends->Current()->PutAddonsAsync(std::move(transportUrls));
@@ -706,6 +715,10 @@ namespace HaloDesktop::Services
     {
         if (global)
         {
+            if (m_backends->UsesDevice())
+            {
+                throw std::runtime_error{ "There is no global addon list without an account." };
+            }
             return m_apiClient->PatchAddonAsync(std::move(addonId), true, hideCatalogs);
         }
         return m_backends->Current()->PatchAddonAsync(std::move(addonId), hideCatalogs);

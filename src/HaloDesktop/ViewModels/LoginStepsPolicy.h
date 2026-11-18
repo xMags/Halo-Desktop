@@ -137,11 +137,10 @@ namespace HaloDesktop::ViewModels
     [[nodiscard]] std::wstring AccountLabel(bool isAdmin, std::optional<std::wstring_view> plan);
     [[nodiscard]] std::wstring AvatarInitial(std::wstring_view name);
 
-    // Halo without an account is not in this build yet. Its button ("Continue
-    // without an account", or "Back to Halo" when the screen was opened from
-    // it) and the "moving this PC's library" status stay hidden until this is
-    // true; the view model routes the button to one method.
-    inline constexpr bool NoAccountModeAvailable = false;
+    // Halo without an account: its button ("Continue without an account", or
+    // "Back to Halo" when the screen was opened from it) shows on the steps
+    // NoAccountStep names; the view model routes the button to one method.
+    inline constexpr bool NoAccountModeAvailable = true;
 
     [[nodiscard]] std::wstring NoAccountLabel(bool openedFromDevice);
     // The signed-in step's status line.

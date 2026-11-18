@@ -20,12 +20,17 @@ namespace
     // DPAPI adds a header and padding to what it protects.
     constexpr std::uint64_t ProtectionAllowanceBytes = 64u * 1024u;
 
-    constexpr std::array<Device::DeviceCollection, 5> AllCollections{
-        Device::DeviceCollection::Profile,
+    // The order ClearAsync removes them in. The profile goes last: until it is
+    // gone the move into an account is still pending and runs again, and every
+    // step of it is safe to repeat. Removed first (the reference's order), a
+    // crash part way would leave documents with no profile, and the next
+    // profile created here would pick them up as its own.
+    constexpr std::array<Device::DeviceCollection, 5> ClearOrder{
         Device::DeviceCollection::Addons,
         Device::DeviceCollection::Library,
         Device::DeviceCollection::WatchStates,
         Device::DeviceCollection::Settings,
+        Device::DeviceCollection::Profile,
     };
 
     [[noreturn]] void ThrowLastError(char const* operation)
@@ -185,7 +190,7 @@ namespace HaloDesktop::Services::Device
     concurrency::task<void> DeviceStore::ClearAsync()
     {
         std::vector<std::pair<DeviceCollection, std::filesystem::path>> paths;
-        for (auto const collection : AllCollections) paths.emplace_back(collection, PathFor(collection));
+        for (auto const collection : ClearOrder) paths.emplace_back(collection, PathFor(collection));
         co_await winrt::resume_background();
         for (auto const& [collection, path] : paths)
         {

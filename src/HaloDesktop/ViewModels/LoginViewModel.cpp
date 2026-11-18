@@ -6,11 +6,14 @@
 
 #include "Services/Auth/ServerAddressPolicy.h"
 #include "Services/Auth/SignInFailurePolicy.h"
+#include "Services/Device/DeviceDataMove.h"
+#include "Services/Device/DeviceModePolicy.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <chrono>
 #include <exception>
+#include <optional>
 #include <string>
 #include <utility>
 #include <winrt/Windows.System.h>
@@ -41,7 +44,8 @@ namespace
         L"PreparingActive", L"SignedInActive", L"ReopenEnabled", L"ErrorText", L"MethodLabel",
         L"FormLinkText", L"WaitingTitle", L"WaitingBody", L"WaitingStatus", L"ResultTitle",
         L"ResultBody", L"UnsupportedBody", L"Detail", L"DetailsGlyph", L"AccountName",
-        L"AccountLabel", L"AvatarInitial", L"SignedInStatus", L"ServerFieldFirst",
+        L"AccountLabel", L"AvatarInitial", L"SignedInStatus", L"ServerFieldFirst", L"NoAccountLabel",
+        L"DeviceErrorText", L"DeviceErrorVisibility",
     };
 
     std::wstring DescribeFailure(std::exception_ptr const& failure)
@@ -72,7 +76,9 @@ namespace winrt::HaloDesktop::implementation
 {
     LoginViewModel::LoginViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_session(services.Session),
-          m_navigation(services.Navigation)
+          m_navigation(services.Navigation),
+          m_deviceMove(services.DeviceMove),
+          m_deviceError(services.Session->StartupDeviceError())
     {
         DiscoverAsync();
         LoadLastServerAsync();
@@ -156,7 +162,16 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring LoginViewModel::AccountLabel() const { return winrt::hstring{ m_step.AccountLabel }; }
     winrt::hstring LoginViewModel::AvatarInitial() const { return winrt::hstring{ Policy::AvatarInitial(m_step.AccountName) }; }
     winrt::hstring LoginViewModel::SignedInStatus() const { return winrt::hstring{ Policy::SignedInStatus(m_step.Moving) }; }
-    winrt::hstring LoginViewModel::NoAccountLabel() const { return winrt::hstring{ Policy::NoAccountLabel(false) }; }
+    winrt::hstring LoginViewModel::NoAccountLabel() const { return winrt::hstring{ Policy::NoAccountLabel(OpenedFromDevice()) }; }
+    winrt::hstring LoginViewModel::DeviceErrorText() const { return winrt::hstring{ m_deviceError }; }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::DeviceErrorVisibility() const noexcept
+    {
+        return VisibleWhen(!m_deviceError.empty() && Policy::NoAccountStep(m_step.Kind));
+    }
+    bool LoginViewModel::OpenedFromDevice() const noexcept
+    {
+        return m_session->Mode() == ::HaloDesktop::Services::SessionMode::Device;
+    }
     bool LoginViewModel::ServerFieldFirst() const noexcept { return Is(StepKind::Custom) && m_serverAddress.empty(); }
 
     void LoginViewModel::Retry()
@@ -269,12 +284,63 @@ namespace winrt::HaloDesktop::implementation
 
     void LoginViewModel::ContinueWithoutAccount()
     {
-        // Halo without an account arrives with its own package; until then the
-        // button is hidden and this does nothing.
-        if (!Policy::NoAccountModeAvailable || !Policy::NoAccountStep(m_step.Kind))
+        if (!Policy::NoAccountStep(m_step.Kind))
         {
             return;
         }
+        if (OpenedFromDevice())
+        {
+            // "Back to Halo": the sign-in screen goes and Halo without an
+            // account is as it was. Closing it cancels any sign-in under way.
+            m_navigation->CloseOverlay();
+            return;
+        }
+        ContinueOnDeviceAsync();
+    }
+
+    winrt::fire_and_forget LoginViewModel::ContinueOnDeviceAsync()
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const id = ++m_attempt;
+        auto const previous = m_step;
+        m_deviceError.clear();
+        Step preparing;
+        preparing.Kind = StepKind::Preparing;
+        SetStep(std::move(preparing));
+
+        std::exception_ptr failure;
+        try
+        {
+            co_await m_session->ContinueWithoutAccountAsync();
+        }
+        catch (...)
+        {
+            failure = std::current_exception();
+        }
+        co_await uiContext;
+        if (id != m_attempt)
+        {
+            co_return;
+        }
+        if (!failure)
+        {
+            m_navigation->GoTo(::HaloDesktop::Services::Page::Home);
+            m_navigation->CloseOverlay();
+            co_return;
+        }
+        m_deviceError = ::HaloDesktop::Services::Device::DeviceSetupError(DescribeFailure(failure));
+        // Back where it was; a server answer that came meanwhile is shown now.
+        if (previous.Kind == StepKind::Discovering && m_discovered)
+        {
+            SetStep(Policy::ToStep(*m_discovered));
+        }
+        else
+        {
+            SetStep(previous);
+        }
+        Raise(L"DeviceErrorText");
+        Raise(L"DeviceErrorVisibility");
     }
 
     void LoginViewModel::Close()
@@ -543,13 +609,26 @@ namespace winrt::HaloDesktop::implementation
         signedIn.AccountLabel = Policy::AccountLabel(
             m_session->IsAdmin(),
             plan ? std::optional<std::wstring_view>{ std::wstring_view{ *plan } } : std::nullopt);
-        // Moving this PC's library into the account belongs to Halo without an
-        // account, which this build does not have yet.
-        signedIn.Moving = false;
+        // Signed in from Halo without an account: this PC's data moves into
+        // the account while "You're all set" is up, and the library opens
+        // once both the move and the dwell are over.
+        signedIn.Moving = m_session->HasDeviceDataToMove();
+        auto const moving = signedIn.Moving;
         SetStep(std::move(signedIn));
 
+        std::optional<concurrency::task<bool>> move;
+        if (moving && m_deviceMove)
+        {
+            move = m_deviceMove->RunAsync(true);
+        }
         co_await winrt::resume_after(SignedInDwell);
         co_await uiContext;
+        if (move)
+        {
+            // A move that did not finish is tried again at the next launch.
+            static_cast<void>(co_await *move);
+            co_await uiContext;
+        }
         if (attempt != m_attempt)
         {
             co_return;

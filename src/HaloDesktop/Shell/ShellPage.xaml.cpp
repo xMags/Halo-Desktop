@@ -7,10 +7,13 @@
 #include "App.xaml.h"
 #include "Services/AccountLabelPolicy.h"
 #include "Services/AccountPictureService.h"
+#include "Services/Device/DeviceDataMove.h"
+#include "Services/Device/DeviceMovePolicy.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
 #include "Views/AccountPictureDecoder.h"
+#include "Views/PageDialog.h"
 
 #include <algorithm>
 #include <array>
@@ -180,11 +183,25 @@ namespace winrt::HaloDesktop::implementation
                     self->RefreshAccountIdentity();
                 }
             });
+        // Moving this PC's data into an account can skip an addon the account
+        // could not load; the shell says so, whichever page is up.
+        m_skippedAddonsToken = App::Services().DeviceMove->AddSkippedAddonsHandler(
+            [weak = get_weak()](std::vector<std::wstring> const& names)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->ShowSkippedAddons(names);
+                }
+            });
         UpdatePaneToggleOffset();
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
         RefreshJumpBackInAsync();
+        if (auto unreported = App::Services().DeviceMove->TakeUnreportedSkippedAddons(); !unreported.empty())
+        {
+            ShowSkippedAddons(unreported);
+        }
     }
 
     void ShellPage::OnIdentityChanged()
@@ -193,9 +210,33 @@ namespace winrt::HaloDesktop::implementation
         // The account's services were reset before this runs, so this empties the
         // rows of the account that left; the load refills them for the new one.
         RefreshJumpBackIn();
-        if (App::Services().Session->IsSignedIn())
+        if (App::Services().Session->Mode() != ::HaloDesktop::Services::SessionMode::SignedOut)
         {
             RefreshJumpBackInAsync();
+        }
+    }
+
+    winrt::fire_and_forget ShellPage::ShowSkippedAddons(std::vector<std::wstring> names)
+    {
+        auto lifetime = get_strong();
+        if (names.empty())
+        {
+            co_return;
+        }
+        try
+        {
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsTitle(names.size()) },
+                winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsBody(names) });
+            dialog.CloseButtonText(L"OK");
+            static_cast<void>(co_await dialog.ShowAsync());
+        }
+        catch (...)
+        {
+            // Another dialog is open, or the window is closing: nothing is lost
+            // but the notice.
         }
     }
 
@@ -227,6 +268,11 @@ namespace winrt::HaloDesktop::implementation
         {
             App::Services().Session->RemoveProfileChangedHandler(m_profileChangedToken);
             m_profileChangedToken = 0;
+        }
+        if (m_skippedAddonsToken != 0)
+        {
+            App::Services().DeviceMove->RemoveSkippedAddonsHandler(m_skippedAddonsToken);
+            m_skippedAddonsToken = 0;
         }
         // A picture still loading has nowhere to go.
         ++m_pictureRequest;
@@ -812,6 +858,15 @@ namespace winrt::HaloDesktop::implementation
     void ShellPage::RefreshAccountIdentity()
     {
         auto const session = App::Services().Session;
+        if (session->Mode() == ::HaloDesktop::Services::SessionMode::Device)
+        {
+            // Halo without an account: this PC, with the stock avatar.
+            AccountName().Text(winrt::hstring{ ::HaloDesktop::Services::DeviceAccountName });
+            AccountRole().Text(winrt::hstring{ ::HaloDesktop::Services::DeviceAccountLabel });
+            UpdateAccountToolTip();
+            RefreshAccountPictureAsync();
+            return;
+        }
         auto const plan = session->Plan();
         auto const label = ::HaloDesktop::Services::AccountLabel(::HaloDesktop::Services::AccountLabelInput{
             .IsAdmin = session->IsAdmin(),

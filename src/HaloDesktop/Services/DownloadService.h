@@ -53,6 +53,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool RevealInExplorer(winrt::hstring const& id) override;
         [[nodiscard]] concurrency::task<DownloadStartResult> StartDownloadAsync(
             Downloads::DownloadStartRequest request) override;
+        [[nodiscard]] concurrency::task<void> AdoptAccountAsync(std::wstring from, std::wstring to) override;
         [[nodiscard]] winrt::HaloDesktop::PlaybackRequest BuildPlaybackRequest(
             winrt::hstring const& id) const override;
         [[nodiscard]] winrt::HaloDesktop::SourcesNavParams BuildSourcesNavigation(

@@ -244,8 +244,8 @@ namespace
                 && Steps::PasswordLinkVisible(LoginStepKind::Unsupported) && Steps::PasswordLinkVisible(LoginStepKind::Unreachable)
                 && !Steps::PasswordLinkVisible(LoginStepKind::Local) && !Steps::PasswordLinkVisible(LoginStepKind::Declined),
             "the username and password link was on the wrong steps");
-        // Halo without an account is not in this build yet.
-        Require(!Steps::NoAccountModeAvailable, "the way on without an account was turned on");
+        // Halo without an account is in this build.
+        Require(Steps::NoAccountModeAvailable, "the way on without an account is still switched off");
         Require(Steps::NoAccountLabel(false) == L"Continue without an account" && Steps::NoAccountLabel(true) == L"Back to Halo",
             "the no-account button's copy changed");
     }

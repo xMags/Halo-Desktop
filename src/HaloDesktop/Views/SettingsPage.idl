@@ -30,6 +30,9 @@ namespace HaloDesktop
         String DisplayName { get; };
         String SignedInLine { get; };
         String AccountRoleLine { get; };
+        // The account section of an account, or of Halo used without one.
+        Microsoft.UI.Xaml.Visibility SignedInAccountVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DeviceAccountVisibility { get; };
         String VersionLine { get; };
         String ServerStatusLine { get; };
         Microsoft.UI.Xaml.Visibility ServerCheckingVisibility { get; };
@@ -103,6 +106,8 @@ namespace HaloDesktop
         void SetFont(Int32 index);
         void SetOutline(Int32 index);
         void SignOut();
+        // Opens the sign-in screen over Halo without an account.
+        void SignInToSync();
     }
 
     [default_interface]

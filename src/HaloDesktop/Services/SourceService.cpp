@@ -400,6 +400,18 @@ namespace HaloDesktop::Services
             co_return std::nullopt;
         }
 
+        if (m_backends->UsesDevice())
+        {
+            // Without an account there is no addon proxy: the engine fetches
+            // the addon's own URL, with no headers, as the reference's download
+            // does in either mode.
+            co_return Downloads::SubtitleRequest{
+                .Url = std::wstring{ selected->Url.c_str() },
+                .Language = std::wstring{ selected->Lang.c_str() },
+                .Id = std::wstring{ selected->Id.c_str() },
+                .Headers = {},
+            };
+        }
         auto const proxy = co_await m_api->BuildAddonProxyDownloadRequestAsync(selected->Url);
         co_return Downloads::SubtitleRequest{
             .Url = std::wstring{ proxy.Url.c_str() },

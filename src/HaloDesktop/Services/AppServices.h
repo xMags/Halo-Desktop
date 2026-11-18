@@ -21,6 +21,11 @@ namespace HaloDesktop::Storage
     class AppStoragePaths;
 }
 
+namespace HaloDesktop::Services::Device
+{
+    class DeviceDataMove;
+}
+
 namespace HaloDesktop::Services
 {
     class AccountPictureService;
@@ -49,6 +54,8 @@ namespace HaloDesktop::Services
         std::shared_ptr<IDownloadService> Downloads;
         std::shared_ptr<IAddonService> Addons;
         std::shared_ptr<ISessionService> Session;
+        // Moves this PC's data from Halo without an account into an account.
+        std::shared_ptr<Device::DeviceDataMove> DeviceMove;
         std::shared_ptr<AccountPictureService> AccountPicture;
         std::shared_ptr<NavigationService> Navigation;
         std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> StoragePaths;

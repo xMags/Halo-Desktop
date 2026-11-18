@@ -68,8 +68,10 @@ namespace HaloDesktop::Services::Device
         // already there, readable or not, so an existing id (which names this
         // PC's downloads) is never replaced.
         [[nodiscard]] concurrency::task<DeviceProfile> CreateProfileAsync(std::int64_t createdAt);
-        // Removes the profile and every document, once their contents live in
-        // an account. Missing files are not an error.
+        // Removes every document and then the profile, once their contents
+        // live in an account. Missing files are not an error. The profile is
+        // removed last, so one that fails or is cut short part way leaves the
+        // profile, and with it a move that is tried again.
         [[nodiscard]] concurrency::task<void> ClearAsync();
 
     private:

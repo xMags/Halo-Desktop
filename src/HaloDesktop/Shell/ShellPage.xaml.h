@@ -9,6 +9,8 @@
 #include <array>
 #include <cstdint>
 #include <optional>
+#include <string>
+#include <vector>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
@@ -94,6 +96,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget RefreshAccountPictureAsync();
         void ShowStockAvatar();
         void OnIdentityChanged();
+        winrt::fire_and_forget ShowSkippedAddons(std::vector<std::wstring> names);
         void ApplyPaneState(bool open);
         void UpdatePaneToggleOffset();
         void RememberPaneState(bool open);
@@ -124,6 +127,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::CatalogChangedToken m_userStateChangedToken{};
         ::HaloDesktop::Services::IdentityChangedToken m_identityChangedToken{};
         ::HaloDesktop::Services::IdentityChangedToken m_profileChangedToken{};
+        std::uint64_t m_skippedAddonsToken{};
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

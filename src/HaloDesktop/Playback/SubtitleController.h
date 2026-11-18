@@ -15,6 +15,7 @@
 #include <winrt/HaloDesktop.h>
 
 namespace HaloDesktop::Api { class ApiClient; class BackendSelector; }
+namespace HaloDesktop::Api::Addons { class HttpAddonFetcher; }
 namespace HaloDesktop::Services { class DevicePreferencesStore; class IDownloadService; class SettingsSyncService; }
 namespace HaloDesktop::Storage { class AppStoragePaths; }
 
@@ -32,6 +33,7 @@ namespace HaloDesktop::Playback
         SubtitleController(
             std::shared_ptr<Api::ApiClient> api,
             std::shared_ptr<Api::BackendSelector> backends,
+            std::shared_ptr<Api::Addons::HttpAddonFetcher> addonFetcher,
             std::shared_ptr<IPlaybackEngine> engine,
             std::shared_ptr<Services::SettingsSyncService> settings,
             std::shared_ptr<Services::IDownloadService> downloads,
@@ -84,8 +86,9 @@ namespace HaloDesktop::Playback
         void NotifyError()noexcept;
 
         // m_api: the stream hash and the addon proxy (not backend calls); subtitles
-        // themselves come from the current backend.
-        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<Api::BackendSelector>m_backends;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;std::shared_ptr<Services::DevicePreferencesStore>m_preferences;std::shared_ptr<Storage::AppStoragePaths const>m_paths;
+        // themselves come from the current backend. Without an account there
+        // is no proxy, and m_addonFetcher fetches a subtitle file directly.
+        std::shared_ptr<Api::ApiClient>m_api;std::shared_ptr<Api::BackendSelector>m_backends;std::shared_ptr<Api::Addons::HttpAddonFetcher>m_addonFetcher;std::shared_ptr<IPlaybackEngine>m_engine;std::shared_ptr<Services::SettingsSyncService>m_settings;std::shared_ptr<Services::IDownloadService>m_downloads;std::shared_ptr<Services::DevicePreferencesStore>m_preferences;std::shared_ptr<Storage::AppStoragePaths const>m_paths;
         winrt::HaloDesktop::PlaybackRequest m_request{nullptr};std::unordered_map<std::wstring,NativeChoice>m_choices;std::vector<AddonSubtitleDisplay>m_display;
         std::optional<std::filesystem::path> m_localSubtitlePath;
         TemporaryFileCollection m_temporaryFiles;

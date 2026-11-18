@@ -33,6 +33,7 @@
 #include "SettingsPageTests.h"
 #include "SignInTests.h"
 #include "DeviceBackendTests.h"
+#include "DeviceModeTests.h"
 #include "AddonResolveTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
@@ -1429,6 +1430,7 @@ int main()
         RunApiClientAuthTest();
         RunAddonResolveTests();
         RunDeviceBackendTests();
+        RunDeviceModeTests();
         std::cout << "StabilityTests passed\n";
         return 0;
     }

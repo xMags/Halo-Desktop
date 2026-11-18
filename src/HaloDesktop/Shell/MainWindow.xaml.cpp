@@ -117,7 +117,7 @@ namespace winrt::HaloDesktop::implementation
                 }
             });
 
-        if (!App::Services().Session->IsSignedIn())
+        if (App::Services().Session->Mode() == ::HaloDesktop::Services::SessionMode::SignedOut)
         {
             App::Services().Navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
         }

@@ -407,6 +407,10 @@
     <ClInclude Include="Services\Device\DeviceDocuments.h" />
     <ClInclude Include="Services\Device\DeviceStore.h" />
     <ClInclude Include="Services\Device\DeviceBackend.h" />
+    <ClInclude Include="Services\Device\DeviceModePolicy.h" />
+    <ClInclude Include="Services\Device\DeviceMovePolicy.h" />
+    <ClInclude Include="Services\Device\DeviceDataMove.h" />
+    <ClInclude Include="Services\Downloads\DownloadAdoptionPolicy.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -815,6 +819,10 @@
     <ClCompile Include="Services\Device\DeviceDocuments.cpp" />
     <ClCompile Include="Services\Device\DeviceStore.cpp" />
     <ClCompile Include="Services\Device\DeviceBackend.cpp" />
+    <ClCompile Include="Services\Device\DeviceModePolicy.cpp" />
+    <ClCompile Include="Services\Device\DeviceMovePolicy.cpp" />
+    <ClCompile Include="Services\Device\DeviceDataMove.cpp" />
+    <ClCompile Include="Services\Downloads\DownloadAdoptionPolicy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

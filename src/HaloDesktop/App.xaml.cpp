@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "App.xaml.h"
+#include "Api/Addons/HttpAddonFetcher.h"
 #include "Api/ApiClient.h"
 #include "Api/BackendSelector.h"
 #include "Api/HttpExecutor.h"
@@ -22,6 +23,8 @@
 #include "Services/DownloadService.h"
 #include "Services/DiscordPresence.h"
 #include "Services/DevicePreferencesStore.h"
+#include "Services/Device/DeviceDataMove.h"
+#include "Services/Device/DeviceStore.h"
 #include "Services/Downloads/TransferEngine.h"
 #include "Services/Auth/LocalAuthSession.h"
 #include "Services/Auth/OidcAuthSession.h"
@@ -116,8 +119,14 @@ namespace winrt::HaloDesktop::implementation
             m_httpExecutor,
             m_sessionController);
         // What the services ask for addons, resolution, library, watch history
-        // and settings. Always the account's client today.
+        // and settings: the account's client, or this PC's backend while Halo
+        // is used without an account (switched in the identity handler below).
         m_backends = std::make_shared<::HaloDesktop::Api::BackendSelector>(m_apiClient);
+        // Halo without an account: its documents, and the one client that asks
+        // addons directly (the device backend and its subtitle files).
+        m_deviceStore = std::make_shared<::HaloDesktop::Services::Device::DeviceStore>(
+            m_storagePaths->LocalState() / L"device");
+        m_addonFetcher = std::make_shared<::HaloDesktop::Api::Addons::HttpAddonFetcher>();
         m_sessionService = std::make_shared<::HaloDesktop::Services::SessionService>(
             m_apiClient,
             m_sessionController,
@@ -125,7 +134,9 @@ namespace winrt::HaloDesktop::implementation
             m_oidcSignInFlow,
             signInAddons,
             m_devicePreferences,
-            m_services.Navigation);
+            m_services.Navigation,
+            m_deviceStore,
+            m_addonFetcher);
         std::weak_ptr<::HaloDesktop::Services::SessionService> weakSession = m_sessionService;
         m_sessionController->SetRejectedHandler([weakSession]()
         {
@@ -217,6 +228,7 @@ namespace winrt::HaloDesktop::implementation
         std::weak_ptr<::HaloDesktop::Services::DiscordPresenceService> weakPresence = m_discordPresence;
         m_sessionService->SetIdentityChangedHandler(
             [weakSession,
+             backends = m_backends,
              queryCache = m_queryCache,
              weakAddons,
              weakLibrary,
@@ -230,6 +242,25 @@ namespace winrt::HaloDesktop::implementation
              weakPresence,
              weakAccountPicture]()
             {
+                // Every switch between an account and this PC's data runs this
+                // path, so the backend follows the session before anything below
+                // asks it.
+                auto const session = weakSession.lock();
+                auto const device = session ? session->ActiveDeviceBackend() : nullptr;
+                if (device)
+                {
+                    backends->UseDevice(device);
+                }
+                else
+                {
+                    backends->UseAccount();
+                }
+                // The account (or this PC's profile) the data kept here belongs to.
+                std::optional<::HaloDesktop::Services::LocalDataOwner> owner;
+                if (session)
+                {
+                    owner = session->DataOwner();
+                }
                 if (auto const presence = weakPresence.lock()) presence->Clear();
                 if (auto const picture = weakAccountPicture.lock()) picture->OnAccountChanged();
                 queryCache->Clear();
@@ -237,16 +268,16 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const library = weakLibrary.lock()) library->OnAccountChanged();
                 if (auto const watchState = weakWatchState.lock())
                 {
-                    // The unsent progress belongs to one account on one server; the
-                    // key names both, so a change of either clears it before
-                    // anything can be sent. Empty while nobody is signed in.
+                    // The unsent progress belongs to one account on one server (or
+                    // to this PC's profile); the key names both, so a change of
+                    // either clears it before anything can be sent. Empty while
+                    // nobody is signed in.
                     std::wstring accountKey;
-                    if (auto const session = weakSession.lock(); session && session->IsSignedIn() && !session->UserId().empty())
+                    if (owner)
                     {
                         try
                         {
-                            accountKey = ::HaloDesktop::Services::Downloads::MakeAccountKey(
-                                std::wstring{ session->ServerUrl() }, std::wstring{ session->UserId() });
+                            accountKey = ::HaloDesktop::Services::Downloads::MakeAccountKey(owner->Server, owner->User);
                         }
                         catch (...)
                         {
@@ -261,14 +292,19 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const sources = weakSources.lock()) sources->OnAccountChanged();
                 if (auto const settings = weakSettings.lock())
                 {
-                    if (auto const session = weakSession.lock())
-                    {
-                        settings->OnAccountChanged(session->ServerUrl(), session->UserId());
-                    }
+                    settings->OnAccountChanged(
+                        owner ? winrt::hstring{ owner->Server } : winrt::hstring{},
+                        owner ? winrt::hstring{ owner->User } : winrt::hstring{});
                 }
                 if (auto const downloads = weakDownloads.lock()) downloads->RebindAccount();
             });
         m_services.Session = m_sessionService;
+        m_services.DeviceMove = std::make_shared<::HaloDesktop::Services::Device::DeviceDataMove>(
+            m_sessionService,
+            m_apiClient,
+            m_deviceStore,
+            m_addonFetcher,
+            m_services.Downloads);
         m_services.Theme = std::make_shared<::HaloDesktop::Services::ThemeService>(m_devicePreferences);
 #if (defined(_M_X64) || defined(_M_ARM64)) && !defined(HALO_USE_NULL_PLAYBACK)
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::MpvEngine>(m_playbackPreferences);
@@ -277,7 +313,7 @@ namespace winrt::HaloDesktop::implementation
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
         m_services.ScrubPreview = std::make_shared<::HaloDesktop::Playback::NullScrubPreviewSource>();
 #endif
-        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_backends,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
+        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_backends,m_addonFetcher,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
         m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_backends,m_services.SettingsSync,m_services.Downloads);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
         m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();
@@ -337,9 +373,46 @@ namespace winrt::HaloDesktop::implementation
 
         m_window = winrt::make<MainWindow>();
         m_window.Activate();
+        if (m_sessionService->Mode() == ::HaloDesktop::Services::SessionMode::Device)
+        {
+            // A first run without an account may have had no network for the
+            // built-in addons, and a newer version may add one. Never blocks
+            // the first page and never reports a failure.
+            auto const generation = m_sessionService->Generation();
+            bool changed{};
+            try
+            {
+                changed = co_await m_sessionService->TopUpDeviceAddonsAsync();
+            }
+            catch (...)
+            {
+                changed = false;
+            }
+            co_await uiContext;
+            if (changed && generation == m_sessionService->Generation())
+            {
+                m_sessionService->ReloadAccountData();
+            }
+            co_return;
+        }
         if (m_sessionService->IsSignedIn())
         {
-            static_cast<void>(m_sessionService->RefreshIdentityAsync());
+            bool loaded{};
+            try
+            {
+                loaded = co_await m_sessionService->RefreshIdentityAsync();
+            }
+            catch (...)
+            {
+                loaded = false;
+            }
+            co_await uiContext;
+            // Finishes moving this PC's data into the account when an earlier
+            // sign-in could not; tried once per launch.
+            if (loaded && m_sessionService->HasDeviceDataToMove())
+            {
+                static_cast<void>(co_await m_services.DeviceMove->RunAsync(false));
+            }
         }
     }
 

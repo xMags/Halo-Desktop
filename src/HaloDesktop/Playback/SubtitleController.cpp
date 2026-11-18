@@ -2,6 +2,7 @@
 #include "Playback/SubtitleController.h"
 #include "Playback/ScopedReentrancyGuard.h"
 
+#include "Api/Addons/HttpAddonFetcher.h"
 #include "Api/ApiClient.h"
 #include "Api/BackendSelector.h"
 #include "Api/HaloBackend.h"
@@ -28,6 +29,9 @@ namespace
 {
     constexpr std::uint32_t Chunk=64*1024;
     constexpr std::size_t Maximum=10*1024*1024;
+    // The whole direct fetch of one subtitle file without an account,
+    // redirects and body included.
+    constexpr std::chrono::seconds DirectFileBudget{30};
 
     std::int64_t NowMs()
     {
@@ -83,14 +87,15 @@ namespace HaloDesktop::Playback
     SubtitleController::SubtitleController(
         std::shared_ptr<Api::ApiClient>api,
         std::shared_ptr<Api::BackendSelector>backends,
+        std::shared_ptr<Api::Addons::HttpAddonFetcher>addonFetcher,
         std::shared_ptr<IPlaybackEngine>engine,
         std::shared_ptr<Services::SettingsSyncService>settings,
         std::shared_ptr<Services::IDownloadService>downloads,
         std::shared_ptr<Services::DevicePreferencesStore>preferences,
         std::shared_ptr<Storage::AppStoragePaths const>paths)
-        :m_api(std::move(api)),m_backends(std::move(backends)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads)),m_preferences(std::move(preferences)),m_paths(std::move(paths))
+        :m_api(std::move(api)),m_backends(std::move(backends)),m_addonFetcher(std::move(addonFetcher)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads)),m_preferences(std::move(preferences)),m_paths(std::move(paths))
     {
-        if(!m_api||!m_backends||!m_engine||!m_settings||!m_downloads||!m_preferences||!m_paths)throw std::invalid_argument("SubtitleController requires dependencies.");
+        if(!m_api||!m_backends||!m_addonFetcher||!m_engine||!m_settings||!m_downloads||!m_preferences||!m_paths)throw std::invalid_argument("SubtitleController requires dependencies.");
     }
 
     SubtitleController::~SubtitleController()
@@ -748,21 +753,33 @@ namespace HaloDesktop::Playback
 
     concurrency::task<std::wstring> SubtitleController::DownloadAsync(NativeChoice const&choice)
     {
-        auto response=co_await m_api->OpenAddonProxyAsync(choice.Url);
-        auto const length=response.Content().Headers().ContentLength();
-        if(length&&length.Value()>Maximum)throw std::runtime_error("Subtitle file exceeds the size limit.");
-        auto input=co_await response.Content().ReadAsInputStreamAsync();
-        winrt::Windows::Storage::Streams::DataReader reader{input};
-        reader.InputStreamOptions(winrt::Windows::Storage::Streams::InputStreamOptions::Partial);
         std::vector<std::uint8_t>bytes;
-        for(;;)
+        if(m_backends->UsesDevice())
         {
-            auto const loaded=co_await reader.LoadAsync(Chunk);
-            if(!loaded)break;
-            if(bytes.size()+loaded>Maximum)throw std::runtime_error("Subtitle file exceeds the size limit.");
-            auto const offset=bytes.size();
-            bytes.resize(offset+loaded);
-            reader.ReadBytes(winrt::array_view<std::uint8_t>{bytes.data()+offset,bytes.data()+offset+loaded});
+            // Without an account there is no addon proxy: the file comes from
+            // the addon's host directly, as the reference hands the URL to mpv,
+            // under the direct addon client's rules (http and https only, no
+            // cookies or credentials, one budget, at most Maximum bytes).
+            auto const fetcher=m_addonFetcher;
+            bytes=co_await fetcher->GetFileAsync(std::wstring(choice.Url.c_str()),DirectFileBudget,Maximum,concurrency::cancellation_token::none());
+        }
+        else
+        {
+            auto response=co_await m_api->OpenAddonProxyAsync(choice.Url);
+            auto const length=response.Content().Headers().ContentLength();
+            if(length&&length.Value()>Maximum)throw std::runtime_error("Subtitle file exceeds the size limit.");
+            auto input=co_await response.Content().ReadAsInputStreamAsync();
+            winrt::Windows::Storage::Streams::DataReader reader{input};
+            reader.InputStreamOptions(winrt::Windows::Storage::Streams::InputStreamOptions::Partial);
+            for(;;)
+            {
+                auto const loaded=co_await reader.LoadAsync(Chunk);
+                if(!loaded)break;
+                if(bytes.size()+loaded>Maximum)throw std::runtime_error("Subtitle file exceeds the size limit.");
+                auto const offset=bytes.size();
+                bytes.resize(offset+loaded);
+                reader.ReadBytes(winrt::array_view<std::uint8_t>{bytes.data()+offset,bytes.data()+offset+loaded});
+            }
         }
         auto const& folder=m_paths->TemporarySubtitles();
         std::filesystem::create_directories(folder);

@@ -932,7 +932,8 @@ namespace HaloDesktop::Services
         {
             shelves.push_back(winrt::make<winrt::HaloDesktop::implementation::Shelf>(
                 L"My library",
-                L"SYNCED · " + winrt::to_hstring(libraryItems.Size()),
+                // Without an account the library lives on this PC, not on a server.
+                (m_backends->UsesDevice() ? L"ON THIS PC · " : L"SYNCED · ") + winrt::to_hstring(libraryItems.Size()),
                 libraryItems,
                 nullptr,
                 winrt::HaloDesktop::implementation::ShelfSeeAll::Library,

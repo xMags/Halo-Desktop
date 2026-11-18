@@ -167,7 +167,7 @@ namespace winrt::HaloDesktop::implementation
 
     void HistoryViewModel::Retry()
     {
-        if (!m_session->IsSignedIn()) return;
+        if (m_session->Mode() == ::HaloDesktop::Services::SessionMode::SignedOut) return;
         m_state = ::HaloDesktop::Services::HistoryLoadState::Loading;
         Rebuild();
         RaiseState();
@@ -196,7 +196,7 @@ namespace winrt::HaloDesktop::implementation
         m_state = ::HaloDesktop::Services::HistoryLoadState::Loading;
         Rebuild();
         RaiseState();
-        if (m_session->IsSignedIn())
+        if (m_session->Mode() != ::HaloDesktop::Services::SessionMode::SignedOut)
         {
             LoadAsync();
         }
@@ -225,7 +225,7 @@ namespace winrt::HaloDesktop::implementation
             self->ResetForAccount();
             self->Rebuild();
             self->RaiseState();
-            if (self->m_shown && self->m_session->IsSignedIn())
+            if (self->m_shown && self->m_session->Mode() != ::HaloDesktop::Services::SessionMode::SignedOut)
             {
                 self->LoadAsync();
             }

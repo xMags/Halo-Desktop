@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Services/Device/DeviceDocuments.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <chrono>
@@ -16,6 +17,18 @@
 namespace HaloDesktop::Api
 {
     class ApiClient;
+    class IHaloBackend;
+}
+
+namespace HaloDesktop::Api::Addons
+{
+    class IAddonFetcher;
+}
+
+namespace HaloDesktop::Services::Device
+{
+    class DeviceBackend;
+    class DeviceStore;
 }
 
 namespace HaloDesktop::Services::Auth
@@ -35,6 +48,12 @@ namespace HaloDesktop::Services
     // UI-thread-only facade over the thread-safe session authority. Restore is
     // a local DPAPI read; identity hydration is deliberately separate so an
     // offline launch never waits for the network.
+    //
+    // It also holds the third state, Halo used without an account (the
+    // reference's `device`): this PC's profile and the on-device backend
+    // every service answers from meanwhile. Every change between the three
+    // states runs the identity-changed path, whose first step points the
+    // backend selector at ActiveDeviceBackend() or at the account.
     class SessionService final : public ISessionService
     {
     public:
@@ -45,12 +64,32 @@ namespace HaloDesktop::Services
             std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
             std::shared_ptr<Auth::SignInAddonRegistry const> addons,
             std::shared_ptr<DevicePreferencesStore> preferences,
-            std::shared_ptr<NavigationService> navigation);
+            std::shared_ptr<NavigationService> navigation,
+            std::shared_ptr<Device::DeviceStore> deviceStore,
+            std::shared_ptr<::HaloDesktop::Api::Addons::IAddonFetcher> addonFetcher);
 
         [[nodiscard]] winrt::hstring ServerUrl() const override;
         [[nodiscard]] winrt::hstring UserId() const override;
         [[nodiscard]] winrt::hstring UserName() const override;
         [[nodiscard]] bool IsSignedIn() const noexcept override;
+        [[nodiscard]] SessionMode Mode() const noexcept override;
+        [[nodiscard]] std::optional<LocalDataOwner> DataOwner() const override;
+        [[nodiscard]] concurrency::task<void> ContinueWithoutAccountAsync() override;
+        [[nodiscard]] bool HasDeviceDataToMove() const noexcept override;
+        [[nodiscard]] std::wstring StartupDeviceError() const override;
+
+        // The backend Halo without an account answers from; null otherwise.
+        [[nodiscard]] std::shared_ptr<::HaloDesktop::Api::IHaloBackend> ActiveDeviceBackend() const;
+        // Signed in: the profile whose data still has to move into the account.
+        [[nodiscard]] std::optional<Device::DeviceProfile> PendingDeviceProfile() const;
+        // Once that data has moved and been cleared from this PC.
+        void ForgetDeviceProfile(std::wstring const& profileId);
+        // Without an account: adds any missing built-in addon after this PC's
+        // own (best effort, never throws). True when the list changed.
+        [[nodiscard]] concurrency::task<bool> TopUpDeviceAddonsAsync();
+        // Runs the identity-changed path again for the same account, so every
+        // service reads what it holds afresh (after this PC's data moved in).
+        void ReloadAccountData();
         [[nodiscard]] bool IsAdmin() const noexcept override;
         [[nodiscard]] std::optional<winrt::hstring> Plan() const override;
         [[nodiscard]] std::optional<winrt::hstring> AvatarVersion() const override;
@@ -101,6 +140,9 @@ namespace HaloDesktop::Services
         void ClearIdentity();
         void NotifyIdentityChanged();
         void NotifyProfileChanged();
+        [[nodiscard]] std::shared_ptr<Device::DeviceBackend> MakeDeviceBackend() const;
+        // Switches every service to this PC's data.
+        void EnterDevice(Device::DeviceProfile profile, std::shared_ptr<Device::DeviceBackend> backend);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
         std::shared_ptr<Auth::SessionController> m_controller;
@@ -109,6 +151,21 @@ namespace HaloDesktop::Services
         std::shared_ptr<Auth::SignInAddonRegistry const> m_addons;
         std::shared_ptr<DevicePreferencesStore> m_preferences;
         std::shared_ptr<NavigationService> m_navigation;
+        std::shared_ptr<Device::DeviceStore> m_deviceStore;
+        std::shared_ptr<::HaloDesktop::Api::Addons::IAddonFetcher> m_addonFetcher;
+        // This PC's profile: in use while m_deviceBackend is set, otherwise
+        // data that still has to move into the signed-in account.
+        std::optional<Device::DeviceProfile> m_deviceProfile;
+        // Set exactly while Halo is used without an account.
+        std::shared_ptr<Device::DeviceBackend> m_deviceBackend;
+        // A sign-in from Halo without an account took over and has not been
+        // taken by the sign-in screen yet: should it be discarded, Halo goes
+        // back to this PC's data rather than to the sign-in screen.
+        bool m_resumeDeviceOnReject{};
+        // Counts the changes into and out of Halo without an account, which
+        // the session generation alone does not see.
+        std::uint64_t m_modeSwitches{};
+        std::wstring m_startupDeviceError;
         // What the last discovery found to sign in with in the browser.
         std::optional<::HaloDesktop::Api::Dto::AuthConfig> m_browserConfig;
         std::shared_ptr<Auth::ISignInAddon> m_browserAddon;

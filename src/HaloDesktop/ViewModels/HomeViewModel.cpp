@@ -349,7 +349,7 @@ namespace winrt::HaloDesktop::implementation
     // that follows raises this again.
     void HomeViewModel::ReloadForAccount()
     {
-        if (!m_active || !m_session->IsSignedIn())
+        if (!m_active || m_session->Mode() == ::HaloDesktop::Services::SessionMode::SignedOut)
         {
             return;
         }

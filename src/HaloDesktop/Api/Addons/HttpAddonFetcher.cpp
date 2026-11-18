@@ -161,24 +161,31 @@ namespace
         filter.CookieUsageBehavior(Http::Filters::HttpCookieUsageBehavior::NoCookies);
         return filter;
     }
-}
 
-namespace HaloDesktop::Api::Addons
-{
-    HttpAddonFetcher::HttpAddonFetcher()
-        : m_filter(CreateAddonFilter()),
-          m_client(m_filter)
+    // How a 2xx body is read: as the JSON text GetAsync answers, or as the
+    // raw bytes of a file, at most MaximumBytes.
+    struct BodyRead final
     {
-    }
+        bool AsBytes{};
+        std::size_t MaximumBytes{};
+    };
 
-    concurrency::task<AddonFetchResponse> HttpAddonFetcher::GetAsync(
+    struct Received final
+    {
+        std::uint16_t Status{};
+        winrt::hstring Text;
+        std::vector<std::uint8_t> Bytes;
+    };
+
+    // One GET under the fetcher's rules (see HttpAddonFetcher.h). `client`
+    // is the fetcher's own, copied by the caller before any suspension.
+    concurrency::task<Received> SendAsync(
+        Http::HttpClient client,
         std::wstring url,
         std::chrono::milliseconds budget,
-        concurrency::cancellation_token cancellation)
+        concurrency::cancellation_token cancellation,
+        BodyRead read)
     {
-        // Copied before the first suspension, so nothing below reaches back
-        // into this object.
-        auto const client = m_client;
         co_await winrt::resume_background();
         if (cancellation.is_canceled()) throw winrt::hresult_canceled{};
 
@@ -211,7 +218,7 @@ namespace HaloDesktop::Api::Addons
         for (std::size_t redirects = 0;; ++redirects)
         {
             ThrowIfStopped(*inFlight);
-            if (!IsHttpUrl(current)) Fail(AddonFailureKind::BlockedTarget);
+            if (!Addons::IsHttpUrl(current)) Fail(Addons::AddonFailureKind::BlockedTarget);
             winrt::Windows::Foundation::Uri uri{ nullptr };
             try
             {
@@ -219,9 +226,9 @@ namespace HaloDesktop::Api::Addons
             }
             catch (...)
             {
-                Fail(AddonFailureKind::BlockedTarget);
+                Fail(Addons::AddonFailureKind::BlockedTarget);
             }
-            if (uri.SchemeName() != L"http" && uri.SchemeName() != L"https") Fail(AddonFailureKind::BlockedTarget);
+            if (uri.SchemeName() != L"http" && uri.SchemeName() != L"https") Fail(Addons::AddonFailureKind::BlockedTarget);
 
             Http::HttpRequestMessage request{ Http::HttpMethod::Get(), uri };
             Http::HttpResponseMessage response{ nullptr };
@@ -234,7 +241,7 @@ namespace HaloDesktop::Api::Addons
             catch (winrt::hresult_error const&)
             {
                 ThrowIfStopped(*inFlight);
-                Fail(AddonFailureKind::Unavailable);
+                Fail(Addons::AddonFailureKind::Unavailable);
             }
             inFlight->Track(response);
             if (inFlight->Reason() != StopReason::None)
@@ -250,51 +257,94 @@ namespace HaloDesktop::Api::Addons
                 if (!location)
                 {
                     CloseQuietly(response);
-                    co_return AddonFetchResponse{ status, {} };
+                    co_return Received{ status, {}, {} };
                 }
                 CloseQuietly(response);
-                if (redirects >= MaximumRedirects) Fail(AddonFailureKind::Unavailable);
+                if (redirects >= Addons::HttpAddonFetcher::MaximumRedirects) Fail(Addons::AddonFailureKind::Unavailable);
                 try
                 {
                     current = std::wstring{ winrt::Windows::Foundation::Uri{ uri.AbsoluteUri(), *location }.AbsoluteUri() };
                 }
                 catch (...)
                 {
-                    Fail(AddonFailureKind::Unavailable);
+                    Fail(Addons::AddonFailureKind::Unavailable);
                 }
                 continue;
             }
             if (status < 200 || status > 299)
             {
                 CloseQuietly(response);
-                co_return AddonFetchResponse{ status, {} };
+                co_return Received{ status, {}, {} };
             }
 
-            winrt::hstring body;
+            Received received{ status, {}, {} };
             try
             {
-                body = co_await ::HaloDesktop::Api::ReadBoundedJsonTextAsync(response.Content(), inFlight->ReadCancellation());
+                if (read.AsBytes)
+                {
+                    received.Bytes = co_await ::HaloDesktop::Api::ReadBoundedBytesAsync(
+                        response.Content(), read.MaximumBytes, inFlight->ReadCancellation());
+                }
+                else
+                {
+                    received.Text = co_await ::HaloDesktop::Api::ReadBoundedJsonTextAsync(response.Content(), inFlight->ReadCancellation());
+                }
             }
             catch (std::length_error const&)
             {
                 CloseQuietly(response);
                 ThrowIfStopped(*inFlight);
-                Fail(AddonFailureKind::InvalidResponse);
+                Fail(Addons::AddonFailureKind::InvalidResponse);
             }
             catch (std::invalid_argument const&)
             {
                 CloseQuietly(response);
                 ThrowIfStopped(*inFlight);
-                Fail(AddonFailureKind::InvalidResponse);
+                Fail(Addons::AddonFailureKind::InvalidResponse);
             }
             catch (winrt::hresult_error const&)
             {
                 CloseQuietly(response);
                 ThrowIfStopped(*inFlight);
-                Fail(AddonFailureKind::Unavailable);
+                Fail(Addons::AddonFailureKind::Unavailable);
             }
             CloseQuietly(response);
-            co_return AddonFetchResponse{ status, body };
+            co_return received;
         }
+    }
+}
+
+namespace HaloDesktop::Api::Addons
+{
+    HttpAddonFetcher::HttpAddonFetcher()
+        : m_filter(CreateAddonFilter()),
+          m_client(m_filter)
+    {
+    }
+
+    concurrency::task<AddonFetchResponse> HttpAddonFetcher::GetAsync(
+        std::wstring url,
+        std::chrono::milliseconds budget,
+        concurrency::cancellation_token cancellation)
+    {
+        // Copied before the first suspension, so nothing below reaches back
+        // into this object.
+        auto const received = co_await SendAsync(m_client, std::move(url), budget, cancellation, BodyRead{});
+        co_return AddonFetchResponse{ received.Status, received.Text };
+    }
+
+    concurrency::task<std::vector<std::uint8_t>> HttpAddonFetcher::GetFileAsync(
+        std::wstring url,
+        std::chrono::milliseconds budget,
+        std::size_t maximumBytes,
+        concurrency::cancellation_token cancellation)
+    {
+        auto received = co_await SendAsync(
+            m_client, std::move(url), budget, cancellation, BodyRead{ .AsBytes = true, .MaximumBytes = maximumBytes });
+        if (received.Status < 200 || received.Status > 299)
+        {
+            throw AddonRequestFailure{ { AddonFailureKind::UpstreamHttp, received.Status } };
+        }
+        co_return std::move(received.Bytes);
     }
 }

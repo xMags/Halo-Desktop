@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/Downloads/TransferEngine.h"
 
+#include "Services/Downloads/DownloadAdoptionPolicy.h"
 #include "Services/Downloads/DownloadHttp.h"
 #include "Services/Downloads/SegmentPlanner.h"
 #include "Storage/FileStorage.h"
@@ -9,6 +10,7 @@
 #include <array>
 #include <chrono>
 #include <cwctype>
+#include <functional>
 #include <limits>
 #include <memory>
 #include <stdexcept>
@@ -1065,6 +1067,103 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::Remove(std::wstring const& jobId)
     {
+        RemoveOwned(jobId, nullptr);
+    }
+
+    void TransferEngine::AdoptAccount(std::wstring const& from, std::wstring const& to)
+    {
+        if (from.empty() || to.empty() || from == to)
+        {
+            return;
+        }
+        auto const plan = PlanAdoption(m_store.Load(false), from, to);
+
+        // The owner change first, as the reference does: until the duplicates
+        // are settled nothing is deleted, and a stop in between leaves both
+        // copies rather than none.
+        auto const adopted = m_store.AdoptAccount(from, to, plan.Rekey, NowMilliseconds());
+        std::vector<DownloadChangedHandler> handlers;
+        std::vector<DownloadRecord> changed;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            for (auto const& record : adopted)
+            {
+                auto const live = m_records.find(record.JobId);
+                if (live == m_records.end())
+                {
+                    m_records.emplace(record.JobId, record);
+                }
+                else
+                {
+                    live->second.AccountKey = record.AccountKey;
+                    live->second.UpdatedAt = (std::max)(live->second.UpdatedAt, record.UpdatedAt);
+                }
+                changed.push_back(m_records.at(record.JobId));
+            }
+            if (m_activeAccount && *m_activeAccount == to)
+            {
+                std::vector<std::reference_wrapper<DownloadRecord const>> queued;
+                for (auto const& record : changed)
+                {
+                    auto const& live = m_records.at(record.JobId);
+                    if (live.Status == DownloadStatus::Queued
+                        && !live.ExplicitPause
+                        && !live.PendingDeletion
+                        && !IsHiddenBackupLocked(live.JobId)
+                        && std::find(m_queue.begin(), m_queue.end(), live.JobId) == m_queue.end())
+                    {
+                        queued.emplace_back(live);
+                    }
+                }
+                std::sort(queued.begin(), queued.end(), [](auto const& left, auto const& right)
+                {
+                    auto const& a = left.get();
+                    auto const& b = right.get();
+                    return std::tie(a.CreatedAt, a.JobId) < std::tie(b.CreatedAt, b.JobId);
+                });
+                for (auto const& record : queued)
+                {
+                    m_queue.push_back(record.get().JobId);
+                }
+            }
+            handlers = HandlersLocked();
+        }
+        for (auto const& record : changed)
+        {
+            Notify(handlers, record);
+        }
+        m_condition.notify_all();
+
+        // A replacing record before the backup it names: the backup cannot be
+        // removed while a record still points at it.
+        auto discard = plan.Discard;
+        {
+            auto const latest = m_store.Load(false);
+            std::stable_partition(discard.begin(), discard.end(), [&latest](std::wstring const& jobId)
+            {
+                return std::any_of(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+                {
+                    return record.JobId == jobId && record.Replacement.has_value();
+                });
+            });
+        }
+        std::vector<std::wstring> const owners{ from, to };
+        for (auto const& jobId : discard)
+        {
+            try
+            {
+                RemoveOwned(jobId, &owners);
+            }
+            catch (...)
+            {
+                // A file that cannot be deleted now keeps its tombstone and is
+                // removed at the next launch; the adoption itself holds.
+            }
+        }
+    }
+
+    void TransferEngine::RemoveOwned(std::wstring const& jobId, std::vector<std::wstring> const* owners)
+    {
         std::unique_lock gate{ m_removalGate };
         auto latest = m_store.Load(false);
         if (std::any_of(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
@@ -1092,7 +1191,10 @@ namespace HaloDesktop::Services::Downloads
             // The worker's copy carries the live progress; the stored one is
             // what everyone else last saw.
             removed = active && live != m_records.end() ? live->second : *persisted;
-            if (!m_activeAccount || removed.AccountKey != *m_activeAccount)
+            auto const owned = owners
+                ? std::find(owners->begin(), owners->end(), removed.AccountKey) != owners->end()
+                : m_activeAccount && removed.AccountKey == *m_activeAccount;
+            if (!owned)
             {
                 throw std::runtime_error{ "This download belongs to another account." };
             }

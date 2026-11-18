@@ -9,6 +9,7 @@
 #include <cstdint>
 #include <memory>
 #include <optional>
+#include <string>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -69,6 +70,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring AvatarInitial() const;
         [[nodiscard]] winrt::hstring SignedInStatus() const;
         [[nodiscard]] winrt::hstring NoAccountLabel() const;
+        // Why Halo could not start on this PC, on the steps that offer it.
+        [[nodiscard]] winrt::hstring DeviceErrorText() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DeviceErrorVisibility() const noexcept;
         [[nodiscard]] bool ServerFieldFirst() const noexcept;
 
         void Retry();
@@ -97,15 +101,22 @@ namespace winrt::HaloDesktop::implementation
             ::HaloDesktop::ViewModels::RestingStep back);
         winrt::fire_and_forget StartBrowserAsync(::HaloDesktop::ViewModels::BrowserMethod method);
         winrt::fire_and_forget FinishAsync(std::uint64_t attempt);
+        winrt::fire_and_forget ContinueOnDeviceAsync();
         void OnAuthUrl(std::uint64_t attempt, winrt::hstring const& authUrl);
 
         [[nodiscard]] bool Is(StepKind kind) const noexcept;
+        // The screen is open over Halo without an account (the reference's
+        // `signingIn`): its way out is "Back to Halo".
+        [[nodiscard]] bool OpenedFromDevice() const noexcept;
         void SetStep(Step step);
         void Raise(wchar_t const* propertyName);
 
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
+        std::shared_ptr<::HaloDesktop::Services::Device::DeviceDataMove> m_deviceMove;
         Step m_step;
+        // Halo could not start on this PC (or read its profile at launch).
+        std::wstring m_deviceError;
         // What asking the server found, once it has answered.
         std::optional<::HaloDesktop::ViewModels::RestingStep> m_discovered;
         winrt::hstring m_username;

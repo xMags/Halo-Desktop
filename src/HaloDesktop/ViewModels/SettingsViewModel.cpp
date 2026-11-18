@@ -12,6 +12,7 @@
 #include "Services/AccountLabelPolicy.h"
 #include "Services/BuildInfoPolicy.h"
 #include "Services/CatalogLanguagePolicy.h"
+#include "Services/NavigationService.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -175,6 +176,7 @@ namespace winrt::HaloDesktop::implementation
 
     SettingsViewModel::SettingsViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_session(services.Session),
+          m_navigation(services.Navigation),
           m_theme(services.Theme),
           m_addonService(services.Addons),
           m_catalog(services.Catalog),
@@ -203,11 +205,34 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SettingsViewModel::UserName() const { return m_userName; }
     winrt::hstring SettingsViewModel::DisplayName() const
     {
+        if (m_session->Mode() == ::HaloDesktop::Services::SessionMode::Device)
+        {
+            return winrt::hstring{ ::HaloDesktop::Services::DeviceAccountName };
+        }
         return winrt::hstring{ ::HaloDesktop::Services::AccountDisplayName(std::wstring_view{ m_userName }) };
     }
     winrt::hstring SettingsViewModel::SignedInLine() const { return m_userName; }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::SignedInAccountVisibility() const noexcept
+    {
+        return VisibleWhen(m_session->Mode() != ::HaloDesktop::Services::SessionMode::Device);
+    }
+    Microsoft::UI::Xaml::Visibility SettingsViewModel::DeviceAccountVisibility() const noexcept
+    {
+        return VisibleWhen(m_session->Mode() == ::HaloDesktop::Services::SessionMode::Device);
+    }
+    void SettingsViewModel::SignInToSync()
+    {
+        // The sign-in screen opens over Halo without an account; "Back to
+        // Halo" there closes it with nothing changed.
+        if (m_session->Mode() != ::HaloDesktop::Services::SessionMode::Device) return;
+        m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Login);
+    }
     winrt::hstring SettingsViewModel::AccountRoleLine() const
     {
+        if (m_session->Mode() == ::HaloDesktop::Services::SessionMode::Device)
+        {
+            return winrt::hstring{ ::HaloDesktop::Services::DeviceAccountLabel };
+        }
         // The same caption the shell's account button shows.
         auto const plan = m_session->Plan();
         return winrt::hstring{ ::HaloDesktop::Services::AccountLabel(::HaloDesktop::Services::AccountLabelInput{
@@ -428,6 +453,11 @@ namespace winrt::HaloDesktop::implementation
     void SettingsViewModel::ProbeHealth()
     {
         auto const version = ++m_healthRequestVersion;
+        // No server is asked without an account; the section shows none.
+        if (m_session->Mode() == ::HaloDesktop::Services::SessionMode::Device)
+        {
+            return;
+        }
         if (m_healthState != HealthState::Connected)
         {
             m_healthState = HealthState::Checking;
@@ -933,6 +963,8 @@ namespace winrt::HaloDesktop::implementation
         Raise(L"DisplayName");
         Raise(L"SignedInLine");
         Raise(L"AccountRoleLine");
+        Raise(L"SignedInAccountVisibility");
+        Raise(L"DeviceAccountVisibility");
         // Not a bound property: the page redraws the picture when it hears it.
         Raise(L"AccountPicture");
     }

@@ -3,6 +3,8 @@
 #include "Api/Addons/AddonFetcher.h"
 
 #include <cstddef>
+#include <cstdint>
+#include <vector>
 #include <winrt/Windows.Web.Http.Filters.h>
 #include <winrt/Windows.Web.Http.h>
 
@@ -37,6 +39,17 @@ namespace HaloDesktop::Api::Addons
             std::wstring url,
             std::chrono::milliseconds budget,
             concurrency::cancellation_token cancellation) override;
+
+        // A file an addon links to (a subtitle), fetched directly under the
+        // same rules as GetAsync, for Halo without an account, where the
+        // server's addon proxy is not there. The body is returned as raw bytes
+        // and refused (InvalidResponse) once it passes maximumBytes, declared
+        // or not; any answer other than 2xx fails as UpstreamHttp.
+        [[nodiscard]] concurrency::task<std::vector<std::uint8_t>> GetFileAsync(
+            std::wstring url,
+            std::chrono::milliseconds budget,
+            std::size_t maximumBytes,
+            concurrency::cancellation_token cancellation);
 
     private:
         winrt::Windows::Web::Http::Filters::HttpBaseProtocolFilter m_filter;

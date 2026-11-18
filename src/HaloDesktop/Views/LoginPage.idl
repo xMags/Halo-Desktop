@@ -45,6 +45,8 @@ namespace HaloDesktop
         String AvatarInitial { get; };
         String SignedInStatus { get; };
         String NoAccountLabel { get; };
+        String DeviceErrorText { get; };
+        Microsoft.UI.Xaml.Visibility DeviceErrorVisibility { get; };
         // True when the server field should take focus as the form opens.
         Boolean ServerFieldFirst { get; };
 

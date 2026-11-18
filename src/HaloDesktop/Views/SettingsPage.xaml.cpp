@@ -296,6 +296,7 @@ namespace winrt::HaloDesktop::implementation
         }
     }
     void SettingsPage::OnSignOutClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowSignOutDialog(); }
+    void SettingsPage::OnSignInToSyncClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SignInToSync(); }
     void SettingsPage::ScrollTo(wchar_t const* elementName)
     {
         auto const scroller = SettingsScroller();

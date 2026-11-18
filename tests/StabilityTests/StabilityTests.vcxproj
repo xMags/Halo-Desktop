@@ -311,6 +311,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceBackend.cpp">
       <Link>DeviceBackend.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceModePolicy.cpp">
+      <Link>DeviceModePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceMovePolicy.cpp">
+      <Link>DeviceMovePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadAdoptionPolicy.cpp">
+      <Link>DownloadAdoptionPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="DeviceModeTests.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -332,6 +342,7 @@
     <ClInclude Include="DeviceBackendTests.h" />
     <ClInclude Include="AddonResolveTests.h" />
     <ClInclude Include="AddonTestFakes.h" />
+    <ClInclude Include="DeviceModeTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

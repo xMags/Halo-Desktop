@@ -69,7 +69,7 @@ namespace winrt::HaloDesktop::implementation
         m_loading = true;
         m_error = false;
         RaiseState();
-        if (m_session->IsSignedIn()) static_cast<void>(LoadAsync());
+        if (m_session->Mode() != ::HaloDesktop::Services::SessionMode::SignedOut) static_cast<void>(LoadAsync());
     }
     winrt::Windows::Foundation::IInspectable LibraryViewModel::Items() const { return m_items; }
     std::int32_t LibraryViewModel::FilterIndex() const noexcept { return m_filterIndex; }

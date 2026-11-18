@@ -1,0 +1,144 @@
+#include "pch.h"
+#include "Services/Device/DeviceMovePolicy.h"
+
+#include "Api/ApiError.h"
+#include "Api/HaloBackend.h"
+#include "Services/AddonListPolicy.h"
+
+#include <optional>
+#include <stdexcept>
+#include <unordered_set>
+#include <utility>
+
+namespace
+{
+    namespace Dto = HaloDesktop::Api::Dto;
+
+    std::vector<winrt::hstring> OwnUrls(std::vector<Dto::AddonRecord> const& addons)
+    {
+        std::vector<winrt::hstring> urls;
+        for (auto const& addon : addons)
+        {
+            if (addon.TransportUrl) urls.push_back(*addon.TransportUrl);
+        }
+        return urls;
+    }
+
+    bool IsManifestRefusal(winrt::hresult_error const& error) noexcept
+    {
+        auto const status = ::HaloDesktop::Api::ApiError::HttpStatus(error.code());
+        return status && *status == 400;
+    }
+}
+
+namespace HaloDesktop::Services::Device
+{
+    std::vector<AddonMove> AddonsToMove(
+        std::span<Api::Dto::AddonRecord const> device,
+        std::span<Api::Dto::AddonRecord const> accountOwn)
+    {
+        std::unordered_set<std::wstring> present;
+        for (auto const& addon : accountOwn)
+        {
+            if (addon.TransportUrl) present.emplace(*addon.TransportUrl);
+        }
+        std::vector<AddonMove> moves;
+        for (auto const& addon : device)
+        {
+            if (!addon.TransportUrl || addon.TransportUrl->empty()) continue;
+            std::wstring url{ *addon.TransportUrl };
+            if (::HaloDesktop::Services::IsDefaultAddonUrl(url) || present.contains(url)) continue;
+            moves.push_back({ std::move(url), std::wstring{ addon.Name }, addon.HideCatalogs });
+        }
+        return moves;
+    }
+
+    bool ShouldMoveSettings(std::int64_t deviceUpdatedAt, std::int64_t accountUpdatedAt) noexcept
+    {
+        return accountUpdatedAt == 0 && deviceUpdatedAt > 0;
+    }
+
+    concurrency::task<MoveResult> MoveRecordsIntoAccountAsync(
+        std::shared_ptr<Api::IHaloBackend> device,
+        StoredWatchStatesReader storedWatchStates,
+        std::shared_ptr<Api::IHaloBackend> account)
+    {
+        if (!device || !storedWatchStates || !account)
+        {
+            throw std::invalid_argument{ "Moving this PC's data needs both sides." };
+        }
+
+        for (auto& chunk : Chunked(co_await device->GetLibraryAsync()))
+        {
+            static_cast<void>(co_await account->PutLibraryAsync(std::move(chunk)));
+        }
+        for (auto& chunk : Chunked(co_await storedWatchStates()))
+        {
+            static_cast<void>(co_await account->PutWatchStateAsync(std::move(chunk)));
+        }
+
+        auto const deviceSettings = co_await device->GetSettingsAsync();
+        auto const accountSettings = co_await account->GetSettingsAsync();
+        if (ShouldMoveSettings(deviceSettings.UpdatedAt, accountSettings.UpdatedAt))
+        {
+            static_cast<void>(co_await account->PutSettingsAsync(deviceSettings.Value, deviceSettings.UpdatedAt));
+        }
+
+        auto const deviceAddons = co_await device->GetAddonsAsync();
+        auto accountAddons = co_await account->GetAddonsAsync();
+        auto own = OwnUrls(accountAddons.User);
+        MoveResult result;
+        for (auto const& move : AddonsToMove(deviceAddons.User, accountAddons.User))
+        {
+            auto urls = own;
+            urls.emplace_back(move.TransportUrl);
+            auto refused = false;
+            try
+            {
+                co_await account->PutAddonsAsync(std::move(urls));
+            }
+            catch (winrt::hresult_error const& error)
+            {
+                if (!IsManifestRefusal(error)) throw;
+                refused = true;
+            }
+            if (refused)
+            {
+                result.FailedAddons.push_back(move.Name);
+                continue;
+            }
+            // The account's PUT answers nothing here, so its list is read back
+            // for the new entry's id and the next addon's base.
+            accountAddons = co_await account->GetAddonsAsync();
+            own = OwnUrls(accountAddons.User);
+            if (!move.HideCatalogs) continue;
+            auto const entry = std::find_if(accountAddons.User.begin(), accountAddons.User.end(), [&move](Dto::AddonRecord const& addon)
+            {
+                return addon.TransportUrl && std::wstring_view{ *addon.TransportUrl } == move.TransportUrl;
+            });
+            if (entry != accountAddons.User.end())
+            {
+                co_await account->PatchAddonAsync(entry->Id, true);
+            }
+        }
+        co_return result;
+    }
+
+    std::wstring FailedAddonsTitle(std::size_t count)
+    {
+        return count == 1 ? L"An addon was not moved" : L"Some addons were not moved";
+    }
+
+    std::wstring FailedAddonsBody(std::vector<std::wstring> const& names)
+    {
+        std::wstring list;
+        for (auto const& name : names)
+        {
+            if (!list.empty()) list += L", ";
+            list += name;
+        }
+        auto const one = names.size() == 1;
+        return list + L" could not be added to your account because " + (one ? L"it" : L"they")
+            + L" did not load. You can add " + (one ? L"it" : L"them") + L" again in Settings.";
+    }
+}
