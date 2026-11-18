@@ -9,6 +9,7 @@
 #include "Services/ThemeService.h"
 
 #include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
@@ -39,6 +40,12 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool IsGlobal() const noexcept;
         [[nodiscard]] bool IsShadowed() const noexcept;
         [[nodiscard]] bool CatalogsShown() const noexcept;
+        // Written by the row's switch. The row keeps showing what the server
+        // holds: a different value is a request, passed to the handler, and
+        // the rows are rebuilt once it is answered. Writing the value the row
+        // already has does nothing, which is what a switch does whenever a
+        // list row is built or reused for this addon.
+        void CatalogsShown(bool value);
         [[nodiscard]] bool CatalogSwitchEnabled() const noexcept;
         [[nodiscard]] winrt::hstring CatalogSwitchLabel() const;
         [[nodiscard]] winrt::hstring GripToolTip() const;
@@ -56,11 +63,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool IsMovable() const noexcept;
         void SetListBusy(bool busy);
         void SetFirstInCard(bool first);
+        // Called on the UI thread with the addon's id and the value asked for.
+        void SetCatalogToggleHandler(std::function<void(winrt::hstring const&, bool)> handler);
 
     private:
         void Raise(wchar_t const* propertyName);
 
         Content m_content;
+        std::function<void(winrt::hstring const&, bool)> m_catalogToggle;
         winrt::hstring m_initials;
         bool m_firstInCard{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;

@@ -114,6 +114,21 @@ namespace winrt::HaloDesktop::implementation
     bool AddonRowViewModel::IsGlobal() const noexcept { return m_content.IsGlobal; }
     bool AddonRowViewModel::IsShadowed() const noexcept { return m_content.Actions.Shadowed; }
     bool AddonRowViewModel::CatalogsShown() const noexcept { return m_content.CatalogsShown; }
+    void AddonRowViewModel::CatalogsShown(bool value)
+    {
+        if (value == m_content.CatalogsShown || !m_catalogToggle)
+        {
+            return;
+        }
+        // Copied first: the handler may rebuild the rows and release this one.
+        auto const handler = m_catalogToggle;
+        auto const id = m_content.Id;
+        handler(id, value);
+    }
+    void AddonRowViewModel::SetCatalogToggleHandler(std::function<void(winrt::hstring const&, bool)> handler)
+    {
+        m_catalogToggle = std::move(handler);
+    }
     bool AddonRowViewModel::CatalogSwitchEnabled() const noexcept { return m_content.Actions.CatalogSwitchEnabled; }
     winrt::hstring AddonRowViewModel::CatalogSwitchLabel() const
     {
@@ -770,6 +785,13 @@ namespace winrt::HaloDesktop::implementation
                 .Actions = actions,
             });
             row->SetListBusy(m_listBusy);
+            row->SetCatalogToggleHandler([weak = get_weak()](winrt::hstring const& id, bool shown)
+            {
+                if (auto const self = weak.get())
+                {
+                    self->ToggleAddon(id, shown);
+                }
+            });
             (record.IsGlobal ? m_globalAddons : m_ownAddons).Append(*row);
         }
         m_listShown = true;

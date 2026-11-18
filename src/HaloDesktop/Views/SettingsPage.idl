@@ -10,7 +10,7 @@ namespace HaloDesktop
         String Provides { get; };
         Boolean IsGlobal { get; };
         Boolean IsShadowed { get; };
-        Boolean CatalogsShown { get; };
+        Boolean CatalogsShown;
         Boolean CatalogSwitchEnabled { get; };
         String CatalogSwitchLabel { get; };
         String GripToolTip { get; };

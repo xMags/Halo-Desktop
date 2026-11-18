@@ -137,12 +137,6 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.AddAddon();
     }
     void SettingsPage::OnRetrySettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Refresh(); }
-    void SettingsPage::OnAddonToggled(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        if (!m_loaded) return;
-        auto const toggle = sender.as<Microsoft::UI::Xaml::Controls::ToggleSwitch>();
-        m_viewModel.ToggleAddon(winrt::unbox_value<winrt::hstring>(toggle.Tag()), toggle.IsOn());
-    }
     void SettingsPage::OnDeleteAddonClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         ShowDeleteAddonDialog(winrt::unbox_value<winrt::hstring>(sender.as<Microsoft::UI::Xaml::Controls::Button>().Tag()));
