@@ -240,7 +240,8 @@ namespace winrt::HaloDesktop::implementation
             std::uint64_t totalBytes = 0,
             hstring fileName = {},
             hstring addedLabel = {},
-            bool hdr = false);
+            bool hdr = false,
+            std::uint32_t activeConnections = 0);
 
         [[nodiscard]] hstring Id() const;
         [[nodiscard]] hstring Tag() const;
@@ -262,6 +263,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] hstring FileName() const;
         [[nodiscard]] hstring AddedLabel() const;
         [[nodiscard]] bool Hdr() const noexcept;
+        [[nodiscard]] std::uint32_t ActiveConnections() const noexcept;
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
@@ -292,6 +294,7 @@ namespace winrt::HaloDesktop::implementation
         hstring m_fileName;
         hstring m_addedLabel;
         bool m_hdr{};
+        std::uint32_t m_activeConnections{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 

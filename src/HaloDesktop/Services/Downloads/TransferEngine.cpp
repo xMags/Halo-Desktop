@@ -1,8 +1,8 @@
 #include "pch.h"
 #include "Services/Downloads/TransferEngine.h"
 
-#include "Security/ProtectedRedirect.h"
-#include "Services/Downloads/TransferRateWindow.h"
+#include "Services/Downloads/DownloadHttp.h"
+#include "Services/Downloads/SegmentPlanner.h"
 #include "Storage/FileStorage.h"
 
 #include <algorithm>
@@ -17,63 +17,19 @@
 #include <tuple>
 #include <utility>
 #include <wil/resource.h>
-#include <winhttp.h>
 
 namespace
 {
     constexpr std::size_t TransferChunkSize = 64u * 1024u;
     constexpr std::uint64_t MaximumSubtitleBytes = 32ull * 1024ull * 1024ull;
-    constexpr auto ProgressInterval = std::chrono::milliseconds{ 250 };
-    // Progress is reported every ProgressInterval; the data file is flushed and
-    // the index persisted only every DurableInterval, because both are
-    // synchronous disk work that stalls the socket when done four times a second.
-    constexpr auto DurableInterval = std::chrono::seconds{ 2 };
-    // Throughput is averaged over this much history before it is reported.
-    constexpr auto RateWindow = std::chrono::seconds{ 3 };
     constexpr int TransferAttempts = 3;
-
-    struct RedirectError final
-    {
-    };
-
-    struct HttpCloser final
-    {
-        void operator()(void* value) const noexcept
-        {
-            if (value)
-            {
-                WinHttpCloseHandle(value);
-            }
-        }
-    };
-    using UniqueHttp = std::unique_ptr<void, HttpCloser>;
-
-    struct HttpResponse final
-    {
-        UniqueHttp Session;
-        UniqueHttp Connection;
-        UniqueHttp Request;
-        std::uint32_t Status{};
-        std::optional<std::wstring> ETag;
-        std::optional<std::wstring> LastModified;
-        std::optional<std::wstring> Location;
-        std::optional<std::wstring> ContentRange;
-        std::optional<std::uint64_t> ContentLength;
-        bool CrossedOrigin{};
-    };
+    constexpr char const* DeleteFailed =
+        "Halo could not delete every file for this download. It will try again the next time Halo starts.";
 
     std::uint64_t NowMilliseconds() noexcept
     {
         return static_cast<std::uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
             std::chrono::system_clock::now().time_since_epoch()).count());
-    }
-
-    [[noreturn]] void ThrowSystem(char const* message)
-    {
-        throw std::system_error{
-            static_cast<int>(GetLastError()),
-            std::system_category(),
-            message };
     }
 
     std::wstring NewJobId()
@@ -101,260 +57,6 @@ namespace
             throw std::runtime_error{ "A download job identifier is invalid." };
         }
         return result;
-    }
-
-    std::optional<std::uint64_t> ParseUnsigned(std::wstring const& value) noexcept
-    {
-        if (value.empty())
-        {
-            return std::nullopt;
-        }
-        std::uint64_t result{};
-        for (auto const character : value)
-        {
-            if (character < L'0' || character > L'9')
-            {
-                return std::nullopt;
-            }
-            auto const digit = static_cast<std::uint64_t>(character - L'0');
-            if (result > ((std::numeric_limits<std::uint64_t>::max)() - digit) / 10)
-            {
-                return std::nullopt;
-            }
-            result = result * 10 + digit;
-        }
-        return result;
-    }
-
-    std::optional<std::wstring> QueryHeader(
-        HINTERNET request,
-        wchar_t const* headerName)
-    {
-        DWORD bytes{};
-        WinHttpQueryHeaders(
-            request,
-            WINHTTP_QUERY_CUSTOM,
-            headerName,
-            WINHTTP_NO_OUTPUT_BUFFER,
-            &bytes,
-            WINHTTP_NO_HEADER_INDEX);
-        auto const error = GetLastError();
-        if (error == ERROR_WINHTTP_HEADER_NOT_FOUND)
-        {
-            return std::nullopt;
-        }
-        if (error != ERROR_INSUFFICIENT_BUFFER || bytes < sizeof(wchar_t))
-        {
-            ThrowSystem("A download response header could not be inspected");
-        }
-        if (bytes > 64u * 1024u)
-        {
-            throw std::length_error{ "A download response header is oversized." };
-        }
-        std::wstring value(bytes / sizeof(wchar_t), L'\0');
-        if (!WinHttpQueryHeaders(
-            request,
-            WINHTTP_QUERY_CUSTOM,
-            headerName,
-            value.data(),
-            &bytes,
-            WINHTTP_NO_HEADER_INDEX))
-        {
-            ThrowSystem("A download response header could not be read");
-        }
-        value.resize(bytes / sizeof(wchar_t));
-        while (!value.empty() && value.back() == L'\0')
-        {
-            value.pop_back();
-        }
-        return value.empty() ? std::nullopt : std::optional<std::wstring>{ std::move(value) };
-    }
-
-    HttpResponse OpenGetOnce(
-        std::wstring const& url,
-        std::map<std::wstring, std::wstring, std::less<>> const& headers,
-        std::optional<std::uint64_t> partial,
-        std::optional<std::wstring> const& validator)
-    {
-        URL_COMPONENTS parts{ .dwStructSize = sizeof(URL_COMPONENTS) };
-        parts.dwSchemeLength = static_cast<DWORD>(-1);
-        parts.dwHostNameLength = static_cast<DWORD>(-1);
-        parts.dwUrlPathLength = static_cast<DWORD>(-1);
-        parts.dwExtraInfoLength = static_cast<DWORD>(-1);
-        if (!WinHttpCrackUrl(url.c_str(), static_cast<DWORD>(url.size()), 0, &parts))
-        {
-            ThrowSystem("A download source URL could not be parsed");
-        }
-        std::wstring host(parts.lpszHostName, parts.dwHostNameLength);
-        std::wstring target;
-        if (parts.dwUrlPathLength > 0)
-        {
-            target.assign(parts.lpszUrlPath, parts.dwUrlPathLength);
-        }
-        if (parts.dwExtraInfoLength > 0)
-        {
-            target.append(parts.lpszExtraInfo, parts.dwExtraInfoLength);
-        }
-        if (target.empty())
-        {
-            target = L"/";
-        }
-
-        HttpResponse response;
-        response.Session.reset(WinHttpOpen(
-            L"Halo Desktop/1.0",
-            WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
-            WINHTTP_NO_PROXY_NAME,
-            WINHTTP_NO_PROXY_BYPASS,
-            0));
-        if (!response.Session)
-        {
-            ThrowSystem("The download HTTP session could not be created");
-        }
-        if (!WinHttpSetTimeouts(
-            response.Session.get(),
-            30000,
-            30000,
-            30000,
-            45000))
-        {
-            ThrowSystem("The download HTTP timeouts could not be configured");
-        }
-        response.Connection.reset(WinHttpConnect(
-            response.Session.get(), host.c_str(), parts.nPort, 0));
-        if (!response.Connection)
-        {
-            ThrowSystem("The download source could not be connected");
-        }
-        auto const flags = parts.nScheme == INTERNET_SCHEME_HTTPS ? WINHTTP_FLAG_SECURE : 0;
-        response.Request.reset(WinHttpOpenRequest(
-            response.Connection.get(),
-            L"GET",
-            target.c_str(),
-            nullptr,
-            WINHTTP_NO_REFERER,
-            WINHTTP_DEFAULT_ACCEPT_TYPES,
-            flags));
-        if (!response.Request)
-        {
-            ThrowSystem("The download request could not be created");
-        }
-        DWORD redirectPolicy = WINHTTP_OPTION_REDIRECT_POLICY_NEVER;
-        if (!WinHttpSetOption(
-            response.Request.get(),
-            WINHTTP_OPTION_REDIRECT_POLICY,
-            &redirectPolicy,
-            sizeof(redirectPolicy)))
-        {
-            ThrowSystem("The download redirect policy could not be configured");
-        }
-        for (auto const& [key, value] : headers)
-        {
-            auto const line = key + L": " + value;
-            if (!WinHttpAddRequestHeaders(
-                response.Request.get(),
-                line.c_str(),
-                static_cast<DWORD>(line.size()),
-                WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
-            {
-                ThrowSystem("A protected download header was rejected");
-            }
-        }
-        if (partial)
-        {
-            auto const range = L"Range: bytes=" + std::to_wstring(*partial) + L"-";
-            if (!WinHttpAddRequestHeaders(
-                response.Request.get(), range.c_str(), static_cast<DWORD>(range.size()),
-                WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
-            {
-                ThrowSystem("The download range could not be applied");
-            }
-            if (validator)
-            {
-                auto const ifRange = L"If-Range: " + *validator;
-                if (!WinHttpAddRequestHeaders(
-                    response.Request.get(), ifRange.c_str(), static_cast<DWORD>(ifRange.size()),
-                    WINHTTP_ADDREQ_FLAG_ADD | WINHTTP_ADDREQ_FLAG_REPLACE))
-                {
-                    ThrowSystem("The download validator could not be applied");
-                }
-            }
-        }
-        if (!WinHttpSendRequest(
-            response.Request.get(),
-            WINHTTP_NO_ADDITIONAL_HEADERS,
-            0,
-            WINHTTP_NO_REQUEST_DATA,
-            0,
-            0,
-            0)
-            || !WinHttpReceiveResponse(response.Request.get(), nullptr))
-        {
-            ThrowSystem("The download response could not be received");
-        }
-        DWORD status{};
-        DWORD statusBytes = sizeof(status);
-        if (!WinHttpQueryHeaders(
-            response.Request.get(),
-            WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
-            WINHTTP_HEADER_NAME_BY_INDEX,
-            &status,
-            &statusBytes,
-            WINHTTP_NO_HEADER_INDEX))
-        {
-            ThrowSystem("The download response status could not be read");
-        }
-        response.Status = status;
-        response.ETag = QueryHeader(response.Request.get(), L"ETag");
-        response.LastModified = QueryHeader(response.Request.get(), L"Last-Modified");
-        response.Location = QueryHeader(response.Request.get(), L"Location");
-        response.ContentRange = QueryHeader(response.Request.get(), L"Content-Range");
-        if (auto const length = QueryHeader(response.Request.get(), L"Content-Length"))
-        {
-            response.ContentLength = ParseUnsigned(*length);
-        }
-        return response;
-    }
-
-    HttpResponse OpenGet(
-        std::wstring const& url,
-        std::map<std::wstring, std::wstring, std::less<>> const& headers,
-        std::optional<std::uint64_t> partial,
-        std::optional<std::wstring> validator)
-    {
-        auto currentUrl = url;
-        std::map<std::wstring, std::wstring, std::less<>> const emptyHeaders;
-        bool forwardProtectedHeaders = true;
-        bool crossedOrigin{};
-        for (int redirectCount = 0;; ++redirectCount)
-        {
-            auto response = OpenGetOnce(
-                currentUrl,
-                forwardProtectedHeaders ? headers : emptyHeaders,
-                partial,
-                validator);
-            if (!HaloDesktop::Security::IsRedirectStatus(response.Status))
-            {
-                response.CrossedOrigin = crossedOrigin;
-                return response;
-            }
-            if (!response.Location)
-            {
-                throw RedirectError{};
-            }
-            auto const target = HaloDesktop::Security::NextRedirectTarget(
-                currentUrl, *response.Location, redirectCount);
-            if (!target)
-            {
-                throw RedirectError{};
-            }
-            if (!target->SameOrigin)
-            {
-                forwardProtectedHeaders = false;
-                crossedOrigin = true;
-            }
-            currentUrl = target->Url;
-        }
     }
 
     std::optional<std::uint64_t> DiskFree(std::filesystem::path const& path) noexcept
@@ -429,7 +131,12 @@ namespace
             }
             return *matches;
         };
-        if (matchesPath(record.TargetPath()) || matchesPath(record.PartialPath()))
+        namespace Segments = HaloDesktop::Services::Downloads::Segments;
+        auto const table = Segments::TablePath(record.PartialPath());
+        if (matchesPath(record.TargetPath())
+            || matchesPath(record.PartialPath())
+            || matchesPath(table)
+            || matchesPath(Segments::TableTempPath(table)))
         {
             return true;
         }
@@ -569,7 +276,13 @@ namespace
                 RemoveFileIfPresent(path);
             }
         };
+        namespace Segments = HaloDesktop::Services::Downloads::Segments;
+        auto const table = Segments::TablePath(record.PartialPath());
+        // The part goes before its table: a full-length part must never be left
+        // without the table that says which of its bytes arrived.
         removeUnlessPreserved(record.PartialPath());
+        removeUnlessPreserved(table);
+        removeUnlessPreserved(Segments::TableTempPath(table));
         if (record.SubtitleFileName)
         {
             removeUnlessPreserved(record.RootPath / *record.SubtitleFileName);
@@ -577,6 +290,42 @@ namespace
         // Delete the playable file last. If an auxiliary cleanup fails, the
         // indexed download still has its primary content and can be retried.
         removeUnlessPreserved(record.TargetPath());
+    }
+
+    // True when any file `record` names is also named by another record, which
+    // then still needs it: a replacement and the copy it replaces can share a
+    // name when both came from the same source.
+    bool SharesFilesWithAnotherRecord(
+        HaloDesktop::Services::Downloads::DownloadRecord const& record,
+        std::map<std::wstring, HaloDesktop::Services::Downloads::DownloadRecord, std::less<>> const& records)
+    {
+        namespace Segments = HaloDesktop::Services::Downloads::Segments;
+        auto const table = Segments::TablePath(record.PartialPath());
+        std::vector<std::filesystem::path> paths{
+            record.PartialPath(),
+            table,
+            Segments::TableTempPath(table),
+            record.TargetPath(),
+        };
+        if (record.SubtitleFileName)
+        {
+            paths.push_back(record.RootPath / *record.SubtitleFileName);
+        }
+        for (auto const& [jobId, other] : records)
+        {
+            if (jobId == record.JobId)
+            {
+                continue;
+            }
+            for (auto const& path : paths)
+            {
+                if (RecordMayOwnPath(other, path))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     std::wstring SubtitleExtension(std::wstring const& url)
@@ -642,8 +391,10 @@ namespace HaloDesktop::Services::Downloads
 
     TransferEngine::TransferEngine(
         std::filesystem::path dataRoot,
-        LaunchRecoveryReporter const& launchRecovery)
-        : m_store(std::move(dataRoot)),
+        LaunchRecoveryReporter const& launchRecovery,
+        TransferEngineOptions options)
+        : m_options(std::move(options)),
+          m_store(std::move(dataRoot)),
           m_vault(m_store.Paths().VaultDirectory)
     {
         for (auto& record : m_store.Load())
@@ -1133,6 +884,7 @@ namespace HaloDesktop::Services::Downloads
                     found->second.Status = DownloadStatus::Paused;
                     found->second.ExplicitPause = true;
                     found->second.BytesPerSecond = 0;
+                    found->second.ActiveConnections = 0;
                     if (auto const flag = m_cancel.find(found->second.JobId); flag != m_cancel.end())
                     {
                         flag->second->store(true, std::memory_order_release);
@@ -1313,15 +1065,7 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::Remove(std::wstring const& jobId)
     {
-        {
-            std::scoped_lock const lock{ m_mutex };
-            if (auto const flag = m_cancel.find(jobId); flag != m_cancel.end())
-            {
-                flag->second->store(true, std::memory_order_release);
-            }
-        }
-        ::HaloDesktop::Storage::FileMutationLock const jobLease{
-            m_store.Paths().DataRoot / (L"download-job-" + jobId) };
+        std::unique_lock gate{ m_removalGate };
         auto latest = m_store.Load(false);
         if (std::any_of(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
             {
@@ -1334,31 +1078,82 @@ namespace HaloDesktop::Services::Downloads
         {
             return record.JobId == jobId;
         });
-        if (persisted == latest.end())
+        DownloadRecord removed;
         {
             std::scoped_lock const lock{ m_mutex };
-            m_records.erase(jobId);
-            std::erase(m_queue, jobId);
-            return;
-        }
-        auto removed = *persisted;
-        {
-            std::scoped_lock const lock{ m_mutex };
+            auto const active = m_activeJob && *m_activeJob == jobId;
+            auto const live = m_records.find(jobId);
+            if (persisted == latest.end() && (!active || live == m_records.end()))
+            {
+                m_records.erase(jobId);
+                std::erase(m_queue, jobId);
+                return;
+            }
+            // The worker's copy carries the live progress; the stored one is
+            // what everyone else last saw.
+            removed = active && live != m_records.end() ? live->second : *persisted;
             if (!m_activeAccount || removed.AccountKey != *m_activeAccount)
             {
                 throw std::runtime_error{ "This download belongs to another account." };
             }
-        }
-        removed.PendingDeletion = true;
-        removed.Status = DownloadStatus::Paused;
-        removed.ExplicitPause = true;
-        removed.BytesPerSecond = 0;
-        removed.UpdatedAt = NowMilliseconds();
-        m_store.Apply({ removed });
-        {
-            std::scoped_lock const lock{ m_mutex };
+            removed.PendingDeletion = true;
+            removed.Status = DownloadStatus::Paused;
+            removed.ExplicitPause = true;
+            removed.BytesPerSecond = 0;
+            removed.ActiveConnections = 0;
+            removed.UpdatedAt = NowMilliseconds();
+            // In memory first, so a worker that picks the job up from here on
+            // keeps the tombstone instead of starting it.
             m_records.insert_or_assign(jobId, removed);
             std::erase(m_queue, jobId);
+        }
+        // Stored before the worker is asked to stop, not after: a transfer in its
+        // last moments still finishes, and the end of its run must find the
+        // tombstone by then, or it would supersede the copy it was replacing.
+        m_store.Apply({ removed });
+        bool workerOwnsCleanup{};
+        {
+            std::scoped_lock const lock{ m_mutex };
+            workerOwnsCleanup = m_activeJob && *m_activeJob == jobId;
+            if (workerOwnsCleanup)
+            {
+                if (auto const flag = m_cancel.find(jobId); flag != m_cancel.end())
+                {
+                    flag->second->store(true, std::memory_order_release);
+                }
+            }
+        }
+        if (workerOwnsCleanup)
+        {
+            // The run deletes its own files once it has stopped writing them.
+            m_condition.notify_all();
+            return;
+        }
+        // No worker here runs it, and none will start it now. Another process's
+        // worker may, so its lease is waited for before anything is deleted.
+        gate.unlock();
+        ::HaloDesktop::Storage::FileMutationLock const jobLease{
+            m_store.Paths().DataRoot / (L"download-job-" + jobId) };
+        latest = m_store.Load(false);
+        auto const current = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (current == latest.end())
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
+            return;
+        }
+        removed = *current;
+        if (!removed.PendingDeletion)
+        {
+            removed.PendingDeletion = true;
+            removed.Status = DownloadStatus::Paused;
+            removed.ExplicitPause = true;
+            removed.BytesPerSecond = 0;
+            removed.UpdatedAt = NowMilliseconds();
+            m_store.Apply({ removed });
         }
         try
         {
@@ -1377,6 +1172,11 @@ namespace HaloDesktop::Services::Downloads
             }
             throw std::runtime_error{
                 "This download is saved outside Halo's download folders. It was removed from the list and its files were left in place." };
+        }
+        catch (std::exception const&)
+        {
+            // The tombstone stays, so the next launch finishes the deletion.
+            throw std::runtime_error{ DeleteFailed };
         }
     }
 
@@ -1538,6 +1338,16 @@ namespace HaloDesktop::Services::Downloads
                     refreshed.Status = DownloadStatus::Queued;
                     refreshed.BytesPerSecond = 0;
                 }
+                if (auto const live = m_records.find(jobId);
+                    live != m_records.end() && live->second.PendingDeletion)
+                {
+                    // Remove tombstones memory before it stores the tombstone, so
+                    // a stored copy read just before then must not undo it.
+                    refreshed.PendingDeletion = true;
+                    refreshed.Status = DownloadStatus::Paused;
+                    refreshed.ExplicitPause = true;
+                }
+                refreshed.ActiveConnections = 0;
                 m_records.insert_or_assign(jobId, std::move(refreshed));
                 auto const found = m_records.find(jobId);
                 if (m_activeJob
@@ -1571,15 +1381,15 @@ namespace HaloDesktop::Services::Downloads
                 try
                 {
                     auto result = TransferWithRetries(jobId, cancel, stopToken);
-                    Finish(jobId, std::move(result), std::nullopt);
+                    Finish(started, std::move(result), std::nullopt);
                 }
                 catch (TransferError const& error)
                 {
-                    Finish(jobId, std::nullopt, error);
+                    Finish(started, std::nullopt, error);
                 }
                 catch (...)
                 {
-                    Finish(jobId, std::nullopt, TransferError{
+                    Finish(started, std::nullopt, TransferError{
                         .Type = stopToken.stop_requested()
                             ? TransferError::Kind::Shutdown
                             : TransferError::Kind::Permanent,
@@ -1599,6 +1409,7 @@ namespace HaloDesktop::Services::Downloads
                     if (auto const found = m_records.find(jobId); found != m_records.end())
                     {
                         found->second.BytesPerSecond = 0;
+                        found->second.ActiveConnections = 0;
                         found->second.UpdatedAt = NowMilliseconds();
                         if (!stopToken.stop_requested()
                             && found->second.Status == DownloadStatus::Downloading)
@@ -1617,6 +1428,21 @@ namespace HaloDesktop::Services::Downloads
                         recoverySnapshot = { changed };
                     }
                     handlers = HandlersLocked();
+                }
+                if (hasChanged && changed.PendingDeletion)
+                {
+                    // Removed while it ran: nothing else will delete its files
+                    // before the next launch.
+                    try
+                    {
+                        std::scoped_lock const gate{ m_removalGate };
+                        FinishRemoved(jobId, changed, changed);
+                    }
+                    catch (...)
+                    {
+                    }
+                    m_condition.notify_all();
+                    continue;
                 }
                 try { Persist(std::move(recoverySnapshot), recoveryGeneration); } catch (...) {}
                 if (hasChanged) Notify(handlers, changed);
@@ -1695,341 +1521,41 @@ namespace HaloDesktop::Services::Downloads
             }
             record = found->second;
         }
-        std::error_code sizeError;
-        auto partial = std::filesystem::file_size(record.PartialPath(), sizeError);
-        if (sizeError)
-        {
-            partial = 0;
-        }
-        if (record.TotalBytes > 0 && partial > record.TotalBytes)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::InvalidRange,
-            };
-        }
-        if (partial > 0 && record.TotalBytes > 0 && partial == record.TotalBytes)
-        {
-            if (!MoveFileExW(
-                record.PartialPath().c_str(),
-                record.TargetPath().c_str(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+        SegmentedJob const job{
+            .Url = request.Url,
+            .Headers = request.Headers,
+            .Part = record.PartialPath(),
+            .Root = record.RootPath,
+            .KnownTotal = record.TotalBytes,
+            .Validator = record.Validator,
+            .SizeHint = record.Media.VideoSize,
+        };
+        SegmentedHost const host{
+            .ResponseMetadata = [this, &jobId](std::optional<std::wstring> const& validator, std::uint64_t total)
             {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::StorageFull,
-                };
-            }
-            return TransferResult{
-                .Bytes = partial,
-                .Total = record.TotalBytes,
-                .Validator = record.Validator,
-            };
-        }
-        if (partial > 0 && !record.Validator)
-        {
-            partial = 0;
-        }
-        std::optional<std::uint64_t> requestedPartial;
-        if (partial > 0)
-        {
-            requestedPartial = partial;
-        }
-
-        HttpResponse response;
+                UpdateResponseMetadata(jobId, validator, total);
+            },
+            .Progress = [this, &jobId](SegmentedProgress const& progress)
+            {
+                UpdateProgress(jobId, progress);
+            },
+        };
+        SegmentedFinished finished;
         try
         {
-            response = OpenGet(request.Url, request.Headers, requestedPartial, record.Validator);
+            finished = RunSegmentedTransfer(job, *cancel, stopToken, host, m_options.Transfer);
         }
-        catch (RedirectError const&)
+        catch (TransferFailure const& failure)
         {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::SourceRejected,
-            };
-        }
-        catch (...)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Retryable,
-                .Failure = DownloadFailureCode::Network,
-            };
-        }
-        std::optional<ContentRange> contentRange;
-        std::optional<std::wstring> responseValidator;
-        for (;;)
-        {
-            if (response.Status == 401 || response.Status == 403)
+            auto kind = TransferError::Kind::Permanent;
+            switch (failure.Kind)
             {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::SourceExpired,
-                };
+            case TransferFailureKind::Permanent: kind = TransferError::Kind::Permanent; break;
+            case TransferFailureKind::Retryable: kind = TransferError::Kind::Retryable; break;
+            case TransferFailureKind::Paused: kind = TransferError::Kind::Paused; break;
+            case TransferFailureKind::Shutdown: kind = TransferError::Kind::Shutdown; break;
             }
-            if (response.Status == 416)
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::InvalidRange,
-                };
-            }
-            if (response.Status == 408 || response.Status == 425 || response.Status == 429
-                || (response.Status >= 500 && response.Status <= 599))
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Retryable,
-                    .Failure = DownloadFailureCode::ServerUnavailable,
-                };
-            }
-            if (response.Status != 200 && response.Status != 206)
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::SourceRejected,
-                };
-            }
-            if (partial > 0 && response.Status == 200)
-            {
-                partial = 0;
-            }
-            if (partial > 0 && response.Status != 206)
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::InvalidRange,
-                };
-            }
-
-            contentRange.reset();
-            if (response.Status == 206)
-            {
-                contentRange = response.ContentRange ? ParseContentRange(*response.ContentRange) : std::nullopt;
-                if (!contentRange
-                    || contentRange->Start != partial
-                    || (record.TotalBytes > 0 && contentRange->Total != record.TotalBytes)
-                    || (response.ContentLength
-                        && *response.ContentLength != contentRange->End - contentRange->Start + 1))
-                {
-                    throw TransferError{
-                        .Type = TransferError::Kind::Permanent,
-                        .Failure = DownloadFailureCode::InvalidRange,
-                    };
-                }
-            }
-            responseValidator = response.ETag ? response.ETag : response.LastModified;
-            if (partial > 0 && record.Validator && responseValidator
-                && *record.Validator != *responseValidator)
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::InvalidRange,
-                };
-            }
-            if (partial > 0 && response.Status == 206 && response.CrossedOrigin)
-            {
-                // A valid ranged response from another origin may describe a
-                // different object. Retry the complete object from the original
-                // URL, allowing the redirect rules to strip protected headers.
-                try
-                {
-                    response = OpenGet(request.Url, request.Headers, std::nullopt, std::nullopt);
-                }
-                catch (RedirectError const&)
-                {
-                    throw TransferError{
-                        .Type = TransferError::Kind::Permanent,
-                        .Failure = DownloadFailureCode::SourceRejected,
-                    };
-                }
-                catch (...)
-                {
-                    throw TransferError{
-                        .Type = TransferError::Kind::Retryable,
-                        .Failure = DownloadFailureCode::Network,
-                    };
-                }
-                partial = 0;
-                continue;
-            }
-            break;
-        }
-        auto const total = contentRange
-            ? contentRange->Total
-            : response.ContentLength.value_or(record.Media.VideoSize.value_or(0));
-        UpdateResponseMetadata(jobId, responseValidator, total);
-
-        std::error_code directoryError;
-        std::filesystem::create_directories(record.RootPath, directoryError);
-        if (directoryError)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::StorageFull,
-            };
-        }
-        if (auto const free = DiskFree(record.RootPath))
-        {
-            auto const remaining = total > partial ? total - partial : 0;
-            if (!HasSufficientSpace(*free, remaining))
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::StorageFull,
-                };
-            }
-        }
-        auto const disposition = partial == 0 ? CREATE_ALWAYS : OPEN_ALWAYS;
-        wil::unique_hfile output{ CreateFileW(
-            record.PartialPath().c_str(),
-            GENERIC_WRITE,
-            FILE_SHARE_READ | FILE_SHARE_DELETE,
-            nullptr,
-            disposition,
-            FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-            nullptr) };
-        if (!output)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::StorageFull,
-            };
-        }
-        if (partial > 0)
-        {
-            LARGE_INTEGER distance{ .QuadPart = static_cast<LONGLONG>(partial) };
-            if (!SetFilePointerEx(output.get(), distance, nullptr, FILE_BEGIN))
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::StorageFull,
-                };
-            }
-        }
-
-        std::array<std::uint8_t, TransferChunkSize> buffer{};
-        auto written = partial;
-        auto const started = std::chrono::steady_clock::now();
-        auto lastProgress = started;
-        auto lastDurable = started;
-        TransferRateWindow rate{ RateWindow };
-        rate.Reset(started, written);
-        for (;;)
-        {
-            if (stopToken.stop_requested())
-            {
-                throw TransferError{ .Type = TransferError::Kind::Shutdown };
-            }
-            if (cancel->load(std::memory_order_acquire))
-            {
-                throw TransferError{ .Type = TransferError::Kind::Paused };
-            }
-            if (auto const free = DiskFree(record.RootPath))
-            {
-                auto const remaining = total > written ? total - written : 0;
-                if (!HasSufficientSpace(*free, remaining))
-                {
-                    throw TransferError{
-                        .Type = TransferError::Kind::Permanent,
-                        .Failure = DownloadFailureCode::StorageFull,
-                    };
-                }
-            }
-            DWORD read{};
-            if (!WinHttpReadData(
-                response.Request.get(),
-                buffer.data(),
-                static_cast<DWORD>(buffer.size()),
-                &read))
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Retryable,
-                    .Failure = DownloadFailureCode::Network,
-                };
-            }
-            if (read == 0)
-            {
-                break;
-            }
-            // Chunked responses do not reveal their final size. Recheck after
-            // receiving this chunk, before committing it to disk, so an
-            // unknown-size transfer cannot consume the 64 MiB safety reserve.
-            if (auto const free = DiskFree(record.RootPath);
-                free && !HasSufficientSpace(*free, read))
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::StorageFull,
-                };
-            }
-            if (stopToken.stop_requested())
-            {
-                throw TransferError{ .Type = TransferError::Kind::Shutdown };
-            }
-            if (cancel->load(std::memory_order_acquire))
-            {
-                throw TransferError{ .Type = TransferError::Kind::Paused };
-            }
-            DWORD chunkWritten{};
-            if (!WriteFile(output.get(), buffer.data(), read, &chunkWritten, nullptr)
-                || chunkWritten != read)
-            {
-                throw TransferError{
-                    .Type = TransferError::Kind::Permanent,
-                    .Failure = DownloadFailureCode::StorageFull,
-                };
-            }
-            written += chunkWritten;
-            auto const now = std::chrono::steady_clock::now();
-            auto const elapsed = now - lastProgress;
-            if (elapsed >= ProgressInterval)
-            {
-                auto const durable = now - lastDurable >= DurableInterval;
-                if (durable)
-                {
-                    if (!FlushFileBuffers(output.get()))
-                    {
-                        throw TransferError{
-                            .Type = TransferError::Kind::Permanent,
-                            .Failure = DownloadFailureCode::StorageFull,
-                        };
-                    }
-                    lastDurable = now;
-                }
-                // Persisting only on a durable tick keeps the stored byte count
-                // at or below what is actually on disk.
-                UpdateProgress(jobId, written, total, rate.Record(now, written), durable);
-                lastProgress = now;
-            }
-        }
-        if (stopToken.stop_requested())
-        {
-            throw TransferError{ .Type = TransferError::Kind::Shutdown };
-        }
-        if (cancel->load(std::memory_order_acquire))
-        {
-            throw TransferError{ .Type = TransferError::Kind::Paused };
-        }
-        if (!FlushFileBuffers(output.get()))
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::StorageFull,
-            };
-        }
-        output.reset();
-        if (total > 0 && written < total)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Retryable,
-                .Failure = DownloadFailureCode::Network,
-            };
-        }
-        if (total > 0 && written > total)
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::InvalidRange,
-            };
+            throw TransferError{ .Type = kind, .Failure = failure.Code };
         }
         if (!MoveFileExW(
             record.PartialPath().c_str(),
@@ -2048,9 +1574,9 @@ namespace HaloDesktop::Services::Downloads
             subtitle = DownloadSubtitle(*request.Subtitle, record.TargetPath(), cancel, stopToken);
         }
         return TransferResult{
-            .Bytes = written,
-            .Total = (std::max)(total, written),
-            .Validator = responseValidator,
+            .Bytes = finished.Bytes,
+            .Total = (std::max)(finished.Total, finished.Bytes),
+            .Validator = std::move(finished.Validator),
             .Subtitle = std::move(subtitle),
         };
     }
@@ -2061,63 +1587,92 @@ namespace HaloDesktop::Services::Downloads
         std::shared_ptr<std::atomic_bool> const& cancel,
         std::stop_token stopToken) const noexcept
     {
-        auto language = SafeLanguage(request.Language);
-        auto name = target.stem().wstring() + L"." + language + L"." + SubtitleExtension(request.Url);
-        auto path = target.parent_path() / name;
-        auto temporary = path;
-        temporary += L".part";
-        auto cleanup = wil::scope_exit([&temporary]() noexcept
-        {
-            std::error_code ignored;
-            std::filesystem::remove(temporary, ignored);
-        });
         try
         {
-            auto response = OpenGet(request.Url, request.Headers, std::nullopt, std::nullopt);
-            if (response.Status != 200 || (response.ContentLength && *response.ContentLength > MaximumSubtitleBytes))
+            auto language = SafeLanguage(request.Language);
+            auto name = target.stem().wstring() + L"." + language + L"." + SubtitleExtension(request.Url);
+            auto const path = target.parent_path() / name;
+            auto temporary = path;
+            temporary += L".part";
+            auto cleanup = wil::scope_exit([&temporary]() noexcept
             {
-                return std::nullopt;
-            }
-            wil::unique_hfile output{ CreateFileW(
-                temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
-                FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr) };
-            if (!output)
+                std::error_code ignored;
+                std::filesystem::remove(temporary, ignored);
+            });
+            std::atomic_bool opening{ true };
+            bool saved{};
+            // Runs on a watched thread, so a pause or shutdown closes its request
+            // instead of waiting for a slow subtitle host.
+            auto const work = [&request, &temporary, &path, &opening, &saved](Http::Cancellation& cancellation)
             {
-                return std::nullopt;
-            }
-            std::array<std::uint8_t, TransferChunkSize> buffer{};
-            std::uint64_t written{};
-            for (;;)
-            {
-                if (stopToken.stop_requested() || cancel->load(std::memory_order_acquire))
+                try
                 {
-                    return std::nullopt;
+                    auto response = Http::OpenGet(request.Url, request.Headers, std::nullopt, std::nullopt, cancellation);
+                    opening.store(false, std::memory_order_release);
+                    if (response.Head.Status != 200
+                        || (response.Head.ContentLength && *response.Head.ContentLength > MaximumSubtitleBytes))
+                    {
+                        return;
+                    }
+                    wil::unique_hfile output{ CreateFileW(
+                        temporary.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS,
+                        FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN, nullptr) };
+                    if (!output)
+                    {
+                        return;
+                    }
+                    std::vector<std::uint8_t> buffer(TransferChunkSize);
+                    std::uint64_t written{};
+                    for (;;)
+                    {
+                        std::size_t read{};
+                        auto const outcome = Http::ReadSome(response, buffer, read, cancellation);
+                        if (outcome == Http::ReadOutcome::Failed)
+                        {
+                            return;
+                        }
+                        if (outcome == Http::ReadOutcome::End)
+                        {
+                            break;
+                        }
+                        if (written + read > MaximumSubtitleBytes)
+                        {
+                            return;
+                        }
+                        DWORD chunkWritten{};
+                        if (!WriteFile(output.get(), buffer.data(), static_cast<DWORD>(read), &chunkWritten, nullptr)
+                            || chunkWritten != read)
+                        {
+                            return;
+                        }
+                        written += chunkWritten;
+                    }
+                    if (!FlushFileBuffers(output.get()) || cancellation.IsCancelled())
+                    {
+                        return;
+                    }
+                    output.reset();
+                    saved = MoveFileExW(
+                        temporary.c_str(), path.c_str(),
+                        MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != FALSE;
                 }
-                DWORD read{};
-                if (!WinHttpReadData(response.Request.get(), buffer.data(), static_cast<DWORD>(buffer.size()), &read))
+                catch (...)
                 {
-                    return std::nullopt;
                 }
-                if (read == 0) break;
-                if (written + read > MaximumSubtitleBytes) return std::nullopt;
-                DWORD chunkWritten{};
-                if (!WriteFile(output.get(), buffer.data(), read, &chunkWritten, nullptr)
-                    || chunkWritten != read)
-                {
-                    return std::nullopt;
-                }
-                written += chunkWritten;
-            }
-            if (!FlushFileBuffers(output.get())) return std::nullopt;
-            output.reset();
-            if (!MoveFileExW(
-                temporary.c_str(), path.c_str(),
-                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            };
+            static_cast<void>(Http::RunWatched(
+                work,
+                [&cancel]() { return cancel->load(std::memory_order_acquire); },
+                [&stopToken]() { return stopToken.stop_requested(); },
+                [&opening]() { return opening.load(std::memory_order_acquire); },
+                m_options.Transfer.Timeouts.CancelPoll,
+                m_options.SubtitleResponse));
+            if (!saved)
             {
                 return std::nullopt;
             }
             cleanup.release();
-            return std::pair{ name, language };
+            return std::pair{ std::move(name), std::move(language) };
         }
         catch (...)
         {
@@ -2126,10 +1681,12 @@ namespace HaloDesktop::Services::Downloads
     }
 
     void TransferEngine::Finish(
-        std::wstring const& jobId,
+        DownloadRecord const& runRecord,
         std::optional<TransferResult> result,
         std::optional<TransferError> error)
     {
+        auto const& jobId = runRecord.JobId;
+        std::scoped_lock const gate{ m_removalGate };
         DownloadRecord changed;
         bool hasChanged{};
         std::optional<DownloadRecord> replaced;
@@ -2139,76 +1696,92 @@ namespace HaloDesktop::Services::Downloads
         std::vector<DownloadChangedHandler> handlers;
         std::uint64_t generation{};
         {
-            std::scoped_lock const lock{ m_mutex };
+            std::unique_lock lock{ m_mutex };
             auto const found = m_records.find(jobId);
-            if (found != m_records.end())
+            if (found == m_records.end() || found->second.PendingDeletion)
             {
-                auto& record = found->second;
-                originalCurrent = record;
-                if (result)
+                // Removed while it ran, which Remove left to this run so nothing
+                // was deleted while it still wrote. Whatever it finished, the
+                // copy it was replacing stays.
+                auto files = found != m_records.end() ? found->second : runRecord;
+                if (result && result->Subtitle)
                 {
-                    record.Status = DownloadStatus::Done;
-                    record.DownloadedBytes = result->Bytes;
-                    record.TotalBytes = result->Total;
-                    record.Validator = std::move(result->Validator);
-                    record.BytesPerSecond = 0;
-                    record.Failure.reset();
-                    record.ExplicitPause = false;
-                    if (result->Subtitle)
-                    {
-                        record.SubtitleFileName = result->Subtitle->first;
-                        record.SubtitleLanguage = result->Subtitle->second;
-                    }
-                    if (record.Replacement)
-                    {
-                        if (auto const old = m_records.find(record.Replacement->JobId); old != m_records.end())
-                        {
-                            originalReplaced = old->second;
-                            old->second.PendingDeletion = true;
-                            old->second.Status = DownloadStatus::Paused;
-                            old->second.ExplicitPause = true;
-                            old->second.BytesPerSecond = 0;
-                            old->second.UpdatedAt = NowMilliseconds();
-                            replaced = old->second;
-                        }
-                    }
+                    files.SubtitleFileName = result->Subtitle->first;
+                    files.SubtitleLanguage = result->Subtitle->second;
                 }
-                else if (error && error->Type == TransferError::Kind::Paused)
-                {
-                    record.Status = DownloadStatus::Paused;
-                    record.BytesPerSecond = 0;
-                }
-                else if (error && error->Type == TransferError::Kind::Shutdown)
-                {
-                    record.BytesPerSecond = 0;
-                }
-                else
-                {
-                    record.Status = DownloadStatus::Failed;
-                    record.Failure = error ? error->Failure : DownloadFailureCode::Unknown;
-                    record.BytesPerSecond = 0;
-                }
-                record.UpdatedAt = NowMilliseconds();
-                if (result && replaced)
-                {
-                    // Keep both the live and durable projections non-terminal until
-                    // the old files have either been removed or deliberately retained
-                    // behind their tombstone.
-                    record.Status = DownloadStatus::Downloading;
-                }
-                changed = record;
-                hasChanged = true;
+                auto current = found != m_records.end()
+                    ? std::optional<DownloadRecord>{ files }
+                    : std::nullopt;
+                m_cancel.erase(jobId);
+                m_activeJob.reset();
+                lock.unlock();
+                FinishRemoved(jobId, std::move(current), files);
+                m_condition.notify_all();
+                return;
             }
+            auto& record = found->second;
+            originalCurrent = record;
+            record.ActiveConnections = 0;
+            if (result)
+            {
+                record.Status = DownloadStatus::Done;
+                record.DownloadedBytes = result->Bytes;
+                record.TotalBytes = result->Total;
+                record.Validator = std::move(result->Validator);
+                record.BytesPerSecond = 0;
+                record.Failure.reset();
+                record.ExplicitPause = false;
+                if (result->Subtitle)
+                {
+                    record.SubtitleFileName = result->Subtitle->first;
+                    record.SubtitleLanguage = result->Subtitle->second;
+                }
+                if (record.Replacement)
+                {
+                    if (auto const old = m_records.find(record.Replacement->JobId); old != m_records.end())
+                    {
+                        originalReplaced = old->second;
+                        old->second.PendingDeletion = true;
+                        old->second.Status = DownloadStatus::Paused;
+                        old->second.ExplicitPause = true;
+                        old->second.BytesPerSecond = 0;
+                        old->second.UpdatedAt = NowMilliseconds();
+                        replaced = old->second;
+                    }
+                }
+            }
+            else if (error && error->Type == TransferError::Kind::Paused)
+            {
+                record.Status = DownloadStatus::Paused;
+                record.BytesPerSecond = 0;
+            }
+            else if (error && error->Type == TransferError::Kind::Shutdown)
+            {
+                record.BytesPerSecond = 0;
+            }
+            else
+            {
+                record.Status = DownloadStatus::Failed;
+                record.Failure = error ? error->Failure : DownloadFailureCode::Unknown;
+                record.BytesPerSecond = 0;
+            }
+            record.UpdatedAt = NowMilliseconds();
+            if (result && replaced)
+            {
+                // Keep both the live and durable projections non-terminal until
+                // the old files have either been removed or deliberately retained
+                // behind their tombstone.
+                record.Status = DownloadStatus::Downloading;
+            }
+            changed = record;
+            hasChanged = true;
             m_cancel.erase(jobId);
             m_activeJob.reset();
             generation = ++m_generation;
-            if (hasChanged)
+            snapshot = { changed };
+            if (replaced)
             {
-                snapshot = { changed };
-                if (replaced)
-                {
-                    snapshot.push_back(*replaced);
-                }
+                snapshot.push_back(*replaced);
             }
             handlers = HandlersLocked();
         }
@@ -2266,6 +1839,58 @@ namespace HaloDesktop::Services::Downloads
         m_condition.notify_all();
     }
 
+    // Deletes what a run removed while it ran left behind: its request, its
+    // files unless another record still names one of them, and the record. A
+    // file outside the download folders is never touched; an I/O failure keeps
+    // the tombstone so the next launch tries again. Called with the removal gate
+    // held and m_mutex not held.
+    void TransferEngine::FinishRemoved(
+        std::wstring const& jobId,
+        std::optional<DownloadRecord> current,
+        DownloadRecord const& files)
+    {
+        bool shared{};
+        {
+            std::scoped_lock const lock{ m_mutex };
+            try
+            {
+                shared = SharesFilesWithAnotherRecord(files, m_records);
+            }
+            catch (...)
+            {
+                // A path that cannot be compared is treated as shared: keeping a
+                // file is recoverable, deleting another record's is not.
+                shared = true;
+            }
+        }
+        try
+        {
+            m_vault.Remove(jobId);
+            if (!shared)
+            {
+                RemoveRecordFiles(files, m_store.ApprovedRoots());
+            }
+            m_store.Apply({}, { jobId });
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
+        }
+        catch (ContainmentError const&)
+        {
+            OutputDebugStringW(L"Halo forgot a deletion that pointed outside its download folders.\n");
+            try { m_store.Apply({}, { jobId }); } catch (...) {}
+            std::scoped_lock const lock{ m_mutex };
+            m_records.erase(jobId);
+        }
+        catch (...)
+        {
+            OutputDebugStringW(L"Halo kept a removed download's tombstone to finish deleting it at launch.\n");
+            if (current)
+            {
+                try { m_store.Apply({ *current }); } catch (...) {}
+            }
+        }
+    }
+
     void TransferEngine::UpdateResponseMetadata(
         std::wstring const& jobId,
         std::optional<std::wstring> validator,
@@ -2288,10 +1913,7 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::UpdateProgress(
         std::wstring const& jobId,
-        std::uint64_t downloadedBytes,
-        std::uint64_t totalBytes,
-        std::uint64_t bytesPerSecond,
-        bool persist)
+        SegmentedProgress const& progress)
     {
         DownloadRecord changed;
         std::vector<DownloadRecord> snapshot;
@@ -2300,17 +1922,22 @@ namespace HaloDesktop::Services::Downloads
         {
             std::scoped_lock const lock{ m_mutex };
             auto const found = m_records.find(jobId);
-            if (found == m_records.end()) return;
-            found->second.DownloadedBytes = downloadedBytes;
-            if (totalBytes > 0) found->second.TotalBytes = totalBytes;
-            found->second.BytesPerSecond = bytesPerSecond;
+            // A removed download winding down reports nothing: it is no longer
+            // anyone's to see.
+            if (found == m_records.end() || found->second.PendingDeletion) return;
+            found->second.DownloadedBytes = progress.Bytes;
+            if (progress.Total > 0) found->second.TotalBytes = progress.Total;
+            found->second.BytesPerSecond = progress.BytesPerSecond;
+            found->second.ActiveConnections = found->second.Status == DownloadStatus::Downloading
+                ? progress.Connections
+                : 0;
             found->second.UpdatedAt = NowMilliseconds();
             changed = found->second;
             generation = ++m_generation;
             snapshot = { changed };
             handlers = HandlersLocked();
         }
-        if (persist)
+        if (progress.Persist)
         {
             Persist(std::move(snapshot), generation);
         }
@@ -2388,24 +2015,59 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::ReconcileMissingFiles()
     {
-        std::vector<std::wstring> candidates;
+        struct Candidate final
+        {
+            std::wstring JobId;
+            std::filesystem::path Root;
+            std::filesystem::path Target;
+            std::uint64_t TotalBytes{};
+            bool MarkedMissing{};
+        };
+        auto const markedMissing = [](DownloadRecord const& record)
+        {
+            return record.Status == DownloadStatus::Failed
+                && record.Failure == DownloadFailureCode::MissingFile;
+        };
+        std::vector<Candidate> candidates;
         {
             std::scoped_lock const lock{ m_mutex };
-            for (auto& [jobId, record] : m_records)
+            for (auto const& [jobId, record] : m_records)
             {
-                if (record.Status == DownloadStatus::Done)
+                if (record.PendingDeletion)
                 {
-                    candidates.push_back(jobId);
+                    continue;
+                }
+                auto const marked = markedMissing(record);
+                if (record.Status == DownloadStatus::Done || marked)
+                {
+                    candidates.push_back(Candidate{
+                        .JobId = jobId,
+                        .Root = record.RootPath,
+                        .Target = record.TargetPath(),
+                        .TotalBytes = record.TotalBytes,
+                        .MarkedMissing = marked,
+                    });
                 }
             }
         }
-        for (auto const& jobId : candidates)
+        for (auto const& candidate : candidates)
         {
+            // Read outside every lock. Only a folder that is there without the
+            // file means the file is gone; an unplugged drive says nothing.
+            auto const presence = DetectFilePresence(candidate.Root, candidate.Target);
+            auto const nowMissing = !candidate.MarkedMissing && presence.Kind == FilePresenceKind::Missing;
+            auto const returned = candidate.MarkedMissing
+                && presence.Kind == FilePresenceKind::Present
+                && presence.Bytes == candidate.TotalBytes;
+            if (!nowMissing && !returned)
+            {
+                continue;
+            }
             std::unique_ptr<::HaloDesktop::Storage::FileMutationLock> jobLease;
             try
             {
                 jobLease = std::make_unique<::HaloDesktop::Storage::FileMutationLock>(
-                    m_store.Paths().DataRoot / (L"download-job-" + jobId),
+                    m_store.Paths().DataRoot / (L"download-job-" + candidate.JobId),
                     std::chrono::milliseconds{ 0 });
             }
             catch (...)
@@ -2418,20 +2080,29 @@ namespace HaloDesktop::Services::Downloads
             std::vector<DownloadChangedHandler> handlers;
             {
                 std::scoped_lock const lock{ m_mutex };
-                auto const found = m_records.find(jobId);
-                if (found == m_records.end() || found->second.Status != DownloadStatus::Done)
+                auto const found = m_records.find(candidate.JobId);
+                if (found == m_records.end() || found->second.PendingDeletion)
                 {
                     continue;
                 }
-                std::error_code error;
-                if (std::filesystem::is_regular_file(found->second.TargetPath(), error) && !error)
-                {
-                    continue;
-                }
+                // Re-checked under the lock: the record may have moved on while
+                // the disk was being read.
                 previous = found->second;
-                found->second.Status = DownloadStatus::Failed;
-                found->second.Failure = DownloadFailureCode::MissingFile;
-                found->second.BytesPerSecond = 0;
+                if (returned && markedMissing(found->second))
+                {
+                    found->second.Status = DownloadStatus::Done;
+                    found->second.Failure.reset();
+                }
+                else if (nowMissing && found->second.Status == DownloadStatus::Done)
+                {
+                    found->second.Status = DownloadStatus::Failed;
+                    found->second.Failure = DownloadFailureCode::MissingFile;
+                    found->second.BytesPerSecond = 0;
+                }
+                else
+                {
+                    continue;
+                }
                 found->second.UpdatedAt = NowMilliseconds();
                 changed = found->second;
                 handlers = HandlersLocked();

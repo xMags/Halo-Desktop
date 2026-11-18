@@ -6,22 +6,30 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 
+#include "Services/Downloads/DownloadHttp.h"
+#include "Services/Downloads/SegmentPlanner.h"
+#include "Services/Downloads/SegmentedTransfer.h"
+
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <cctype>
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iterator>
 #include <limits>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
 #include <thread>
+#include <utility>
 #include <vector>
 #include <winrt/Windows.Foundation.h>
 
@@ -650,6 +658,1267 @@ namespace
             std::istreambuf_iterator<char>{},
         };
     }
+
+    template <typename Predicate>
+    void WaitUntil(Predicate const& done, char const* message)
+    {
+        auto const deadline = std::chrono::steady_clock::now() + TransferTimeout;
+        while (std::chrono::steady_clock::now() < deadline)
+        {
+            if (done())
+            {
+                return;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 20 });
+        }
+        throw std::runtime_error{ message };
+    }
+
+    [[nodiscard]] bool ListsJob(TransferEngine& engine, std::wstring const& jobId)
+    {
+        auto const records = engine.List();
+        return std::any_of(records.begin(), records.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+    }
+
+    [[nodiscard]] std::filesystem::path TablePathOf(DownloadRecord const& record)
+    {
+        return HaloDesktop::Services::Downloads::Segments::TablePath(record.PartialPath());
+    }
+}
+
+// The multi-connection transfer against a configurable loopback file server:
+// the reference client's `downloads/segmented.rs` tests mirrored, plus the
+// waits, refusals and engine rules this package added. Every finished file is
+// compared byte for byte with what the server holds.
+namespace
+{
+    namespace Downloads = HaloDesktop::Services::Downloads;
+    namespace Segments = HaloDesktop::Services::Downloads::Segments;
+    using Downloads::SegmentedFinished;
+    using Downloads::SegmentedHost;
+    using Downloads::SegmentedJob;
+    using Downloads::SegmentedOptions;
+    using Downloads::SegmentedProgress;
+    using Downloads::TransferEngineOptions;
+    using Downloads::TransferFailure;
+    using Downloads::TransferFailureKind;
+
+    constexpr char const* EtagValue = "\"v1\"";
+    constexpr wchar_t const* WideEtag = L"\"v1\"";
+
+    // A pattern in which no two nearby offsets agree by accident.
+    [[nodiscard]] std::vector<std::uint8_t> Content(std::size_t length)
+    {
+        std::uint32_t state = 0x2545f491u;
+        std::vector<std::uint8_t> result(length);
+        for (auto& value : result)
+        {
+            state ^= state << 13;
+            state ^= state >> 17;
+            state ^= state << 5;
+            value = static_cast<std::uint8_t>(state >> 24);
+        }
+        return result;
+    }
+
+    struct LoggedRequest final
+    {
+        std::optional<std::uint64_t> Range;
+        std::optional<std::string> IfRange;
+        int Status{};
+    };
+
+    struct FileServerOptions final
+    {
+        std::vector<std::uint8_t> Body;
+        std::optional<std::string> ETag{ EtagValue };
+        // Content-Length on a whole-file answer.
+        bool StateSize{ true };
+        // False answers 200 with the whole file to any range.
+        bool HonourRanges{ true };
+        // Answers a ranged 206 whatever If-Range says.
+        bool IgnoreIfRange{};
+        std::optional<std::string> AcceptRanges;
+        std::optional<std::string> ContentEncoding;
+        // Any connection past this many at once is refused with RefuseStatus.
+        std::size_t Limit{};
+        int RefuseStatus{ 503 };
+        std::optional<int> RetryAfter;
+        // Ranged answers come from a different object under the same ETag.
+        bool Inconsistent{};
+        // Pause between 16 KiB writes.
+        std::chrono::milliseconds Pace{};
+        // How long a ranged request waits for its answer.
+        std::chrono::milliseconds RangedDelay{};
+        // How long every request waits for its answer.
+        std::chrono::milliseconds ResponseDelay{};
+        // The first ranged answer sends a little and then nothing more.
+        bool StallFirstRanged{};
+        // Answers every request with a redirect here instead.
+        std::optional<std::string> RedirectTo;
+    };
+
+    // A plain HTTP/1.1 file server on loopback, one thread per connection, that
+    // logs every request and counts how many connections it serves at once.
+    class FileServer final
+    {
+    public:
+        explicit FileServer(FileServerOptions options)
+            : m_options(std::move(options))
+        {
+            WSADATA data{};
+            if (WSAStartup(MAKEWORD(2, 2), &data) != 0)
+            {
+                throw std::runtime_error{ "Winsock could not start for the file server." };
+            }
+            m_listener = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+            sockaddr_in address{};
+            address.sin_family = AF_INET;
+            address.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+            int addressSize = sizeof(address);
+            if (m_listener == INVALID_SOCKET
+                || bind(m_listener, reinterpret_cast<sockaddr*>(&address), sizeof(address)) == SOCKET_ERROR
+                || listen(m_listener, SOMAXCONN) == SOCKET_ERROR
+                || getsockname(m_listener, reinterpret_cast<sockaddr*>(&address), &addressSize) == SOCKET_ERROR)
+            {
+                if (m_listener != INVALID_SOCKET) closesocket(m_listener);
+                WSACleanup();
+                throw std::runtime_error{ "The file server could not listen." };
+            }
+            m_port = ntohs(address.sin_port);
+            m_acceptor = std::thread{ [this]() { Accept(); } };
+        }
+
+        ~FileServer()
+        {
+            {
+                std::scoped_lock const lock{ m_mutex };
+                m_stopping = true;
+                for (auto const client : m_clients)
+                {
+                    shutdown(client, SD_BOTH);
+                }
+            }
+            m_stopped.notify_all();
+            closesocket(m_listener);
+            if (m_acceptor.joinable()) m_acceptor.join();
+            std::vector<std::thread> workers;
+            {
+                std::scoped_lock const lock{ m_mutex };
+                workers = std::move(m_workers);
+            }
+            for (auto& worker : workers)
+            {
+                if (worker.joinable()) worker.join();
+            }
+            WSACleanup();
+        }
+
+        FileServer(FileServer const&) = delete;
+        FileServer& operator=(FileServer const&) = delete;
+
+        [[nodiscard]] std::wstring Url(std::wstring_view path = L"/movie.mkv") const
+        {
+            return L"http://127.0.0.1:" + std::to_wstring(m_port) + std::wstring{ path };
+        }
+
+        [[nodiscard]] std::vector<std::uint8_t> const& Body() const noexcept
+        {
+            return m_options.Body;
+        }
+
+        [[nodiscard]] std::vector<LoggedRequest> Log() const
+        {
+            std::scoped_lock const lock{ m_mutex };
+            return m_log;
+        }
+
+        [[nodiscard]] std::size_t Requests() const
+        {
+            std::scoped_lock const lock{ m_mutex };
+            return m_log.size();
+        }
+
+        [[nodiscard]] std::size_t MaxActive() const noexcept
+        {
+            return m_maxActive.load();
+        }
+
+        // Answers every later request with this status and no body; 0 serves again.
+        void ForceStatus(int status) noexcept
+        {
+            m_forcedStatus.store(status);
+        }
+
+    private:
+        void Accept()
+        {
+            for (;;)
+            {
+                auto const client = accept(m_listener, nullptr, nullptr);
+                std::scoped_lock const lock{ m_mutex };
+                if (client == INVALID_SOCKET || m_stopping)
+                {
+                    if (client != INVALID_SOCKET) closesocket(client);
+                    return;
+                }
+                m_clients.push_back(client);
+                m_workers.emplace_back([this, client]()
+                {
+                    try
+                    {
+                        Serve(client);
+                    }
+                    catch (...)
+                    {
+                    }
+                    std::scoped_lock const done{ m_mutex };
+                    std::erase(m_clients, client);
+                    shutdown(client, SD_BOTH);
+                    closesocket(client);
+                });
+            }
+        }
+
+        // False once the server is stopping.
+        [[nodiscard]] bool Wait(std::chrono::milliseconds duration)
+        {
+            std::unique_lock lock{ m_mutex };
+            return !m_stopped.wait_for(lock, duration, [this] { return m_stopping; });
+        }
+
+        void Send(SOCKET client, std::string_view data)
+        {
+            std::size_t sent{};
+            while (sent < data.size())
+            {
+                auto const count = send(client, data.data() + sent, static_cast<int>((std::min)(data.size() - sent, std::size_t{ 1 << 20 })), 0);
+                if (count <= 0)
+                {
+                    throw std::runtime_error{ "The client went away." };
+                }
+                sent += static_cast<std::size_t>(count);
+            }
+        }
+
+        void Serve(SOCKET client)
+        {
+            std::string request;
+            std::array<char, 2048> buffer{};
+            while (request.find("\r\n\r\n") == std::string::npos && request.size() < 64u * 1024u)
+            {
+                auto const count = recv(client, buffer.data(), static_cast<int>(buffer.size()), 0);
+                if (count <= 0)
+                {
+                    return;
+                }
+                request.append(buffer.data(), static_cast<std::size_t>(count));
+            }
+            std::optional<std::uint64_t> range;
+            std::optional<std::string> ifRange;
+            std::size_t lineStart = request.find("\r\n");
+            while (lineStart != std::string::npos && lineStart + 2 < request.size())
+            {
+                auto const lineEnd = request.find("\r\n", lineStart + 2);
+                if (lineEnd == std::string::npos) break;
+                auto const line = request.substr(lineStart + 2, lineEnd - lineStart - 2);
+                lineStart = lineEnd;
+                auto const colon = line.find(':');
+                if (colon == std::string::npos) continue;
+                auto name = line.substr(0, colon);
+                std::transform(name.begin(), name.end(), name.begin(), [](char character)
+                {
+                    return static_cast<char>(std::tolower(static_cast<unsigned char>(character)));
+                });
+                auto value = line.substr(colon + 1);
+                while (!value.empty() && value.front() == ' ') value.erase(value.begin());
+                if (name == "range" && value.starts_with("bytes=") && value.ends_with("-"))
+                {
+                    range = std::stoull(value.substr(6, value.size() - 7));
+                }
+                else if (name == "if-range")
+                {
+                    ifRange = value;
+                }
+            }
+
+            if (m_options.RedirectTo)
+            {
+                Record(LoggedRequest{ range, ifRange, 302 });
+                Send(client, "HTTP/1.1 302 Found\r\nLocation: " + *m_options.RedirectTo
+                    + "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                return;
+            }
+            if (m_options.ResponseDelay.count() > 0 && !Wait(m_options.ResponseDelay))
+            {
+                return;
+            }
+            if (range && m_options.RangedDelay.count() > 0 && !Wait(m_options.RangedDelay))
+            {
+                return;
+            }
+            auto const active = ++m_active;
+            auto const leave = std::unique_ptr<std::atomic_size_t, void (*)(std::atomic_size_t*)>{
+                &m_active, [](std::atomic_size_t* value) { --*value; } };
+            auto const forced = m_forcedStatus.load();
+            auto const refused = forced != 0 || (m_options.Limit > 0 && active > m_options.Limit);
+            int status{};
+            if (refused)
+            {
+                status = forced != 0 ? forced : m_options.RefuseStatus;
+            }
+            else
+            {
+                auto observed = m_maxActive.load();
+                while (active > observed && !m_maxActive.compare_exchange_weak(observed, active))
+                {
+                }
+                auto const honours = m_options.HonourRanges
+                    && (m_options.IgnoreIfRange || !ifRange || ifRange == m_options.ETag);
+                status = range && honours ? 206 : 200;
+            }
+            Record(LoggedRequest{ range, ifRange, status });
+            if (refused)
+            {
+                std::string head = "HTTP/1.1 " + std::to_string(status) + " Refused\r\n";
+                if (m_options.RetryAfter) head += "Retry-After: " + std::to_string(*m_options.RetryAfter) + "\r\n";
+                head += "Content-Length: 0\r\nConnection: close\r\n\r\n";
+                Send(client, head);
+                return;
+            }
+            auto const total = m_options.Body.size();
+            auto const start = status == 206 ? static_cast<std::size_t>(*range) : std::size_t{};
+            if (start >= total && total > 0)
+            {
+                Send(client, "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                return;
+            }
+            std::string head = status == 206 ? "HTTP/1.1 206 Partial Content\r\n" : "HTTP/1.1 200 OK\r\n";
+            if (status == 206)
+            {
+                head += "Content-Range: bytes " + std::to_string(start) + "-" + std::to_string(total - 1)
+                    + "/" + std::to_string(total) + "\r\n";
+            }
+            if (status == 206 || m_options.StateSize)
+            {
+                head += "Content-Length: " + std::to_string(total - start) + "\r\n";
+            }
+            if (m_options.ETag) head += "ETag: " + *m_options.ETag + "\r\n";
+            if (m_options.AcceptRanges) head += "Accept-Ranges: " + *m_options.AcceptRanges + "\r\n";
+            if (m_options.ContentEncoding) head += "Content-Encoding: " + *m_options.ContentEncoding + "\r\n";
+            head += "Connection: close\r\n\r\n";
+            Send(client, head);
+            auto const flip = status == 206 && m_options.Inconsistent;
+            auto const stall = status == 206 && m_options.StallFirstRanged && !m_stalledOnce.exchange(true);
+            constexpr std::size_t ChunkSize = 16u * 1024u;
+            for (auto offset = start; offset < total; offset += ChunkSize)
+            {
+                auto const count = (std::min)(ChunkSize, total - offset);
+                std::string chunk(reinterpret_cast<char const*>(m_options.Body.data() + offset), count);
+                if (flip)
+                {
+                    for (auto& character : chunk) character = static_cast<char>(character ^ 0xff);
+                }
+                Send(client, chunk);
+                if (stall && offset - start >= 2 * ChunkSize)
+                {
+                    static_cast<void>(Wait(std::chrono::minutes{ 5 }));
+                    return;
+                }
+                if (m_options.Pace.count() > 0 && !Wait(m_options.Pace))
+                {
+                    return;
+                }
+            }
+        }
+
+        void Record(LoggedRequest entry)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_log.push_back(std::move(entry));
+        }
+
+        FileServerOptions m_options;
+        SOCKET m_listener{ INVALID_SOCKET };
+        std::uint16_t m_port{};
+        mutable std::mutex m_mutex;
+        std::condition_variable m_stopped;
+        bool m_stopping{};
+        std::vector<SOCKET> m_clients;
+        std::vector<std::thread> m_workers;
+        std::vector<LoggedRequest> m_log;
+        std::atomic_size_t m_active{};
+        std::atomic_size_t m_maxActive{};
+        std::atomic_int m_forcedStatus{};
+        std::atomic_bool m_stalledOnce{};
+        std::thread m_acceptor;
+    };
+
+    class FakeHost final
+    {
+    public:
+        [[nodiscard]] SegmentedHost Host()
+        {
+            return SegmentedHost{
+                .ResponseMetadata = [this](std::optional<std::wstring> const& validator, std::uint64_t total)
+                {
+                    std::scoped_lock const lock{ m_mutex };
+                    m_metadata = std::pair{ validator, total };
+                },
+                .Progress = [this](SegmentedProgress const& progress)
+                {
+                    auto observed = m_mostConnections.load();
+                    while (progress.Connections > observed
+                        && !m_mostConnections.compare_exchange_weak(observed, progress.Connections))
+                    {
+                    }
+                },
+            };
+        }
+
+        [[nodiscard]] std::optional<std::pair<std::optional<std::wstring>, std::uint64_t>> Metadata() const
+        {
+            std::scoped_lock const lock{ m_mutex };
+            return m_metadata;
+        }
+
+        [[nodiscard]] std::uint32_t MostConnections() const noexcept
+        {
+            return m_mostConnections.load();
+        }
+
+    private:
+        mutable std::mutex m_mutex;
+        std::optional<std::pair<std::optional<std::wstring>, std::uint64_t>> m_metadata;
+        std::atomic_uint32_t m_mostConnections{};
+    };
+
+    [[nodiscard]] SegmentedOptions Quick()
+    {
+        SegmentedOptions options;
+        options.Tuning.MaxConnections = Segments::MaxConnections;
+        options.Tuning.MinSplitBytes = 256u * 1024u;
+        options.Tuning.RampInterval = std::chrono::milliseconds{ 20 };
+        options.Timeouts.CancelPoll = std::chrono::milliseconds{ 50 };
+        return options;
+    }
+
+    class Fixture final
+    {
+    public:
+        explicit Fixture(std::wstring url)
+            : m_url(std::move(url))
+        {
+            std::filesystem::create_directories(Root());
+        }
+
+        [[nodiscard]] std::filesystem::path Root() const
+        {
+            return m_directory.Path() / L"downloads";
+        }
+
+        [[nodiscard]] std::filesystem::path Part() const
+        {
+            return Root() / L"movie.mkv.part";
+        }
+
+        [[nodiscard]] std::filesystem::path Table() const
+        {
+            return Segments::TablePath(Part());
+        }
+
+        [[nodiscard]] SegmentedJob Job(std::uint64_t knownTotal = 0, std::optional<std::wstring> validator = std::nullopt) const
+        {
+            return SegmentedJob{
+                .Url = m_url,
+                .Part = Part(),
+                .Root = Root(),
+                .KnownTotal = knownTotal,
+                .Validator = std::move(validator),
+            };
+        }
+
+        [[nodiscard]] bool PartMatches(std::vector<std::uint8_t> const& body) const
+        {
+            std::error_code error;
+            return std::filesystem::is_regular_file(Part(), error) && ReadBytes(Part()) == body;
+        }
+
+    private:
+        TemporaryDirectory m_directory;
+        std::wstring m_url;
+    };
+
+    struct Outcome final
+    {
+        std::optional<SegmentedFinished> Finished;
+        std::optional<TransferFailure> Failure;
+    };
+
+    [[nodiscard]] Outcome Run(
+        SegmentedJob const& job,
+        std::atomic_bool& cancel,
+        FakeHost& host,
+        SegmentedOptions const& options)
+    {
+        try
+        {
+            return Outcome{ Downloads::RunSegmentedTransfer(job, cancel, std::stop_token{}, host.Host(), options), std::nullopt };
+        }
+        catch (TransferFailure const& failure)
+        {
+            return Outcome{ std::nullopt, failure };
+        }
+    }
+
+    [[nodiscard]] bool Failed(Outcome const& outcome, TransferFailureKind kind, DownloadFailureCode code)
+    {
+        return outcome.Failure && outcome.Failure->Kind == kind && outcome.Failure->Code == code;
+    }
+
+    void SeveralConnectionsDeliverTheExactFile()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(6u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 2 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value(), "a multi-connection transfer did not finish");
+        Require(outcome.Finished->Total == server.Body().size(), "the finished total is wrong");
+        Require(outcome.Finished->Validator == std::optional<std::wstring>{ WideEtag }, "the finished validator is wrong");
+        Require(fixture.PartMatches(server.Body()), "the part differs from the source");
+        Require(!std::filesystem::exists(fixture.Table()), "the table outlived the download");
+        Require(server.MaxActive() > 1, "only one connection ran");
+        auto const log = server.Log();
+        Require(!log[0].Range, "the first request asked for a range");
+        for (std::size_t index = 1; index < log.size(); ++index)
+        {
+            Require(log[index].Range && *log[index].Range > 0, "an extra connection did not ask for a later range");
+            Require(log[index].IfRange == std::optional<std::string>{ EtagValue }, "an extra connection did not send If-Range");
+            Require(log[index].Status == 206, "an extra connection was not answered with a range");
+        }
+    }
+
+    // Progress counts the connections receiving data, which is what the
+    // Downloads page shows, and never more than a run may open.
+    void ProgressReportsHowManyConnectionsAreReceiving()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(2u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 15 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a paced transfer did not deliver the file");
+        Require(host.MostConnections() > 1, "progress never counted more than one receiving connection");
+        Require(host.MostConnections() <= Segments::MaxConnections, "progress counted more connections than a run may open");
+    }
+
+    void ASourceThatIgnoresRangesIsReadThroughOnOneConnection()
+    {
+        FileServer server{ FileServerOptions{
+            .Body = Content(2u * 1024u * 1024u), .HonourRanges = false, .Pace = std::chrono::milliseconds{ 2 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a source without ranges was not read through");
+        // The first request and one probe; its 200 ends the asking.
+        Require(server.Requests() == 2, "a source that ignores ranges was asked more than once more");
+        Require(!std::filesystem::exists(fixture.Table()), "the table outlived the download");
+    }
+
+    // The first connection reaches the split point long before the probe is
+    // answered, so it must wait there instead of stopping: when the answer is a
+    // 206 it stops after the overlap, and when it is a 200 it takes the range
+    // back and reads on.
+    void TheFirstConnectionWaitsAtTheSplitForTheProbesAnswer()
+    {
+        for (auto const honours : { true, false })
+        {
+            FileServer server{ FileServerOptions{
+                .Body = Content(2u * 1024u * 1024u),
+                .HonourRanges = honours,
+                .Pace = std::chrono::milliseconds{ 1 },
+                .RangedDelay = std::chrono::milliseconds{ 600 },
+            } };
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto options = Quick();
+            options.Tuning.MaxConnections = 2;
+            auto const outcome = Run(fixture.Job(), cancel, host, options);
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a parked connection lost the file");
+            if (!honours)
+            {
+                Require(server.Requests() == 2, "a parked connection's range was asked for again");
+            }
+            Require(!std::filesystem::exists(fixture.Table()), "the table outlived the download");
+        }
+    }
+
+    void ARefusedProbeKeepsTheRunOnOneConnection()
+    {
+        FileServer server{ FileServerOptions{
+            .Body = Content(2u * 1024u * 1024u), .Limit = 1, .RetryAfter = 0, .Pace = std::chrono::milliseconds{ 2 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a refused probe lost the file");
+        Require(server.MaxActive() == 1, "more than one connection was served");
+        Require(server.Requests() == 2, "the ceiling did not stop further asking");
+    }
+
+    void CountRefusals(FileServerOptions options, int refusal, char const* lost, char const* never, char const* many)
+    {
+        options.Body = Content(6u * 1024u * 1024u);
+        options.Limit = 2;
+        options.RefuseStatus = refusal;
+        options.Pace = std::chrono::milliseconds{ 2 };
+        FileServer server{ std::move(options) };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), lost);
+        auto const log = server.Log();
+        auto const refused = std::count_if(log.begin(), log.end(), [refusal](LoggedRequest const& entry)
+        {
+            return entry.Status == refusal;
+        });
+        Require(refused >= 1, never);
+        // Without the ceiling every ramp step would ask again and be refused.
+        Require(refused <= 4, many);
+    }
+
+    void ARefusalAfterRangesAreProvenSetsTheCeiling()
+    {
+        CountRefusals(FileServerOptions{ .RetryAfter = 0 }, 503,
+            "a 503 refusal lost the file", "the server never refused with 503", "a 503 ceiling was not kept");
+        // A 429 without Retry-After waits the planner's own back-off instead.
+        CountRefusals(FileServerOptions{}, 429,
+            "a 429 refusal lost the file", "the server never refused with 429", "a 429 ceiling was not kept");
+    }
+
+    void A403ToAnExtraConnectionIsALimitNotAnExpiredLink()
+    {
+        CountRefusals(FileServerOptions{ .RetryAfter = 0 }, 403,
+            "a 403 to an extra connection ended the download", "the server never refused with 403", "a 403 ceiling was not kept");
+        CountRefusals(FileServerOptions{ .RetryAfter = 0 }, 404,
+            "a 404 to an extra connection ended the download", "the server never refused with 404", "a 404 ceiling was not kept");
+    }
+
+    void DifferentBytesFromTwoConnectionsFailAndLeaveNothing()
+    {
+        FileServer server{ FileServerOptions{
+            .Body = Content(2u * 1024u * 1024u), .Inconsistent = true, .Pace = std::chrono::milliseconds{ 2 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(Failed(outcome, TransferFailureKind::Permanent, DownloadFailureCode::InvalidRange),
+            "two different objects under one validator were not refused");
+        Require(!std::filesystem::exists(fixture.Part()), "the corrupt part was kept");
+        Require(!std::filesystem::exists(fixture.Table()), "the corrupt part's table was kept");
+    }
+
+    void ASourceWithoutAValidatorStaysOnOneConnection()
+    {
+        FileServer server{ FileServerOptions{
+            .Body = Content(2u * 1024u * 1024u), .ETag = std::nullopt, .Pace = std::chrono::milliseconds{ 1 } } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a source without a validator lost the file");
+        Require(server.Requests() == 1, "a source without a validator was asked for ranges");
+        Require(!std::filesystem::exists(fixture.Table()), "a table was written without a validator");
+    }
+
+    // Not in the reference's tests, but its gate: an unstated size, an encoded
+    // body or Accept-Ranges: none keeps the run on the one request.
+    void AnyUnmetConditionKeepsTheRunOnOneConnection()
+    {
+        std::vector<FileServerOptions> cases;
+        cases.push_back(FileServerOptions{ .StateSize = false });
+        cases.push_back(FileServerOptions{ .AcceptRanges = std::string{ "None" } });
+        cases.push_back(FileServerOptions{ .ContentEncoding = std::string{ "br" } });
+        for (auto& options : cases)
+        {
+            options.Body = Content(2u * 1024u * 1024u);
+            options.Pace = std::chrono::milliseconds{ 1 };
+            FileServer server{ std::move(options) };
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto const outcome = Run(fixture.Job(), cancel, host, Quick());
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a single-connection source lost the file");
+            Require(outcome.Finished->Total == server.Body().size(), "an unstated size was not taken from the body");
+            Require(server.Requests() == 1, "a source that does not qualify was asked for ranges");
+        }
+    }
+
+    void APausedSegmentedDownloadResumesEverySegment()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(6u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 25 } } };
+        Fixture fixture{ server.Url() };
+        FakeHost host;
+        std::atomic_bool cancel{};
+        std::jthread pause{ [&cancel]()
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds{ 500 });
+            cancel.store(true);
+        } };
+        auto const paused = Run(fixture.Job(), cancel, host, Quick());
+        pause.join();
+        Require(paused.Failure && paused.Failure->Kind == TransferFailureKind::Paused, "a paused transfer did not report a pause");
+        auto const saved = Segments::Decode(ReadText(fixture.Table()));
+        Require(saved.has_value(), "the paused table did not decode");
+        Require(saved->Total == server.Body().size(), "the paused table has the wrong size");
+        Require(saved->Segments.size() > 1, "the run never split");
+        std::uint64_t done{};
+        for (auto const& segment : saved->Segments) done += segment.Done;
+        Require(done > 0 && done < server.Body().size(), "the paused table saved no partial progress");
+        auto const before = server.Requests();
+
+        auto const metadata = host.Metadata();
+        Require(metadata.has_value(), "the response metadata was never reported");
+        cancel.store(false);
+        auto const resumed = Run(fixture.Job(metadata->second, metadata->first), cancel, host, Quick());
+        Require(resumed.Finished.has_value() && fixture.PartMatches(server.Body()), "a resumed segmented download lost bytes");
+        Require(!std::filesystem::exists(fixture.Table()), "the table outlived the resumed download");
+        auto const log = server.Log();
+        Require(log[before].Range.has_value(), "the resume did not ask for a range");
+        Require(log[before].Status == 206, "the resume was not answered with a range");
+    }
+
+    void APartFromBeforeTablesResumesFromItsLength()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u) } };
+        Fixture fixture{ server.Url() };
+        WriteBytes(fixture.Part(), std::vector<std::uint8_t>(server.Body().begin(), server.Body().begin() + 300000));
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto options = Quick();
+        options.Tuning.MaxConnections = 1;
+        auto const outcome = Run(fixture.Job(server.Body().size(), WideEtag), cancel, host, options);
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a part from before tables did not resume");
+        auto const log = server.Log();
+        Require(log.size() == 1 && log[0].Range == std::optional<std::uint64_t>{ 300000 },
+            "a part from before tables did not resume from its length");
+    }
+
+    void AResumeThroughARedirectToAnotherOriginContinues()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u) } };
+        FileServer redirector{ FileServerOptions{ .RedirectTo = NarrowAscii(server.Url()) } };
+        Fixture fixture{ redirector.Url(L"/resolve") };
+        WriteBytes(fixture.Part(), std::vector<std::uint8_t>(server.Body().begin(), server.Body().begin() + 300000));
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto options = Quick();
+        options.Tuning.MaxConnections = 1;
+        auto const outcome = Run(fixture.Job(server.Body().size(), WideEtag), cancel, host, options);
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a resume through a redirect lost bytes");
+        // One ranged request, confirmed by the validator: no second, whole-file one.
+        auto const log = server.Log();
+        Require(log.size() == 1 && log[0].Range == std::optional<std::uint64_t>{ 300000 },
+            "a validated resume through another origin started over");
+    }
+
+    void AValidatorMismatchWhileResumingIsRefused()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u), .ETag = std::string{ "\"v2\"" }, .IgnoreIfRange = true } };
+        Fixture fixture{ server.Url() };
+        WriteBytes(fixture.Part(), std::vector<std::uint8_t>(server.Body().begin(), server.Body().begin() + 300000));
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(server.Body().size(), WideEtag), cancel, host, Quick());
+        Require(Failed(outcome, TransferFailureKind::Permanent, DownloadFailureCode::InvalidRange),
+            "a resume answered under another validator was appended");
+    }
+
+    void AnUnreadableTableRestartsFromZero()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u) } };
+        Fixture fixture{ server.Url() };
+        // A full-length part with holes: its length must not pass for progress.
+        WriteBytes(fixture.Part(), std::vector<std::uint8_t>(server.Body().size(), 0));
+        {
+            std::ofstream table{ fixture.Table(), std::ios::binary };
+            table << "{ torn";
+        }
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto const outcome = Run(fixture.Job(server.Body().size(), WideEtag), cancel, host, Quick());
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "an unreadable table did not restart cleanly");
+        Require(!server.Log()[0].Range, "an unreadable table was trusted for a resume");
+        Require(!std::filesystem::exists(fixture.Table()), "the unreadable table was kept");
+    }
+
+    void AStalledConnectionIsRetried()
+    {
+        FileServer server{ FileServerOptions{
+            .Body = Content(3u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 2 }, .StallFirstRanged = true } };
+        Fixture fixture{ server.Url() };
+        std::atomic_bool cancel{};
+        FakeHost host;
+        auto options = Quick();
+        options.Timeouts.Read = std::chrono::milliseconds{ 400 };
+        auto const started = std::chrono::steady_clock::now();
+        auto outcome = Run(fixture.Job(), cancel, host, options);
+        // A stall with no other connection left receiving ends the run as a
+        // retryable failure, as the reference's does; the engine then runs it
+        // again from the saved table, which is what this does too.
+        for (int attempt = 1; attempt < 3 && Failed(outcome, TransferFailureKind::Retryable, DownloadFailureCode::Network); ++attempt)
+        {
+            auto const metadata = host.Metadata();
+            Require(metadata.has_value(), "the response metadata was never reported");
+            outcome = Run(fixture.Job(metadata->second, metadata->first), cancel, host, options);
+        }
+        Require(std::chrono::steady_clock::now() - started < std::chrono::seconds{ 10 }, "a stalled connection was waited on");
+        Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()), "a stalled connection lost the file");
+        auto const log = server.Log();
+        Require(std::count_if(log.begin(), log.end(), [](LoggedRequest const& entry) { return entry.Range.has_value(); }) >= 2,
+            "the stalled segment was not asked for again");
+    }
+
+    void TheFirstResponseWaitEndsOnPauseOrTimeout()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(64u * 1024u), .ResponseDelay = std::chrono::seconds{ 5 } } };
+        {
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto options = Quick();
+            options.Timeouts.FirstResponse = std::chrono::milliseconds{ 300 };
+            auto const started = std::chrono::steady_clock::now();
+            auto const outcome = Run(fixture.Job(), cancel, host, options);
+            Require(Failed(outcome, TransferFailureKind::Retryable, DownloadFailureCode::Network),
+                "a source that never answered was not a retryable network failure");
+            Require(std::chrono::steady_clock::now() - started < std::chrono::seconds{ 3 }, "the first response wait ignored its limit");
+        }
+        {
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto options = Quick();
+            // The production poll interval: a pause is noticed within it.
+            options.Timeouts.CancelPoll = std::chrono::milliseconds{ 250 };
+            std::jthread pause{ [&cancel]()
+            {
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
+                cancel.store(true);
+            } };
+            auto const started = std::chrono::steady_clock::now();
+            auto const outcome = Run(fixture.Job(), cancel, host, options);
+            Require(outcome.Failure && outcome.Failure->Kind == TransferFailureKind::Paused,
+                "a pause while waiting for the source was not a pause");
+            Require(std::chrono::steady_clock::now() - started < std::chrono::milliseconds{ 1500 },
+                "a pause while waiting for the source was not noticed quickly");
+        }
+    }
+
+    void RetryAfterIsReadAsSeconds()
+    {
+        Downloads::Http::ResponseHead head;
+        Require(!Downloads::Http::RetryAfterSeconds(head), "a missing Retry-After was read");
+        head.RetryAfter = L"12";
+        Require(Downloads::Http::RetryAfterSeconds(head) == std::optional<std::uint64_t>{ 12 }, "Retry-After seconds were not read");
+        head.RetryAfter = L"Wed, 21 Oct 2026 07:28:00 GMT";
+        Require(!Downloads::Http::RetryAfterSeconds(head), "a Retry-After date was read as seconds");
+    }
+
+    void AFileIsMissingOnlyWhenItsFolderIsThereWithoutIt()
+    {
+        TemporaryDirectory directory;
+        auto const file = directory.Path() / L"movie.mkv";
+        WriteBytes(file, std::vector<std::uint8_t>(5, 1));
+        Require(Downloads::DetectFilePresence(directory.Path(), file)
+                == Downloads::FilePresence{ .Kind = Downloads::FilePresenceKind::Present, .Bytes = 5 },
+            "a present file was not found");
+        Require(Downloads::DetectFilePresence(directory.Path(), directory.Path() / L"gone.mkv").Kind
+                == Downloads::FilePresenceKind::Missing,
+            "a missing file in a present folder was not missing");
+        // An unplugged drive: neither the folder nor the file can be reached.
+        auto const unplugged = directory.Path() / L"unplugged";
+        Require(Downloads::DetectFilePresence(unplugged, unplugged / L"movie.mkv").Kind
+                == Downloads::FilePresenceKind::FolderUnavailable,
+            "an unreachable folder was taken for a missing file");
+    }
+
+    void RunSegmentedTransferTests()
+    {
+        SeveralConnectionsDeliverTheExactFile();
+        ProgressReportsHowManyConnectionsAreReceiving();
+        ASourceThatIgnoresRangesIsReadThroughOnOneConnection();
+        TheFirstConnectionWaitsAtTheSplitForTheProbesAnswer();
+        ARefusedProbeKeepsTheRunOnOneConnection();
+        ARefusalAfterRangesAreProvenSetsTheCeiling();
+        A403ToAnExtraConnectionIsALimitNotAnExpiredLink();
+        DifferentBytesFromTwoConnectionsFailAndLeaveNothing();
+        ASourceWithoutAValidatorStaysOnOneConnection();
+        AnyUnmetConditionKeepsTheRunOnOneConnection();
+        APausedSegmentedDownloadResumesEverySegment();
+        APartFromBeforeTablesResumesFromItsLength();
+        AResumeThroughARedirectToAnotherOriginContinues();
+        AValidatorMismatchWhileResumingIsRefused();
+        AnUnreadableTableRestartsFromZero();
+        AStalledConnectionIsRetried();
+        TheFirstResponseWaitEndsOnPauseOrTimeout();
+        RetryAfterIsReadAsSeconds();
+        AFileIsMissingOnlyWhenItsFolderIsThereWithoutIt();
+    }
+
+    // ---- The engine's own rules around a transfer ----
+
+    [[nodiscard]] TransferEngineOptions QuickEngine()
+    {
+        TransferEngineOptions options;
+        options.Transfer = Quick();
+        return options;
+    }
+
+    [[nodiscard]] std::optional<DownloadRecord> FindJob(TransferEngine& engine, std::wstring const& jobId)
+    {
+        auto const records = engine.List();
+        auto const found = std::find_if(records.begin(), records.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        return found == records.end() ? std::nullopt : std::optional<DownloadRecord>{ *found };
+    }
+
+    void APauseWhileWaitingForTheSourceIsNoticed()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(64u * 1024u), .ResponseDelay = std::chrono::seconds{ 8 } } };
+        TemporaryDirectory temporary;
+        auto options = QuickEngine();
+        options.Transfer.Timeouts.CancelPoll = std::chrono::milliseconds{ 250 };
+        TransferEngine engine{ temporary.Path(), {}, options };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const started = engine.Start(MakeRequest(server.Url(), L"waiting.mkv", 64u * 1024u, false, std::nullopt, L"movie:waiting"));
+        static_cast<void>(WaitForStatus(engine, started.JobId, DownloadStatus::Downloading));
+        // Long enough for the worker to be waiting on the request.
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 300 });
+        auto const before = std::chrono::steady_clock::now();
+        engine.Pause(started.JobId);
+        Require(std::chrono::steady_clock::now() - before < std::chrono::seconds{ 2 },
+            "a pause waited for a source that had not answered");
+        auto const paused = FindJob(engine, started.JobId);
+        Require(paused && paused->Status == DownloadStatus::Paused, "a pause while waiting did not pause");
+        Require(server.Requests() == 0, "the paused request was answered");
+    }
+
+    void ASourceThatNeverAnswersIsRetriedThenFails()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(64u * 1024u), .ResponseDelay = std::chrono::seconds{ 8 } } };
+        TemporaryDirectory temporary;
+        auto options = QuickEngine();
+        options.Transfer.Timeouts.FirstResponse = std::chrono::milliseconds{ 200 };
+        TransferEngine engine{ temporary.Path(), {}, options };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const started = engine.Start(MakeRequest(server.Url(), L"silent.mkv", 64u * 1024u, false, std::nullopt, L"movie:silent"));
+        auto const failed = WaitForStatus(engine, started.JobId, DownloadStatus::Failed);
+        Require(failed.Failure == DownloadFailureCode::Network, "a source that never answered was not a network failure");
+        Require(server.Requests() == 0, "a request the engine gave up on was answered");
+    }
+
+    void ASlowSubtitleDoesNotHoldTheDownload()
+    {
+        FileServer video{ FileServerOptions{ .Body = Content(128u * 1024u) } };
+        FileServer subtitle{ FileServerOptions{ .Body = Content(100), .ResponseDelay = std::chrono::seconds{ 8 } } };
+        TemporaryDirectory temporary;
+        auto options = QuickEngine();
+        options.SubtitleResponse = std::chrono::milliseconds{ 300 };
+        TransferEngine engine{ temporary.Path(), {}, options };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const before = std::chrono::steady_clock::now();
+        auto const started = engine.Start(MakeRequest(
+            video.Url(),
+            L"slow-subtitle.mkv",
+            video.Body().size(),
+            false,
+            SubtitleRequest{ .Url = subtitle.Url(L"/subtitle.srt"), .Language = L"eng", .Id = L"subtitle:slow" },
+            L"movie:slow-subtitle"));
+        auto const done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+        Require(std::chrono::steady_clock::now() - before < std::chrono::seconds{ 4 }, "a slow subtitle held the download");
+        Require(!done.SubtitleFileName, "a subtitle that never answered was recorded");
+        auto const files = engine.FilesForPlayback(done.JobId);
+        Require(ReadBytes(files.VideoPath) == video.Body(), "the video behind a slow subtitle was corrupted");
+        Require(!files.SubtitlePath, "a subtitle that never answered was saved");
+    }
+
+    // Removed while it waited for its subtitle, after the video itself was
+    // complete: the copy it was replacing stays, and its own files go.
+    void ARemovalWhileFinishingKeepsTheReplacedCopy()
+    {
+        FileServer first{ FileServerOptions{ .Body = Content(256u * 1024u) } };
+        auto secondBody = Content(300u * 1024u);
+        std::reverse(secondBody.begin(), secondBody.end());
+        FileServer second{ FileServerOptions{ .Body = std::move(secondBody) } };
+        FileServer subtitle{ FileServerOptions{ .Body = Content(100), .ResponseDelay = std::chrono::seconds{ 8 } } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const original = engine.Start(MakeRequest(first.Url(), L"kept.mkv", first.Body().size(), false, std::nullopt, L"movie:finishing"));
+        auto const originalDone = WaitForStatus(engine, original.JobId, DownloadStatus::Done);
+        auto const replacement = engine.Start(MakeRequest(
+            second.Url(),
+            L"replacement.mkv",
+            second.Body().size(),
+            true,
+            SubtitleRequest{ .Url = subtitle.Url(L"/subtitle.srt"), .Language = L"eng", .Id = L"subtitle:finishing" },
+            L"movie:finishing"));
+        // The video is in place once its part is renamed; the subtitle is next.
+        WaitUntil([&replacement]() { return std::filesystem::exists(replacement.TargetPath()); },
+            "the replacement video never completed");
+        engine.Remove(replacement.JobId);
+        WaitUntil([&engine, &replacement]()
+        {
+            return !ListsJob(engine, replacement.JobId) && !std::filesystem::exists(replacement.TargetPath());
+        }, "a removed replacement left its video behind");
+        auto const kept = FindJob(engine, originalDone.JobId);
+        Require(kept && kept->Status == DownloadStatus::Done, "a removal while finishing superseded the replaced copy");
+        Require(ReadBytes(engine.FilesForPlayback(originalDone.JobId).VideoPath) == first.Body(),
+            "the replaced copy's file was touched");
+    }
+
+    // A replacement from the same source shares its file names with the copy
+    // it replaces. Removing it while it runs must not delete what that copy
+    // still names.
+    void ARemovedRunNeverDeletesFilesAnotherRecordNames()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(4u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 40 } } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        server.ForceStatus(401);
+        auto const expired = engine.Start(MakeRequest(server.Url(), L"shared.mkv", server.Body().size(), false, std::nullopt, L"movie:shared"));
+        static_cast<void>(WaitForStatus(engine, expired.JobId, DownloadStatus::Failed));
+        server.ForceStatus(0);
+        auto const replacement = engine.Start(MakeRequest(server.Url(), L"shared.mkv", server.Body().size(), true, std::nullopt, L"movie:shared"));
+        Require(replacement.PartialPath() == expired.PartialPath(), "the shared-name scenario did not share names");
+        static_cast<void>(WaitForStatus(engine, replacement.JobId, DownloadStatus::Downloading));
+        WaitForFile(replacement.PartialPath());
+        engine.Remove(replacement.JobId);
+        WaitUntil([&engine, &expired, &replacement]()
+        {
+            return !ListsJob(engine, replacement.JobId) && ListsJob(engine, expired.JobId);
+        }, "the replaced copy did not come back after its replacement was removed");
+        // The run forgets the record only after its cleanup, so once the index no
+        // longer names it, the cleanup has happened.
+        auto const index = temporary.Path() / L"downloads-index.json";
+        auto const removedId = NarrowAscii(replacement.JobId);
+        WaitUntil([&index, &removedId]() { return ReadText(index).find(removedId) == std::string::npos; },
+            "a removed run never finished its cleanup");
+        Require(std::filesystem::exists(expired.PartialPath()), "a removed run deleted a file another record names");
+    }
+
+    void ActiveConnectionsReachTheRecords()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(4u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 15 } } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        std::atomic_uint32_t most{};
+        std::atomic_bool outsideDownloading{};
+        auto const token = engine.AddChangedHandler([&most, &outsideDownloading](DownloadRecord const& record)
+        {
+            if (record.Status != DownloadStatus::Downloading && record.ActiveConnections != 0)
+            {
+                outsideDownloading.store(true);
+            }
+            auto observed = most.load();
+            while (record.ActiveConnections > observed && !most.compare_exchange_weak(observed, record.ActiveConnections))
+            {
+            }
+        });
+        auto const started = engine.Start(MakeRequest(server.Url(), L"connections.mkv", server.Body().size(), false, std::nullopt, L"movie:connections"));
+        auto const done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+        engine.RemoveChangedHandler(token);
+        Require(most.load() > 1, "the records never showed more than one connection");
+        Require(!outsideDownloading.load(), "a record that was not downloading showed connections");
+        Require(done.ActiveConnections == 0, "a finished record still shows connections");
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(), "a multi-connection engine download was corrupted");
+        Require(ReadText(temporary.Path() / L"downloads-index.json").find("ctiveConnections") == std::string::npos,
+            "live connection counts were stored in the index");
+    }
+
+    [[nodiscard]] DownloadRecord SeededRecord(
+        std::wstring jobId,
+        std::wstring videoId,
+        std::filesystem::path root,
+        std::wstring fileName,
+        DownloadStatus status)
+    {
+        return DownloadRecord{
+            .JobId = std::move(jobId),
+            .AccountKey = MakeAccountKey(L"https://account.invalid", L"user-a"),
+            .Media = { .VideoId = videoId, .ItemId = videoId, .MediaType = L"movie", .Title = L"Seeded" },
+            .FileName = std::move(fileName),
+            .RootPath = std::move(root),
+            .Status = status,
+            .TotalBytes = 5,
+            .DownloadedBytes = 5,
+            .SourceFingerprint = Sha256Hex(L"https://source.invalid/" + videoId),
+            .CreatedAt = 1,
+            .UpdatedAt = 1,
+        };
+    }
+
+    void MissingFilesAreReconciledInThreeStates()
+    {
+        TemporaryDirectory temporary;
+        auto const folder = temporary.Path() / L"downloads";
+        std::filesystem::create_directories(folder);
+        auto unplugged = SeededRecord(L"00000000000000000000000000000001", L"movie:unplugged", temporary.Path() / L"unplugged", L"unplugged.mkv", DownloadStatus::Done);
+        auto missing = SeededRecord(L"00000000000000000000000000000002", L"movie:missing", folder, L"missing.mkv", DownloadStatus::Done);
+        auto returned = SeededRecord(L"00000000000000000000000000000003", L"movie:returned", folder, L"returned.mkv", DownloadStatus::Failed);
+        returned.Failure = DownloadFailureCode::MissingFile;
+        auto shorter = SeededRecord(L"00000000000000000000000000000004", L"movie:shorter", folder, L"shorter.mkv", DownloadStatus::Failed);
+        shorter.Failure = DownloadFailureCode::MissingFile;
+        WriteBytes(returned.TargetPath(), std::vector<std::uint8_t>(5, 1));
+        WriteBytes(shorter.TargetPath(), std::vector<std::uint8_t>(4, 1));
+        {
+            DownloadIndexStore seed{ temporary.Path() };
+            seed.Apply({ unplugged, missing, returned, shorter });
+        }
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const away = FindJob(engine, unplugged.JobId);
+        Require(away && away->Status == DownloadStatus::Done, "an unreachable folder marked its download missing");
+        auto const gone = FindJob(engine, missing.JobId);
+        Require(gone && gone->Status == DownloadStatus::Failed && gone->Failure == DownloadFailureCode::MissingFile,
+            "a file missing from its folder was not marked missing");
+        auto const back = FindJob(engine, returned.JobId);
+        Require(back && back->Status == DownloadStatus::Done && !back->Failure, "a file that came back stayed marked missing");
+        auto const wrong = FindJob(engine, shorter.JobId);
+        Require(wrong && wrong->Status == DownloadStatus::Failed, "a file of the wrong size was taken back");
+    }
+
+    void ALockedIndexIsRetriedBeforeFailing()
+    {
+        TemporaryDirectory temporary;
+        DownloadIndexStore store{ temporary.Path() };
+        auto const record = SeededRecord(L"00000000000000000000000000000005", L"movie:locked", temporary.Path() / L"downloads", L"locked.mkv", DownloadStatus::Done);
+        store.Apply({ record });
+        auto const index = temporary.Path() / L"downloads-index.json";
+        auto const holdExclusively = [&index](std::chrono::milliseconds duration)
+        {
+            HANDLE const file = CreateFileW(index.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+            if (file == INVALID_HANDLE_VALUE)
+            {
+                throw std::runtime_error{ "The test could not lock the download index." };
+            }
+            return std::jthread{ [file, duration]()
+            {
+                std::this_thread::sleep_for(duration);
+                CloseHandle(file);
+            } };
+        };
+        {
+            auto releaser = holdExclusively(std::chrono::milliseconds{ 150 });
+            auto const loaded = store.Load(false);
+            Require(loaded.size() == 1, "a briefly locked index was not read after a retry");
+        }
+        {
+            auto releaser = holdExclusively(std::chrono::milliseconds{ 1500 });
+            bool failed{};
+            try
+            {
+                static_cast<void>(store.Load(false));
+            }
+            catch (...)
+            {
+                failed = true;
+            }
+            Require(failed, "an index locked past every retry was read");
+        }
+        Require(store.Load(false).size() == 1, "a locked index was treated as corrupt");
+        for (auto const& entry : std::filesystem::directory_iterator{ temporary.Path() })
+        {
+            Require(entry.path().filename().wstring().find(L".corrupt-") == std::wstring::npos,
+                "a locked index was set aside as corrupt");
+        }
+    }
+
+    void AnIndexIsReportedOnlyWhenItWasSetAside()
+    {
+        {
+            TemporaryDirectory temporary;
+            int reports{};
+            TransferEngine engine{ temporary.Path(), [&reports](std::wstring_view) { ++reports; }, QuickEngine() };
+            engine.SetAccount(L"https://account.invalid", L"user-a");
+            Require(engine.List().empty() && reports == 0, "a missing index was reported or produced downloads");
+        }
+        {
+            TemporaryDirectory temporary;
+            // What a power cut after an unflushed write leaves: the right size, all zeros.
+            WriteBytes(temporary.Path() / L"downloads-index.json", std::vector<std::uint8_t>(512, 0));
+            int reports{};
+            TransferEngine engine{ temporary.Path(), [&reports](std::wstring_view) { ++reports; }, QuickEngine() };
+            Require(reports == 1, "a torn index was not reported to the crash log exactly once");
+            auto kept = 0;
+            for (auto const& entry : std::filesystem::directory_iterator{ temporary.Path() })
+            {
+                if (entry.path().filename().wstring().starts_with(L"downloads-index.corrupt-")
+                    && ReadBytes(entry.path()) == std::vector<std::uint8_t>(512, 0))
+                {
+                    ++kept;
+                }
+            }
+            Require(kept == 1, "a torn index was not kept aside unchanged");
+        }
+    }
+
+    // An index and part written by the previous build, with no sidecar, still
+    // resume from the part's length.
+    void APreviousBuildsPartialDownloadResumes()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u) } };
+        TemporaryDirectory temporary;
+        auto record = SeededRecord(L"0123456789abcdef0123456789abcde0", L"movie:legacy", temporary.Path() / L"downloads", L"legacy.mkv", DownloadStatus::Paused);
+        auto request = MakeRequest(server.Url(), L"legacy.mkv", server.Body().size(), false, std::nullopt, L"movie:legacy");
+        record.SourceFingerprint = Sha256Hex(request.Request.Url);
+        record.TotalBytes = server.Body().size();
+        record.DownloadedBytes = 300000;
+        record.Validator = WideEtag;
+        record.ExplicitPause = true;
+        std::filesystem::create_directories(record.RootPath);
+        WriteBytes(record.PartialPath(), std::vector<std::uint8_t>(server.Body().begin(), server.Body().begin() + 300000));
+        {
+            DownloadIndexStore seed{ temporary.Path() };
+            seed.Apply({ record });
+            RequestVault vault{ temporary.Path() / L"download-requests" };
+            vault.Write(record.JobId, std::move(request.Request));
+        }
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        engine.Resume(record.JobId);
+        auto const done = WaitForStatus(engine, record.JobId, DownloadStatus::Done);
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(), "a previous build's partial download was corrupted");
+        auto const log = server.Log();
+        Require(!log.empty() && log[0].Range == std::optional<std::uint64_t>{ 300000 },
+            "a previous build's partial download did not resume from its length");
+    }
+
+    void RunDownloadEngineSafetyTests()
+    {
+        APauseWhileWaitingForTheSourceIsNoticed();
+        ASourceThatNeverAnswersIsRetriedThenFails();
+        ASlowSubtitleDoesNotHoldTheDownload();
+        ARemovalWhileFinishingKeepsTheReplacedCopy();
+        ARemovedRunNeverDeletesFilesAnotherRecordNames();
+        ActiveConnectionsReachTheRecords();
+        MissingFilesAreReconciledInThreeStates();
+        ALockedIndexIsRetriedBeforeFailing();
+        AnIndexIsReportedOnlyWhenItWasSetAside();
+        APreviousBuildsPartialDownloadResumes();
+    }
 }
 
 void RunDownloadTransferStabilityTest()
@@ -783,10 +2052,15 @@ void RunDownloadTransferStabilityTest()
     static_cast<void>(WaitForStatus(engine, cancelled.JobId, DownloadStatus::Downloading));
     WaitForFile(cancelled.PartialPath());
     engine.Remove(cancelled.JobId);
-    Require(
-        !std::filesystem::exists(cancelled.PartialPath())
-            && !std::filesystem::exists(cancelled.TargetPath()),
-        "cancelling an active transfer left downloaded data behind");
+    // The running transfer deletes its own files once it has stopped writing
+    // them, so the files go shortly after Remove returns, not during it.
+    Require(!ListsJob(engine, cancelled.JobId), "a removed transfer was still listed");
+    WaitUntil([&cancelled]()
+    {
+        return !std::filesystem::exists(cancelled.PartialPath())
+            && !std::filesystem::exists(cancelled.TargetPath())
+            && !std::filesystem::exists(TablePathOf(cancelled));
+    }, "cancelling an active transfer left downloaded data behind");
 
     auto const relativeRedirect = engine.Start(MakeRequest(
         server.RelativeRedirectUrl(),
@@ -889,4 +2163,7 @@ void RunDownloadTransferStabilityTest()
         "an unbounded redirect chain was not rejected safely");
 
     engine.RemoveChangedHandler(token);
+
+    RunSegmentedTransferTests();
+    RunDownloadEngineSafetyTests();
 }

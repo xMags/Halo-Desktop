@@ -100,6 +100,9 @@ namespace HaloDesktop::Services::Downloads
         std::uint64_t BytesPerSecond{};
         std::optional<ReplacementBackup> Replacement;
         bool PendingDeletion{};
+        // Connections receiving data right now. Live state only: never stored in
+        // the index, and 0 unless the download is downloading.
+        std::uint32_t ActiveConnections{};
 
         [[nodiscard]] std::filesystem::path TargetPath() const;
         [[nodiscard]] std::filesystem::path PartialPath() const;
@@ -194,6 +197,30 @@ namespace HaloDesktop::Services::Downloads
         std::filesystem::path const& candidate,
         std::vector<std::filesystem::path> const& approvedRoots) noexcept;
     [[nodiscard]] std::optional<ContentRange> ParseContentRange(std::wstring const& value) noexcept;
+
+    enum class FilePresenceKind
+    {
+        Present,
+        // The folder is there and the file is not: it was deleted or moved.
+        Missing,
+        // The folder itself cannot be reached, such as an unplugged drive, so
+        // nothing is known about the file.
+        FolderUnavailable,
+    };
+
+    // What the disk says about a finished download's file.
+    struct FilePresence final
+    {
+        FilePresenceKind Kind{ FilePresenceKind::FolderUnavailable };
+        // The file's size when Present.
+        std::uint64_t Bytes{};
+
+        friend bool operator==(FilePresence const&, FilePresence const&) = default;
+    };
+
+    [[nodiscard]] FilePresence DetectFilePresence(
+        std::filesystem::path const& root,
+        std::filesystem::path const& target) noexcept;
     [[nodiscard]] bool HasSufficientSpace(
         std::uint64_t availableBytes,
         std::uint64_t videoBytes) noexcept;

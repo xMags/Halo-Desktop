@@ -14,6 +14,7 @@
 #include <stdexcept>
 #include <string_view>
 #include <system_error>
+#include <thread>
 #include <utility>
 #include <wil/resource.h>
 #include <winrt/Windows.Data.Json.h>
@@ -24,6 +25,8 @@ namespace
     constexpr std::uint64_t MaximumIndexBytes = 32ull * 1024ull * 1024ull;
     constexpr std::size_t MaximumTextLength = 65536;
     constexpr std::size_t MaximumApprovedRoots = 32;
+    constexpr int IndexReadAttempts = 5;
+    constexpr std::chrono::milliseconds IndexReadRetry{ 150 };
 
     // Records the folder as a place downloads may live. The newest choice stays
     // at the front so the oldest folder is the one dropped at the cap.
@@ -442,7 +445,7 @@ namespace
         return winrt::to_string(root.Stringify());
     }
 
-    std::string ReadFile(std::filesystem::path const& path)
+    std::string ReadFileOnce(std::filesystem::path const& path)
     {
         std::error_code error;
         auto const size = std::filesystem::file_size(path, error);
@@ -466,6 +469,33 @@ namespace
             throw std::runtime_error{ "The download index could not be read." };
         }
         return result;
+    }
+
+    // A file another program holds open without sharing (a backup or antivirus
+    // scan) is tried a few times before the read is given up. Giving up is
+    // reported, never treated as corruption: starting over would overwrite an
+    // index that may be intact. An oversized file is not retried.
+    std::string ReadFile(std::filesystem::path const& path)
+    {
+        for (int attempt = 1;; ++attempt)
+        {
+            try
+            {
+                return ReadFileOnce(path);
+            }
+            catch (std::length_error const&)
+            {
+                throw;
+            }
+            catch (...)
+            {
+                if (attempt >= IndexReadAttempts)
+                {
+                    throw;
+                }
+            }
+            std::this_thread::sleep_for(IndexReadRetry);
+        }
     }
 
     void WriteAtomic(std::filesystem::path const& target, std::string const& bytes)

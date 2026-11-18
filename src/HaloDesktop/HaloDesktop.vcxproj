@@ -372,6 +372,9 @@
     <ClInclude Include="Services\WatchOutboxPolicy.h" />
     <ClInclude Include="Services\WatchOutbox.h" />
     <ClInclude Include="Playback\MpvCallQueue.h" />
+    <ClInclude Include="Services\Downloads\SegmentPlanner.h" />
+    <ClInclude Include="Services\Downloads\DownloadHttp.h" />
+    <ClInclude Include="Services\Downloads\SegmentedTransfer.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -717,6 +720,11 @@
     <ClCompile Include="Playback\MpvCallQueue.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Services\Downloads\SegmentPlanner.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Downloads\DownloadHttp.cpp" />
+    <ClCompile Include="Services\Downloads\SegmentedTransfer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

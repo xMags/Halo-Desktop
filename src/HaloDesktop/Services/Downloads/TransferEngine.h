@@ -2,7 +2,9 @@
 
 #include "Services/Downloads/DownloadIndexStore.h"
 #include "Services/Downloads/RequestVault.h"
+#include "Services/Downloads/SegmentedTransfer.h"
 
+#include <chrono>
 #include <atomic>
 #include <condition_variable>
 #include <cstdint>
@@ -29,17 +31,28 @@ namespace HaloDesktop::Services::Downloads
     // URL or record content.
     using LaunchRecoveryReporter = std::function<void(std::wstring_view)>;
 
+    // The engine's tunable waits and connection strategy. Production uses the
+    // defaults; tests shorten them so nothing waits for real.
+    struct TransferEngineOptions final
+    {
+        SegmentedOptions Transfer;
+        // The longest a subtitle request may wait for its response.
+        std::chrono::milliseconds SubtitleResponse{ 45000 };
+    };
+
     // Thread-safe, single-worker FIFO transfer engine. Public calls may come
     // from any thread. Changed handlers run on the worker or calling thread and
     // are always invoked outside the engine lock. UI consumers must dispatch.
-    // Destruction requests cancellation and waits at most for the active
-    // WinHTTP read timeout. It leaves non-paused active work recoverable.
+    // Destruction requests cancellation; a transfer notices it within the cancel
+    // poll interval, including while it waits for a response. It leaves
+    // non-paused active work recoverable.
     class TransferEngine final
     {
     public:
         explicit TransferEngine(
             std::filesystem::path dataRoot,
-            LaunchRecoveryReporter const& launchRecovery = {});
+            LaunchRecoveryReporter const& launchRecovery = {},
+            TransferEngineOptions options = {});
         ~TransferEngine();
 
         TransferEngine(TransferEngine const&) = delete;
@@ -87,19 +100,20 @@ namespace HaloDesktop::Services::Downloads
             std::stop_token stopToken) const noexcept;
 
         void Finish(
-            std::wstring const& jobId,
+            DownloadRecord const& runRecord,
             std::optional<TransferResult> result,
             std::optional<TransferError> error);
+        void FinishRemoved(
+            std::wstring const& jobId,
+            std::optional<DownloadRecord> current,
+            DownloadRecord const& files);
         void UpdateResponseMetadata(
             std::wstring const& jobId,
             std::optional<std::wstring> validator,
             std::uint64_t totalBytes);
         void UpdateProgress(
             std::wstring const& jobId,
-            std::uint64_t downloadedBytes,
-            std::uint64_t totalBytes,
-            std::uint64_t bytesPerSecond,
-            bool persist);
+            SegmentedProgress const& progress);
 
         [[nodiscard]] std::vector<DownloadRecord> SnapshotLocked() const;
         [[nodiscard]] std::vector<DownloadChangedHandler> HandlersLocked() const;
@@ -112,8 +126,13 @@ namespace HaloDesktop::Services::Downloads
             DownloadRecord const& record) noexcept;
         void ReconcileMissingFiles();
 
+        TransferEngineOptions m_options;
         DownloadIndexStore m_store;
         RequestVault m_vault;
+        // Orders a removal against the end of a run, so the run either sees the
+        // tombstone and cleans up itself or has fully finished before Remove
+        // decides to clean up. Taken before m_mutex, never while holding it.
+        std::mutex m_removalGate;
         mutable std::mutex m_mutex;
         std::condition_variable_any m_condition;
         std::map<std::wstring, DownloadRecord, std::less<>> m_records;

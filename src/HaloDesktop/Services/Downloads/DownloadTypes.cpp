@@ -436,6 +436,27 @@ namespace HaloDesktop::Services::Downloads
         return ContentRange{ *start, *end, *total };
     }
 
+    FilePresence DetectFilePresence(
+        std::filesystem::path const& root,
+        std::filesystem::path const& target) noexcept
+    {
+        std::error_code error;
+        if (std::filesystem::is_regular_file(target, error) && !error)
+        {
+            auto const bytes = std::filesystem::file_size(target, error);
+            if (!error)
+            {
+                return FilePresence{ .Kind = FilePresenceKind::Present, .Bytes = bytes };
+            }
+        }
+        error.clear();
+        if (std::filesystem::is_directory(root, error) && !error)
+        {
+            return FilePresence{ .Kind = FilePresenceKind::Missing };
+        }
+        return FilePresence{ .Kind = FilePresenceKind::FolderUnavailable };
+    }
+
     bool HasSufficientSpace(std::uint64_t availableBytes, std::uint64_t videoBytes) noexcept
     {
         if (videoBytes > (std::numeric_limits<std::uint64_t>::max)() - StorageReserve)

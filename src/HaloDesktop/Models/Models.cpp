@@ -242,7 +242,8 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t totalBytes,
         hstring fileName,
         hstring addedLabel,
-        bool hdr)
+        bool hdr,
+        std::uint32_t activeConnections)
         : m_id(std::move(id)),
           m_tag(std::move(tag)),
           m_name(std::move(name)),
@@ -262,7 +263,8 @@ namespace winrt::HaloDesktop::implementation
           m_totalBytes(totalBytes),
           m_fileName(std::move(fileName)),
           m_addedLabel(std::move(addedLabel)),
-          m_hdr(hdr)
+          m_hdr(hdr),
+          m_activeConnections(activeConnections)
     {
     }
 
@@ -286,6 +288,7 @@ namespace winrt::HaloDesktop::implementation
     hstring DownloadItem::FileName() const { return m_fileName; }
     hstring DownloadItem::AddedLabel() const { return m_addedLabel; }
     bool DownloadItem::Hdr() const noexcept { return m_hdr; }
+    std::uint32_t DownloadItem::ActiveConnections() const noexcept { return m_activeConnections; }
 
     winrt::event_token DownloadItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
     {

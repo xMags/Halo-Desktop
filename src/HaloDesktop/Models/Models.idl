@@ -147,6 +147,8 @@ namespace HaloDesktop
         String FileName { get; };
         String AddedLabel { get; };
         Boolean Hdr { get; };
+        // Connections receiving data right now; 0 unless downloading.
+        UInt32 ActiveConnections { get; };
     };
 
     [default_interface]

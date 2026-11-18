@@ -230,6 +230,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\WatchOutbox.cpp">
       <Link>WatchOutbox.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SegmentPlannerTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\SegmentPlanner.cpp">
+      <Link>SegmentPlanner.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadHttp.cpp">
+      <Link>DownloadHttp.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\SegmentedTransfer.cpp">
+      <Link>SegmentedTransfer.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -244,6 +254,7 @@
     <ClInclude Include="SourcesSheetTests.h" />
     <ClInclude Include="WatchOutboxTests.h" />
     <ClInclude Include="CallQueueTests.h" />
+    <ClInclude Include="SegmentPlannerTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

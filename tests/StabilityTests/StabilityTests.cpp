@@ -28,6 +28,7 @@
 #include "SourcesSheetTests.h"
 #include "WatchOutboxTests.h"
 #include "CallQueueTests.h"
+#include "SegmentPlannerTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1386,6 +1387,7 @@ int main()
         TestLandscapeArtworkSelection();
         TestBrowserSignInListenerCancellation();
         RunStandaloneStorageTests();
+        RunSegmentPlannerTests();
         RunDownloadTransferStabilityTest();
         RunPlaybackSourceResolverTest();
         RunApiClientAuthTest();

@@ -162,7 +162,8 @@ namespace
             total,
             winrt::hstring{ record.FileName },
             AddedLabel(record.CreatedAt),
-            info.DynamicRange && *info.DynamicRange != L"SDR");
+            info.DynamicRange && *info.DynamicRange != L"SDR",
+            record.Status == DownloadStatus::Downloading ? record.ActiveConnections : 0u);
     }
 
 }
@@ -517,7 +518,7 @@ namespace HaloDesktop::Services
         auto const accountVersion = m_accountVersion.load();
         if (server.empty() || userId.empty())
         {
-            co_return DownloadStartResult{};
+            co_return DownloadStartResult{ DownloadStartOutcome::Failed, L"Sign in before downloading." };
         }
         auto const videoId = request.Media.VideoId;
         auto const fingerprint = Downloads::Sha256Hex(request.Request.Url);
@@ -528,13 +529,13 @@ namespace HaloDesktop::Services
             std::scoped_lock const accountLock{ m_accountMutex };
             if (accountVersion != m_accountVersion.load())
             {
-                co_return DownloadStartResult{};
+                co_return DownloadStartResult{ DownloadStartOutcome::Failed, L"The active account changed while starting the download." };
             }
             m_engine->SetAccount(server, userId);
             if (accountVersion != m_accountVersion.load())
             {
                 m_engine->ClearAccount();
-                co_return DownloadStartResult{};
+                co_return DownloadStartResult{ DownloadStartOutcome::Failed, L"The active account changed while starting the download." };
             }
             m_boundAccountVersion.store(accountVersion);
             auto const before = m_engine->List();
