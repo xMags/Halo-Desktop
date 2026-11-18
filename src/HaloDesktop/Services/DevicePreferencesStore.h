@@ -32,6 +32,12 @@ namespace HaloDesktop::Services
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
+        // The last self-hosted server signed in to from the sign-in form,
+        // offered again next time. Empty until one is.
+        std::wstring LastServerAddress;
+        // The built-in server the sessions saved on this PC were saved for.
+        // Empty until recorded.
+        std::wstring SessionServerUrl;
     };
 
     // One stored search-history row: a plain string (the older shape) or a
@@ -73,6 +79,10 @@ namespace HaloDesktop::Services
         // a clear margin is dropped without touching the file, so a live transfer
         // cannot rewrite preferences on every progress tick.
         void RecordMeasuredLineMbps(double megabitsPerSecond);
+        [[nodiscard]] std::wstring LastServerAddress() const;
+        void LastServerAddress(std::wstring value);
+        [[nodiscard]] std::wstring SessionServerUrl() const;
+        void SessionServerUrl(std::wstring value);
 
         // Migration only writes when the standalone preference file is absent.
         [[nodiscard]] bool ImportIfMissing(DevicePreferences const& value);

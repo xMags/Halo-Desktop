@@ -9,6 +9,7 @@
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <utility>
 #include <winrt/Windows.Storage.Streams.h>
 #include <winrt/Windows.Web.Http.Headers.h>
 
@@ -132,6 +133,27 @@ namespace HaloDesktop::Api
             std::optional<winrt::hstring> body,
             HttpHeaders headers)
     {
+        return SendJsonWithAsync(m_apiClient, std::move(method), std::move(uri), std::move(body), std::move(headers));
+    }
+
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::IJsonValue>
+        HttpExecutor::SendJsonWithoutRedirectAsync(
+            winrt::Windows::Web::Http::HttpMethod method,
+            winrt::Windows::Foundation::Uri uri,
+            std::optional<winrt::hstring> body,
+            HttpHeaders headers)
+    {
+        return SendJsonWithAsync(m_noRedirectClient, std::move(method), std::move(uri), std::move(body), std::move(headers));
+    }
+
+    winrt::Windows::Foundation::IAsyncOperation<winrt::Windows::Data::Json::IJsonValue>
+        HttpExecutor::SendJsonWithAsync(
+            winrt::Windows::Web::Http::HttpClient client,
+            winrt::Windows::Web::Http::HttpMethod method,
+            winrt::Windows::Foundation::Uri uri,
+            std::optional<winrt::hstring> body,
+            HttpHeaders headers)
+    {
         co_await winrt::resume_background();
 
         winrt::Windows::Web::Http::HttpRequestMessage request{ method, uri };
@@ -147,7 +169,7 @@ namespace HaloDesktop::Api
         winrt::Windows::Web::Http::HttpResponseMessage response{ nullptr };
         try
         {
-            response = co_await m_apiClient.SendRequestAsync(
+            response = co_await client.SendRequestAsync(
                 request,
                 winrt::Windows::Web::Http::HttpCompletionOption::ResponseHeadersRead);
         }

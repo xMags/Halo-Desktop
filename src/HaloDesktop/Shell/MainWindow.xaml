@@ -53,7 +53,8 @@
             Background="#FF050507"
             IsHitTestVisible="False"
             Visibility="Collapsed" />
-        <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" />
+        <!-- Above every layer: the sign-in overlay draws under it, full window. -->
+        <local:TitleBar x:Name="AppTitleBar" Grid.Row="0" Canvas.ZIndex="1" />
         <Grid Grid.Row="1">
             <local:ShellPage x:Name="ShellLayer" />
             <!-- The sheet layer is deliberately unpainted: the sources sheet draws its
@@ -63,10 +64,13 @@
                 x:Name="SheetFrame"
                 Background="Transparent"
                 Visibility="Collapsed" />
-            <Frame
-                x:Name="OverlayFrame"
-                Background="{ThemeResource HaloMicaBrush}"
-                Visibility="Collapsed" />
         </Grid>
+        <!-- Below the title bar row, except for sign-in, which the shell spreads
+             over both rows (ShellChrome.OverlayCoversTitleBar). -->
+        <Frame
+            x:Name="OverlayFrame"
+            Grid.Row="1"
+            Background="{ThemeResource HaloMicaBrush}"
+            Visibility="Collapsed" />
     </Grid>
 </Window>

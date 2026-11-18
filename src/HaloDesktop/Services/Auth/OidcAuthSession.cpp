@@ -144,6 +144,7 @@ namespace HaloDesktop::Services::Auth
     {
         std::scoped_lock const lock{ m_mutex };
         m_session = std::move(session);
+        m_refreshFlight.reset();
         ++m_revision;
     }
 
@@ -154,6 +155,8 @@ namespace HaloDesktop::Services::Auth
         {
             std::scoped_lock const lock{ m_mutex };
             m_session = session;
+            // A refresh still in flight belongs to the session just replaced.
+            m_refreshFlight.reset();
             revision = ++m_revision;
         }
         co_await PersistUntilCurrentAsync(revision, std::move(session));
@@ -225,6 +228,8 @@ namespace HaloDesktop::Services::Auth
             std::scoped_lock const lock{ m_mutex };
             current = m_session;
             m_session.reset();
+            // A refresh still in flight belongs to the session that just ended.
+            m_refreshFlight.reset();
             revision = ++m_revision;
         }
         try
@@ -295,6 +300,7 @@ namespace HaloDesktop::Services::Auth
             }
             previous = m_session;
             m_session.reset();
+            m_refreshFlight.reset();
             revision = ++m_revision;
         }
         try
@@ -347,8 +353,14 @@ namespace HaloDesktop::Services::Auth
         auto const oauthError = OptionalString(object, L"error");
         if (oauthError && *oauthError == L"invalid_grant")
         {
-            static_cast<void>(co_await ClearIfRevisionAsync(observedRevision));
-            co_return std::nullopt;
+            // Dead everywhere, but only the session it was asked about: a late
+            // answer must neither bring an old session back nor end a new one.
+            if (co_await ClearIfRevisionAsync(observedRevision))
+            {
+                co_return std::nullopt;
+            }
+            std::scoped_lock const lock{ m_mutex };
+            co_return m_session ? std::optional<winrt::hstring>{ m_session->AccessToken } : std::nullopt;
         }
         if (!response.IsSuccessStatusCode() || oauthError)
         {

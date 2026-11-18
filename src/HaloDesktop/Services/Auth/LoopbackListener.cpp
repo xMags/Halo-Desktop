@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Services/Auth/LoopbackListener.h"
 
+#include "Services/Auth/LoopbackLandingPage.h"
+
 #include <algorithm>
 #include <array>
 #include <atomic>
@@ -19,12 +21,6 @@ namespace
     constexpr std::uint16_t CallbackPort = 17871;
     constexpr std::chrono::milliseconds ClientReadBudget{ 5000 };
     constexpr std::chrono::milliseconds StopPollInterval{ 50 };
-    constexpr std::string_view SuccessPage =
-        "<!doctype html><html><head><meta charset=\"utf-8\"><title>Halo</title></head>"
-        "<body style=\"background:#0a0c11;color:#f4f6fb;font-family:'Segoe UI',sans-serif;"
-        "display:grid;place-items:center;height:100vh;margin:0\"><div style=\"text-align:center\">"
-        "<h2>Signed in to Halo</h2><p style=\"color:#8b93a5\">You can close this tab and return to the app."
-        "</p></div></body></html>";
 
     void SendResponse(SOCKET socket, std::string const& response) noexcept
     {
@@ -320,11 +316,7 @@ namespace HaloDesktop::Services::Auth
                     continue;
                 }
 
-                auto const response = std::string{ "HTTP/1.1 200 OK\r\ncontent-type: text/html; charset=utf-8\r\ncontent-length: " }
-                    + std::to_string(SuccessPage.size())
-                    + "\r\nconnection: close\r\n\r\n"
-                    + std::string{ SuccessPage };
-                SendResponse(client, response);
+                SendResponse(client, LoopbackLandingResponse(path));
                 CloseClient(client);
                 Complete(winrt::to_hstring(path));
                 return;

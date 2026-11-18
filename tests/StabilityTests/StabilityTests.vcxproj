@@ -260,6 +260,28 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\BuildInfoPolicy.cpp">
       <Link>BuildInfoPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SignInTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\ServerAddressPolicy.cpp">
+      <Link>ServerAddressPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\SignInFailurePolicy.cpp">
+      <Link>SignInFailurePolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LoopbackLandingPage.cpp">
+      <Link>LoopbackLandingPage.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\LoginStepsPolicy.cpp">
+      <Link>LoginStepsPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\SignInAddonRegistry.cpp">
+      <Link>SignInAddonRegistry.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\NoSignInAddons.cpp">
+      <Link>NoSignInAddons.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LocalAuthSession.cpp">
+      <Link>LocalAuthSession.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -277,6 +299,7 @@
     <ClInclude Include="SegmentPlannerTests.h" />
     <ClInclude Include="DownloadsPageTests.h" />
     <ClInclude Include="SettingsPageTests.h" />
+    <ClInclude Include="SignInTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

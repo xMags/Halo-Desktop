@@ -17,6 +17,7 @@
 namespace HaloDesktop::Services::Auth
 {
     class ITokenProvider;
+    struct SessionTarget;
 }
 
 namespace HaloDesktop::Api
@@ -31,6 +32,11 @@ namespace HaloDesktop::Api
 
     // Thread-safe endpoint facade. Public discovery bypasses authentication;
     // protected endpoints draw a token and spend at most one refresh retry.
+    // Every request for a session goes to that session's own server (the
+    // token provider's CurrentTarget), which is the built-in base URL unless a
+    // username and password session was opened on a self-hosted server. A
+    // request whose target changes while it is under way is cancelled, so one
+    // session's token never reaches another session's server.
     class ApiClient final
     {
     public:
@@ -41,9 +47,13 @@ namespace HaloDesktop::Api
             std::shared_ptr<HttpExecutor> executor,
             std::shared_ptr<::HaloDesktop::Services::Auth::ITokenProvider> tokenProvider);
 
+        // The built-in server this build signs in to.
         [[nodiscard]] winrt::hstring BaseUrl() const;
         [[nodiscard]] concurrency::task<Dto::HealthStatus> GetHealthAsync();
+        // The built-in server's sign-in settings.
         [[nodiscard]] concurrency::task<Dto::AuthConfig> GetAuthConfigAsync();
+        // Another server's, for the self-hosted sign-in form. Unauthenticated.
+        [[nodiscard]] concurrency::task<Dto::AuthConfig> GetAuthConfigAtAsync(winrt::hstring serverUrl);
         [[nodiscard]] concurrency::task<Dto::Me> GetMeAsync();
         // The account's profile picture as the server sent it (an image file),
         // or empty when it has none. Fetch it again only when
@@ -87,7 +97,9 @@ namespace HaloDesktop::Api
             Security::ProtectedHttpHeaders headers = {});
 
     private:
-        [[nodiscard]] winrt::Windows::Foundation::Uri Endpoint(wchar_t const* path) const;
+        [[nodiscard]] static winrt::Windows::Foundation::Uri Endpoint(winrt::hstring const& server, wchar_t const* path);
+        [[nodiscard]] winrt::hstring ServerFor(::HaloDesktop::Services::Auth::SessionTarget const& target) const;
+        void RequireSameTarget(::HaloDesktop::Services::Auth::SessionTarget const& target) const;
         [[nodiscard]] concurrency::task<winrt::Windows::Data::Json::IJsonValue> SendAuthenticatedJsonAsync(
             winrt::Windows::Web::Http::HttpMethod method,
             wchar_t const* path,

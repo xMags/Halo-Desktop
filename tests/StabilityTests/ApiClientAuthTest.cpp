@@ -7,11 +7,14 @@
 #include "Api/ApiError.h"
 #include "Api/HttpExecutor.h"
 #include "Services/Auth/ITokenProvider.h"
+#include "Services/Auth/LocalAuthSession.h"
+#include "Services/Auth/SessionStore.h"
 
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <memory>
 #include <mutex>
@@ -38,13 +41,17 @@ namespace
         int Status{ 200 };
         std::string Body;
         std::string ContentType{ "application/json" };
+        // Extra header lines, each ending in CRLF (a redirect's Location).
+        std::string Headers;
     };
 
     struct SeenRequest final
     {
+        std::string Method;
         std::string Path;
         // Empty when the request carried no bearer token.
         std::string Bearer;
+        std::string Body;
     };
 
     // One request per connection, answered by a function of the path and the
@@ -157,7 +164,22 @@ namespace
             auto const pathStart = request.find(' ');
             auto const pathEnd = request.find(' ', pathStart + 1);
             if (pathStart == std::string::npos || pathEnd == std::string::npos) return;
+            auto const method = request.substr(0, pathStart);
             auto const path = request.substr(pathStart + 1, pathEnd - pathStart - 1);
+            auto const headEnd = request.find("\r\n\r\n");
+            std::string body = request.substr(headEnd + 4);
+            std::size_t contentLength{};
+            constexpr std::string_view lengthHeader = "\r\nContent-Length: ";
+            if (auto const found = request.find(lengthHeader); found != std::string::npos && found < headEnd)
+            {
+                contentLength = static_cast<std::size_t>(std::stoul(request.substr(found + lengthHeader.size())));
+            }
+            while (body.size() < contentLength && body.size() < 64u * 1024u)
+            {
+                auto const count = recv(client, buffer.data(), static_cast<int>(buffer.size()), 0);
+                if (count <= 0) break;
+                body.append(buffer.data(), static_cast<std::size_t>(count));
+            }
 
             std::string bearer;
             constexpr std::string_view authorization = "\r\nAuthorization: Bearer ";
@@ -170,12 +192,12 @@ namespace
             CannedResponse response;
             {
                 std::scoped_lock const lock{ m_mutex };
-                m_requests.push_back({ path, bearer });
+                m_requests.push_back({ method, path, bearer, body });
                 response = m_responder(path, bearer);
             }
             auto const text = "HTTP/1.1 " + std::to_string(response.Status) + " Test\r\nContent-Type: "
                 + response.ContentType + "\r\nContent-Length: " + std::to_string(response.Body.size())
-                + "\r\nConnection: close\r\n\r\n" + response.Body;
+                + "\r\n" + response.Headers + "Connection: close\r\n\r\n" + response.Body;
             std::size_t sent{};
             while (sent < text.size())
             {
@@ -242,13 +264,26 @@ namespace
             return 1;
         }
 
+        [[nodiscard]] HaloDesktop::Services::Auth::SessionTarget CurrentTarget() const override
+        {
+            std::scoped_lock const lock{ m_mutex };
+            return { .Generation = 1, .ServerUrl = m_serverUrl };
+        }
+
+        void ServeFrom(std::optional<winrt::hstring> serverUrl)
+        {
+            std::scoped_lock const lock{ m_mutex };
+            m_serverUrl = std::move(serverUrl);
+        }
+
         [[nodiscard]] int Refreshes() const noexcept { return m_refreshes.load(); }
         [[nodiscard]] int Rejections() const noexcept { return m_rejections.load(); }
 
     private:
         RefreshResult m_refresh;
-        std::mutex m_mutex;
+        mutable std::mutex m_mutex;
         winrt::hstring m_token{ L"access-1" };
+        std::optional<winrt::hstring> m_serverUrl;
         std::atomic_int m_refreshes{};
         std::atomic_int m_rejections{};
     };
@@ -420,6 +455,129 @@ namespace
         Require(harness.Tokens->Rejections() == 0 && harness.Tokens->Refreshes() == 0,
             "a plan refusal was treated as an authentication failure");
     }
+
+    // The session's own server answers every request made for it: a username
+    // and password session opened on a self-hosted server never sends its
+    // token to the built-in one, and the built-in session never to it.
+    void TestRequestsFollowTheSessionServer()
+    {
+        AuthHttpServer builtIn{ [](std::string const&, std::string const&) { return Json(500, R"({"error":"wrong server"})"); } };
+        AuthHttpServer own{ [](std::string const&, std::string const& bearer)
+        {
+            return bearer == "access-1" ? Json(200, Me) : Json(401, "{}");
+        } };
+        auto const tokens = std::make_shared<FakeTokenProvider>([]() { return RefreshTo(L"access-2"); });
+        tokens->ServeFrom(own.BaseUrl());
+        HaloDesktop::Api::ApiClient client{ builtIn.BaseUrl(), std::make_shared<HaloDesktop::Api::HttpExecutor>(), tokens };
+
+        Require(client.GetMeAsync().get().Id == L"u1", "a self-hosted session's request did not reach its server");
+        Require(builtIn.Requests().empty() && own.Requests().size() == 1,
+            "a self-hosted session's token reached the built-in server");
+
+        tokens->ServeFrom(std::nullopt);
+        auto const failure = FailureOf([&client]() { static_cast<void>(client.GetMeAsync().get()); });
+        Require(failure && HaloDesktop::Api::ApiError::HttpStatus(*failure).value_or(0) == 500,
+            "the built-in session's request did not reach the built-in server");
+        Require(own.Requests().size() == 1, "the built-in session's token reached a self-hosted server");
+    }
+
+    class TemporaryFolder final
+    {
+    public:
+        TemporaryFolder()
+            : m_path(std::filesystem::temp_directory_path()
+                / (L"HaloDesktop-SignIn-" + std::to_wstring(GetCurrentProcessId()) + L"-"
+                    + std::to_wstring(GetTickCount64()) + L"-" + std::to_wstring(++s_counter)))
+        {
+            std::filesystem::create_directories(m_path);
+        }
+
+        ~TemporaryFolder()
+        {
+            std::error_code ignored;
+            std::filesystem::remove_all(m_path, ignored);
+        }
+
+        TemporaryFolder(TemporaryFolder const&) = delete;
+        TemporaryFolder& operator=(TemporaryFolder const&) = delete;
+
+        [[nodiscard]] std::filesystem::path const& Path() const noexcept { return m_path; }
+
+    private:
+        static inline std::atomic_int s_counter{};
+        std::filesystem::path m_path;
+    };
+
+    constexpr std::string_view IssuedOne = R"({"token":"local-1","expiresAt":4102444800000})";
+    constexpr std::string_view IssuedTwo = R"({"token":"local-2","expiresAt":4102444800000})";
+
+    // The reference's signInWithPassword(serverUrl, ...): the credentials go
+    // to the server typed into the form, the session records that server, and
+    // its refresh goes back to it.
+    void TestPasswordSignInStaysOnItsServer()
+    {
+        AuthHttpServer builtIn{ [](std::string const&, std::string const&) { return Json(500, "{}"); } };
+        AuthHttpServer own{ [](std::string const& path, std::string const& bearer)
+        {
+            if (path == "/auth/login") return Json(200, IssuedOne);
+            if (path == "/auth/refresh" && bearer == "local-1") return Json(200, IssuedTwo);
+            return Json(404, "{}");
+        } };
+        TemporaryFolder folder;
+        auto const store = std::make_shared<HaloDesktop::Services::Auth::SessionStore>(folder.Path());
+        HaloDesktop::Services::Auth::LocalAuthSession session{
+            builtIn.BaseUrl(), std::make_shared<HaloDesktop::Api::HttpExecutor>(), store };
+
+        auto const issued = session.LoginAsync(own.BaseUrl(), L"kenneth", L"correct horse").get();
+        Require(issued.Token == L"local-1", "the self-hosted server's token was not taken");
+        Require(session.ServerUrl() == own.BaseUrl(), "the session did not record its own server");
+        auto const seen = own.Requests();
+        Require(seen.size() == 1 && seen[0].Method == "POST" && seen[0].Path == "/auth/login"
+                && seen[0].Body.find("correct horse") != std::string::npos,
+            "the credentials did not reach the typed server");
+        Require(builtIn.Requests().empty(), "the credentials reached the built-in server");
+
+        auto const stored = store->LoadAsync().get();
+        Require(stored && stored->Local && stored->Local->ServerUrl == own.BaseUrl()
+                && stored->Local->Token == L"local-1",
+            "the saved session did not keep its server");
+
+        Require(session.RefreshAccessTokenAsync().get() == L"local-2", "the session did not refresh on its own server");
+        Require(own.Requests().size() == 2 && own.Requests().back().Path == "/auth/refresh" && builtIn.Requests().empty(),
+            "a self-hosted session's refresh went elsewhere");
+
+        // A session saved before sessions recorded their server belongs to the
+        // built-in one.
+        HaloDesktop::Services::Auth::LocalAuthSession older{
+            builtIn.BaseUrl(), std::make_shared<HaloDesktop::Api::HttpExecutor>(), store };
+        older.Restore({ .Token = L"old", .ExpiresAt = 4102444800000LL, .ServerUrl = std::nullopt });
+        Require(older.ServerUrl() == builtIn.BaseUrl(), "an older saved session was not the built-in server's");
+    }
+
+    // Never after a redirect: a server that answers the sign-in with a 307 to
+    // another origin gets its refusal, and the other origin sees nothing.
+    void TestPasswordNeverFollowsARedirect()
+    {
+        AuthHttpServer elsewhere{ [](std::string const&, std::string const&) { return Json(200, IssuedOne); } };
+        auto const location = winrt::to_string(elsewhere.BaseUrl()) + "/auth/login";
+        AuthHttpServer typed{ [location](std::string const&, std::string const&)
+        {
+            return CannedResponse{ 307, "", "text/plain", "Location: " + location + "\r\n" };
+        } };
+        TemporaryFolder folder;
+        auto const store = std::make_shared<HaloDesktop::Services::Auth::SessionStore>(folder.Path());
+        HaloDesktop::Services::Auth::LocalAuthSession session{
+            typed.BaseUrl(), std::make_shared<HaloDesktop::Api::HttpExecutor>(), store };
+
+        auto const failure = FailureOf([&session, &typed]()
+        {
+            static_cast<void>(session.LoginAsync(typed.BaseUrl(), L"kenneth", L"secret").get());
+        });
+        Require(failure && HaloDesktop::Api::ApiError::HttpStatus(*failure).value_or(0) == 307,
+            "a redirected sign-in did not fail with its redirect");
+        Require(elsewhere.Requests().empty(), "the password followed a redirect to another origin");
+        Require(!session.ServerUrl() && !store->LoadAsync().get(), "a refused sign-in left a session behind");
+    }
 }
 
 void RunApiClientAuthTest()
@@ -433,6 +591,9 @@ void RunApiClientAuthTest()
         TestLaterRequestSucceeds();
         TestRefreshTransportFailureKeepsSession();
         TestAvatarAndPlanRefusal();
+        TestRequestsFollowTheSessionServer();
+        TestPasswordSignInStaysOnItsServer();
+        TestPasswordNeverFollowsARedirect();
     }
     catch (...)
     {

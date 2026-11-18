@@ -235,6 +235,9 @@ namespace winrt::HaloDesktop::implementation
         AppTitleBarControl().RequestedTheme(chrome.PlayerTitleBar
             ? Microsoft::UI::Xaml::ElementTheme::Dark
             : Microsoft::UI::Xaml::ElementTheme::Default);
+        auto const overlay = OverlayFrameControl();
+        Microsoft::UI::Xaml::Controls::Grid::SetRow(overlay, chrome.OverlayCoversTitleBar ? 0 : 1);
+        Microsoft::UI::Xaml::Controls::Grid::SetRowSpan(overlay, chrome.OverlayCoversTitleBar ? 2 : 1);
         App::Services().Theme->SetForcedDarkScope(chrome.ForceDarkPalette);
         UpdateCaptionButtonColors();
     }

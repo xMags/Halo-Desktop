@@ -27,6 +27,8 @@
 #include "Services/Auth/OidcSignInFlow.h"
 #include "Services/Auth/SessionController.h"
 #include "Services/Auth/SessionStore.h"
+#include "Services/Auth/SignInAddon.h"
+#include "Services/Auth/SignInAddonRegistry.h"
 #include "Services/NavigationService.h"
 #include "Services/LibraryService.h"
 #include "Services/MetadataService.h"
@@ -95,10 +97,17 @@ namespace winrt::HaloDesktop::implementation
             m_sessionStore);
         m_oidcSignInFlow = std::make_shared<::HaloDesktop::Services::Auth::OidcSignInFlow>(
             m_httpExecutor);
+        // Empty in a public build; see Services/Auth/SignInAddon.h.
+        auto const signInAddons = std::make_shared<::HaloDesktop::Services::Auth::SignInAddonRegistry const>(
+            ::HaloDesktop::Services::Auth::CreateSignInAddons(::HaloDesktop::Services::Auth::SignInAddonContext{
+                .Http = m_httpExecutor,
+                .LocalState = m_storagePaths->LocalState(),
+            }));
         m_sessionController = std::make_shared<::HaloDesktop::Services::Auth::SessionController>(
             m_sessionStore,
             m_localAuthSession,
             m_oidcAuthSession,
+            signInAddons,
             m_queryCache,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_apiClient = std::make_shared<::HaloDesktop::Api::ApiClient>(
@@ -110,6 +119,8 @@ namespace winrt::HaloDesktop::implementation
             m_sessionController,
             m_sessionStore,
             m_oidcSignInFlow,
+            signInAddons,
+            m_devicePreferences,
             m_services.Navigation);
         std::weak_ptr<::HaloDesktop::Services::SessionService> weakSession = m_sessionService;
         m_sessionController->SetRejectedHandler([weakSession]()

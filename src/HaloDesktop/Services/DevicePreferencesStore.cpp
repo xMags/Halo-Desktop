@@ -21,11 +21,25 @@ namespace
     constexpr double MaximumLineMbps = 100000.0;
     // A new peak has to clear the stored one by a tenth before it is worth a write.
     constexpr double LineMbpsWriteMargin = 1.1;
+    // The sign-in form's server field limit, and a generous bound for a URL.
+    constexpr std::size_t MaximumServerAddressLength = 512;
+    constexpr std::size_t MaximumServerUrlLength = 4096;
 
     using HaloDesktop::Services::DevicePreferences;
     using JsonObject = winrt::Windows::Data::Json::JsonObject;
     using JsonValue = winrt::Windows::Data::Json::JsonValue;
     using JsonValueType = winrt::Windows::Data::Json::JsonValueType;
+
+    std::wstring BoundedString(JsonObject const& root, wchar_t const* name, std::size_t maximumLength)
+    {
+        auto const value = root.TryLookup(name);
+        if (!value || value.ValueType() != JsonValueType::String)
+        {
+            return {};
+        }
+        std::wstring text{ value.GetString() };
+        return text.size() > maximumLength ? std::wstring{} : text;
+    }
 
     DevicePreferences Parse(std::string const& raw)
     {
@@ -80,6 +94,8 @@ namespace
         result.DiscordPresence = root.GetNamedBoolean(L"discordPresence", true);
         result.NavPaneOpen = root.GetNamedBoolean(L"navPaneOpen", false);
         result.FillPicture = root.GetNamedBoolean(L"fillPicture", false);
+        result.LastServerAddress = BoundedString(root, L"lastServerAddress", MaximumServerAddressLength);
+        result.SessionServerUrl = BoundedString(root, L"sessionServerUrl", MaximumServerUrlLength);
         return result;
     }
 
@@ -127,6 +143,14 @@ namespace
         root.Insert(L"discordPresence", JsonValue::CreateBooleanValue(value.DiscordPresence));
         root.Insert(L"navPaneOpen", JsonValue::CreateBooleanValue(value.NavPaneOpen));
         root.Insert(L"fillPicture", JsonValue::CreateBooleanValue(value.FillPicture));
+        if (!value.LastServerAddress.empty() && value.LastServerAddress.size() <= MaximumServerAddressLength)
+        {
+            root.Insert(L"lastServerAddress", JsonValue::CreateStringValue(value.LastServerAddress));
+        }
+        if (!value.SessionServerUrl.empty() && value.SessionServerUrl.size() <= MaximumServerUrlLength)
+        {
+            root.Insert(L"sessionServerUrl", JsonValue::CreateStringValue(value.SessionServerUrl));
+        }
         return winrt::to_string(root.Stringify());
     }
 
@@ -359,6 +383,40 @@ namespace HaloDesktop::Services
         }
         std::scoped_lock const lock{ m_mutex };
         m_lineMbps = sample;
+    }
+
+    std::wstring DevicePreferencesStore::LastServerAddress() const
+    {
+        try { return Read().LastServerAddress; } catch (...) { return {}; }
+    }
+
+    void DevicePreferencesStore::LastServerAddress(std::wstring value)
+    {
+        if (value.size() > MaximumServerAddressLength)
+        {
+            throw std::invalid_argument{ "The server address is too long." };
+        }
+        Mutate(m_path, m_mutex, [value = std::move(value)](DevicePreferences& current) mutable
+        {
+            current.LastServerAddress = std::move(value);
+        });
+    }
+
+    std::wstring DevicePreferencesStore::SessionServerUrl() const
+    {
+        try { return Read().SessionServerUrl; } catch (...) { return {}; }
+    }
+
+    void DevicePreferencesStore::SessionServerUrl(std::wstring value)
+    {
+        if (value.size() > MaximumServerUrlLength)
+        {
+            throw std::invalid_argument{ "The server URL is too long." };
+        }
+        Mutate(m_path, m_mutex, [value = std::move(value)](DevicePreferences& current) mutable
+        {
+            current.SessionServerUrl = std::move(value);
+        });
     }
 
     bool DevicePreferencesStore::ImportIfMissing(DevicePreferences const& value)

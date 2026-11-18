@@ -2,6 +2,7 @@
 
 #include "Api/Dto.h"
 #include "Services/AddonRowPolicy.h"
+#include "Services/Auth/SignInFailurePolicy.h"
 #include "Services/CatalogPagingPolicy.h"
 #include "Services/Downloads/DownloadTypes.h"
 
@@ -27,11 +28,44 @@ namespace HaloDesktop::Sources
 
 namespace HaloDesktop::Services
 {
-    enum class AuthenticationMode
+    // How the built-in server signs people in, as the sign-in screen needs it:
+    // its own accounts, OIDC in the browser, a sign-in add-on this build
+    // carries for the server's mode, or a mode this build lacks.
+    enum class SignInMode
     {
-        Unknown,
         Local,
         Oidc,
+        Addon,
+        Unsupported,
+    };
+
+    struct SignInDiscovery final
+    {
+        SignInMode Mode{ SignInMode::Local };
+        // The server's mode as sent ("local", "oidc", or another name).
+        std::wstring ModeName;
+        // An add-on's button text.
+        std::wstring ButtonLabel;
+    };
+
+    enum class SignInAttemptOutcome
+    {
+        Succeeded,
+        Failed,
+        // Cancelled or replaced while it was under way: whatever session it
+        // got has been discarded, so it is neither switched to nor restored at
+        // the next launch.
+        Superseded,
+    };
+
+    struct SignInAttempt final
+    {
+        SignInAttemptOutcome Outcome{ SignInAttemptOutcome::Failed };
+        // A failed browser sign-in: what went wrong, for ClassifySignInFailure.
+        Auth::SignInErrorInfo Error;
+        // A failed username and password sign-in: the server's HTTP status,
+        // none when it could not be reached.
+        std::optional<std::uint16_t> HttpStatus;
     };
 
     using DownloadChangedToken = std::uint64_t;
@@ -340,6 +374,11 @@ namespace HaloDesktop::Services
     {
     public:
         virtual ~ISessionService() = default;
+        // The server the signed-in session talks to: the built-in one, or the
+        // self-hosted server a username and password session was opened on.
+        // The built-in one while signed out. Local data keyed by server and
+        // account (downloads, the settings mirror, unsent progress) uses it.
+        // Never shown on screen.
         [[nodiscard]] virtual winrt::hstring ServerUrl() const = 0;
         [[nodiscard]] virtual winrt::hstring UserId() const = 0;
         [[nodiscard]] virtual winrt::hstring UserName() const = 0;
@@ -350,16 +389,37 @@ namespace HaloDesktop::Services
         // signed-in account.
         [[nodiscard]] virtual std::optional<winrt::hstring> Plan() const = 0;
         [[nodiscard]] virtual std::optional<winrt::hstring> AvatarVersion() const = 0;
-        [[nodiscard]] virtual AuthenticationMode Mode() const noexcept = 0;
         [[nodiscard]] virtual std::uint64_t Generation() const noexcept = 0;
         [[nodiscard]] virtual concurrency::task<void> RestoreAsync() = 0;
-        [[nodiscard]] virtual concurrency::task<AuthenticationMode> DiscoverAuthenticationAsync() = 0;
-        [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
-            SignInLocalAsync(winrt::hstring username, winrt::hstring password) = 0;
-        [[nodiscard]] virtual concurrency::task<winrt::HaloDesktop::SignInOutcome>
-            RequestBrowserSignInAsync() = 0;
-        virtual void AcknowledgeBrowserSignIn() noexcept = 0;
-        virtual void CancelBrowserSignIn() noexcept = 0;
+        // Asks the built-in server how it signs people in. Throws when it
+        // cannot be reached or answers nonsense; the error's message is the
+        // sign-in screen's technical detail. UI thread in and out.
+        [[nodiscard]] virtual concurrency::task<SignInDiscovery> DiscoverAuthenticationAsync() = 0;
+        // A self-hosted server's /auth/config mode. Throws when it cannot be
+        // reached. serverUrl is an address ParseServerAddress accepted.
+        [[nodiscard]] virtual concurrency::task<std::wstring> CheckServerModeAsync(winrt::hstring serverUrl) = 0;
+        // A username and password sign-in, on the built-in server (serverUrl
+        // null) or on a self-hosted one, which the session then records and
+        // talks to, and which is remembered for the form. The password is sent
+        // once, to that exact server, and kept nowhere. A newer sign-in or
+        // CancelSignIn supersedes it. UI thread in and out.
+        [[nodiscard]] virtual concurrency::task<SignInAttempt> SignInWithPasswordAsync(
+            std::optional<winrt::hstring> serverUrl,
+            winrt::hstring username,
+            winrt::hstring password) = 0;
+        // The browser sign-in the last discovery found (OIDC or the add-on).
+        // onOpened hears the sign-in page's address on the UI thread.
+        [[nodiscard]] virtual concurrency::task<SignInAttempt> RequestBrowserSignInAsync(
+            std::function<void(winrt::hstring const& authUrl)> onOpened) = 0;
+        // The sign-in screen has taken a succeeded sign-in; it is no longer
+        // discarded by CancelSignIn.
+        virtual void AcknowledgeSignIn() noexcept = 0;
+        // Supersedes the sign-in under way: a browser wait stops, and a
+        // session it still gets is discarded.
+        virtual void CancelSignIn() noexcept = 0;
+        // The self-hosted server last signed in to from the form; empty for
+        // none. Read off the UI thread.
+        [[nodiscard]] virtual concurrency::task<winrt::hstring> LastServerAddressAsync() = 0;
         [[nodiscard]] virtual concurrency::task<std::optional<std::chrono::milliseconds>>
             ProbeHealthAsync() = 0;
         [[nodiscard]] virtual concurrency::task<void> SignOutAsync() = 0;

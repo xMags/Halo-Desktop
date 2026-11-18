@@ -2,6 +2,8 @@
 
 #include "Api/Dto.h"
 #include "Services/Auth/SessionStore.h"
+#include "Services/Auth/SignInAddon.h"
+#include "Services/Auth/SignInFailurePolicy.h"
 
 #include <memory>
 #include <mutex>
@@ -9,7 +11,6 @@
 #include <stop_token>
 #include <pplawait.h>
 #include <ppltasks.h>
-#include <winrt/HaloDesktop.h>
 
 namespace HaloDesktop::Api
 {
@@ -18,21 +19,25 @@ namespace HaloDesktop::Api
 
 namespace HaloDesktop::Services::Auth
 {
+    // Either the session the sign-in produced, or why there is none.
     struct OidcSignInResult final
     {
-        winrt::HaloDesktop::SignInOutcome Outcome{ winrt::HaloDesktop::SignInOutcome::Unreachable };
         std::optional<StoredOidcSession> Session;
+        SignInErrorInfo Error;
     };
 
-    // Thread-safe OIDC authorization-code flow. The listener is bound before
-    // the browser opens, and endpoint strings are used exactly as discovered.
+    // Thread-safe OIDC authorization-code flow with PKCE and a state check.
+    // The listener is bound before the browser opens, and endpoint strings are
+    // used exactly as discovered.
     class OidcSignInFlow final
     {
     public:
         explicit OidcSignInFlow(std::shared_ptr<::HaloDesktop::Api::HttpExecutor> executor);
 
+        // onOpened hears the authorization URL once the browser has it.
         [[nodiscard]] concurrency::task<OidcSignInResult> SignInAsync(
-            ::HaloDesktop::Api::Dto::AuthConfig config);
+            ::HaloDesktop::Api::Dto::AuthConfig config,
+            SignInOpenedHandler onOpened);
         void Cancel() noexcept;
 
     private:

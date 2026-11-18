@@ -1,0 +1,446 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The sign-in screen's own palette and controls, from the reference's `auth.css`.
+  Deliberately outside the theme dictionaries: the screen is dark in both app
+  themes (the shell holds the window in its forced dark scope while it is open),
+  so these are fixed colours, not theme tokens. Merged at app level like the
+  other style files; every key carries the HaloSignIn prefix and none is
+  implicit. Alphas are the reference's rgba values as bytes.
+-->
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <SolidColorBrush x:Key="HaloSignInGroundBrush" Color="#FF0B0C10" />
+  <SolidColorBrush x:Key="HaloSignInInkBrush" Color="#FFFFFFFF" />
+  <!-- The accent and its fill. -->
+  <SolidColorBrush x:Key="HaloSignInAccentBrush" Color="#FF60CDFF" />
+  <SolidColorBrush x:Key="HaloSignInAccentFillBrush" Color="#FF4CC2FF" />
+  <SolidColorBrush x:Key="HaloSignInHelpHoverBrush" Color="#FF99E3FF" />
+  <!-- The second and third inks (.8, .62) and the stroke (.1). -->
+  <SolidColorBrush x:Key="HaloSignInInk2Brush" Color="#CCFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInInk3Brush" Color="#9EFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInStrokeBrush" Color="#1AFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInFootRuleBrush" Color="#12FFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInErrorBrush" Color="#FFFF99A4" />
+  <SolidColorBrush x:Key="HaloSignInSurfaceBrush" Color="#0BFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInQuietBrush" Color="#0DFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInQuietHoverBrush" Color="#17FFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInLinkHoverBrush" Color="#0FFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInDetailsBrush" Color="#4D000000" />
+  <SolidColorBrush x:Key="HaloSignInBarTrackBrush" Color="#1AFFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInSpinnerTrackBrush" Color="#2EFFFFFF" />
+  <!-- The poster chips: rgba(0,0,0,.7) with #7fdcff and #f4d27a ink. -->
+  <SolidColorBrush x:Key="HaloSignInPosterChipBrush" Color="#B3000000" />
+  <SolidColorBrush x:Key="HaloSignInOfflineInkBrush" Color="#FF7FDCFF" />
+  <SolidColorBrush x:Key="HaloSignInGoldInkBrush" Color="#FFF4D27A" />
+  <SolidColorBrush x:Key="HaloSignInPosterGroundBrush" Color="#FF1A1C22" />
+  <SolidColorBrush x:Key="HaloSignInPosterRingBrush" Color="#1AFFFFFF" />
+  <!-- `.si-ring`: the border and, drawn wider and fainter, its glow. -->
+  <SolidColorBrush x:Key="HaloSignInRingBrush" Color="#8060CDFF" />
+  <SolidColorBrush x:Key="HaloSignInRingGlowBrush" Color="#1F4CC2FF" />
+  <!-- `brightness(.42)` over the blurred backdrops. -->
+  <SolidColorBrush x:Key="HaloSignInBackdropDimBrush" Color="#94000000" />
+
+  <!-- `.si-poster::after`: the light catching the top left corner. -->
+  <LinearGradientBrush x:Key="HaloSignInPosterGlossBrush" StartPoint="0.33,0" EndPoint="0.67,1">
+    <GradientStop Offset="0" Color="#24FFFFFF" />
+    <GradientStop Offset="0.38" Color="#00FFFFFF" />
+  </LinearGradientBrush>
+
+  <!-- The title bar over the art. -->
+  <LinearGradientBrush x:Key="HaloSignInTitleBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#990B0C10" />
+    <GradientStop Offset="1" Color="#000B0C10" />
+  </LinearGradientBrush>
+
+  <!--
+    `.si-shade`: a radial vignette centred right of middle over a left-to-right
+    darkening. Two layers, as the reference stacks them.
+  -->
+  <RadialGradientBrush
+    x:Key="HaloSignInShadeRadialBrush"
+    Center="0.7,0.45"
+    GradientOrigin="0.7,0.45"
+    RadiusX="1.2"
+    RadiusY="0.9">
+    <GradientStop Offset="0" Color="#260B0C10" />
+    <GradientStop Offset="0.55" Color="#B30B0C10" />
+    <GradientStop Offset="1" Color="#F20B0C10" />
+  </RadialGradientBrush>
+  <LinearGradientBrush x:Key="HaloSignInShadeLinearBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+    <GradientStop Offset="0" Color="#D90B0C10" />
+    <GradientStop Offset="0.55" Color="#330B0C10" />
+    <GradientStop Offset="1" Color="#800B0C10" />
+  </LinearGradientBrush>
+
+  <!-- `.si-glow-a`, `.si-glow-c`: radial-gradient(closest-side, colour, transparent). -->
+  <RadialGradientBrush x:Key="HaloSignInGlowABrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+    <GradientStop Offset="0" Color="#2960CDFF" />
+    <GradientStop Offset="1" Color="#0060CDFF" />
+  </RadialGradientBrush>
+  <RadialGradientBrush x:Key="HaloSignInGlowCBrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
+    <GradientStop Offset="0" Color="#244CC2FF" />
+    <GradientStop Offset="1" Color="#004CC2FF" />
+  </RadialGradientBrush>
+
+  <!--
+    `.si-card`: dark frosted glass. WinUI has no backdrop-filter; the in-app
+    acrylic blurs what the page draws behind the card (the backdrops and the
+    fan), at a radius the system fixes rather than the reference's 26px, and
+    the reference's own gradient lies over it at the reference's alphas.
+  -->
+  <AcrylicBrush x:Key="HaloSignInCardGlassBrush" TintColor="#FF12141A" TintOpacity="0.2" FallbackColor="#E012141A" />
+  <LinearGradientBrush x:Key="HaloSignInCardBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#C71A1C23" />
+    <GradientStop Offset="1" Color="#D612141A" />
+  </LinearGradientBrush>
+  <!-- `inset 0 1px 0 rgba(255,255,255,.09)`: the glass's top edge. -->
+  <SolidColorBrush x:Key="HaloSignInCardEdgeBrush" Color="#17FFFFFF" />
+
+  <!-- `.si-btn-primary`: #6fd2ff to #3db6f5 with #00131d ink. -->
+  <LinearGradientBrush x:Key="HaloSignInPrimaryBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+    <GradientStop Offset="0" Color="#FF6FD2FF" />
+    <GradientStop Offset="1" Color="#FF3DB6F5" />
+  </LinearGradientBrush>
+  <SolidColorBrush x:Key="HaloSignInPrimaryInkBrush" Color="#FF00131D" />
+  <!-- `filter: brightness(1.06)` on hover, as a faint white wash. -->
+  <SolidColorBrush x:Key="HaloSignInPrimaryHoverBrush" Color="#10FFFFFF" />
+  <SolidColorBrush x:Key="HaloSignInPrimaryEdgeBrush" Color="#73FFFFFF" />
+
+  <!-- `.si-avatar`: linear-gradient(140deg, #6fd2ff, #2b6fd6). -->
+  <LinearGradientBrush x:Key="HaloSignInAvatarBrush" StartPoint="0.18,0" EndPoint="0.82,1">
+    <GradientStop Offset="0" Color="#FF6FD2FF" />
+    <GradientStop Offset="1" Color="#FF2B6FD6" />
+  </LinearGradientBrush>
+
+  <!-- `.si-meta`: mono 500 11px, letter-spacing .14em, ink3. -->
+  <Style x:Key="HaloSignInMetaTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="CharacterSpacing" Value="140" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInk3Brush}" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- `.si-status`: the same face at line height 1.3, centred. -->
+  <Style x:Key="HaloSignInStatusTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="LineHeight" Value="14.3" />
+    <Setter Property="CharacterSpacing" Value="140" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInk3Brush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- `.si-tagline`: mono 400 13.5px/1.65, max-width 40ch, centred. -->
+  <Style x:Key="HaloSignInTaglineTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="13.5" />
+    <Setter Property="LineHeight" Value="22.3" />
+    <Setter Property="LineStackingStrategy" Value="BlockLineHeight" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInk2Brush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="MaxWidth" Value="330" />
+  </Style>
+
+  <!-- `.si-wait-head`: 20px 600. -->
+  <Style x:Key="HaloSignInHeadTextStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="20" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInkBrush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <!-- `.si-wait p`: 14px/1.5, ink2. -->
+  <Style x:Key="HaloSignInBodyTextStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="LineHeight" Value="21" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInk2Brush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+  </Style>
+
+  <!-- `.si-error`: #ff99a4, 13px/1.45, centred. -->
+  <Style x:Key="HaloSignInErrorTextStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="LineHeight" Value="18.85" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInErrorBrush}" />
+    <Setter Property="TextAlignment" Value="Center" />
+    <Setter Property="TextWrapping" Value="Wrap" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+  </Style>
+
+  <!-- `.si-field label`: 13px, ink2. -->
+  <Style x:Key="HaloSignInFieldLabelStyle" TargetType="TextBlock">
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInk2Brush}" />
+  </Style>
+
+  <!-- `.si-chip`: mono 700 10.5px, letter-spacing .08em. -->
+  <Style x:Key="HaloSignInPosterChipTextStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoBoldFont}" />
+    <Setter Property="FontSize" Value="10.5" />
+    <Setter Property="FontWeight" Value="Bold" />
+    <Setter Property="CharacterSpacing" Value="80" />
+    <Setter Property="VerticalAlignment" Value="Center" />
+  </Style>
+
+  <!-- `.si-chips li`: 28px tall, padding 0 11, radius 14, 12.5px ink2. -->
+  <Style x:Key="HaloSignInFeatureChipStyle" TargetType="Border">
+    <Setter Property="Height" Value="28" />
+    <Setter Property="Padding" Value="11,0" />
+    <Setter Property="CornerRadius" Value="14" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{StaticResource HaloSignInStrokeBrush}" />
+    <Setter Property="Background" Value="{StaticResource HaloSignInSurfaceBrush}" />
+  </Style>
+
+  <!--
+    `.si-btn`: 46px, radius 10, 15px 600. Templated so hover and press keep the
+    reference's colours rather than the stock grey. Focus draws the reference's
+    2px accent outline 2px outside the button.
+  -->
+  <Style x:Key="HaloSignInPrimaryButtonStyle" TargetType="Button">
+    <Setter Property="Height" Value="46" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{StaticResource HaloSignInPrimaryBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInPrimaryInkBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource HaloSignInPrimaryEdgeBrush}" />
+    <Setter Property="BorderThickness" Value="0,1,0,0" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+    <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+    <Setter Property="FocusVisualMargin" Value="-4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid x:Name="Root" CornerRadius="{TemplateBinding CornerRadius}" Background="{TemplateBinding Background}">
+            <Border
+              x:Name="Wash"
+              Background="{StaticResource HaloSignInPrimaryHoverBrush}"
+              CornerRadius="{TemplateBinding CornerRadius}"
+              Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+              AutomationProperties.AccessibilityView="Raw"
+              BorderBrush="{TemplateBinding BorderBrush}"
+              BorderThickness="{TemplateBinding BorderThickness}"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              CornerRadius="{TemplateBinding CornerRadius}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="{TemplateBinding FontWeight}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="Wash.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="Wash.Opacity" Value="0.5" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.5" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- `.si-btn-quiet`: rgba(255,255,255,.05) with the stroke colour, .09 on hover. -->
+  <Style x:Key="HaloSignInQuietButtonStyle" TargetType="Button">
+    <Setter Property="Height" Value="46" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="FontSize" Value="15" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="Background" Value="{StaticResource HaloSignInQuietBrush}" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInInkBrush}" />
+    <Setter Property="BorderBrush" Value="{StaticResource HaloSignInStrokeBrush}" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+    <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+    <Setter Property="FocusVisualMargin" Value="-4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <ContentPresenter
+            x:Name="ContentPresenter"
+            Padding="{TemplateBinding Padding}"
+            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+            AutomationProperties.AccessibilityView="Raw"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}"
+            Content="{TemplateBinding Content}"
+            ContentTemplate="{TemplateBinding ContentTemplate}"
+            CornerRadius="{TemplateBinding CornerRadius}"
+            FontSize="{TemplateBinding FontSize}"
+            FontWeight="{TemplateBinding FontWeight}"
+            Foreground="{TemplateBinding Foreground}">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloSignInQuietHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloSignInQuietHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Opacity" Value="0.5" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </ContentPresenter>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- `.si-link`: 13px accent, padding 4 8, radius 4, a faint wash on hover. -->
+  <Style x:Key="HaloSignInLinkButtonStyle" TargetType="Button">
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Padding" Value="8,4" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="CornerRadius" Value="4" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+    <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+    <Setter Property="FocusVisualMargin" Value="-4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <ContentPresenter
+            x:Name="ContentPresenter"
+            Padding="{TemplateBinding Padding}"
+            HorizontalContentAlignment="Center"
+            VerticalContentAlignment="Center"
+            AutomationProperties.AccessibilityView="Raw"
+            Background="{TemplateBinding Background}"
+            Content="{TemplateBinding Content}"
+            ContentTemplate="{TemplateBinding ContentTemplate}"
+            CornerRadius="{TemplateBinding CornerRadius}"
+            FontSize="{TemplateBinding FontSize}"
+            Foreground="{TemplateBinding Foreground}">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloSignInLinkHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloSignInLinkHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Opacity" Value="0.5" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </ContentPresenter>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- `.si-help`: the footer's face, size and case, in accent, lighter on hover. -->
+  <Style x:Key="HaloSignInHelpButtonStyle" TargetType="Button">
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
+    <Setter Property="FontSize" Value="11" />
+    <Setter Property="CharacterSpacing" Value="140" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="Foreground" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource HaloSignInAccentBrush}" />
+    <Setter Property="FocusVisualPrimaryThickness" Value="2" />
+    <Setter Property="FocusVisualSecondaryThickness" Value="0" />
+    <Setter Property="FocusVisualMargin" Value="-4" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <ContentPresenter
+            x:Name="ContentPresenter"
+            Padding="{TemplateBinding Padding}"
+            AutomationProperties.AccessibilityView="Raw"
+            Background="Transparent"
+            CharacterSpacing="{TemplateBinding CharacterSpacing}"
+            Content="{TemplateBinding Content}"
+            FontFamily="{TemplateBinding FontFamily}"
+            FontSize="{TemplateBinding FontSize}"
+            Foreground="{TemplateBinding Foreground}">
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Foreground" Value="{StaticResource HaloSignInHelpHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="ContentPresenter.Foreground" Value="{StaticResource HaloSignInHelpHoverBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </ContentPresenter>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

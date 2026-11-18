@@ -385,6 +385,17 @@
     <ClInclude Include="Services\BuildInfoReader.h" />
     <ClInclude Include="Playback\MpvVersionProbe.h" />
     <ClInclude Include="Views\AccountPictureDecoder.h" />
+    <ClInclude Include="Services\Auth\ServerAddressPolicy.h" />
+    <ClInclude Include="Services\Auth\SignInFailurePolicy.h" />
+    <ClInclude Include="Services\Auth\LoopbackLandingPage.h" />
+    <ClInclude Include="Services\Auth\SignInAddon.h" />
+    <ClInclude Include="Services\Auth\SignInAddonRegistry.h" />
+    <ClInclude Include="Services\Auth\BrowserSignInStep.h" />
+    <ClInclude Include="ViewModels\LoginStepsPolicy.h" />
+    <ClInclude Include="Views\SignInMotion.h" />
+    <ClInclude Include="Views\SignInBackdrop.xaml.h"><DependentUpon>SignInBackdrop.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\SignInPosterFan.xaml.h"><DependentUpon>SignInPosterFan.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Views\SignInSpinner.xaml.h"><DependentUpon>SignInSpinner.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -431,6 +442,10 @@
     <Page Include="Views\SourcesSheetFooter.xaml" />
     <Page Include="Styles\Downloads.xaml" />
     <Page Include="Views\DownloadReadyCard.xaml" />
+    <Page Include="Styles\SignIn.xaml" />
+    <Page Include="Views\SignInBackdrop.xaml" />
+    <Page Include="Views\SignInPosterFan.xaml" />
+    <Page Include="Views\SignInSpinner.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -755,6 +770,31 @@
     <ClCompile Include="Services\BuildInfoReader.cpp" />
     <ClCompile Include="Playback\MpvVersionProbe.cpp" />
     <ClCompile Include="Views\AccountPictureDecoder.cpp" />
+    <ClCompile Include="Services\Auth\ServerAddressPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Auth\SignInFailurePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Auth\LoopbackLandingPage.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ViewModels\LoginStepsPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Auth\SignInAddonRegistry.cpp" />
+    <ClCompile Include="Services\Auth\BrowserSignInStep.cpp" />
+    <ClCompile Include="Views\SignInMotion.cpp" />
+    <ClCompile Include="Views\SignInBackdrop.xaml.cpp"><DependentUpon>SignInBackdrop.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\SignInPosterFan.xaml.cpp"><DependentUpon>SignInPosterFan.xaml</DependentUpon></ClCompile>
+    <ClCompile Include="Views\SignInSpinner.xaml.cpp"><DependentUpon>SignInSpinner.xaml</DependentUpon></ClCompile>
+    <!--
+      The build's sign-in add-ons (Services/Auth/SignInAddon.h): a local build's
+      git-ignored Local\SignInAddons.cpp when it exists, else the public
+      definition, which has none. Exactly one of the two is ever compiled.
+    -->
+    <ClCompile Include="Services\Auth\NoSignInAddons.cpp" Condition="!Exists('$(MSBuildThisFileDirectory)Local\SignInAddons.cpp')" />
+    <ClCompile Include="Local\SignInAddons.cpp" Condition="Exists('$(MSBuildThisFileDirectory)Local\SignInAddons.cpp')" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

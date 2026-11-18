@@ -1,326 +1,664 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  The sign-in screen, from the reference's `auth/Login.tsx` and `styles/auth.css`:
+  a frosted card over a fan of posters on the halo ring, with real backdrops
+  crossfading behind. Full window and dark in both themes (the shell spreads the
+  overlay under the title bar and holds the window dark while it is open). The
+  steps and their copy come from the view model; this file only lays them out.
+-->
 <Page
   x:Class="HaloDesktop.LoginPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:local="using:HaloDesktop">
+  xmlns:local="using:HaloDesktop"
+  Background="{StaticResource HaloSignInGroundBrush}"
+  Loaded="OnLoaded"
+  RequestedTheme="Dark"
+  Unloaded="OnUnloaded">
 
   <Page.Resources>
-    <Style x:Key="LoginTitle" TargetType="TextBlock">
-      <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
-      <Setter Property="FontSize" Value="{StaticResource HaloFontMonoBig}" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="TextAlignment" Value="Center" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-      <Setter Property="Margin" Value="0,26,0,0" />
+    <!--
+      `.si-field input`: the fields' own colours, as lightweight overrides scoped to
+      this page (defined here, not a merged dictionary). The 1px stroke at .12 with
+      a .42 bottom edge, and on focus a 2px accent-fill bottom edge over a darker
+      ground. The bottom edges are drawn the way the stock template draws its own.
+    -->
+    <SolidColorBrush x:Key="TextControlBackground" Color="#0DFFFFFF" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#12FFFFFF" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#B3080A0E" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FFFFFFFF" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6BFFFFFF" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6BFFFFFF" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6BFFFFFF" />
+    <SolidColorBrush x:Key="TextControlButtonForeground" Color="#CCFFFFFF" />
+    <SolidColorBrush x:Key="TextControlButtonForegroundPointerOver" Color="#FFFFFFFF" />
+    <LinearGradientBrush x:Key="TextControlBorderBrush" MappingMode="Absolute" StartPoint="0,0" EndPoint="0,2">
+      <LinearGradientBrush.RelativeTransform>
+        <ScaleTransform CenterY="0.5" ScaleY="-1" />
+      </LinearGradientBrush.RelativeTransform>
+      <GradientStop Offset="0.5" Color="#6BFFFFFF" />
+      <GradientStop Offset="0.5" Color="#1FFFFFFF" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="TextControlBorderBrushPointerOver" MappingMode="Absolute" StartPoint="0,0" EndPoint="0,2">
+      <LinearGradientBrush.RelativeTransform>
+        <ScaleTransform CenterY="0.5" ScaleY="-1" />
+      </LinearGradientBrush.RelativeTransform>
+      <GradientStop Offset="0.5" Color="#6BFFFFFF" />
+      <GradientStop Offset="0.5" Color="#1FFFFFFF" />
+    </LinearGradientBrush>
+    <LinearGradientBrush x:Key="TextControlBorderBrushFocused" MappingMode="Absolute" StartPoint="0,0" EndPoint="0,4">
+      <LinearGradientBrush.RelativeTransform>
+        <ScaleTransform CenterY="0.5" ScaleY="-1" />
+      </LinearGradientBrush.RelativeTransform>
+      <GradientStop Offset="0.5" Color="#FF4CC2FF" />
+      <GradientStop Offset="0.5" Color="#1FFFFFFF" />
+    </LinearGradientBrush>
+    <Thickness x:Key="TextControlBorderThemeThicknessFocused">1,1,1,2</Thickness>
+
+    <Style x:Key="SignInFieldTextBoxStyle" TargetType="TextBox">
+      <Setter Property="Height" Value="40" />
+      <Setter Property="Padding" Value="12,0,12,0" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="CornerRadius" Value="8" />
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="IsSpellCheckEnabled" Value="False" />
+      <Setter Property="IsTextPredictionEnabled" Value="False" />
+      <Setter Property="MaxLength" Value="512" />
     </Style>
 
-    <Style x:Key="LoginHost" TargetType="TextBlock">
-      <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
-      <Setter Property="FontSize" Value="{StaticResource HaloFontCaption}" />
-      <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="Margin" Value="0,10,0,0" />
-    </Style>
+    <!-- `.si-card` rises in over .7s, its children over .6s at .08s steps. -->
+    <Storyboard x:Key="CardRiseStoryboard">
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Card" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.7" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="CardRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.7" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MetaRow" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.6" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="MetaRowRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.6" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="TitleText" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.68" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="TitleTextRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.08" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.68" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Tagline" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.14" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.74" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="TaglineRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.14" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.74" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Chips" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.2" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.8" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ChipsRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.2" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.8" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ActionArea" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.26" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.86" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ActionAreaRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.26" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.86" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Footer" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.26" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.86" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="FooterRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.26" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.86" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+    </Storyboard>
 
-    <Style x:Key="LoginBody" TargetType="TextBlock">
-      <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
-      <Setter Property="Foreground" Value="{ThemeResource HaloText2Brush}" />
-      <Setter Property="TextAlignment" Value="Center" />
-      <Setter Property="TextWrapping" Value="Wrap" />
-    </Style>
+    <!-- The tagline and chips rise again when a form gives them back. -->
+    <Storyboard x:Key="IntroRiseStoryboard">
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Tagline" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.14" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.74" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="TaglineRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.14" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.74" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="Chips" Storyboard.TargetProperty="Opacity">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="0" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.2" Value="0" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.8" Value="1" />
+      </DoubleAnimationUsingKeyFrames>
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="ChipsRise" Storyboard.TargetProperty="Y">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="12" />
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0.2" Value="12" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:0.8" Value="0" />
+      </DoubleAnimationUsingKeyFrames>
+    </Storyboard>
 
-    <Style x:Key="LoginLinkButton" TargetType="Button">
-      <Setter Property="Background" Value="Transparent" />
-      <Setter Property="BorderThickness" Value="0" />
-      <Setter Property="Foreground" Value="{ThemeResource HaloAccentBrush}" />
-      <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
-      <Setter Property="Padding" Value="8,4" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-    </Style>
+    <!-- `.si-bar i`: 38% of the bar, sweeping from -100% to 260% of itself every 1.3s. -->
+    <Storyboard x:Key="SweepStoryboard" RepeatBehavior="Forever">
+      <DoubleAnimationUsingKeyFrames Storyboard.TargetName="SweepShift" Storyboard.TargetProperty="X">
+        <DiscreteDoubleKeyFrame KeyTime="0:0:0" Value="-149" />
+        <SplineDoubleKeyFrame KeySpline="0.2,0.8 0.2,1" KeyTime="0:0:1.3" Value="387" />
+      </DoubleAnimationUsingKeyFrames>
+    </Storyboard>
   </Page.Resources>
 
-  <Grid Background="Transparent">
-    <StackPanel
-      Width="404"
-      HorizontalAlignment="Center"
-      VerticalAlignment="Center">
+  <Grid>
+    <local:SignInBackdrop />
+    <!-- The title bar over the art rather than a band above it. -->
+    <Border
+      Height="32"
+      VerticalAlignment="Top"
+      Background="{StaticResource HaloSignInTitleBarBrush}"
+      IsHitTestVisible="False" />
 
-      <!-- The lockup is identical in every state, so it lives outside them. -->
-      <StackPanel HorizontalAlignment="Center" Spacing="12">
-        <local:HaloMark HorizontalAlignment="Center" Size="26" />
-        <TextBlock
+    <!-- The stage measures itself: too narrow for the fan keeps the card alone and
+         centred, and too short scrolls rather than clipping it. -->
+    <ScrollViewer
+      x:Name="Stage"
+      Margin="0,32,0,0"
+      HorizontalScrollBarVisibility="Auto"
+      HorizontalScrollMode="Auto"
+      IsTabStop="False"
+      SizeChanged="OnStageSizeChanged"
+      VerticalScrollBarVisibility="Auto"
+      VerticalScrollMode="Auto">
+      <Grid x:Name="StageContent">
+        <!-- The deck spans the card and the fan's full reach, so centring it
+             centres the whole composition; the card sits on its vertical middle. -->
+        <Grid
+          x:Name="Deck"
+          Width="1060"
+          MinHeight="600"
           HorizontalAlignment="Center"
-          CharacterSpacing="140"
-          FontSize="{StaticResource HaloFontEmphasis}"
-          FontWeight="SemiBold"
-          Foreground="{ThemeResource HaloText1Brush}"
-          Text="HALO" />
-      </StackPanel>
+          VerticalAlignment="Center">
+          <local:SignInPosterFan
+            x:Name="Fan"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Top" />
 
-      <!-- Discovering the server's authentication mode -->
-      <StackPanel Visibility="{x:Bind ViewModel.DiscoveringVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Connecting to Halo" />
-        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-        <ProgressRing
-          Width="22"
-          Height="22"
-          HorizontalAlignment="Center"
-          Margin="0,22,0,0"
-          IsActive="True" />
-        <TextBlock
-          Margin="0,14,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="Checking how this server signs you in." />
-      </StackPanel>
+          <Grid
+            x:Name="Card"
+            Width="460"
+            HorizontalAlignment="Left"
+            VerticalAlignment="Center">
+            <Grid.RenderTransform>
+              <TranslateTransform x:Name="CardRise" />
+            </Grid.RenderTransform>
+            <Border Background="{StaticResource HaloSignInCardGlassBrush}" CornerRadius="28" />
+            <Border
+              Background="{StaticResource HaloSignInCardBrush}"
+              BorderBrush="{StaticResource HaloSignInStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="28" />
+            <Border
+              Height="1"
+              Margin="28,1,28,0"
+              VerticalAlignment="Top"
+              Background="{StaticResource HaloSignInCardEdgeBrush}" />
 
-      <!-- Local username and password mode -->
-      <StackPanel Visibility="{x:Bind ViewModel.LocalVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign in to Halo" />
-        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-        <TextBlock
-          Margin="0,14,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="Use the account created on your Halo server." />
-        <TextBox
-          x:Name="UsernameInput"
-          Margin="0,22,0,0"
-          AutomationProperties.Name="Username"
-          Header="Username"
-          MaxLength="512"
-          Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-        <PasswordBox
-          x:Name="PasswordInput"
-          Margin="0,12,0,0"
-          AutomationProperties.Name="Password"
-          Header="Password"
-          KeyDown="OnPasswordKeyDown"
-          MaxLength="4096"
-          PasswordRevealMode="Peek" />
-        <TextBlock
-          Margin="0,10,0,0"
-          Foreground="{ThemeResource HaloCriticalBrush}"
-          Style="{StaticResource LoginBody}"
-          Text="{x:Bind ViewModel.LocalErrorText, Mode=OneWay}"
-          Visibility="{x:Bind ViewModel.LocalErrorVisibility, Mode=OneWay}" />
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,20,0,0"
-          AutomationProperties.Name="Sign in"
-          Click="OnLocalSignInClick"
-          Content="Sign in"
-          Style="{StaticResource HaloAccentButtonStyle}" />
-      </StackPanel>
+            <StackPanel Padding="34,32,34,24">
+              <!-- `.si-meta` -->
+              <Grid x:Name="MetaRow">
+                <Grid.RenderTransform>
+                  <TranslateTransform x:Name="MetaRowRise" />
+                </Grid.RenderTransform>
+                <StackPanel
+                  HorizontalAlignment="Left"
+                  Orientation="Horizontal"
+                  Spacing="8">
+                  <local:HaloMark VerticalAlignment="Center" Size="16" />
+                  <TextBlock
+                    Foreground="{StaticResource HaloSignInInkBrush}"
+                    Style="{StaticResource HaloSignInMetaTextStyle}"
+                    Text="HALO" />
+                </StackPanel>
+                <TextBlock
+                  HorizontalAlignment="Right"
+                  Style="{StaticResource HaloSignInMetaTextStyle}"
+                  Text="MEDIA CENTER" />
+              </Grid>
 
-      <!-- OIDC browser mode -->
-      <StackPanel Visibility="{x:Bind ViewModel.OidcVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign in to Halo" />
-        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-        <TextBlock
-          Margin="0,14,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="Your library and account data stay on your server." />
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,24,0,0"
-          AutomationProperties.Name="Continue in browser"
-          Click="OnContinueClick"
-          Style="{StaticResource HaloAccentButtonStyle}">
-          <StackPanel
-            HorizontalAlignment="Center"
-            Orientation="Horizontal"
-            Spacing="9">
-            <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Glyph="&#xE8A7;" />
-            <TextBlock VerticalAlignment="Center" Text="Continue in browser" />
-          </StackPanel>
-        </Button>
-        <Button
-          Margin="0,12,0,0"
-          Click="OnHelpClick"
-          Content="Having trouble signing in?"
-          Style="{StaticResource LoginLinkButton}"
-          ToolTipService.ToolTip="Open Halo Desktop support" />
-      </StackPanel>
+              <!-- `.si-title`: 800 52px/1.02, -.035em, with the italic accent line. -->
+              <TextBlock
+                x:Name="TitleText"
+                Margin="0,32,0,0"
+                AutomationProperties.HeadingLevel="Level1"
+                CharacterSpacing="-35"
+                FontFamily="Segoe UI Variable Display"
+                FontSize="52"
+                FontWeight="ExtraBold"
+                Foreground="{StaticResource HaloSignInInkBrush}"
+                LineHeight="53"
+                LineStackingStrategy="BlockLineHeight"
+                TextAlignment="Center"
+                TextWrapping="Wrap">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform x:Name="TitleTextRise" />
+                </TextBlock.RenderTransform>
+                <Run Text="Your shows," /><LineBreak /><Run
+                  FontStyle="Italic"
+                  FontWeight="Bold"
+                  Foreground="{StaticResource HaloSignInAccentBrush}"
+                  Text="everywhere." />
+              </TextBlock>
 
-      <!-- Waiting for the browser round trip -->
-      <StackPanel Visibility="{x:Bind ViewModel.WaitingVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="{x:Bind ViewModel.WaitingTitle, Mode=OneWay}" />
-        <TextBlock Style="{StaticResource LoginHost}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-        <Border
-          Margin="0,20,0,0"
-          Padding="14"
-          Background="{ThemeResource HaloCardBrush}"
-          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
-          BorderThickness="1"
-          CornerRadius="6">
-          <StackPanel HorizontalAlignment="Center" Spacing="10">
-            <ProgressRing
-              Width="18"
-              Height="18"
-              HorizontalAlignment="Center"
-              IsActive="True" />
-            <TextBlock
-              Style="{StaticResource LoginBody}"
-              Text="{x:Bind ViewModel.WaitingBody, Mode=OneWay}" />
-          </StackPanel>
-        </Border>
-        <StackPanel
-          Margin="0,12,0,0"
-          HorizontalAlignment="Center"
-          Orientation="Horizontal"
-          Spacing="8">
-          <Ellipse
-            Width="7"
-            Height="7"
-            VerticalAlignment="Center"
-            Fill="{ThemeResource HaloAccentBrush}" />
-          <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.WaitingStatus, Mode=OneWay}" />
-        </StackPanel>
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,22,0,0"
-          Click="OnReopenClick"
-          Content="Open the link again" />
-        <Button
-          Margin="0,12,0,0"
-          Click="OnCancelClick"
-          Content="Cancel"
-          Style="{StaticResource LoginLinkButton}"
-          Visibility="{x:Bind ViewModel.WaitingCancelVisibility, Mode=OneWay}" />
-      </StackPanel>
+              <!-- `.si-tagline`, left out of the two forms. -->
+              <TextBlock
+                x:Name="Tagline"
+                Margin="0,16,0,0"
+                Style="{StaticResource HaloSignInTaglineTextStyle}"
+                Text="Stream your addons, download for later, pick up on any device."
+                Visibility="{x:Bind ViewModel.IntroVisibility, Mode=OneWay}">
+                <TextBlock.RenderTransform>
+                  <TranslateTransform x:Name="TaglineRise" />
+                </TextBlock.RenderTransform>
+              </TextBlock>
 
-      <!-- Signed in, about to hand over to the shell -->
-      <StackPanel Visibility="{x:Bind ViewModel.SignedInVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="You’re all set" />
-        <StackPanel
-          Margin="0,20,0,0"
-          HorizontalAlignment="Center"
-          Orientation="Horizontal"
-          Spacing="13">
-          <Border
-            Width="40"
-            Height="40"
-            CornerRadius="20">
-            <Image Source="ms-appx:///Assets/user-avatar.png" Stretch="UniformToFill" />
-          </Border>
-          <StackPanel VerticalAlignment="Center" Spacing="3">
-            <TextBlock
-              FontSize="{StaticResource HaloFontEmphasis}"
-              FontWeight="SemiBold"
-              Foreground="{ThemeResource HaloText1Brush}"
-              Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" />
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="HALO ACCOUNT" />
-          </StackPanel>
-        </StackPanel>
-        <TextBlock
-          Margin="0,18,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="Halo will remember this device until you sign out." />
-        <ProgressBar Height="3" Margin="0,22,0,0" IsIndeterminate="True" />
-        <TextBlock
-          Margin="0,10,0,0"
-          HorizontalAlignment="Center"
-          Style="{StaticResource HaloMonoData}"
-          Text="Opening your library…" />
-      </StackPanel>
+              <!-- `.si-chips`, with the phone's Material glyphs. -->
+              <StackPanel
+                x:Name="Chips"
+                Margin="0,20,0,0"
+                HorizontalAlignment="Center"
+                AutomationProperties.Name="Includes"
+                Orientation="Horizontal"
+                Spacing="8"
+                Visibility="{x:Bind ViewModel.IntroVisibility, Mode=OneWay}">
+                <StackPanel.RenderTransform>
+                  <TranslateTransform x:Name="ChipsRise" />
+                </StackPanel.RenderTransform>
+                <Border Style="{StaticResource HaloSignInFeatureChipStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                      <Canvas Width="24" Height="24">
+                        <Path Data="F1 M 20.5 11 H 19 V 7 c 0 -1.1 -0.9 -2 -2 -2 h -4 V 3.5 C 13 2.12 11.88 1 10.5 1 S 8 2.12 8 3.5 V 5 H 4 c -1.1 0 -1.99 0.9 -1.99 2 v 3.8 H 3.5 c 1.49 0 2.7 1.21 2.7 2.7 s -1.21 2.7 -2.7 2.7 H 2 V 20 c 0 1.1 0.9 2 2 2 h 3.8 v -1.5 c 0 -1.49 1.21 -2.7 2.7 -2.7 1.49 0 2.7 1.21 2.7 2.7 V 22 H 17 c 1.1 0 2 -0.9 2 -2 v -4 h 1.5 c 1.38 0 2.5 -1.12 2.5 -2.5 S 21.88 11 20.5 11 z" Fill="{StaticResource HaloSignInAccentBrush}" />
+                      </Canvas>
+                    </Viewbox>
+                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource HaloSignInInk2Brush}" Text="Addons" />
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HaloSignInFeatureChipStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                      <Canvas Width="24" Height="24">
+                        <Path Data="F1 M 19 9 h -4 V 3 H 9 v 6 H 5 l 7 7 7 -7 z m -8 2 V 5 h 2 v 6 h 1.17 L 12 13.17 9.83 11 H 11 z m -6 7 h 14 v 2 H 5 z" Fill="{StaticResource HaloSignInAccentBrush}" />
+                      </Canvas>
+                    </Viewbox>
+                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource HaloSignInInk2Brush}" Text="Downloads" />
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HaloSignInFeatureChipStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                      <Canvas Width="24" Height="24">
+                        <Path Data="F1 M 20 4 H 4 c -1.1 0 -2 0.9 -2 2 v 12 c 0 1.1 0.9 2 2 2 h 16 c 1.1 0 2 -0.9 2 -2 V 6 c 0 -1.1 -0.9 -2 -2 -2 z M 4 12 h 4 v 2 H 4 v -2 z m 10 6 H 4 v -2 h 10 v 2 z m 6 0 h -4 v -2 h 4 v 2 z m 0 -4 H 10 v -2 h 10 v 2 z" Fill="{StaticResource HaloSignInAccentBrush}" />
+                      </Canvas>
+                    </Viewbox>
+                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource HaloSignInInk2Brush}" Text="Subtitles" />
+                  </StackPanel>
+                </Border>
+                <Border Style="{StaticResource HaloSignInFeatureChipStyle}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <Viewbox Width="14" Height="14" VerticalAlignment="Center">
+                      <Canvas Width="24" Height="24">
+                        <Path Data="F1 M 17.65 6.35 C 16.2 4.9 14.21 4 12 4 c -4.42 0 -7.99 3.58 -8 8 s 3.58 8 8 8 c 3.73 0 6.84 -2.55 7.73 -6 h -2.08 c -0.82 2.33 -3.04 4 -5.65 4 -3.31 0 -6 -2.69 -6 -6 s 2.69 -6 6 -6 c 1.66 0 3.14 0.69 4.22 1.78 L 13 11 h 7 V 4 l -2.35 2.35 z" Fill="{StaticResource HaloSignInAccentBrush}" />
+                      </Canvas>
+                    </Viewbox>
+                    <TextBlock VerticalAlignment="Center" FontSize="12.5" Foreground="{StaticResource HaloSignInInk2Brush}" Text="Sync" />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
 
-      <!-- Declined at the provider -->
-      <StackPanel Visibility="{x:Bind ViewModel.DeclinedVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign-in was declined" />
-        <TextBlock
-          Margin="0,8,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="You can try again whenever you’re ready." />
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,24,0,0"
-          Click="OnContinueClick"
-          Content="Try again"
-          Style="{StaticResource HaloAccentButtonStyle}" />
-      </StackPanel>
+              <!-- `.si-action`: the current step. -->
+              <StackPanel
+                x:Name="ActionArea"
+                Margin="0,32,0,0"
+                Spacing="10">
+                <StackPanel.RenderTransform>
+                  <TranslateTransform x:Name="ActionAreaRise" />
+                </StackPanel.RenderTransform>
 
-      <!-- Request timed out before anyone approved it -->
-      <StackPanel Visibility="{x:Bind ViewModel.ExpiredVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Sign-in request expired" />
-        <TextBlock
-          Margin="0,8,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="This sign-in request has expired. Start a new one to continue." />
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,24,0,0"
-          Click="OnContinueClick"
-          Content="Start again"
-          Style="{StaticResource HaloAccentButtonStyle}" />
-      </StackPanel>
+                <!-- discovering -->
+                <StackPanel
+                  HorizontalAlignment="Center"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  Visibility="{x:Bind ViewModel.DiscoveringVisibility, Mode=OneWay}">
+                  <local:SignInSpinner VerticalAlignment="Center" IsActive="{x:Bind ViewModel.DiscoveringActive, Mode=OneWay}" />
+                  <TextBlock
+                    AutomationProperties.LiveSetting="Polite"
+                    Style="{StaticResource HaloSignInStatusTextStyle}"
+                    Text="CONNECTING TO HALO" />
+                </StackPanel>
 
-      <!-- Could not open a request at all -->
-      <StackPanel Visibility="{x:Bind ViewModel.UnreachableVisibility, Mode=OneWay}">
-        <TextBlock Style="{StaticResource LoginTitle}" Text="Can’t connect to Halo" />
-        <TextBlock
-          Margin="0,8,0,0"
-          Style="{StaticResource LoginBody}"
-          Text="Try again later." />
-        <Button
-          Height="36"
-          HorizontalAlignment="Stretch"
-          Margin="0,24,0,0"
-          Click="OnRetryClick"
-          Content="Retry"
-          Style="{StaticResource HaloAccentButtonStyle}" />
-        <TextBlock
-          Margin="0,16,0,0"
-          HorizontalAlignment="Center"
-          FontSize="{StaticResource HaloFontLabel}"
-          Foreground="{ThemeResource HaloText3Brush}">
-          <Run Text="Need to set up a server? " />
-          <Run Foreground="{ThemeResource HaloAccentBrush}" Text="Read the setup guide" />
-        </TextBlock>
-        <Button
-          Margin="0,14,0,0"
-          AutomationProperties.Name="Technical details"
-          Click="OnDetailsClick"
-          Style="{StaticResource LoginLinkButton}">
-          <StackPanel
-            HorizontalAlignment="Center"
-            Orientation="Horizontal"
-            Spacing="7">
-            <FontIcon
-              VerticalAlignment="Center"
-              FontSize="{StaticResource HaloFontSmall}"
-              Foreground="{ThemeResource HaloText3Brush}"
-              Glyph="{x:Bind ViewModel.DetailsGlyph, Mode=OneWay}" />
-            <TextBlock
-              VerticalAlignment="Center"
-              Foreground="{ThemeResource HaloText3Brush}"
-              Text="Technical details" />
-          </StackPanel>
-        </Button>
-        <Border
-          Margin="0,4,0,0"
-          Padding="12,10"
-          Background="{ThemeResource HaloCardBrush}"
-          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
-          BorderThickness="1"
-          CornerRadius="4"
-          Visibility="{x:Bind ViewModel.DetailsVisibility, Mode=OneWay}">
-          <StackPanel Spacing="5">
-            <TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.ServerHost, Mode=OneWay}" />
-            <TextBlock
-              FontFamily="{StaticResource HaloMonoFont}"
-              FontSize="{StaticResource HaloFontCaption}"
-              Foreground="{ThemeResource HaloCriticalBrush}"
-              Text="NO RESPONSE · CONNECTION REFUSED" />
-          </StackPanel>
-        </Border>
-      </StackPanel>
-    </StackPanel>
+                <!-- browser -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.BrowserVisibility, Mode=OneWay}">
+                  <TextBlock
+                    AutomationProperties.LiveSetting="Polite"
+                    Style="{StaticResource HaloSignInErrorTextStyle}"
+                    Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}" />
+                  <Button
+                    x:Name="BrowserButton"
+                    AutomationProperties.Name="{x:Bind ViewModel.MethodLabel, Mode=OneWay}"
+                    Click="OnStartBrowserClick"
+                    Style="{StaticResource HaloSignInPrimaryButtonStyle}">
+                    <StackPanel Orientation="Horizontal" Spacing="9">
+                      <FontIcon VerticalAlignment="Center" FontSize="15" Glyph="&#xE8A7;" />
+                      <TextBlock VerticalAlignment="Center" Text="{x:Bind ViewModel.MethodLabel, Mode=OneWay}" />
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
+
+                <!-- local and custom: the username and password forms -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.FormVisibility, Mode=OneWay}">
+                  <StackPanel Spacing="6" Visibility="{x:Bind ViewModel.ServerFieldVisibility, Mode=OneWay}">
+                    <TextBlock Style="{StaticResource HaloSignInFieldLabelStyle}" Text="Server address" />
+                    <TextBox
+                      x:Name="ServerInput"
+                      AutomationProperties.Name="Server address"
+                      InputScope="Url"
+                      KeyDown="OnFieldKeyDown"
+                      PlaceholderText="https://your-server.example"
+                      Style="{StaticResource SignInFieldTextBoxStyle}"
+                      Text="{x:Bind ViewModel.ServerAddress, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                  </StackPanel>
+                  <StackPanel Spacing="6">
+                    <TextBlock Style="{StaticResource HaloSignInFieldLabelStyle}" Text="Username" />
+                    <TextBox
+                      x:Name="UsernameInput"
+                      AutomationProperties.Name="Username"
+                      KeyDown="OnFieldKeyDown"
+                      Style="{StaticResource SignInFieldTextBoxStyle}"
+                      Text="{x:Bind ViewModel.Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                  </StackPanel>
+                  <StackPanel Spacing="6">
+                    <TextBlock Style="{StaticResource HaloSignInFieldLabelStyle}" Text="Password" />
+                    <PasswordBox
+                      x:Name="PasswordInput"
+                      Height="40"
+                      Padding="12,0,12,0"
+                      VerticalContentAlignment="Center"
+                      AutomationProperties.Name="Password"
+                      CornerRadius="8"
+                      FontSize="14"
+                      KeyDown="OnFieldKeyDown"
+                      MaxLength="4096"
+                      PasswordRevealMode="Peek" />
+                  </StackPanel>
+                  <TextBlock
+                    AutomationProperties.LiveSetting="Polite"
+                    Style="{StaticResource HaloSignInErrorTextStyle}"
+                    Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}" />
+                  <Button
+                    Margin="0,6,0,0"
+                    Click="OnSubmitClick"
+                    Content="Sign in"
+                    Style="{StaticResource HaloSignInPrimaryButtonStyle}" />
+                </StackPanel>
+
+                <!-- waiting -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.WaitingVisibility, Mode=OneWay}">
+                  <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Style="{StaticResource HaloSignInHeadTextStyle}" Text="{x:Bind ViewModel.WaitingTitle, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource HaloSignInBodyTextStyle}" Text="{x:Bind ViewModel.WaitingBody, Mode=OneWay}" />
+                    <StackPanel
+                      HorizontalAlignment="Center"
+                      Orientation="Horizontal"
+                      Spacing="8">
+                      <local:SignInSpinner VerticalAlignment="Center" IsActive="{x:Bind ViewModel.WaitingActive, Mode=OneWay}" />
+                      <TextBlock
+                        AutomationProperties.LiveSetting="Polite"
+                        Style="{StaticResource HaloSignInStatusTextStyle}"
+                        Text="{x:Bind ViewModel.WaitingStatus, Mode=OneWay}" />
+                    </StackPanel>
+                  </StackPanel>
+                  <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.WaitingBrowserVisibility, Mode=OneWay}">
+                    <Button
+                      Margin="0,8,0,0"
+                      Click="OnOpenLinkAgainClick"
+                      Content="Open the link again"
+                      IsEnabled="{x:Bind ViewModel.ReopenEnabled, Mode=OneWay}"
+                      Style="{StaticResource HaloSignInQuietButtonStyle}" />
+                    <Button
+                      Click="OnCancelBrowserClick"
+                      Content="Cancel"
+                      Style="{StaticResource HaloSignInLinkButtonStyle}" />
+                  </StackPanel>
+                </StackPanel>
+
+                <!-- signedIn -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.SignedInVisibility, Mode=OneWay}">
+                  <TextBlock
+                    FontSize="22"
+                    FontWeight="SemiBold"
+                    Foreground="{StaticResource HaloSignInInkBrush}"
+                    Text="You&#x2019;re all set"
+                    TextAlignment="Center" />
+                  <Border
+                    Padding="14"
+                    Background="{StaticResource HaloSignInSurfaceBrush}"
+                    BorderBrush="{StaticResource HaloSignInStrokeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="12">
+                    <Grid ColumnSpacing="14">
+                      <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="44" />
+                        <ColumnDefinition Width="*" />
+                      </Grid.ColumnDefinitions>
+                      <Grid
+                        Width="44"
+                        Height="44"
+                        AutomationProperties.AccessibilityView="Raw">
+                        <Ellipse Fill="{StaticResource HaloSignInAvatarBrush}" />
+                        <TextBlock
+                          HorizontalAlignment="Center"
+                          VerticalAlignment="Center"
+                          FontSize="18"
+                          FontWeight="Bold"
+                          Foreground="{StaticResource HaloSignInPrimaryInkBrush}"
+                          Text="{x:Bind ViewModel.AvatarInitial, Mode=OneWay}" />
+                      </Grid>
+                      <StackPanel
+                        Grid.Column="1"
+                        VerticalAlignment="Center"
+                        Spacing="4">
+                        <TextBlock
+                          FontSize="16"
+                          FontWeight="SemiBold"
+                          Foreground="{StaticResource HaloSignInInkBrush}"
+                          Text="{x:Bind ViewModel.AccountName, Mode=OneWay}"
+                          TextTrimming="CharacterEllipsis"
+                          Visibility="{x:Bind ViewModel.AccountNameVisibility, Mode=OneWay}" />
+                        <TextBlock
+                          CharacterSpacing="120"
+                          FontFamily="{StaticResource HaloMonoFont}"
+                          FontSize="11"
+                          Foreground="{StaticResource HaloSignInAccentBrush}"
+                          Text="{x:Bind ViewModel.AccountLabel, Mode=OneWay}"
+                          TextTrimming="CharacterEllipsis" />
+                      </StackPanel>
+                    </Grid>
+                  </Border>
+                  <Grid
+                    Width="392"
+                    Height="3"
+                    Margin="0,6,0,0"
+                    AutomationProperties.AccessibilityView="Raw">
+                    <Grid.Clip>
+                      <RectangleGeometry Rect="0,0,392,3" />
+                    </Grid.Clip>
+                    <Border Background="{StaticResource HaloSignInBarTrackBrush}" CornerRadius="2" />
+                    <Border
+                      Width="149"
+                      HorizontalAlignment="Left"
+                      Background="{StaticResource HaloSignInAccentFillBrush}"
+                      CornerRadius="2">
+                      <Border.RenderTransform>
+                        <TranslateTransform x:Name="SweepShift" X="-149" />
+                      </Border.RenderTransform>
+                    </Border>
+                  </Grid>
+                  <TextBlock
+                    AutomationProperties.LiveSetting="Polite"
+                    Style="{StaticResource HaloSignInStatusTextStyle}"
+                    Text="{x:Bind ViewModel.SignedInStatus, Mode=OneWay}" />
+                </StackPanel>
+
+                <!-- declined and expired -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.ResultVisibility, Mode=OneWay}">
+                  <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Style="{StaticResource HaloSignInHeadTextStyle}" Text="{x:Bind ViewModel.ResultTitle, Mode=OneWay}" />
+                    <TextBlock Style="{StaticResource HaloSignInBodyTextStyle}" Text="{x:Bind ViewModel.ResultBody, Mode=OneWay}" />
+                  </StackPanel>
+                  <Button
+                    Margin="0,8,0,0"
+                    Click="OnStartBrowserClick"
+                    Content="Try again"
+                    Style="{StaticResource HaloSignInPrimaryButtonStyle}" />
+                </StackPanel>
+
+                <!-- unsupported -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.UnsupportedVisibility, Mode=OneWay}">
+                  <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Style="{StaticResource HaloSignInHeadTextStyle}" Text="This build can&#x2019;t sign in here" />
+                    <TextBlock Style="{StaticResource HaloSignInBodyTextStyle}" Text="{x:Bind ViewModel.UnsupportedBody, Mode=OneWay}" />
+                  </StackPanel>
+                  <Button
+                    Margin="0,8,0,0"
+                    Click="OnRetryClick"
+                    Content="Retry"
+                    Style="{StaticResource HaloSignInPrimaryButtonStyle}" />
+                </StackPanel>
+
+                <!-- unreachable -->
+                <StackPanel Spacing="10" Visibility="{x:Bind ViewModel.UnreachableVisibility, Mode=OneWay}">
+                  <StackPanel HorizontalAlignment="Center" Spacing="12">
+                    <TextBlock Style="{StaticResource HaloSignInHeadTextStyle}" Text="Can&#x2019;t reach Halo" />
+                    <TextBlock Style="{StaticResource HaloSignInBodyTextStyle}" Text="Check your connection and try again." />
+                  </StackPanel>
+                  <Button
+                    Margin="0,8,0,0"
+                    Click="OnRetryClick"
+                    Content="Try again"
+                    Style="{StaticResource HaloSignInPrimaryButtonStyle}" />
+                </StackPanel>
+
+                <!-- preparing -->
+                <StackPanel
+                  HorizontalAlignment="Center"
+                  Orientation="Horizontal"
+                  Spacing="8"
+                  Visibility="{x:Bind ViewModel.PreparingVisibility, Mode=OneWay}">
+                  <local:SignInSpinner VerticalAlignment="Center" IsActive="{x:Bind ViewModel.PreparingActive, Mode=OneWay}" />
+                  <TextBlock
+                    AutomationProperties.LiveSetting="Polite"
+                    Style="{StaticResource HaloSignInStatusTextStyle}"
+                    Text="GETTING HALO READY ON THIS PC" />
+                </StackPanel>
+
+                <!-- The way on without an account (hidden until this build has it),
+                     then each step's links, in the reference's order. -->
+                <Button
+                  Click="OnNoAccountClick"
+                  Content="{x:Bind ViewModel.NoAccountLabel, Mode=OneWay}"
+                  Style="{StaticResource HaloSignInQuietButtonStyle}"
+                  Visibility="{x:Bind ViewModel.NoAccountVisibility, Mode=OneWay}" />
+                <Button
+                  Click="OnFormLinkClick"
+                  Content="{x:Bind ViewModel.FormLinkText, Mode=OneWay}"
+                  Style="{StaticResource HaloSignInLinkButtonStyle}"
+                  Visibility="{x:Bind ViewModel.FormVisibility, Mode=OneWay}" />
+                <Button
+                  Click="OnOpenCustomClick"
+                  Content="Use username &amp; password"
+                  Style="{StaticResource HaloSignInLinkButtonStyle}"
+                  Visibility="{x:Bind ViewModel.PasswordLinkVisibility, Mode=OneWay}" />
+                <Button
+                  AutomationProperties.Name="Technical details"
+                  Click="OnDetailsClick"
+                  Foreground="{StaticResource HaloSignInInk3Brush}"
+                  Style="{StaticResource HaloSignInLinkButtonStyle}"
+                  Visibility="{x:Bind ViewModel.UnreachableVisibility, Mode=OneWay}">
+                  <StackPanel Orientation="Horizontal" Spacing="6">
+                    <FontIcon VerticalAlignment="Center" FontSize="12" Glyph="{x:Bind ViewModel.DetailsGlyph, Mode=OneWay}" />
+                    <TextBlock VerticalAlignment="Center" Text="Technical details" />
+                  </StackPanel>
+                </Button>
+                <Border
+                  Padding="12,10"
+                  Background="{StaticResource HaloSignInDetailsBrush}"
+                  CornerRadius="8"
+                  Visibility="{x:Bind ViewModel.DetailsVisibility, Mode=OneWay}">
+                  <TextBlock
+                    FontFamily="{StaticResource HaloMonoFont}"
+                    FontSize="12"
+                    Foreground="{StaticResource HaloSignInInk3Brush}"
+                    IsTextSelectionEnabled="True"
+                    LineHeight="17.4"
+                    Text="{x:Bind ViewModel.Detail, Mode=OneWay}"
+                    TextWrapping="Wrap" />
+                </Border>
+              </StackPanel>
+
+              <!-- `.si-foot` -->
+              <Border
+                x:Name="Footer"
+                Margin="0,24,0,0"
+                Padding="0,16,0,0"
+                BorderBrush="{StaticResource HaloSignInFootRuleBrush}"
+                BorderThickness="0,1,0,0">
+                <Border.RenderTransform>
+                  <TranslateTransform x:Name="FooterRise" />
+                </Border.RenderTransform>
+                <Grid>
+                  <TextBlock
+                    HorizontalAlignment="Left"
+                    Style="{StaticResource HaloSignInMetaTextStyle}"
+                    Text="&#x00A9; 2026 LAST PROJECTS &amp; SHY" />
+                  <Button
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="Need help? Open Halo support"
+                    Click="OnHelpClick"
+                    Content="NEED HELP?"
+                    Style="{StaticResource HaloSignInHelpButtonStyle}"
+                    ToolTipService.ToolTip="Open Halo support" />
+                </Grid>
+              </Border>
+            </StackPanel>
+          </Grid>
+        </Grid>
+      </Grid>
+    </ScrollViewer>
   </Grid>
 </Page>

@@ -1,32 +1,88 @@
 namespace HaloDesktop
 {
+    // The sign-in screen's state, one step at a time (ViewModels/LoginStepsPolicy).
     runtimeclass LoginViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        String ServerHost { get; };
-        String DisplayName { get; };
         String Username;
-        String LocalErrorText { get; };
+        String ServerAddress;
+
+        Microsoft.UI.Xaml.Visibility IntroVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DiscoveringVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BrowserVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FormVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ServerFieldVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WaitingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WaitingBrowserVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SignedInVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ResultVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UnsupportedVisibility { get; };
+        Microsoft.UI.Xaml.Visibility UnreachableVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PreparingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NoAccountVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PasswordLinkVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AccountNameVisibility { get; };
+        Boolean DiscoveringActive { get; };
+        Boolean WaitingActive { get; };
+        Boolean PreparingActive { get; };
+        Boolean SignedInActive { get; };
+        Boolean ReopenEnabled { get; };
+
+        String ErrorText { get; };
+        String MethodLabel { get; };
+        String FormLinkText { get; };
         String WaitingTitle { get; };
         String WaitingBody { get; };
         String WaitingStatus { get; };
-        Microsoft.UI.Xaml.Visibility DiscoveringVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LocalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility OidcVisibility { get; };
-        Microsoft.UI.Xaml.Visibility WaitingVisibility { get; };
-        Microsoft.UI.Xaml.Visibility WaitingCancelVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SignedInVisibility { get; };
-        Microsoft.UI.Xaml.Visibility DeclinedVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ExpiredVisibility { get; };
-        Microsoft.UI.Xaml.Visibility UnreachableVisibility { get; };
-        Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LocalErrorVisibility { get; };
+        String ResultTitle { get; };
+        String ResultBody { get; };
+        String UnsupportedBody { get; };
+        String Detail { get; };
         String DetailsGlyph { get; };
-        void RetryDiscovery();
-        void StartLocalSignIn(String password);
-        void StartSignIn();
-        void Reopen();
-        void Cancel();
+        String AccountName { get; };
+        String AccountLabel { get; };
+        String AvatarInitial { get; };
+        String SignedInStatus { get; };
+        String NoAccountLabel { get; };
+        // True when the server field should take focus as the form opens.
+        Boolean ServerFieldFirst { get; };
+
+        void Retry();
+        void StartBrowserSignIn();
+        void OpenLinkAgain();
+        void CancelBrowserSignIn();
+        void Submit(String password);
+        void FormLink();
+        void OpenCustom();
         void ToggleDetails();
+        void ContinueWithoutAccount();
+        // The page has left the screen: whatever sign-in is under way is
+        // superseded.
+        void Close();
+    }
+
+    // The blurred, crossfading backdrops, shade and glows behind the sign-in card.
+    [default_interface]
+    runtimeclass SignInBackdrop : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SignInBackdrop();
+    }
+
+    // The five posters fanned on the halo ring beside the sign-in card.
+    [default_interface]
+    runtimeclass SignInPosterFan : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SignInPosterFan();
+    }
+
+    // The sign-in screen's 11px status spinner. It turns only while IsActive
+    // and the system's animation effects are on.
+    [default_interface]
+    runtimeclass SignInSpinner : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        SignInSpinner();
+        Boolean IsActive;
     }
 
     [default_interface]

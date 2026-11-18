@@ -87,6 +87,7 @@ namespace
                 .Local = ::HaloDesktop::Services::Auth::StoredLocalSession{
                     .Token = RequiredString(local, L"token"),
                     .ExpiresAt = RequiredEpochMilliseconds(local, L"expiresAt"),
+                    .ServerUrl = OptionalString(local, L"serverUrl"),
                 },
             };
         }
@@ -130,6 +131,7 @@ namespace
             local.Insert(L"token", winrt::Windows::Data::Json::JsonValue::CreateStringValue(session.Local->Token));
             local.Insert(L"expiresAt", winrt::Windows::Data::Json::JsonValue::CreateNumberValue(
                 static_cast<double>(session.Local->ExpiresAt)));
+            InsertOptionalString(local, L"serverUrl", session.Local->ServerUrl);
             root.Insert(L"kind", winrt::Windows::Data::Json::JsonValue::CreateStringValue(L"local"));
             root.Insert(L"local", local);
             return winrt::to_string(root.Stringify());

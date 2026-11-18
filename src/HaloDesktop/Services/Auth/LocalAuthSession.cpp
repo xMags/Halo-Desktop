@@ -22,7 +22,7 @@ namespace
             std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
-    winrt::hstring NormalizeBaseUrl(winrt::hstring const& input)
+    winrt::hstring NormalizeServerUrl(winrt::hstring const& input)
     {
         std::wstring value{ input };
         while (!value.empty() && value.back() == L'/')
@@ -35,15 +35,20 @@ namespace
         }
         return winrt::hstring{ value };
     }
+
+    winrt::Windows::Foundation::Uri Endpoint(winrt::hstring const& serverUrl, wchar_t const* path)
+    {
+        return winrt::Windows::Foundation::Uri{ serverUrl + path };
+    }
 }
 
 namespace HaloDesktop::Services::Auth
 {
     LocalAuthSession::LocalAuthSession(
-        winrt::hstring baseUrl,
+        winrt::hstring builtInServerUrl,
         std::shared_ptr<::HaloDesktop::Api::HttpExecutor> executor,
         std::shared_ptr<SessionStore> store)
-        : m_baseUrl(NormalizeBaseUrl(baseUrl)),
+        : m_builtInServerUrl(NormalizeServerUrl(builtInServerUrl)),
           m_executor(std::move(executor)),
           m_store(std::move(store))
     {
@@ -55,39 +60,53 @@ namespace HaloDesktop::Services::Auth
 
     void LocalAuthSession::Restore(StoredLocalSession session)
     {
+        if (!session.ServerUrl || session.ServerUrl->empty())
+        {
+            session.ServerUrl = m_builtInServerUrl;
+        }
         std::scoped_lock const lock{ m_mutex };
         m_session = std::move(session);
+        m_refreshFlight.reset();
         ++m_revision;
     }
 
     concurrency::task<::HaloDesktop::Api::Dto::IssuedToken> LocalAuthSession::LoginAsync(
+        winrt::hstring serverUrl,
         winrt::hstring username,
         winrt::hstring password)
     {
         co_await winrt::resume_background();
+        auto const server = NormalizeServerUrl(serverUrl);
 
-        winrt::Windows::Data::Json::JsonObject request;
-        request.Insert(L"username", winrt::Windows::Data::Json::JsonValue::CreateStringValue(username));
-        request.Insert(L"password", winrt::Windows::Data::Json::JsonValue::CreateStringValue(password));
-        auto const response = co_await m_executor->SendJsonAsync(
-            winrt::Windows::Web::Http::HttpMethod::Post(),
-            Endpoint(L"/auth/login"),
-            request.Stringify());
+        winrt::Windows::Data::Json::IJsonValue response{ nullptr };
+        {
+            winrt::Windows::Data::Json::JsonObject request;
+            request.Insert(L"username", winrt::Windows::Data::Json::JsonValue::CreateStringValue(username));
+            request.Insert(L"password", winrt::Windows::Data::Json::JsonValue::CreateStringValue(password));
+            password = winrt::hstring{};
+            // Never after a redirect: the credentials go to the exact origin
+            // the session is for, or nowhere.
+            response = co_await m_executor->SendJsonWithoutRedirectAsync(
+                winrt::Windows::Web::Http::HttpMethod::Post(),
+                Endpoint(server, L"/auth/login"),
+                request.Stringify());
+        }
         auto const issued = ::HaloDesktop::Api::Mappers::ParseIssuedToken(response);
+        StoredLocalSession established{
+            .Token = issued.Token,
+            .ExpiresAt = issued.ExpiresAt,
+            .ServerUrl = server,
+        };
 
         std::uint64_t establishedRevision{};
         {
             std::scoped_lock const lock{ m_mutex };
-            m_session = StoredLocalSession{
-                .Token = issued.Token,
-                .ExpiresAt = issued.ExpiresAt,
-            };
+            m_session = established;
+            // A refresh still in flight belongs to the session just replaced.
+            m_refreshFlight.reset();
             establishedRevision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(establishedRevision, StoredLocalSession{
-            .Token = issued.Token,
-            .ExpiresAt = issued.ExpiresAt,
-        });
+        co_await PersistUntilCurrentAsync(establishedRevision, established);
 
         {
             std::scoped_lock const lock{ m_mutex };
@@ -123,16 +142,16 @@ namespace HaloDesktop::Services::Auth
             co_return co_await RefreshAccessTokenAsync();
         }
 
+        // Inside the proactive window the current token is still valid, so a
+        // refresh that fails for any reason leaves it in use. A refusal (null)
+        // has ended the session, which leaves no token to fall back on.
         try
         {
             co_return co_await RefreshAccessTokenAsync();
         }
-        catch (winrt::hresult_error const& error)
+        catch (...)
         {
-            if (!::HaloDesktop::Api::ApiError::IsTransport(error.code()))
-            {
-                throw;
-            }
+            // Falls through to the token still in hand.
         }
 
         std::scoped_lock const lock{ m_mutex };
@@ -187,6 +206,8 @@ namespace HaloDesktop::Services::Auth
             std::scoped_lock const lock{ m_mutex };
             previous = m_session;
             m_session.reset();
+            // A refresh still in flight belongs to the session that just ended.
+            m_refreshFlight.reset();
             revision = ++m_revision;
         }
         try
@@ -218,6 +239,7 @@ namespace HaloDesktop::Services::Auth
             }
             previous = m_session;
             m_session.reset();
+            m_refreshFlight.reset();
             clearedRevision = ++m_revision;
         }
         try
@@ -243,20 +265,27 @@ namespace HaloDesktop::Services::Auth
         return m_revision;
     }
 
+    std::optional<winrt::hstring> LocalAuthSession::ServerUrl() const
+    {
+        std::scoped_lock const lock{ m_mutex };
+        return m_session ? m_session->ServerUrl : std::nullopt;
+    }
+
     concurrency::task<std::optional<winrt::hstring>> LocalAuthSession::RefreshNowAsync(
         StoredLocalSession observed,
         std::uint64_t observedRevision)
     {
         co_await winrt::resume_background();
+        auto const server = observed.ServerUrl ? *observed.ServerUrl : m_builtInServerUrl;
 
         winrt::Windows::Data::Json::JsonObject emptyBody;
         winrt::Windows::Data::Json::IJsonValue response{ nullptr };
         bool rejected{};
         try
         {
-            response = co_await m_executor->SendJsonAsync(
+            response = co_await m_executor->SendJsonWithoutRedirectAsync(
                 winrt::Windows::Web::Http::HttpMethod::Post(),
-                Endpoint(L"/auth/refresh"),
+                Endpoint(server, L"/auth/refresh"),
                 emptyBody.Stringify(),
                 { { L"Authorization", winrt::hstring{ L"Bearer " } + observed.Token } });
         }
@@ -271,30 +300,38 @@ namespace HaloDesktop::Services::Auth
         }
         if (rejected)
         {
-            static_cast<void>(co_await ClearIfRevisionAsync(observedRevision));
-            co_return std::nullopt;
+            // A 401 is the local-mode invalid_grant, but only for the session it
+            // was asked about: after a sign-out, or a sign-in as someone else, a
+            // late answer must neither bring the old session back nor end the
+            // new one.
+            if (co_await ClearIfRevisionAsync(observedRevision))
+            {
+                co_return std::nullopt;
+            }
+            std::scoped_lock const lock{ m_mutex };
+            co_return m_session ? std::optional<winrt::hstring>{ m_session->Token } : std::nullopt;
         }
 
         auto const issued = ::HaloDesktop::Api::Mappers::ParseIssuedToken(response);
+        StoredLocalSession next{
+            .Token = issued.Token,
+            .ExpiresAt = issued.ExpiresAt,
+            .ServerUrl = server,
+        };
         std::uint64_t nextRevision{};
         {
             std::scoped_lock const lock{ m_mutex };
-            if (m_revision != observedRevision || !m_session || m_session->Token != observed.Token)
+            if (m_revision != observedRevision || !m_session || m_session->Token != observed.Token
+                || m_session->ServerUrl != observed.ServerUrl)
             {
                 co_return m_session
                     ? std::optional<winrt::hstring>{ m_session->Token }
                     : std::nullopt;
             }
-            m_session = StoredLocalSession{
-                .Token = issued.Token,
-                .ExpiresAt = issued.ExpiresAt,
-            };
+            m_session = next;
             nextRevision = ++m_revision;
         }
-        co_await PersistUntilCurrentAsync(nextRevision, StoredLocalSession{
-            .Token = issued.Token,
-            .ExpiresAt = issued.ExpiresAt,
-        });
+        co_await PersistUntilCurrentAsync(nextRevision, next);
         co_return issued.Token;
     }
 
@@ -326,11 +363,6 @@ namespace HaloDesktop::Services::Auth
             revision = m_revision;
             session = m_session;
         }
-    }
-
-    winrt::Windows::Foundation::Uri LocalAuthSession::Endpoint(wchar_t const* path) const
-    {
-        return winrt::Windows::Foundation::Uri{ m_baseUrl + path };
     }
 
     void LocalAuthSession::ClearFlight(std::uint64_t flightId) noexcept

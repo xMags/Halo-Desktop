@@ -15,16 +15,6 @@ namespace HaloDesktop
         Unknown = 4,
     };
 
-    enum SignInOutcome
-    {
-        Succeeded = 0,
-        Declined = 1,
-        Expired = 2,
-        Unreachable = 3,
-        InvalidCredentials = 4,
-        RateLimited = 5,
-    };
-
     [default_interface]
     runtimeclass MediaSummary
     {

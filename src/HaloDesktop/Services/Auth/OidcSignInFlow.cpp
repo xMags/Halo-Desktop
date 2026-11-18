@@ -4,13 +4,14 @@
 #include "Api/BoundedHttpContent.h"
 #include "Api/HttpExecutor.h"
 #include "Api/JsonNumberPolicy.h"
-#include "Services/Auth/LoopbackListener.h"
+#include "Services/Auth/BrowserSignInStep.h"
 
 #include <array>
 #include <bcrypt.h>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
+#include <exception>
 #include <limits>
 #include <span>
 #include <stdexcept>
@@ -20,11 +21,10 @@
 #include <wil/resource.h>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/Windows.Foundation.h>
-#include <winrt/Windows.System.h>
+#include <winrt/Windows.Web.Http.h>
 
 namespace
 {
-    constexpr wchar_t RedirectUri[] = L"http://127.0.0.1:17871/callback";
     constexpr std::size_t MaximumEndpointLength = 4096;
     constexpr std::size_t MaximumTokenLength = 65536;
 
@@ -230,33 +230,40 @@ namespace
         return winrt::hstring{ result };
     }
 
-    std::optional<winrt::hstring> CallbackValue(winrt::hstring const& path, wchar_t const* name)
+    std::optional<std::wstring> JsonStringOrNull(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* name)
     {
-        std::wstring text{ path };
-        auto const query = text.find(L'?');
-        if (query == std::wstring::npos || query + 1 >= text.size())
+        auto const value = object.TryLookup(name);
+        if (!value || value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String)
         {
             return std::nullopt;
         }
-        winrt::Windows::Foundation::WwwFormUrlDecoder decoder{ winrt::hstring{ text.substr(query + 1) } };
-        for (auto const& entry : decoder)
-        {
-            if (entry.Name() == name)
-            {
-                return entry.Value();
-            }
-        }
-        return std::nullopt;
+        auto text = std::wstring{ value.GetString() };
+        return text.empty() ? std::nullopt : std::optional<std::wstring>{ std::move(text) };
     }
 
+    // The token endpoint's refusal is the provider's own answer, as the
+    // reference's TokenEndpointError: its OAuth code (invalid_grant reads as an
+    // expired request) and its description, which the screen shows.
     TokenResponse ParseTokenResponse(
         winrt::Windows::Web::Http::HttpResponseMessage const& response,
         winrt::hstring const& body)
     {
-        auto const object = winrt::Windows::Data::Json::JsonObject::Parse(body);
-        if (!response.IsSuccessStatusCode() || object.HasKey(L"error"))
+        auto const status = std::to_wstring(static_cast<std::uint32_t>(response.StatusCode()));
+        winrt::Windows::Data::Json::JsonObject object{ nullptr };
+        if (!winrt::Windows::Data::Json::JsonObject::TryParse(body, object) || !object)
         {
-            throw std::runtime_error{ "The identity provider rejected the token exchange." };
+            throw ::HaloDesktop::Services::Auth::SignInRefused(
+                L"IdP returned a non-JSON response (HTTP " + status + L")",
+                L"http_" + status);
+        }
+        auto const error = JsonStringOrNull(object, L"error");
+        if (!response.IsSuccessStatusCode() || error)
+        {
+            auto const code = error ? *error : L"http_" + status;
+            auto const description = JsonStringOrNull(object, L"error_description");
+            throw ::HaloDesktop::Services::Auth::SignInRefused(description ? *description : code, code);
         }
         auto const accessToken = object.GetNamedString(L"access_token");
         if (accessToken.empty() || accessToken.size() > MaximumTokenLength)
@@ -339,22 +346,23 @@ namespace HaloDesktop::Services::Auth
     }
 
     concurrency::task<OidcSignInResult> OidcSignInFlow::SignInAsync(
-        ::HaloDesktop::Api::Dto::AuthConfig config)
+        ::HaloDesktop::Api::Dto::AuthConfig config,
+        SignInOpenedHandler onOpened)
     {
         auto const cancellation = BeginAttempt();
         co_await winrt::resume_background();
         if (config.Mode != ::HaloDesktop::Api::Dto::AuthMode::Oidc
             || config.Issuer.empty() || config.ClientId.empty())
         {
-            co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Unreachable };
+            co_return OidcSignInResult{
+                .Session = std::nullopt,
+                .Error = SignInErrorInfo{ .Message = L"The server's sign-in settings are incomplete." },
+            };
         }
 
+        std::exception_ptr failure;
         try
         {
-            if (cancellation.stop_requested())
-            {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
-            }
             RequireSecureEndpoint(config.Issuer);
             auto discoveryUrl = std::wstring{ config.Issuer };
             if (discoveryUrl.back() != L'/')
@@ -366,10 +374,6 @@ namespace HaloDesktop::Services::Auth
                 winrt::Windows::Web::Http::HttpMethod::Get(),
                 winrt::Windows::Foundation::Uri{ discoveryUrl });
             auto const discovery = ParseDiscovery(discoveryValue);
-            if (cancellation.stop_requested())
-            {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
-            }
 
             auto const state = RandomToken();
             auto const verifier = RandomToken();
@@ -385,7 +389,7 @@ namespace HaloDesktop::Services::Auth
             auto const query = JoinPairs({
                 { L"response_type", L"code" },
                 { L"client_id", config.ClientId },
-                { L"redirect_uri", RedirectUri },
+                { L"redirect_uri", LoopbackRedirectUri },
                 { L"scope", winrt::hstring{ scopes } },
                 { L"state", state },
                 { L"code_challenge", PkceChallenge(verifier) },
@@ -396,59 +400,30 @@ namespace HaloDesktop::Services::Auth
                 : L"&";
             auto const authorizationUrl = discovery.AuthorizationEndpoint + separator + query;
 
-            LoopbackListener listener;
-            std::stop_callback const cancelListener{ cancellation, [&listener]() noexcept
+            auto const callback = co_await SignInInBrowserAsync(authorizationUrl, cancellation, std::move(onOpened));
+            if (auto const error = callback.Value(L"error"))
             {
-                listener.Cancel();
-            } };
-            auto callbackTask = listener.WaitAsync();
-            auto const launched = co_await winrt::Windows::System::Launcher::LaunchUriAsync(
-                winrt::Windows::Foundation::Uri{ authorizationUrl });
-            if (!launched)
-            {
-                listener.Cancel();
-                try
-                {
-                    static_cast<void>(co_await callbackTask);
-                }
-                catch (...)
-                {
-                }
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Unreachable };
+                auto const description = callback.Value(L"error_description");
+                throw SignInFailed(description && !description->empty()
+                    ? std::wstring{ *description }
+                    : std::wstring{ L"Sign-in failed: " } + std::wstring{ *error });
             }
-            if (cancellation.stop_requested())
+            auto const code = callback.Value(L"code");
+            if (!code || code->empty())
             {
-                listener.Cancel();
-                try
-                {
-                    static_cast<void>(co_await callbackTask);
-                }
-                catch (...)
-                {
-                }
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+                throw SignInFailed(L"Sign-in failed: no authorization code returned");
             }
-            auto const callbackPath = co_await callbackTask;
-            if (cancellation.stop_requested())
+            auto const returnedState = callback.Value(L"state");
+            if (!returnedState || *returnedState != state)
             {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
-            }
-            if (CallbackValue(callbackPath, L"error"))
-            {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
-            }
-            auto const code = CallbackValue(callbackPath, L"code");
-            auto const returnedState = CallbackValue(callbackPath, L"state");
-            if (!code || !returnedState || *returnedState != state)
-            {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+                throw SignInFailed(L"Sign-in failed: state mismatch");
             }
 
             auto const form = JoinPairs({
                 { L"grant_type", L"authorization_code" },
                 { L"client_id", config.ClientId },
                 { L"code", *code },
-                { L"redirect_uri", RedirectUri },
+                { L"redirect_uri", LoopbackRedirectUri },
                 { L"code_verifier", verifier },
             });
             auto const tokenResponse = co_await m_executor->SendFormWithoutRedirectAsync(
@@ -457,11 +432,10 @@ namespace HaloDesktop::Services::Auth
             auto const tokenBody = co_await Api::ReadBoundedJsonTextAsync(tokenResponse.Content());
             if (cancellation.stop_requested())
             {
-                co_return OidcSignInResult{ winrt::HaloDesktop::SignInOutcome::Declined };
+                throw BrowserSignInFailure(BrowserFailureReason::Cancelled, L"sign-in cancelled");
             }
             auto const tokens = ParseTokenResponse(tokenResponse, tokenBody);
             co_return OidcSignInResult{
-                .Outcome = winrt::HaloDesktop::SignInOutcome::Succeeded,
                 .Session = StoredOidcSession{
                     .ClientId = config.ClientId,
                     .TokenEndpoint = discovery.TokenEndpoint,
@@ -472,14 +446,21 @@ namespace HaloDesktop::Services::Auth
                     .IdToken = tokens.IdToken,
                     .ExpiresAt = tokens.ExpiresAt,
                 },
+                .Error = {},
             };
         }
         catch (...)
         {
-            co_return OidcSignInResult{
-                cancellation.stop_requested()
-                    ? winrt::HaloDesktop::SignInOutcome::Declined
-                    : winrt::HaloDesktop::SignInOutcome::Unreachable };
+            failure = std::current_exception();
         }
+
+        if (cancellation.stop_requested())
+        {
+            co_return OidcSignInResult{
+                .Session = std::nullopt,
+                .Error = BrowserSignInFailure(BrowserFailureReason::Cancelled, L"sign-in cancelled").Info(),
+            };
+        }
+        co_return OidcSignInResult{ .Session = std::nullopt, .Error = DescribeSignInFailure(failure) };
     }
 }

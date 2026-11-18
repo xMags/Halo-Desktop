@@ -580,17 +580,29 @@ namespace HaloDesktop::Api::Mappers
 
         if (mode == L"local")
         {
-            return Dto::AuthConfig{ .Mode = Dto::AuthMode::Local };
+            return Dto::AuthConfig{ .Mode = Dto::AuthMode::Local, .ModeName = mode };
         }
         if (mode != L"oidc")
         {
-            throw std::invalid_argument{ "The server returned an unsupported authentication mode." };
+            // Another mode is a sign-in add-on's to read, or the screen's
+            // "can't sign in here" step, which quotes the name: a short
+            // printable word, or this is not an answer worth showing.
+            auto const printable = std::all_of(mode.begin(), mode.end(), [](wchar_t character)
+            {
+                return std::iswprint(character) != 0;
+            });
+            if (mode.size() > 64 || !printable)
+            {
+                throw std::invalid_argument{ "The server returned an unusable authentication mode." };
+            }
+            return Dto::AuthConfig{ .Mode = Dto::AuthMode::Other, .ModeName = mode, .Raw = object };
         }
 
         Dto::AuthConfig result{
             .Mode = Dto::AuthMode::Oidc,
             .Issuer = RequireString(object, L"issuer"),
             .ClientId = RequireString(object, L"clientId"),
+            .ModeName = mode,
         };
 
         auto const scopes = object.GetNamedArray(L"scopes");

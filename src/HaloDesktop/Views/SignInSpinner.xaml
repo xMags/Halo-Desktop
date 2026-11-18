@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  `.si-spinner`: an 11px ring, its track rgba(255,255,255,.18) and its top
+  quarter in the accent fill, turning once every 0.9s. Drawn only.
+-->
+<UserControl
+  x:Class="HaloDesktop.SignInSpinner"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  Width="11"
+  Height="11"
+  AutomationProperties.AccessibilityView="Raw"
+  IsTabStop="False"
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded">
+
+  <UserControl.Resources>
+    <Storyboard x:Key="SpinStoryboard" RepeatBehavior="Forever">
+      <DoubleAnimation
+        Storyboard.TargetName="Turn"
+        Storyboard.TargetProperty="Angle"
+        From="0"
+        To="360"
+        Duration="0:0:0.9" />
+    </Storyboard>
+  </UserControl.Resources>
+
+  <Grid RenderTransformOrigin="0.5,0.5">
+    <Grid.RenderTransform>
+      <RotateTransform x:Name="Turn" />
+    </Grid.RenderTransform>
+    <Ellipse Stroke="{StaticResource HaloSignInSpinnerTrackBrush}" StrokeThickness="2" />
+    <Path
+      Data="M 2.32,2.32 A 4.5,4.5 0 0 1 8.68,2.32"
+      Stroke="{StaticResource HaloSignInAccentFillBrush}"
+      StrokeThickness="2" />
+  </Grid>
+</UserControl>

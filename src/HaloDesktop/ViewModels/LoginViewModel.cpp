@@ -4,51 +4,67 @@
 #include "LoginViewModel.g.cpp"
 #endif
 
+#include "Services/Auth/ServerAddressPolicy.h"
+#include "Services/Auth/SignInFailurePolicy.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
 
-#include <algorithm>
 #include <chrono>
-#include <cwctype>
+#include <exception>
 #include <string>
 #include <utility>
+#include <winrt/Windows.System.h>
 
 namespace
 {
+    namespace Policy = ::HaloDesktop::ViewModels;
+    namespace Auth = ::HaloDesktop::Services::Auth;
+
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
+
+    // How long "You're all set" stays up before the library opens.
     constexpr std::chrono::milliseconds SignedInDwell{ 1200 };
 
-    winrt::hstring UppercaseHost(winrt::hstring const& url)
+    winrt::Microsoft::UI::Xaml::Visibility VisibleWhen(bool condition) noexcept
     {
-        if (url.empty())
-        {
-            return L"";
-        }
+        return condition ? Visible : Collapsed;
+    }
 
+    // Every property a step change can move; raised together.
+    constexpr wchar_t const* StepProperties[] = {
+        L"IntroVisibility", L"DiscoveringVisibility", L"BrowserVisibility", L"FormVisibility",
+        L"ServerFieldVisibility", L"WaitingVisibility", L"WaitingBrowserVisibility",
+        L"SignedInVisibility", L"ResultVisibility", L"UnsupportedVisibility", L"UnreachableVisibility",
+        L"PreparingVisibility", L"NoAccountVisibility", L"PasswordLinkVisibility", L"DetailsVisibility",
+        L"ErrorVisibility", L"AccountNameVisibility", L"DiscoveringActive", L"WaitingActive",
+        L"PreparingActive", L"SignedInActive", L"ReopenEnabled", L"ErrorText", L"MethodLabel",
+        L"FormLinkText", L"WaitingTitle", L"WaitingBody", L"WaitingStatus", L"ResultTitle",
+        L"ResultBody", L"UnsupportedBody", L"Detail", L"DetailsGlyph", L"AccountName",
+        L"AccountLabel", L"AvatarInitial", L"SignedInStatus", L"ServerFieldFirst",
+    };
+
+    std::wstring DescribeFailure(std::exception_ptr const& failure)
+    {
         try
         {
-            std::wstring host(winrt::Windows::Foundation::Uri{ url }.Host());
-            std::transform(host.begin(), host.end(), host.begin(), [](wchar_t character)
+            if (failure)
             {
-                return static_cast<wchar_t>(std::towupper(character));
-            });
-            return winrt::hstring(host);
+                std::rethrow_exception(failure);
+            }
+        }
+        catch (winrt::hresult_error const& error)
+        {
+            return Auth::SanitizedSignInText(std::wstring_view{ error.message() });
+        }
+        catch (std::exception const& error)
+        {
+            return Auth::SanitizedSignInText(std::wstring{ winrt::to_hstring(error.what()) });
         }
         catch (...)
         {
-            return url;
         }
-    }
-
-    winrt::hstring CapitalizeFirst(winrt::hstring const& value)
-    {
-        std::wstring name{ value };
-        if (!name.empty())
-        {
-            name.front() = static_cast<wchar_t>(std::towupper(name.front()));
-        }
-        return winrt::hstring{ name };
+        return L"Unknown error";
     }
 }
 
@@ -56,225 +72,490 @@ namespace winrt::HaloDesktop::implementation
 {
     LoginViewModel::LoginViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_session(services.Session),
-          m_navigation(services.Navigation),
-          m_serverHost(UppercaseHost(services.Session->ServerUrl()))
+          m_navigation(services.Navigation)
     {
-        static_cast<void>(RunDiscoveryAsync());
+        DiscoverAsync();
+        LoadLastServerAsync();
     }
 
-    winrt::hstring LoginViewModel::ServerHost() const { return m_serverHost; }
-    winrt::hstring LoginViewModel::DisplayName() const { return CapitalizeFirst(m_session->UserName()); }
     winrt::hstring LoginViewModel::Username() const { return m_username; }
     void LoginViewModel::Username(winrt::hstring const& value)
     {
-        if (m_username != value)
+        if (m_username == value) return;
+        m_username = value;
+        Raise(L"Username");
+    }
+
+    winrt::hstring LoginViewModel::ServerAddress() const { return m_serverAddress; }
+    void LoginViewModel::ServerAddress(winrt::hstring const& value)
+    {
+        if (m_serverAddress == value) return;
+        m_serverAddress = value;
+        m_serverAddressEdited = true;
+        Raise(L"ServerAddress");
+    }
+
+    bool LoginViewModel::Is(StepKind kind) const noexcept { return m_step.Kind == kind; }
+
+    Microsoft::UI::Xaml::Visibility LoginViewModel::IntroVisibility() const noexcept { return VisibleWhen(Policy::IntroVisible(m_step.Kind)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::DiscoveringVisibility() const noexcept { return VisibleWhen(Is(StepKind::Discovering)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::BrowserVisibility() const noexcept { return VisibleWhen(Is(StepKind::Browser)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::FormVisibility() const noexcept { return VisibleWhen(Is(StepKind::Local) || Is(StepKind::Custom)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::ServerFieldVisibility() const noexcept { return VisibleWhen(Is(StepKind::Custom)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::WaitingVisibility() const noexcept { return VisibleWhen(Is(StepKind::Waiting)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::WaitingBrowserVisibility() const noexcept { return VisibleWhen(Is(StepKind::Waiting) && !m_step.WaitingLocal); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::SignedInVisibility() const noexcept { return VisibleWhen(Is(StepKind::SignedIn)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::ResultVisibility() const noexcept { return VisibleWhen(Is(StepKind::Declined) || Is(StepKind::Expired)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::UnsupportedVisibility() const noexcept { return VisibleWhen(Is(StepKind::Unsupported)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::UnreachableVisibility() const noexcept { return VisibleWhen(Is(StepKind::Unreachable)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::PreparingVisibility() const noexcept { return VisibleWhen(Is(StepKind::Preparing)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::NoAccountVisibility() const noexcept
+    {
+        return VisibleWhen(Policy::NoAccountModeAvailable && Policy::NoAccountStep(m_step.Kind));
+    }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::PasswordLinkVisibility() const noexcept { return VisibleWhen(Policy::PasswordLinkVisible(m_step.Kind)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::DetailsVisibility() const noexcept { return VisibleWhen(m_detailsOpen && Is(StepKind::Unreachable)); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::ErrorVisibility() const noexcept { return VisibleWhen(!m_step.Error.empty()); }
+    Microsoft::UI::Xaml::Visibility LoginViewModel::AccountNameVisibility() const noexcept { return VisibleWhen(!m_step.AccountName.empty()); }
+    bool LoginViewModel::DiscoveringActive() const noexcept { return Is(StepKind::Discovering); }
+    bool LoginViewModel::WaitingActive() const noexcept { return Is(StepKind::Waiting); }
+    bool LoginViewModel::PreparingActive() const noexcept { return Is(StepKind::Preparing); }
+    bool LoginViewModel::SignedInActive() const noexcept { return Is(StepKind::SignedIn); }
+    bool LoginViewModel::ReopenEnabled() const noexcept { return Is(StepKind::Waiting) && m_step.AuthUrlKnown && !m_authUrl.empty(); }
+
+    winrt::hstring LoginViewModel::ErrorText() const { return winrt::hstring{ m_step.Error }; }
+    winrt::hstring LoginViewModel::MethodLabel() const
+    {
+        return m_step.Method ? winrt::hstring{ Policy::MethodLabel(*m_step.Method) } : winrt::hstring{};
+    }
+    winrt::hstring LoginViewModel::FormLinkText() const
+    {
+        if (Is(StepKind::Custom) && m_step.Back)
         {
-            m_username = value;
-            Raise(L"Username");
+            return winrt::hstring{ Policy::BackLabel(Policy::Settled(*m_step.Back, m_discovered)) };
+        }
+        return L"Use another server";
+    }
+    winrt::hstring LoginViewModel::WaitingTitle() const { return winrt::hstring{ Policy::WaitingTitle(m_step.WaitingLocal) }; }
+    winrt::hstring LoginViewModel::WaitingBody() const { return winrt::hstring{ Policy::WaitingBody(m_step.WaitingLocal) }; }
+    winrt::hstring LoginViewModel::WaitingStatus() const { return winrt::hstring{ Policy::WaitingStatus(m_step.WaitingLocal) }; }
+    winrt::hstring LoginViewModel::ResultTitle() const
+    {
+        return Is(StepKind::Declined) ? L"Sign-in was declined" : L"Sign-in request expired";
+    }
+    winrt::hstring LoginViewModel::ResultBody() const
+    {
+        return Is(StepKind::Declined)
+            ? L"You can try again whenever you’re ready."
+            : L"This sign-in request has expired. Start a new one to continue.";
+    }
+    winrt::hstring LoginViewModel::UnsupportedBody() const { return winrt::hstring{ Policy::UnsupportedBody(m_step.Mode) }; }
+    winrt::hstring LoginViewModel::Detail() const { return winrt::hstring{ m_step.Detail }; }
+    winrt::hstring LoginViewModel::DetailsGlyph() const { return m_detailsOpen ? L"" : L""; }
+    winrt::hstring LoginViewModel::AccountName() const { return winrt::hstring{ m_step.AccountName }; }
+    winrt::hstring LoginViewModel::AccountLabel() const { return winrt::hstring{ m_step.AccountLabel }; }
+    winrt::hstring LoginViewModel::AvatarInitial() const { return winrt::hstring{ Policy::AvatarInitial(m_step.AccountName) }; }
+    winrt::hstring LoginViewModel::SignedInStatus() const { return winrt::hstring{ Policy::SignedInStatus(m_step.Moving) }; }
+    winrt::hstring LoginViewModel::NoAccountLabel() const { return winrt::hstring{ Policy::NoAccountLabel(false) }; }
+    bool LoginViewModel::ServerFieldFirst() const noexcept { return Is(StepKind::Custom) && m_serverAddress.empty(); }
+
+    void LoginViewModel::Retry()
+    {
+        if (Is(StepKind::Unreachable) || Is(StepKind::Unsupported))
+        {
+            DiscoverAsync();
         }
     }
-    winrt::hstring LoginViewModel::LocalErrorText() const { return m_localError; }
-    winrt::hstring LoginViewModel::WaitingTitle() const { return m_waitingForLocal ? L"Signing in" : L"Check your browser"; }
-    winrt::hstring LoginViewModel::WaitingBody() const
-    {
-        return m_waitingForLocal
-            ? winrt::hstring{ L"Halo is securely checking your account with your server." }
-            : winrt::hstring{ L"We opened a sign-in request in your default browser. Approve it there and this window carries on by itself." };
-    }
-    winrt::hstring LoginViewModel::WaitingStatus() const { return m_waitingForLocal ? L"CHECKING ACCOUNT" : L"WAITING FOR BROWSER"; }
 
-    Microsoft::UI::Xaml::Visibility LoginViewModel::DiscoveringVisibility() const noexcept { return m_step == Step::Discovering ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::LocalVisibility() const noexcept { return m_step == Step::Local ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::OidcVisibility() const noexcept { return m_step == Step::Oidc ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::WaitingVisibility() const noexcept { return m_step == Step::Waiting ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::WaitingCancelVisibility() const noexcept { return m_step == Step::Waiting && !m_waitingForLocal ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::SignedInVisibility() const noexcept { return m_step == Step::SignedIn ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::DeclinedVisibility() const noexcept { return m_step == Step::Declined ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::ExpiredVisibility() const noexcept { return m_step == Step::Expired ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::UnreachableVisibility() const noexcept { return m_step == Step::Unreachable ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::DetailsVisibility() const noexcept { return m_detailsOpen ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility LoginViewModel::LocalErrorVisibility() const noexcept { return m_localError.empty() ? Collapsed : Visible; }
-    winrt::hstring LoginViewModel::DetailsGlyph() const { return winrt::hstring{ m_detailsOpen ? L"\uE70D" : L"\uE76C" }; }
-
-    void LoginViewModel::RetryDiscovery()
+    void LoginViewModel::StartBrowserSignIn()
     {
-        static_cast<void>(RunDiscoveryAsync());
-    }
-
-    void LoginViewModel::StartLocalSignIn(winrt::hstring const& password)
-    {
-        if (m_step != Step::Local)
+        auto const resting = Is(StepKind::Browser) || Is(StepKind::Declined) || Is(StepKind::Expired);
+        if (!resting || !m_step.Method)
         {
             return;
         }
-        if (m_username.empty() || password.empty())
-        {
-            SetLocalError(L"Enter your username and password.");
-            return;
-        }
-        static_cast<void>(RunLocalSignInAsync(password));
+        StartBrowserAsync(*m_step.Method);
     }
 
-    void LoginViewModel::StartSignIn()
+    void LoginViewModel::OpenLinkAgain()
     {
-        if (m_step == Step::Unreachable)
-        {
-            RetryDiscovery();
-            return;
-        }
-        if (m_step != Step::Oidc && m_step != Step::Declined && m_step != Step::Expired)
+        if (!ReopenEnabled())
         {
             return;
         }
-        static_cast<void>(RunBrowserSignInAsync());
-    }
-
-    void LoginViewModel::Reopen()
-    {
-        if (!m_waitingForLocal)
+        try
         {
-            static_cast<void>(RunBrowserSignInAsync());
+            auto const opened = winrt::Windows::System::Launcher::LaunchUriAsync(
+                winrt::Windows::Foundation::Uri{ m_authUrl });
+            opened.Completed([](auto const& operation, auto)
+            {
+                try { static_cast<void>(operation.GetResults()); } catch (...) {}
+            });
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // The browser wait goes on; the person can cancel and start again.
         }
     }
 
-    void LoginViewModel::Cancel()
+    void LoginViewModel::CancelBrowserSignIn()
     {
-        if (m_waitingForLocal)
+        if (!Is(StepKind::Waiting) || m_step.WaitingLocal || !m_step.Method)
         {
             return;
         }
-        ++m_requestVersion;
-        m_session->CancelBrowserSignIn();
-        SetStep(Step::Oidc);
+        auto const method = *m_step.Method;
+        ++m_attempt;
+        m_session->CancelSignIn();
+        m_authUrl.clear();
+        Step browser;
+        browser.Kind = StepKind::Browser;
+        browser.Method = method;
+        SetStep(std::move(browser));
+    }
+
+    void LoginViewModel::Submit(winrt::hstring const& password)
+    {
+        if (Is(StepKind::Local))
+        {
+            if (m_username.empty() || password.empty())
+            {
+                Step local;
+                local.Kind = StepKind::Local;
+                local.Error = std::wstring{ Policy::MissingCredentialsError };
+                SetStep(std::move(local));
+                return;
+            }
+            SubmitLocalAsync(password);
+            return;
+        }
+        if (Is(StepKind::Custom) && m_step.Back)
+        {
+            SubmitCustomAsync(password, *m_step.Back);
+        }
+    }
+
+    void LoginViewModel::FormLink()
+    {
+        if (Is(StepKind::Local))
+        {
+            OpenCustom();
+            return;
+        }
+        if (Is(StepKind::Custom) && m_step.Back)
+        {
+            SetStep(Policy::ToStep(Policy::Settled(*m_step.Back, m_discovered)));
+        }
+    }
+
+    void LoginViewModel::OpenCustom()
+    {
+        if (auto custom = Policy::OpenCustom(m_step))
+        {
+            SetStep(std::move(*custom));
+        }
     }
 
     void LoginViewModel::ToggleDetails()
     {
+        if (!Is(StepKind::Unreachable))
+        {
+            return;
+        }
         m_detailsOpen = !m_detailsOpen;
         Raise(L"DetailsVisibility");
         Raise(L"DetailsGlyph");
     }
 
-    winrt::Windows::Foundation::IAsyncAction LoginViewModel::RunDiscoveryAsync()
+    void LoginViewModel::ContinueWithoutAccount()
+    {
+        // Halo without an account arrives with its own package; until then the
+        // button is hidden and this does nothing.
+        if (!Policy::NoAccountModeAvailable || !Policy::NoAccountStep(m_step.Kind))
+        {
+            return;
+        }
+    }
+
+    void LoginViewModel::Close()
+    {
+        if (m_closed)
+        {
+            return;
+        }
+        m_closed = true;
+        ++m_attempt;
+        ++m_discovery;
+        m_session->CancelSignIn();
+    }
+
+    winrt::fire_and_forget LoginViewModel::DiscoverAsync()
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_requestVersion;
-        SetLocalError(L"");
-        SetStep(Step::Discovering);
+        auto const id = ++m_discovery;
+        m_discovered.reset();
+        SetStep(Step{});
+
+        std::optional<::HaloDesktop::ViewModels::RestingStep> found;
+        std::exception_ptr failure;
         try
         {
-            auto const mode = co_await m_session->DiscoverAuthenticationAsync();
-            co_await uiContext;
-            if (version != m_requestVersion)
-            {
-                co_return;
-            }
-            SetStep(mode == ::HaloDesktop::Services::AuthenticationMode::Local
-                ? Step::Local
-                : Step::Oidc);
+            auto const discovery = co_await m_session->DiscoverAuthenticationAsync();
+            found = Policy::ReadyStep(
+                discovery.ModeName,
+                discovery.Mode == ::HaloDesktop::Services::SignInMode::Addon
+                    ? std::optional<std::wstring>{ discovery.ButtonLabel }
+                    : std::nullopt);
         }
         catch (...)
         {
-            if (version == m_requestVersion)
-            {
-                SetStep(Step::Unreachable);
-            }
+            failure = std::current_exception();
         }
-    }
-
-    winrt::Windows::Foundation::IAsyncAction LoginViewModel::RunLocalSignInAsync(winrt::hstring password)
-    {
-        auto lifetime = get_strong();
-        auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_requestVersion;
-        SetLocalError(L"");
-        m_waitingForLocal = true;
-        RaiseWaitingCopy();
-        SetStep(Step::Waiting);
-
-        auto const outcome = co_await m_session->SignInLocalAsync(m_username, std::move(password));
         co_await uiContext;
-        if (version != m_requestVersion)
+        if (id != m_discovery)
         {
             co_return;
         }
-
-        switch (outcome)
+        if (!found)
         {
-        case winrt::HaloDesktop::SignInOutcome::Succeeded:
-            Raise(L"DisplayName");
-            SetStep(Step::SignedIn);
-            static_cast<void>(FinishAsync(version));
-            co_return;
-        case winrt::HaloDesktop::SignInOutcome::InvalidCredentials:
-            SetLocalError(L"The username or password is incorrect.");
-            SetStep(Step::Local);
-            co_return;
-        case winrt::HaloDesktop::SignInOutcome::RateLimited:
-            SetLocalError(L"Too many attempts. Try again later.");
-            SetStep(Step::Local);
-            co_return;
-        default:
-            SetLocalError(L"Can't connect to Halo. Try again.");
-            SetStep(Step::Local);
-            co_return;
+            found = Policy::UnreachableStep(DescribeFailure(failure));
         }
+        m_discovered = found;
+        m_detailsOpen = false;
+        SetStep(Policy::ApplyDiscovery(m_step, *found));
+        // The custom form's back link names where it now goes.
+        Raise(L"FormLinkText");
     }
 
-    winrt::Windows::Foundation::IAsyncAction LoginViewModel::RunBrowserSignInAsync()
+    winrt::fire_and_forget LoginViewModel::LoadLastServerAsync()
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_requestVersion;
-        m_waitingForLocal = false;
-        RaiseWaitingCopy();
-        SetStep(Step::Waiting);
-
-        auto const outcome = co_await m_session->RequestBrowserSignInAsync();
+        winrt::hstring remembered;
+        try
+        {
+            remembered = co_await m_session->LastServerAddressAsync();
+        }
+        catch (...)
+        {
+            co_return;
+        }
         co_await uiContext;
-        if (version != m_requestVersion)
+        // What the person has typed meanwhile wins.
+        if (m_serverAddressEdited || remembered.empty())
         {
             co_return;
         }
-
-        switch (outcome)
-        {
-        case winrt::HaloDesktop::SignInOutcome::Succeeded:
-            m_session->AcknowledgeBrowserSignIn();
-            Raise(L"DisplayName");
-            SetStep(Step::SignedIn);
-            static_cast<void>(FinishAsync(version));
-            co_return;
-        case winrt::HaloDesktop::SignInOutcome::Declined:
-            SetStep(Step::Declined);
-            co_return;
-        case winrt::HaloDesktop::SignInOutcome::Expired:
-            SetStep(Step::Expired);
-            co_return;
-        default:
-            SetStep(Step::Unreachable);
-            co_return;
-        }
+        m_serverAddress = remembered;
+        Raise(L"ServerAddress");
+        Raise(L"ServerFieldFirst");
     }
 
-    winrt::Windows::Foundation::IAsyncAction LoginViewModel::FinishAsync(std::uint32_t version)
+    winrt::fire_and_forget LoginViewModel::SubmitLocalAsync(winrt::hstring password)
     {
         auto lifetime = get_strong();
         auto const uiContext = winrt::apartment_context{};
+        auto const id = ++m_attempt;
+        Step waiting;
+        waiting.Kind = StepKind::Waiting;
+        waiting.WaitingLocal = true;
+        SetStep(std::move(waiting));
+
+        ::HaloDesktop::Services::SignInAttempt attempt;
+        try
+        {
+            attempt = co_await m_session->SignInWithPasswordAsync(std::nullopt, m_username, std::move(password));
+        }
+        catch (...)
+        {
+            attempt = ::HaloDesktop::Services::SignInAttempt{};
+        }
+        co_await uiContext;
+        if (id != m_attempt || attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Superseded)
+        {
+            co_return;
+        }
+        if (attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Succeeded)
+        {
+            m_session->AcknowledgeSignIn();
+            FinishAsync(id);
+            co_return;
+        }
+        Step local;
+        local.Kind = StepKind::Local;
+        local.Error = Auth::LocalSignInMessage(attempt.HttpStatus);
+        SetStep(std::move(local));
+    }
+
+    winrt::fire_and_forget LoginViewModel::SubmitCustomAsync(
+        winrt::hstring password,
+        ::HaloDesktop::ViewModels::RestingStep back)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const fail = [this, &back](std::wstring error)
+        {
+            Step custom;
+            custom.Kind = StepKind::Custom;
+            custom.Error = std::move(error);
+            custom.Back = Policy::Settled(back, m_discovered);
+            SetStep(std::move(custom));
+        };
+
+        auto const parsed = Auth::ParseServerAddress(std::wstring_view{ m_serverAddress });
+        if (!parsed.Address)
+        {
+            fail(parsed.Error);
+            co_return;
+        }
+        if (m_username.empty() || password.empty())
+        {
+            fail(std::wstring{ Policy::MissingCredentialsError });
+            co_return;
+        }
+        auto const address = winrt::hstring{ *parsed.Address };
+        auto const username = m_username;
+        auto const id = ++m_attempt;
+        Step waiting;
+        waiting.Kind = StepKind::Waiting;
+        waiting.WaitingLocal = true;
+        SetStep(std::move(waiting));
+
+        // The server's mode first, so one that signs in through a web page
+        // says so instead of refusing the password as if it were wrong.
+        std::optional<std::wstring> mode;
+        try
+        {
+            mode = co_await m_session->CheckServerModeAsync(address);
+        }
+        catch (...)
+        {
+            mode.reset();
+        }
+        co_await uiContext;
+        if (id != m_attempt)
+        {
+            co_return;
+        }
+        if (!mode)
+        {
+            fail(std::wstring{ Policy::CustomServerUnreachableError });
+            co_return;
+        }
+        if (!Policy::CustomServerAcceptsPasswords(*mode))
+        {
+            fail(std::wstring{ Policy::CustomServerBrowserModeError });
+            co_return;
+        }
+
+        ::HaloDesktop::Services::SignInAttempt attempt;
+        try
+        {
+            attempt = co_await m_session->SignInWithPasswordAsync(address, username, std::move(password));
+        }
+        catch (...)
+        {
+            attempt = ::HaloDesktop::Services::SignInAttempt{};
+        }
+        co_await uiContext;
+        if (id != m_attempt || attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Superseded)
+        {
+            co_return;
+        }
+        if (attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Succeeded)
+        {
+            m_session->AcknowledgeSignIn();
+            FinishAsync(id);
+            co_return;
+        }
+        fail(Auth::LocalSignInMessage(attempt.HttpStatus));
+    }
+
+    winrt::fire_and_forget LoginViewModel::StartBrowserAsync(::HaloDesktop::ViewModels::BrowserMethod method)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        auto const id = ++m_attempt;
+        m_authUrl.clear();
+        Step waiting;
+        waiting.Kind = StepKind::Waiting;
+        waiting.WaitingLocal = false;
+        waiting.Method = method;
+        SetStep(std::move(waiting));
+
+        ::HaloDesktop::Services::SignInAttempt attempt;
+        try
+        {
+            attempt = co_await m_session->RequestBrowserSignInAsync(
+                [weak = get_weak(), id](winrt::hstring const& authUrl)
+                {
+                    if (auto const self = weak.get())
+                    {
+                        self->OnAuthUrl(id, authUrl);
+                    }
+                });
+        }
+        catch (...)
+        {
+            attempt = ::HaloDesktop::Services::SignInAttempt{
+                .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Failed,
+                .Error = Auth::SignInErrorInfo{ .Message = DescribeFailure(std::current_exception()) },
+                .HttpStatus = std::nullopt,
+            };
+        }
+        co_await uiContext;
+        if (id != m_attempt || attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Superseded)
+        {
+            co_return;
+        }
+        if (attempt.Outcome == ::HaloDesktop::Services::SignInAttemptOutcome::Succeeded)
+        {
+            m_session->AcknowledgeSignIn();
+            FinishAsync(id);
+            co_return;
+        }
+        m_authUrl.clear();
+        m_detailsOpen = false;
+        SetStep(Policy::StepAfterBrowserFailure(method, Auth::ClassifySignInFailure(attempt.Error)));
+    }
+
+    void LoginViewModel::OnAuthUrl(std::uint64_t attempt, winrt::hstring const& authUrl)
+    {
+        if (attempt != m_attempt || !Is(StepKind::Waiting) || m_step.WaitingLocal || authUrl.empty())
+        {
+            return;
+        }
+        m_authUrl = authUrl;
+        auto next = m_step;
+        next.AuthUrlKnown = true;
+        SetStep(std::move(next));
+    }
+
+    winrt::fire_and_forget LoginViewModel::FinishAsync(std::uint64_t attempt)
+    {
+        auto lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        Step signedIn;
+        signedIn.Kind = StepKind::SignedIn;
+        signedIn.AccountName = Policy::AccountDisplayName(std::wstring_view{ m_session->UserName() });
+        auto const plan = m_session->Plan();
+        signedIn.AccountLabel = Policy::AccountLabel(
+            m_session->IsAdmin(),
+            plan ? std::optional<std::wstring_view>{ std::wstring_view{ *plan } } : std::nullopt);
+        // Moving this PC's library into the account belongs to Halo without an
+        // account, which this build does not have yet.
+        signedIn.Moving = false;
+        SetStep(std::move(signedIn));
+
         co_await winrt::resume_after(SignedInDwell);
         co_await uiContext;
-
-        if (version != m_requestVersion)
+        if (attempt != m_attempt)
         {
             co_return;
         }
-
         m_navigation->GoTo(::HaloDesktop::Services::Page::Home);
         m_navigation->CloseOverlay();
-        SetStep(m_session->Mode() == ::HaloDesktop::Services::AuthenticationMode::Local
-            ? Step::Local
-            : Step::Oidc);
     }
 
     void LoginViewModel::SetStep(Step step)
@@ -283,25 +564,16 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        m_step = step;
-        if (m_detailsOpen)
+        auto const kindChanged = m_step.Kind != step.Kind;
+        m_step = std::move(step);
+        if (kindChanged)
         {
             m_detailsOpen = false;
-            Raise(L"DetailsVisibility");
-            Raise(L"DetailsGlyph");
         }
-        RaiseSteps();
-    }
-
-    void LoginViewModel::SetLocalError(winrt::hstring value)
-    {
-        if (m_localError == value)
+        for (auto const name : StepProperties)
         {
-            return;
+            Raise(name);
         }
-        m_localError = std::move(value);
-        Raise(L"LocalErrorText");
-        Raise(L"LocalErrorVisibility");
     }
 
     winrt::event_token LoginViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
@@ -312,27 +584,6 @@ namespace winrt::HaloDesktop::implementation
     void LoginViewModel::PropertyChanged(winrt::event_token const& token) noexcept
     {
         m_propertyChanged.remove(token);
-    }
-
-    void LoginViewModel::RaiseSteps()
-    {
-        Raise(L"DiscoveringVisibility");
-        Raise(L"LocalVisibility");
-        Raise(L"OidcVisibility");
-        Raise(L"WaitingVisibility");
-        Raise(L"WaitingCancelVisibility");
-        Raise(L"SignedInVisibility");
-        Raise(L"DeclinedVisibility");
-        Raise(L"ExpiredVisibility");
-        Raise(L"UnreachableVisibility");
-    }
-
-    void LoginViewModel::RaiseWaitingCopy()
-    {
-        Raise(L"WaitingTitle");
-        Raise(L"WaitingBody");
-        Raise(L"WaitingStatus");
-        Raise(L"WaitingCancelVisibility");
     }
 
     void LoginViewModel::Raise(wchar_t const* propertyName)

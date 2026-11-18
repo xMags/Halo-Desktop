@@ -1056,9 +1056,17 @@ namespace
         auto const playingHome = ResolveShellChrome({ .PlayerOverlayOpen = true });
         Require(!playingHome.ForceDarkPalette && playingHome.PlayerTitleBar, "the player did not pin its title bar dark");
 
-        // Sign-in keeps the viewer's own theme even over a title page.
-        auto const signIn = ResolveShellChrome({ .TitlePageCurrent = true, .SignInOverlayOpen = true });
-        Require(!signIn.ForceDarkPalette && !signIn.PlayerTitleBar, "the sign-in page took the title page's palette");
+        Require(!browsing.OverlayCoversTitleBar && !playingHome.OverlayCoversTitleBar,
+            "an overlay other than sign-in covered the title bar");
+
+        // Sign-in is a full-window dark screen in both themes, over any page,
+        // and the player's title bar never shows through it.
+        auto const signIn = ResolveShellChrome({ .SignInOverlayOpen = true });
+        Require(signIn.ForceDarkPalette && signIn.OverlayCoversTitleBar && !signIn.PlayerTitleBar,
+            "the sign-in screen was not full window and dark");
+        auto const signInOverPlayer = ResolveShellChrome({ .TitlePageCurrent = true, .SignInOverlayOpen = true, .PlayerOverlayOpen = true });
+        Require(signInOverPlayer.ForceDarkPalette && !signInOverPlayer.PlayerTitleBar,
+            "the sign-in screen showed the player's title bar");
     }
 }
 

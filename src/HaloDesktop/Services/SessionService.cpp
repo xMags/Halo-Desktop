@@ -3,21 +3,30 @@
 
 #include "Api/ApiClient.h"
 #include "Api/ApiError.h"
+#include "Services/Auth/BrowserSignInStep.h"
+#include "Services/Auth/OidcSignInFlow.h"
+#include "Services/Auth/ServerAddressPolicy.h"
 #include "Services/Auth/SessionController.h"
 #include "Services/Auth/SessionStore.h"
-#include "Services/Auth/OidcSignInFlow.h"
+#include "Services/Auth/SignInAddonRegistry.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 
 #include <algorithm>
 #include <cwctype>
+#include <exception>
 #include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Windows.System.Threading.h>
 
 namespace
 {
+    constexpr std::size_t MaximumUsernameLength = 512;
+    constexpr std::size_t MaximumPasswordLength = 4096;
+
     winrt::hstring Trimmed(winrt::hstring const& input)
     {
         std::wstring value{ input };
@@ -32,6 +41,33 @@ namespace
         return first < last ? winrt::hstring{ std::wstring(first, last) } : winrt::hstring{};
     }
 
+    ::HaloDesktop::Services::SignInAttempt Failed(::HaloDesktop::Services::Auth::SignInErrorInfo error = {})
+    {
+        return ::HaloDesktop::Services::SignInAttempt{
+            .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Failed,
+            .Error = std::move(error),
+            .HttpStatus = std::nullopt,
+        };
+    }
+
+    ::HaloDesktop::Services::SignInAttempt FailedWithStatus(std::optional<std::uint16_t> status)
+    {
+        return ::HaloDesktop::Services::SignInAttempt{
+            .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Failed,
+            .Error = {},
+            .HttpStatus = status,
+        };
+    }
+
+    ::HaloDesktop::Services::SignInAttempt Superseded()
+    {
+        return ::HaloDesktop::Services::SignInAttempt{ .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Superseded };
+    }
+
+    ::HaloDesktop::Services::SignInAttempt Succeeded()
+    {
+        return ::HaloDesktop::Services::SignInAttempt{ .Outcome = ::HaloDesktop::Services::SignInAttemptOutcome::Succeeded };
+    }
 }
 
 namespace HaloDesktop::Services
@@ -41,14 +77,19 @@ namespace HaloDesktop::Services
         std::shared_ptr<Auth::SessionController> controller,
         std::shared_ptr<Auth::SessionStore> store,
         std::shared_ptr<Auth::OidcSignInFlow> oidcSignInFlow,
+        std::shared_ptr<Auth::SignInAddonRegistry const> addons,
+        std::shared_ptr<DevicePreferencesStore> preferences,
         std::shared_ptr<NavigationService> navigation)
         : m_apiClient(std::move(apiClient)),
           m_controller(std::move(controller)),
           m_store(std::move(store)),
           m_oidcSignInFlow(std::move(oidcSignInFlow)),
+          m_addons(std::move(addons)),
+          m_preferences(std::move(preferences)),
           m_navigation(std::move(navigation))
     {
-        if (!m_apiClient || !m_controller || !m_store || !m_oidcSignInFlow || !m_navigation)
+        if (!m_apiClient || !m_controller || !m_store || !m_oidcSignInFlow || !m_addons
+            || !m_preferences || !m_navigation)
         {
             throw std::invalid_argument{ "SessionService requires all dependencies." };
         }
@@ -56,7 +97,8 @@ namespace HaloDesktop::Services
 
     winrt::hstring SessionService::ServerUrl() const
     {
-        return m_apiClient->BaseUrl();
+        auto const target = m_controller->CurrentTarget();
+        return target.ServerUrl && !target.ServerUrl->empty() ? *target.ServerUrl : m_apiClient->BaseUrl();
     }
 
     winrt::hstring SessionService::UserName() const
@@ -89,11 +131,6 @@ namespace HaloDesktop::Services
         return m_avatarVersion;
     }
 
-    AuthenticationMode SessionService::Mode() const noexcept
-    {
-        return m_mode;
-    }
-
     std::uint64_t SessionService::Generation() const noexcept
     {
         return m_controller->SessionGeneration();
@@ -102,7 +139,36 @@ namespace HaloDesktop::Services
     concurrency::task<void> SessionService::RestoreAsync()
     {
         auto const uiContext = winrt::apartment_context{};
-        co_await m_controller->RestoreAsync();
+        auto const builtIn = std::wstring{ m_apiClient->BaseUrl() };
+        co_await winrt::resume_background();
+
+        // The reference's forgetSessionsFromAnotherServer: sessions saved by a
+        // build for another server must never reach this one.
+        std::wstring recorded;
+        try
+        {
+            recorded = m_preferences->SessionServerUrl();
+        }
+        catch (...)
+        {
+            recorded.clear();
+        }
+        auto const check = Auth::CheckSessionServer(
+            recorded.empty() ? std::nullopt : std::optional<std::wstring_view>{ recorded },
+            builtIn);
+        co_await m_controller->RestoreAsync(check == Auth::SessionServerCheck::Different);
+        if (check != Auth::SessionServerCheck::Matches)
+        {
+            try
+            {
+                m_preferences->SessionServerUrl(builtIn);
+            }
+            catch (...)
+            {
+                // Checked again next start.
+            }
+        }
+
         auto identity = m_controller->IsSignedIn()
             ? co_await m_store->LoadIdentityAsync()
             : std::optional<Auth::StoredIdentity>{};
@@ -121,30 +187,99 @@ namespace HaloDesktop::Services
         }
     }
 
-    concurrency::task<AuthenticationMode> SessionService::DiscoverAuthenticationAsync()
+    concurrency::task<SignInDiscovery> SessionService::DiscoverAuthenticationAsync()
     {
         auto const uiContext = winrt::apartment_context{};
-        auto const config = co_await m_apiClient->GetAuthConfigAsync();
+        auto const version = ++m_discoveryVersion;
+        auto config = co_await m_apiClient->GetAuthConfigAsync();
         co_await uiContext;
-        m_mode = config.Mode == ::HaloDesktop::Api::Dto::AuthMode::Local
-            ? AuthenticationMode::Local
-            : AuthenticationMode::Oidc;
-        m_oidcConfig = m_mode == AuthenticationMode::Oidc
-            ? std::optional<::HaloDesktop::Api::Dto::AuthConfig>{ config }
-            : std::nullopt;
-        co_return m_mode;
+
+        SignInDiscovery discovery{ .Mode = SignInMode::Local, .ModeName = std::wstring{ config.ModeName }, .ButtonLabel = {} };
+        std::optional<::HaloDesktop::Api::Dto::AuthConfig> browserConfig;
+        std::shared_ptr<Auth::ISignInAddon> browserAddon;
+        switch (config.Mode)
+        {
+        case ::HaloDesktop::Api::Dto::AuthMode::Local:
+            discovery.Mode = SignInMode::Local;
+            break;
+        case ::HaloDesktop::Api::Dto::AuthMode::Oidc:
+            discovery.Mode = SignInMode::Oidc;
+            browserConfig = std::move(config);
+            break;
+        case ::HaloDesktop::Api::Dto::AuthMode::Other:
+            if (auto addon = m_addons->Find(std::wstring_view{ config.ModeName }))
+            {
+                discovery.Mode = SignInMode::Addon;
+                discovery.ButtonLabel = addon->ButtonLabel();
+                browserAddon = std::move(addon);
+                browserConfig = std::move(config);
+            }
+            else
+            {
+                discovery.Mode = SignInMode::Unsupported;
+            }
+            break;
+        }
+        if (version == m_discoveryVersion)
+        {
+            m_browserConfig = std::move(browserConfig);
+            m_browserAddon = std::move(browserAddon);
+        }
+        co_return discovery;
     }
 
-    concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::SignInLocalAsync(
+    concurrency::task<std::wstring> SessionService::CheckServerModeAsync(winrt::hstring serverUrl)
+    {
+        auto const parsed = Auth::ParseServerAddress(std::wstring_view{ serverUrl });
+        if (!parsed.Address || *parsed.Address != std::wstring_view{ serverUrl })
+        {
+            throw std::invalid_argument{ "The server address is not usable." };
+        }
+        auto const config = co_await m_apiClient->GetAuthConfigAtAsync(serverUrl);
+        co_return std::wstring{ config.ModeName };
+    }
+
+    std::stop_token SessionService::BeginSignIn()
+    {
+        std::stop_source previous;
+        std::stop_token current;
+        {
+            std::scoped_lock const lock{ m_signInCancellationMutex };
+            previous = m_signInCancellation;
+            m_signInCancellation = std::stop_source{};
+            current = m_signInCancellation.get_token();
+        }
+        static_cast<void>(previous.request_stop());
+        ++m_signInVersion;
+        return current;
+    }
+
+    concurrency::task<SignInAttempt> SessionService::SignInWithPasswordAsync(
+        std::optional<winrt::hstring> serverUrl,
         winrt::hstring username,
         winrt::hstring password)
     {
         auto const uiContext = winrt::apartment_context{};
+        static_cast<void>(BeginSignIn());
+        auto const version = m_signInVersion.load();
         auto const normalizedUserName = Trimmed(username);
-        if (normalizedUserName.empty() || normalizedUserName.size() > 512
-            || password.empty() || password.size() > 4096)
+        if (normalizedUserName.empty() || normalizedUserName.size() > MaximumUsernameLength
+            || password.empty() || password.size() > MaximumPasswordLength)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::InvalidCredentials;
+            co_return FailedWithStatus(std::uint16_t{ 401 });
+        }
+
+        // The password goes to the exact address the form accepted, or to the
+        // built-in server; nothing else is ever a target.
+        auto server = m_apiClient->BaseUrl();
+        if (serverUrl)
+        {
+            auto const parsed = Auth::ParseServerAddress(std::wstring_view{ *serverUrl });
+            if (!parsed.Address || *parsed.Address != std::wstring_view{ *serverUrl })
+            {
+                co_return Failed();
+            }
+            server = *serverUrl;
         }
 
         std::uint64_t establishedGeneration{};
@@ -153,106 +288,178 @@ namespace HaloDesktop::Services
             ClearIdentity();
             co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
             establishedGeneration = co_await m_controller->SignInLocalAsync(
+                server,
                 normalizedUserName,
                 std::move(password));
+            m_pendingSessionGeneration.store(establishedGeneration);
         }
         catch (winrt::hresult_error const& error)
         {
-            auto const status = ::HaloDesktop::Api::ApiError::HttpStatus(error.code());
-            if (status && *status == 401)
-            {
-                co_return winrt::HaloDesktop::SignInOutcome::InvalidCredentials;
-            }
-            if (status && *status == 429)
-            {
-                co_return winrt::HaloDesktop::SignInOutcome::RateLimited;
-            }
-            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+            co_return FailedWithStatus(::HaloDesktop::Api::ApiError::HttpStatus(error.code()));
         }
         catch (...)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+            co_return Failed();
         }
 
         co_await uiContext;
-        if (!co_await RefreshIdentityAsync())
+        if (version != m_signInVersion.load())
         {
+            co_await DiscardAsync(establishedGeneration);
+            co_return Superseded();
+        }
+        auto const identity = co_await RefreshIdentityDetailedAsync();
+        co_await uiContext;
+        if (version != m_signInVersion.load())
+        {
+            co_await DiscardAsync(establishedGeneration);
+            co_return Superseded();
+        }
+        if (!identity.Loaded)
+        {
+            co_await DiscardAsync(establishedGeneration);
+            co_return Failed();
+        }
+
+        if (serverUrl)
+        {
+            auto const preferences = m_preferences;
+            auto const remembered = std::wstring{ server };
+            co_await winrt::resume_background();
             try
             {
-                co_await m_controller->RejectSessionAsync(establishedGeneration);
+                preferences->LastServerAddress(remembered);
             }
             catch (...)
             {
+                // Only a convenience for next time.
             }
-            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+            co_await uiContext;
         }
-        co_await uiContext;
-        co_return m_controller->IsSignedIn() && !m_userId.empty()
-            ? winrt::HaloDesktop::SignInOutcome::Succeeded
-            : winrt::HaloDesktop::SignInOutcome::Expired;
+        co_return Succeeded();
     }
 
-    concurrency::task<winrt::HaloDesktop::SignInOutcome> SessionService::RequestBrowserSignInAsync()
+    concurrency::task<SignInAttempt> SessionService::RequestBrowserSignInAsync(
+        std::function<void(winrt::hstring const& authUrl)> onOpened)
     {
         auto const uiContext = winrt::apartment_context{};
-        auto const version = ++m_browserSignInVersion;
-        if (!m_oidcConfig)
+        auto const cancellation = BeginSignIn();
+        auto const version = m_signInVersion.load();
+        if (!m_browserConfig)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+            co_return Failed(Auth::SignInErrorInfo{ .Message = L"The server's sign-in method is not known yet." });
         }
-        auto result = co_await m_oidcSignInFlow->SignInAsync(*m_oidcConfig);
-        co_await uiContext;
-        if (version != m_browserSignInVersion)
+
+        // The page's address is reported from a background thread; the screen
+        // hears it on its own.
+        auto const dispatcher = winrt::Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread();
+        Auth::SignInOpenedHandler opened = [dispatcher, onOpened](winrt::hstring const& authUrl)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::Declined;
-        }
-        if (result.Outcome != winrt::HaloDesktop::SignInOutcome::Succeeded || !result.Session)
-        {
-            co_return result.Outcome;
-        }
-        std::uint64_t establishedGeneration{};
-        try
-        {
-            ClearIdentity();
-            co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
-            co_await uiContext;
-            if (version != m_browserSignInVersion)
+            if (!dispatcher || !onOpened)
             {
-                co_return winrt::HaloDesktop::SignInOutcome::Declined;
+                return;
             }
-            establishedGeneration = co_await m_controller->SignInOidcAsync(std::move(*result.Session));
-            m_pendingBrowserSessionGeneration.store(establishedGeneration);
-        }
-        catch (...)
+            static_cast<void>(dispatcher.TryEnqueue([onOpened, authUrl]()
+            {
+                try
+                {
+                    onOpened(authUrl);
+                }
+                catch (...)
+                {
+                }
+            }));
+        };
+
+        std::uint64_t establishedGeneration{};
+        std::exception_ptr failure;
+        if (m_browserAddon)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::Unreachable;
+            auto const addon = m_browserAddon;
+            Auth::AddonAuthConfig config{
+                .Mode = std::wstring{ m_browserConfig->ModeName },
+                .Raw = m_browserConfig->Raw,
+            };
+            try
+            {
+                ClearIdentity();
+                co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
+                establishedGeneration = co_await m_controller->SignInAddonAsync(
+                    addon,
+                    m_apiClient->BaseUrl(),
+                    std::move(config),
+                    std::move(opened),
+                    cancellation);
+                m_pendingSessionGeneration.store(establishedGeneration);
+            }
+            catch (...)
+            {
+                failure = std::current_exception();
+            }
         }
+        else
+        {
+            auto result = co_await m_oidcSignInFlow->SignInAsync(*m_browserConfig, std::move(opened));
+            co_await uiContext;
+            if (version != m_signInVersion.load())
+            {
+                co_return Superseded();
+            }
+            if (!result.Session)
+            {
+                co_return Failed(std::move(result.Error));
+            }
+            try
+            {
+                ClearIdentity();
+                co_await m_store->ClearIdentityAsync(m_controller->SessionGeneration() + 1);
+                co_await uiContext;
+                if (version != m_signInVersion.load())
+                {
+                    co_return Superseded();
+                }
+                establishedGeneration = co_await m_controller->SignInOidcAsync(std::move(*result.Session));
+                m_pendingSessionGeneration.store(establishedGeneration);
+            }
+            catch (...)
+            {
+                failure = std::current_exception();
+            }
+        }
+
         co_await uiContext;
-        if (version != m_browserSignInVersion)
+        if (failure)
         {
-            auto expectedGeneration = establishedGeneration;
-            static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
-                expectedGeneration, 0));
-            co_await m_controller->RejectSessionAsync(establishedGeneration);
-            co_return winrt::HaloDesktop::SignInOutcome::Declined;
+            if (version != m_signInVersion.load())
+            {
+                co_return Superseded();
+            }
+            co_return Failed(Auth::DescribeSignInFailure(failure));
         }
-        auto const identityLoaded = co_await RefreshIdentityAsync();
+        if (version != m_signInVersion.load())
+        {
+            co_await DiscardAsync(establishedGeneration);
+            co_return Superseded();
+        }
+        auto const identity = co_await RefreshIdentityDetailedAsync();
         co_await uiContext;
-        if (version != m_browserSignInVersion)
+        if (version != m_signInVersion.load())
         {
-            auto expectedGeneration = establishedGeneration;
-            static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
-                expectedGeneration, 0));
-            co_await m_controller->RejectSessionAsync(establishedGeneration);
-            co_return winrt::HaloDesktop::SignInOutcome::Declined;
+            co_await DiscardAsync(establishedGeneration);
+            co_return Superseded();
         }
-        if (identityLoaded && m_controller->IsSignedIn() && !m_userId.empty())
+        if (!identity.Loaded)
         {
-            co_return winrt::HaloDesktop::SignInOutcome::Succeeded;
+            co_await DiscardAsync(establishedGeneration);
+            co_return Failed(Auth::SignInErrorInfo{ .Message = identity.Error });
         }
+        co_return Succeeded();
+    }
+
+    concurrency::task<void> SessionService::DiscardAsync(std::uint64_t establishedGeneration)
+    {
         auto expectedGeneration = establishedGeneration;
-        static_cast<void>(m_pendingBrowserSessionGeneration.compare_exchange_strong(
-            expectedGeneration, 0));
+        static_cast<void>(m_pendingSessionGeneration.compare_exchange_strong(expectedGeneration, 0));
         try
         {
             co_await m_controller->RejectSessionAsync(establishedGeneration);
@@ -260,21 +467,24 @@ namespace HaloDesktop::Services
         catch (...)
         {
         }
-        co_return identityLoaded
-            ? winrt::HaloDesktop::SignInOutcome::Expired
-            : winrt::HaloDesktop::SignInOutcome::Unreachable;
     }
 
-    void SessionService::AcknowledgeBrowserSignIn() noexcept
+    void SessionService::AcknowledgeSignIn() noexcept
     {
-        m_pendingBrowserSessionGeneration.store(0);
+        m_pendingSessionGeneration.store(0);
     }
 
-    void SessionService::CancelBrowserSignIn() noexcept
+    void SessionService::CancelSignIn() noexcept
     {
-        ++m_browserSignInVersion;
+        std::stop_source cancellation;
+        {
+            std::scoped_lock const lock{ m_signInCancellationMutex };
+            cancellation = m_signInCancellation;
+        }
+        ++m_signInVersion;
+        static_cast<void>(cancellation.request_stop());
         m_oidcSignInFlow->Cancel();
-        auto const establishedGeneration = m_pendingBrowserSessionGeneration.exchange(0);
+        auto const establishedGeneration = m_pendingSessionGeneration.exchange(0);
         if (establishedGeneration != 0)
         {
             m_controller->RejectSessionAsync(establishedGeneration).then([](concurrency::task<void> rejected)
@@ -282,6 +492,20 @@ namespace HaloDesktop::Services
                 try { rejected.get(); } catch (...) {}
             });
         }
+    }
+
+    concurrency::task<winrt::hstring> SessionService::LastServerAddressAsync()
+    {
+        auto const preferences = m_preferences;
+        co_await winrt::resume_background();
+        try
+        {
+            co_return winrt::hstring{ preferences->LastServerAddress() };
+        }
+        catch (...)
+        {
+        }
+        co_return winrt::hstring{};
     }
 
     concurrency::task<std::optional<std::chrono::milliseconds>> SessionService::ProbeHealthAsync()
@@ -321,21 +545,40 @@ namespace HaloDesktop::Services
 
     concurrency::task<bool> SessionService::RefreshIdentityAsync()
     {
+        auto const refresh = co_await RefreshIdentityDetailedAsync();
+        co_return refresh.Loaded;
+    }
+
+    concurrency::task<SessionService::IdentityRefresh> SessionService::RefreshIdentityDetailedAsync()
+    {
         auto const uiContext = winrt::apartment_context{};
         auto const generation = m_controller->SessionGeneration();
         ::HaloDesktop::Api::Dto::Me me;
+        std::wstring error;
         try
         {
             me = co_await m_apiClient->GetMeAsync();
         }
+        catch (winrt::hresult_error const& failure)
+        {
+            error = Auth::SanitizedSignInText(std::wstring_view{ failure.message() });
+        }
+        catch (std::exception const& failure)
+        {
+            error = Auth::SanitizedSignInText(std::wstring{ winrt::to_hstring(failure.what()) });
+        }
         catch (...)
         {
-            co_return false;
+            error = L"Unknown error";
+        }
+        if (!error.empty())
+        {
+            co_return IdentityRefresh{ .Loaded = false, .Error = std::move(error) };
         }
         co_await uiContext;
         if (generation != m_controller->SessionGeneration() || !m_controller->IsSignedIn())
         {
-            co_return false;
+            co_return IdentityRefresh{ .Loaded = false, .Error = L"The session changed while the account was loading." };
         }
         auto const accountChanged = m_userId != me.Id;
         auto const profileChanged = accountChanged
@@ -370,9 +613,13 @@ namespace HaloDesktop::Services
         {
         }
         co_await uiContext;
-        co_return generation == m_controller->SessionGeneration()
+        auto const loaded = generation == m_controller->SessionGeneration()
             && m_controller->IsSignedIn()
             && !m_userId.empty();
+        co_return IdentityRefresh{
+            .Loaded = loaded,
+            .Error = loaded ? std::wstring{} : std::wstring{ L"The session changed while the account was loading." },
+        };
     }
 
     void SessionService::HandleSessionRejected()

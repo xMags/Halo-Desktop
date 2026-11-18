@@ -31,6 +31,7 @@
 #include "SegmentPlannerTests.h"
 #include "DownloadsPageTests.h"
 #include "SettingsPageTests.h"
+#include "SignInTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1412,6 +1413,7 @@ int main()
         RunCallQueueTests();
         RunDownloadsPageTests();
         RunSettingsPageTests();
+        RunSignInTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();

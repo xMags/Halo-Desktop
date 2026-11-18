@@ -12,6 +12,9 @@ namespace HaloDesktop::Api::Dto
     {
         Local,
         Oidc,
+        // A mode this app does not know itself; only a sign-in add-on for
+        // ModeName can read it.
+        Other,
     };
 
     struct AuthConfig final
@@ -20,6 +23,11 @@ namespace HaloDesktop::Api::Dto
         winrt::hstring Issuer;
         winrt::hstring ClientId;
         std::vector<winrt::hstring> Scopes;
+        // The server's `mode` as sent: "local", "oidc", or any other name.
+        winrt::hstring ModeName;
+        // An Other mode's whole answer, untrusted: the add-on validates what
+        // it reads. Null for the built-in modes.
+        winrt::Windows::Data::Json::JsonObject Raw{ nullptr };
     };
 
     struct HealthStatus final

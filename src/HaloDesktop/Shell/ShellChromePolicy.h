@@ -8,7 +8,7 @@ namespace HaloDesktop::Shell
         // The shell frame's current page is a title page (Detail). True also while
         // the sources sheet or the player is drawn over it.
         bool TitlePageCurrent{};
-        // The sign-in overlay covers the whole window.
+        // The sign-in overlay is open.
         bool SignInOverlayOpen{};
         // The player overlay covers the window below the title bar.
         bool PlayerOverlayOpen{};
@@ -23,9 +23,12 @@ namespace HaloDesktop::Shell
         // The title bar sits on the player's near-black ground with dark-palette
         // ink and light caption buttons, in both themes.
         bool PlayerTitleBar{};
+        // The overlay spans the title bar row too, drawing under the title bar:
+        // the sign-in screen is full window, its art behind the caption.
+        bool OverlayCoversTitleBar{};
     };
 
-    // The sign-in page keeps the viewer's own theme even when the title page it
-    // covers would force the dark one: it is not part of that page.
+    // The sign-in screen is dark in both themes, like the player: the art is the
+    // point, and its glass is drawn for a dark ground.
     [[nodiscard]] ShellChrome ResolveShellChrome(ShellChromeInput const& input) noexcept;
 }

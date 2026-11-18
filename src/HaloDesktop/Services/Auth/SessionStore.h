@@ -20,6 +20,11 @@ namespace HaloDesktop::Services::Auth
     {
         winrt::hstring Token;
         std::int64_t ExpiresAt{};
+        // The server the session was opened on, which issues and refreshes its
+        // token and answers every request made with it. Absent in a file
+        // written before sessions recorded it; those were the built-in
+        // server's.
+        std::optional<winrt::hstring> ServerUrl;
     };
 
     struct StoredOidcSession final
