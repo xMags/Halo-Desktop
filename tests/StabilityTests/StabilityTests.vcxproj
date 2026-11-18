@@ -240,6 +240,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\SegmentedTransfer.cpp">
       <Link>SegmentedTransfer.cpp</Link>
     </ClCompile>
+    <ClCompile Include="DownloadsPageTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadsLogicPolicy.cpp">
+      <Link>DownloadsLogicPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\ViewModels\DownloadsPresentationPolicy.cpp">
+      <Link>DownloadsPresentationPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\DownloadStreamFacts.cpp">
+      <Link>DownloadStreamFacts.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -255,10 +265,15 @@
     <ClInclude Include="WatchOutboxTests.h" />
     <ClInclude Include="CallQueueTests.h" />
     <ClInclude Include="SegmentPlannerTests.h" />
+    <ClInclude Include="DownloadsPageTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">
       <Link>DownloadsPage.xaml</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="..\..\src\HaloDesktop\Views\DownloadReadyCard.xaml">
+      <Link>DownloadReadyCard.xaml</Link>
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>

@@ -1,119 +1,115 @@
-import "Controls/QualityMedal.idl";
-
 namespace HaloDesktop
 {
+    // One download as the page draws it: a queue row, a ready card and the
+    // detail pane all read the same row. Updated in place on every progress
+    // tick; only what changed is announced.
     runtimeclass DownloadRowViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Id { get; };
         String Tag { get; };
+        String EpisodeLabel { get; };
+        Microsoft.UI.Xaml.Visibility EpisodeLabelVisibility { get; };
         String Name { get; };
         String Sub { get; };
-        String StateLabel { get; };
-        Double Progress { get; };
-        String Detail { get; };
-        String QualityLine { get; };
-        String Size { get; };
-        String Subs { get; };
-        String SubsChip { get; };
-        String Poster { get; };
+        // What Narrator reads for the row or card.
+        String AccessibleName { get; };
+        String MetaId { get; };
         String RowArtwork { get; };
-        Microsoft.UI.Xaml.Visibility DownloadingVisibility { get; };
-        Microsoft.UI.Xaml.Visibility QueuedVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PausedVisibility { get; };
-        Microsoft.UI.Xaml.Visibility FailedVisibility { get; };
-        Microsoft.UI.Xaml.Visibility OnDiskVisibility { get; };
-        Microsoft.UI.Xaml.Visibility RetryVisibility { get; };
+        Double Progress { get; };
+        Microsoft.UI.Xaml.GridLength ProgressDone { get; };
+        Microsoft.UI.Xaml.GridLength ProgressRest { get; };
+        String PercentText { get; };
+        String Lead { get; };
+        Microsoft.UI.Xaml.Visibility ToneNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ToneCautionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ToneCriticalVisibility { get; };
+        String DownloadedLine { get; };
+        // The queue row's mono line in three runs: the first part, the parts
+        // between, and the last one (which a paused row colours caution).
+        String MetaLead { get; };
+        String MetaMiddle { get; };
+        String MetaLast { get; };
+        Microsoft.UI.Xaml.Visibility UpNextVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TransferBodyVisibility { get; };
+        Double ThumbOpacity { get; };
         Microsoft.UI.Xaml.Visibility ChooseSourceVisibility { get; };
         Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LeadNormalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LeadCautionVisibility { get; };
-        Microsoft.UI.Xaml.Visibility LeadCriticalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ProgressAccentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ProgressCautionVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ProgressCriticalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SubsNormalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SubsMutedVisibility { get; };
-        String PauseGlyph { get; };
-        String PauseLabel { get; };
-        String DownloadedLine { get; };
+        Microsoft.UI.Xaml.Visibility RetryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PanePauseVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PaneResumeVisibility { get; };
+        String StatePill { get; };
+        Microsoft.UI.Xaml.Visibility StateAccentVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StateCautionVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StateCriticalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StateNeutralVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FailedNoteVisibility { get; };
+        String PaneMeta { get; };
+        String QualityLine { get; };
+        String Subs { get; };
+        String AddedFact { get; };
+        // "Size" for a finished file, "Downloaded" for a transfer.
+        String SizeFactLabel { get; };
         String FileName { get; };
-        String AddedLabel { get; };
-        // The row's quality medal: plate, tag (empty for none) and finish. The names
-        // are the quality badge's it replaced, kept so the row bindings stay stable.
-        String QualityBadgeTier { get; };
-        String QualityBadgeDetail { get; };
-        QualityMedalFinish QualityTone { get; };
-    }
-
-    [default_interface]
-    runtimeclass ChartBarViewModel
-    {
-        Double Height { get; };
-        Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility HistoricalVisibility { get; };
+        String CardTitle { get; };
+        String CardSub { get; };
+        Microsoft.UI.Xaml.Visibility CardSubVisibility { get; };
+        String CardMeta { get; };
+        String QualityBadge { get; };
+        Microsoft.UI.Xaml.Visibility QualityBadgeGoldVisibility { get; };
+        Microsoft.UI.Xaml.Visibility QualityBadgePlainVisibility { get; };
+        Boolean IsSelected { get; };
+        Microsoft.UI.Xaml.Visibility SelectedVisibility { get; };
+        // The hairline above a queue row: not over the first row, nor beside the selected one.
+        Microsoft.UI.Xaml.Visibility TopRuleVisibility { get; };
     }
 
     runtimeclass DownloadsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
-        Object Transfers { get; };
-        Object Ready { get; };
-        Object ChartBars { get; };
         String ActionErrorText { get; };
         Microsoft.UI.Xaml.Visibility ActionErrorVisibility { get; };
-        String RateText { get; };
-        Microsoft.UI.Xaml.Visibility RateNormalVisibility { get; };
-        Microsoft.UI.Xaml.Visibility RateIdleVisibility { get; };
-        Microsoft.UI.Xaml.Visibility RatePausedVisibility { get; };
-        String QueueLine { get; };
-        String TransferCountLabel { get; };
-        String ReadyCountLabel { get; };
-        String PauseAllLabel { get; };
-        String PauseAllGlyph { get; };
-        Microsoft.UI.Xaml.Visibility PauseAllVisibility { get; };
-        Boolean IsPausedAll { get; };
-        DownloadRowViewModel SelectedRow { get; };
-        String SelectedTag { get; };
-        String SelectedTitle { get; };
-        String SelectedSub { get; };
-        Double SelectedProgress { get; };
-        String SelectedDetail { get; };
-        String SelectedPercentText { get; };
-        String SelectedQualityLine { get; };
-        String SelectedSize { get; };
-        String SelectedSizeFactLabel { get; };
-        String SelectedSubs { get; };
-        String SelectedAdded { get; };
-        String SelectedFileName { get; };
-        String SelectedPoster { get; };
-        String ReadyActionLabel { get; };
-        String PaneNote { get; };
-        Microsoft.UI.Xaml.Visibility PaneNoteVisibility { get; };
-        String StorageLine { get; };
-        String FreeLine { get; };
-        String StoredLine { get; };
-        String InFlightLine { get; };
-        String PeakText { get; };
-        Double StorageFraction { get; };
-        Microsoft.UI.Xaml.Visibility DetailVisibility { get; };
-        Microsoft.UI.Xaml.Visibility FolderVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
-        Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PauseVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ResumeVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ChooseSourceVisibility { get; };
-        Microsoft.UI.Xaml.Visibility TransferSectionVisibility { get; };
-        Microsoft.UI.Xaml.Visibility ReadySectionVisibility { get; };
-        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
-        Microsoft.UI.Xaml.Visibility NoMatchesVisibility { get; };
-        String NoMatchesLine { get; };
+        String SummaryLine { get; };
+        Microsoft.UI.Xaml.Visibility SummaryVisibility { get; };
         String FilterAllCount { get; };
         String FilterActiveCount { get; };
         String FilterReadyCount { get; };
         String FilterFailedCount { get; };
         Int32 FilterIndex { get; };
-        Double StoredFraction { get; };
-        Double InFlightFraction { get; };
+        String PauseAllLabel { get; };
+        String PauseAllGlyph { get; };
+        Microsoft.UI.Xaml.Visibility PauseAllVisibility { get; };
+        Boolean IsPausedAll { get; };
+        String RateValue { get; };
+        String RateUnit { get; };
+        Microsoft.UI.Xaml.Visibility RateUnitVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RateNormalVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RateIdleVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RatePausedVisibility { get; };
+        String ConnectionsText { get; };
+        Microsoft.UI.Xaml.Visibility ConnectionsVisibility { get; };
+        String RateNoteText { get; };
+        Microsoft.UI.Xaml.Visibility RateNoteVisibility { get; };
+        String PeakText { get; };
+        String StorageValue { get; };
+        String StorageUnitLine { get; };
+        String StoredLine { get; };
+        String InFlightLine { get; };
+        Microsoft.UI.Xaml.GridLength StoredWidth { get; };
+        Microsoft.UI.Xaml.GridLength FlightWidth { get; };
+        Microsoft.UI.Xaml.GridLength FreeWidth { get; };
+        Microsoft.UI.Xaml.Visibility StoredVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FlightVisibility { get; };
+        Microsoft.UI.Xaml.Visibility QueueVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ReadySectionVisibility { get; };
+        String ReadyHeadline { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NoMatchesVisibility { get; };
+        String NoMatchesLine { get; };
+        DownloadRowViewModel SelectedRow { get; };
+        Microsoft.UI.Xaml.Visibility DetailVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FolderVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
         void Select(String id);
         void SetFilter(Int32 index);
         void Pause(String id);
@@ -121,7 +117,9 @@ namespace HaloDesktop
         void Retry(String id);
         void Cancel(String id);
         void ChooseSourceFor(String id);
+        void Play(String id);
         void OpenDownloadFolder();
+        void RevealSelected();
         void RetryFailed();
         void PauseAll();
         void ResumeAll();
@@ -132,6 +130,17 @@ namespace HaloDesktop
         void OpenPlayer();
         void ChooseSource();
         void BrowseLibrary();
+    }
+
+    // A finished download as an artwork card in the "Ready to watch" grid.
+    [default_interface]
+    runtimeclass DownloadReadyCard : Microsoft.UI.Xaml.Controls.UserControl
+    {
+        DownloadReadyCard();
+        DownloadRowViewModel Row;
+        // A single click selects the card; a double click or its play button plays.
+        event Microsoft.UI.Xaml.RoutedEventHandler Selected;
+        event Microsoft.UI.Xaml.RoutedEventHandler PlayRequested;
     }
 
     [default_interface]

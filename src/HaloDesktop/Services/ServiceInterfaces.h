@@ -272,13 +272,11 @@ namespace HaloDesktop::Services
         [[nodiscard]] virtual std::vector<Downloads::VideoDownload> DownloadsFor(
             winrt::hstring const& videoId) const = 0;
         [[nodiscard]] virtual std::int32_t ActiveCount() const noexcept = 0;
-        [[nodiscard]] virtual double AggregateRate() const noexcept = 0;
-        [[nodiscard]] virtual winrt::hstring QueueLine() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Transfers() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Ready() const = 0;
-        [[nodiscard]] virtual winrt::Windows::Foundation::Collections::IObservableVector<double> Throughput() const = 0;
-        [[nodiscard]] virtual std::uint64_t StoredBytes() const noexcept = 0;
-        [[nodiscard]] virtual std::uint64_t InFlightBytes() const noexcept = 0;
+        // The signed-in account's downloads, oldest first, as the Downloads page
+        // projects them. UI thread only. No URL or request header is in a record.
+        [[nodiscard]] virtual std::vector<Downloads::DownloadRecord> const& Records() const noexcept = 0;
+        // Combined transfer rate in MB/s, one sample per chart bar, oldest first.
+        [[nodiscard]] virtual std::vector<double> const& Throughput() const noexcept = 0;
         [[nodiscard]] virtual std::optional<std::uint64_t> FreeBytes() const noexcept = 0;
         [[nodiscard]] virtual std::filesystem::path DownloadDirectory() const = 0;
         [[nodiscard]] virtual concurrency::task<void> SetDownloadDirectoryAsync(

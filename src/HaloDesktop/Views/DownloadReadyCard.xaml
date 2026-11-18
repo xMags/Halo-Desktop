@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+  x:Class="HaloDesktop.DownloadReadyCard"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  IsTabStop="False"
+  PointerCanceled="OnHoverEnded"
+  PointerEntered="OnHoverStarted"
+  PointerExited="OnHoverEnded"
+  SizeChanged="OnSizeChanged">
+  <!--
+    `.dl-card`: 16:9 art at radius 12 over the title, the episode's own title and
+    the mono meta line. The art's height follows the column's width (set in
+    SizeChanged), since the grid stretches its columns.
+
+    The two API families are kept on separate elements, as XAML refuses to mix
+    them on one: ArtScale uses the facade Scale with its transition, ShadowFade
+    an opacity transition, and only ShadowHost (inside ShadowFade) is handed a
+    composition visual.
+  -->
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition x:Name="ArtRow" Height="124" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Border x:Name="ShadowFade" IsHitTestVisible="False" Opacity="0">
+      <Border.OpacityTransition>
+        <ScalarTransition Duration="0:0:0.2" />
+      </Border.OpacityTransition>
+      <Border x:Name="ShadowHost" />
+    </Border>
+    <Button
+      x:Name="CardButton"
+      Grid.RowSpan="2"
+      AutomationProperties.Name="{x:Bind Row.AccessibleName, Mode=OneWay}"
+      Click="OnCardClick"
+      CornerRadius="12"
+      Style="{StaticResource DlBareButtonStyle}"
+      ToolTipService.ToolTip="{x:Bind Row.AccessibleName, Mode=OneWay}">
+      <Grid RowSpacing="10">
+        <Grid.RowDefinitions>
+          <RowDefinition x:Name="ButtonArtRow" Height="124" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Border Background="{ThemeResource DlSurfaceHighBrush}" CornerRadius="12">
+          <Grid x:Name="ArtScale">
+            <Grid.ScaleTransition>
+              <Vector3Transition Duration="0:0:0.3" />
+            </Grid.ScaleTransition>
+            <local:PlaceholderArt ArtCornerRadius="12" />
+            <local:ArtworkImage DecodeWidth="560" MetaId="{x:Bind Row.MetaId, Mode=OneWay}" SourceUrl="{x:Bind Row.RowArtwork, Mode=OneWay}" />
+          </Grid>
+        </Border>
+        <Border
+          Margin="8"
+          Padding="7,3"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          Background="{ThemeResource DlBadgeBrush}"
+          CornerRadius="6"
+          Visibility="{x:Bind Row.QualityBadgePlainVisibility, Mode=OneWay}">
+          <TextBlock CharacterSpacing="40" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DlBadgeInkBrush}" Text="{x:Bind Row.QualityBadge, Mode=OneWay}" />
+        </Border>
+        <Border
+          Margin="8"
+          Padding="7,3"
+          HorizontalAlignment="Left"
+          VerticalAlignment="Top"
+          Background="{ThemeResource DlGoldBrush}"
+          CornerRadius="6"
+          Visibility="{x:Bind Row.QualityBadgeGoldVisibility, Mode=OneWay}">
+          <TextBlock CharacterSpacing="40" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DlOnGoldBrush}" Text="{x:Bind Row.QualityBadge, Mode=OneWay}" />
+        </Border>
+        <Border
+          Margin="8"
+          Padding="7,3"
+          HorizontalAlignment="Right"
+          VerticalAlignment="Top"
+          Background="{ThemeResource DlBadgeBrush}"
+          CornerRadius="6"
+          Visibility="{x:Bind Row.EpisodeLabelVisibility, Mode=OneWay}">
+          <TextBlock CharacterSpacing="40" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DlBadgeInkBrush}" Text="{x:Bind Row.EpisodeLabel, Mode=OneWay}" />
+        </Border>
+        <StackPanel Grid.Row="1" Padding="2,0" Spacing="3">
+          <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource DlTextBrush}" Text="{x:Bind Row.CardTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+          <TextBlock FontSize="13" Foreground="{ThemeResource DlMetaBrush}" Text="{x:Bind Row.CardSub, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Visibility="{x:Bind Row.CardSubVisibility, Mode=OneWay}" />
+          <TextBlock Margin="0,2,0,0" Style="{StaticResource DlMonoStyle}" Text="{x:Bind Row.CardMeta, Mode=OneWay}" />
+        </StackPanel>
+      </Grid>
+    </Button>
+    <!-- The art's 1px frame, and the selected card's 2px accent ring 2px outside it. -->
+    <Border Margin="-1" BorderBrush="{ThemeResource DlBorderBrush}" BorderThickness="1" CornerRadius="13" IsHitTestVisible="False" />
+    <Border
+      Margin="-4"
+      BorderBrush="{ThemeResource DlAccentBrush}"
+      BorderThickness="2"
+      CornerRadius="16"
+      IsHitTestVisible="False"
+      Visibility="{x:Bind Row.SelectedVisibility, Mode=OneWay}" />
+    <!-- The play button sits over the art's corner, shown on hover, selection or focus. -->
+    <Button
+      x:Name="PlayButton"
+      Width="34"
+      Height="34"
+      Margin="8"
+      HorizontalAlignment="Right"
+      VerticalAlignment="Bottom"
+      Background="{ThemeResource DlPlayBrush}"
+      BorderThickness="0"
+      Click="OnPlayClick"
+      CornerRadius="17"
+      Foreground="{ThemeResource DlOnPlayBrush}"
+      GotFocus="OnPlayFocusChanged"
+      LostFocus="OnPlayFocusChanged"
+      Opacity="0"
+      Padding="0"
+      Style="{StaticResource DlButtonStyle}"
+      ToolTipService.ToolTip="Play offline">
+      <Button.OpacityTransition>
+        <ScalarTransition Duration="0:0:0.15" />
+      </Button.OpacityTransition>
+      <FontIcon FontSize="13" Glyph="&#xE768;" />
+    </Button>
+  </Grid>
+</UserControl>

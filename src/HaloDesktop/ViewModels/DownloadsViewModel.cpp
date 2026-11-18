@@ -1,8 +1,5 @@
 #include "pch.h"
 #include "ViewModels/DownloadsViewModel.h"
-#if __has_include("ChartBarViewModel.g.cpp")
-#include "ChartBarViewModel.g.cpp"
-#endif
 #if __has_include("DownloadRowViewModel.g.cpp")
 #include "DownloadRowViewModel.g.cpp"
 #endif
@@ -10,268 +7,236 @@
 #include "DownloadsViewModel.g.cpp"
 #endif
 
+#include "Services/DownloadStreamFacts.h"
+#include "Services/DownloadsLogicPolicy.h"
 #include "Services/NavigationService.h"
 #include "ViewModels/ObservableHelper.h"
-#include "ViewModels/QualityMedalPolicy.h"
-#include "ViewModels/QualityMedalProjection.h"
-#include "ViewModels/SourcePresentation.h"
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cwctype>
-#include <iomanip>
-#include <sstream>
-#include <string>
+#include <iterator>
 #include <string_view>
+#include <unordered_set>
 #include <utility>
-#include <vector>
 
 namespace
 {
-    namespace Sources = ::HaloDesktop::Sources;
+    namespace Presentation = ::HaloDesktop::ViewModels::DownloadsPresentation;
+    using Presentation::DownloadRow;
+    using Presentation::RowState;
+    using Presentation::RowTone;
 
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
-    // DownloadService writes this exact sentence when a transfer has no sidecar.
-    constexpr wchar_t const* NoSubtitleSidecar = L"No subtitle sidecar";
+    // The space between the queue line's parts (`gap: 14px` at 12px mono).
+    constexpr std::wstring_view MetaGap = L"    ";
 
-    // The throughput strip is drawn at this height in DownloadsPage.xaml; the bars
-    // are projected in the same space so nothing has to be scaled at bind time.
-    constexpr double ChartHeight = 38.0;
-
-    // DownloadService keeps at most this many throughput samples.
-    constexpr std::uint32_t ChartSlots = 30;
-
-    constexpr std::int32_t FilterAll = 0;
-    constexpr std::int32_t FilterActive = 1;
-    constexpr std::int32_t FilterReady = 2;
-    constexpr std::int32_t FilterFailed = 3;
-    constexpr std::int32_t FilterCount = 4;
-
-    bool MatchesFilter(winrt::HaloDesktop::DownloadRowViewModel const& row, std::int32_t filter)
+    winrt::Microsoft::UI::Xaml::Visibility VisibleWhen(bool condition) noexcept
     {
-        switch (filter)
+        return condition ? Visible : Collapsed;
+    }
+
+    winrt::Microsoft::UI::Xaml::GridLength Star(double value) noexcept
+    {
+        return winrt::Microsoft::UI::Xaml::GridLengthHelper::FromValueAndType(
+            std::isfinite(value) ? (std::max)(0.0, value) : 0.0,
+            winrt::Microsoft::UI::Xaml::GridUnitType::Star);
+    }
+
+    std::wstring MetaMiddleOf(std::vector<std::wstring> const& parts)
+    {
+        std::wstring result;
+        for (std::size_t index = 1; index + 1 < parts.size(); ++index)
         {
-        case FilterActive:
-            return row.StateLabel() != L"ON DISK";
-        case FilterReady:
-            return row.StateLabel() == L"ON DISK";
-        case FilterFailed:
-            return row.StateLabel() == L"FAILED";
-        default:
-            return true;
+            result += MetaGap;
+            result += parts[index];
         }
+        return result;
     }
 
-    bool IsFailed(winrt::HaloDesktop::DownloadRowViewModel const& row)
+    std::wstring MetaLastOf(std::vector<std::wstring> const& parts)
     {
-        return row.StateLabel() == L"FAILED";
+        if (parts.size() < 2) return {};
+        return std::wstring{ MetaGap } + parts.back();
     }
 
-    winrt::hstring StateLabel(winrt::HaloDesktop::DownloadState state)
-    {
-        switch (state)
-        {
-        case winrt::HaloDesktop::DownloadState::Downloading: return L"DOWNLOADING";
-        case winrt::HaloDesktop::DownloadState::Queued: return L"QUEUED";
-        case winrt::HaloDesktop::DownloadState::Paused: return L"PAUSED";
-        case winrt::HaloDesktop::DownloadState::OnDisk: return L"ON DISK";
-        case winrt::HaloDesktop::DownloadState::Failed: return L"FAILED";
-        }
-        return L"";
-    }
-
-    winrt::hstring FormatBytes(std::uint64_t value)
-    {
-        constexpr std::array<wchar_t const*, 5> units{ L"B", L"KB", L"MB", L"GB", L"TB" };
-        auto amount = static_cast<double>(value);
-        std::size_t unit{};
-        while (amount >= 1024.0 && unit + 1 < units.size())
-        {
-            amount /= 1024.0;
-            ++unit;
-        }
-        std::wostringstream output;
-        output << std::fixed << std::setprecision(unit == 0 ? 0 : 1) << amount << L" " << units[unit];
-        return winrt::hstring{ output.str() };
-    }
+    constexpr std::array<Presentation::Filter, 4> Filters{
+        Presentation::Filter::All,
+        Presentation::Filter::Active,
+        Presentation::Filter::Ready,
+        Presentation::Filter::Failed,
+    };
 }
 
 namespace winrt::HaloDesktop::implementation
 {
-    DownloadRowViewModel::DownloadRowViewModel(winrt::HaloDesktop::DownloadItem item)
-        : m_item(std::move(item))
+    DownloadRowViewModel::DownloadRowViewModel(DownloadRow row)
+        : m_row(std::move(row))
     {
     }
-    // A row is handed a rebuilt item on every progress sample, four times a
-    // second per transfer. Raising every property each time re-runs every
-    // binding on the row, and the poster binding turns a string into a fresh
-    // BitmapImage each pass: the artwork blinks out and decodes again while the
-    // progress bar moves. Only what actually changed is announced.
-    void DownloadRowViewModel::Update(winrt::HaloDesktop::DownloadItem item)
+
+    void DownloadRowViewModel::Update(DownloadRow row)
     {
-        auto const previous = std::exchange(m_item, std::move(item));
-        if (!previous)
+        auto const previous = std::exchange(m_row, std::move(row));
+        auto const& next = m_row;
+        if (previous.Tag != next.Tag) Raise(L"Tag");
+        if (previous.EpisodeLabel != next.EpisodeLabel)
         {
-            RaiseState();
-            return;
+            Raise(L"EpisodeLabel");
+            Raise(L"EpisodeLabelVisibility");
         }
-        auto const raise = [this](wchar_t const* property)
+        if (previous.Name != next.Name) Raise(L"Name");
+        if (previous.Sub != next.Sub) Raise(L"Sub");
+        if (previous.CardTitle != next.CardTitle || previous.CardSub != next.CardSub || previous.Name != next.Name || previous.Sub != next.Sub)
         {
-            ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
-        };
-        if (previous.Tag() != m_item.Tag()) raise(L"Tag");
-        if (previous.Name() != m_item.Name()) raise(L"Name");
-        if (previous.Sub() != m_item.Sub()) raise(L"Sub");
-        if (previous.Progress() != m_item.Progress()) raise(L"Progress");
-        if (previous.Detail() != m_item.Detail()) raise(L"Detail");
-        if (previous.Quality() != m_item.Quality() || previous.Codec() != m_item.Codec()) raise(L"QualityLine");
-        if (previous.Quality() != m_item.Quality() || previous.Hdr() != m_item.Hdr())
-        {
-            raise(L"QualityBadgeTier");
-            raise(L"QualityBadgeDetail");
-            raise(L"QualityTone");
+            Raise(L"AccessibleName");
         }
-        if (previous.Size() != m_item.Size()) raise(L"Size");
-        if (previous.Subs() != m_item.Subs())
+        if (previous.MetaId != next.MetaId) Raise(L"MetaId");
+        if (previous.RowArtwork != next.RowArtwork) Raise(L"RowArtwork");
+        if (previous.Progress != next.Progress)
         {
-            raise(L"Subs");
-            raise(L"SubsChip");
-            raise(L"SubsNormalVisibility");
-            raise(L"SubsMutedVisibility");
+            for (auto const property : { L"Progress", L"ProgressDone", L"ProgressRest", L"PercentText" }) Raise(property);
         }
-        if (previous.Poster() != m_item.Poster()) raise(L"Poster");
-        if (previous.RowArtwork() != m_item.RowArtwork()) raise(L"RowArtwork");
-        if (previous.DownloadedBytes() != m_item.DownloadedBytes()
-            || previous.TotalBytes() != m_item.TotalBytes()) raise(L"DownloadedLine");
-        if (previous.FileName() != m_item.FileName()) raise(L"FileName");
-        if (previous.AddedLabel() != m_item.AddedLabel()) raise(L"AddedLabel");
-        if (previous.State() != m_item.State())
+        if (previous.Lead != next.Lead) Raise(L"Lead");
+        if (previous.Tone != next.Tone)
         {
-            // The badges and row actions are views of the one state field, so they move together.
-            for (auto const property : { L"StateLabel", L"DownloadingVisibility", L"QueuedVisibility", L"PausedVisibility", L"FailedVisibility", L"OnDiskVisibility", L"RetryVisibility", L"ChooseSourceVisibility", L"PauseVisibility", L"ResumeVisibility", L"LeadNormalVisibility", L"LeadCautionVisibility", L"LeadCriticalVisibility", L"ProgressAccentVisibility", L"ProgressCautionVisibility", L"ProgressCriticalVisibility", L"PauseGlyph", L"PauseLabel", L"DownloadedLine" })
-                raise(property);
+            for (auto const property : { L"ToneNormalVisibility", L"ToneCautionVisibility", L"ToneCriticalVisibility" }) Raise(property);
+        }
+        if (previous.DownloadedLine != next.DownloadedLine) Raise(L"DownloadedLine");
+        if (previous.TransferMeta != next.TransferMeta)
+        {
+            for (auto const property : { L"MetaLead", L"MetaMiddle", L"MetaLast" }) Raise(property);
+        }
+        if (previous.State != next.State)
+        {
+            for (auto const property : {
+                     L"UpNextVisibility", L"TransferBodyVisibility", L"ThumbOpacity", L"ResumeVisibility",
+                     L"PanePauseVisibility", L"StatePill", L"StateAccentVisibility", L"StateCautionVisibility",
+                     L"StateCriticalVisibility", L"StateNeutralVisibility", L"FailedNoteVisibility", L"SizeFactLabel" })
+            {
+                Raise(property);
+            }
+        }
+        if (previous.RequiresNewSource != next.RequiresNewSource) Raise(L"ChooseSourceVisibility");
+        if (previous.CanPause != next.CanPause) Raise(L"PauseVisibility");
+        if (previous.CanRetry != next.CanRetry) Raise(L"RetryVisibility");
+        if (previous.CanResume != next.CanResume) Raise(L"PaneResumeVisibility");
+        if (previous.PaneMeta != next.PaneMeta) Raise(L"PaneMeta");
+        if (previous.QualityLine != next.QualityLine) Raise(L"QualityLine");
+        if (previous.Subs != next.Subs) Raise(L"Subs");
+        if (previous.AddedLabel != next.AddedLabel) Raise(L"AddedFact");
+        if (previous.FileName != next.FileName) Raise(L"FileName");
+        if (previous.CardTitle != next.CardTitle) Raise(L"CardTitle");
+        if (previous.CardSub != next.CardSub)
+        {
+            Raise(L"CardSub");
+            Raise(L"CardSubVisibility");
+        }
+        if (previous.CardMeta != next.CardMeta) Raise(L"CardMeta");
+        if (previous.Badge != next.Badge)
+        {
+            for (auto const property : { L"QualityBadge", L"QualityBadgeGoldVisibility", L"QualityBadgePlainVisibility" }) Raise(property);
         }
     }
-    winrt::HaloDesktop::DownloadItem DownloadRowViewModel::Item() const { return m_item; }
-    winrt::hstring DownloadRowViewModel::Id() const { return m_item.Id(); }
-    winrt::hstring DownloadRowViewModel::Tag() const { return m_item.Tag(); }
-    winrt::hstring DownloadRowViewModel::Name() const { return m_item.Name(); }
-    // A movie's secondary line repeats its own title, and the reference drops the
-    // line rather than printing the same words twice on one row.
-    winrt::hstring DownloadRowViewModel::Sub() const
+
+    void DownloadRowViewModel::SetSelected(bool selected)
     {
-        return m_item.Sub() == m_item.Name() ? winrt::hstring{} : m_item.Sub();
+        if (m_selected == selected) return;
+        m_selected = selected;
+        Raise(L"IsSelected");
+        Raise(L"SelectedVisibility");
     }
-    winrt::hstring DownloadRowViewModel::StateLabel() const { return ::StateLabel(m_item.State()); }
-    double DownloadRowViewModel::Progress() const noexcept { return m_item.Progress(); }
-    winrt::hstring DownloadRowViewModel::Detail() const { return m_item.Detail(); }
-    winrt::hstring DownloadRowViewModel::QualityLine() const { return winrt::hstring(std::wstring(m_item.Quality()) + L" · " + std::wstring(m_item.Codec())); }
-    winrt::hstring DownloadRowViewModel::Size() const { return m_item.Size(); }
-    winrt::hstring DownloadRowViewModel::Subs() const { return m_item.Subs(); }
-    // The row's chip is a mono token beside four other tokens, so it carries the
-    // language rather than the sentence. The sentence still reads out in the
-    // detail pane's facts table, where there is room for it.
-    winrt::hstring DownloadRowViewModel::SubsChip() const
+
+    void DownloadRowViewModel::SetTopRule(bool visible)
     {
-        auto const value = std::wstring{ m_item.Subs() };
-        constexpr std::wstring_view prefix{ L"Subtitle: " };
-        if (!value.starts_with(prefix)) return L"NO SUBS";
-        auto language = value.substr(prefix.size());
-        std::transform(language.begin(), language.end(), language.begin(), [](wchar_t character)
+        if (m_topRule == visible) return;
+        m_topRule = visible;
+        Raise(L"TopRuleVisibility");
+    }
+
+    DownloadRow const& DownloadRowViewModel::Row() const noexcept { return m_row; }
+    winrt::hstring DownloadRowViewModel::Id() const { return winrt::hstring{ m_row.Id }; }
+    winrt::hstring DownloadRowViewModel::Tag() const { return winrt::hstring{ m_row.Tag }; }
+    winrt::hstring DownloadRowViewModel::EpisodeLabel() const { return winrt::hstring{ m_row.EpisodeLabel }; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::EpisodeLabelVisibility() const noexcept { return VisibleWhen(!m_row.EpisodeLabel.empty()); }
+    winrt::hstring DownloadRowViewModel::Name() const { return winrt::hstring{ m_row.Name }; }
+    winrt::hstring DownloadRowViewModel::Sub() const { return winrt::hstring{ m_row.Sub }; }
+    winrt::hstring DownloadRowViewModel::AccessibleName() const
+    {
+        auto const& sub = m_row.State == RowState::OnDisk ? m_row.CardSub : m_row.Sub;
+        auto const& title = m_row.State == RowState::OnDisk ? m_row.CardTitle : m_row.Name;
+        return winrt::hstring{ sub.empty() ? title : title + L" · " + sub };
+    }
+    winrt::hstring DownloadRowViewModel::MetaId() const { return winrt::hstring{ m_row.MetaId }; }
+    winrt::hstring DownloadRowViewModel::RowArtwork() const { return winrt::hstring{ m_row.RowArtwork }; }
+    double DownloadRowViewModel::Progress() const noexcept { return m_row.Progress; }
+    Microsoft::UI::Xaml::GridLength DownloadRowViewModel::ProgressDone() const noexcept { return Star(m_row.Progress); }
+    Microsoft::UI::Xaml::GridLength DownloadRowViewModel::ProgressRest() const noexcept { return Star(1.0 - m_row.Progress); }
+    winrt::hstring DownloadRowViewModel::PercentText() const { return winrt::hstring{ Presentation::PercentText(m_row.Progress) }; }
+    winrt::hstring DownloadRowViewModel::Lead() const { return winrt::hstring{ m_row.Lead }; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ToneNormalVisibility() const noexcept { return VisibleWhen(m_row.Tone == RowTone::Normal); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ToneCautionVisibility() const noexcept { return VisibleWhen(m_row.Tone == RowTone::Caution); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ToneCriticalVisibility() const noexcept { return VisibleWhen(m_row.Tone == RowTone::Critical); }
+    winrt::hstring DownloadRowViewModel::DownloadedLine() const { return winrt::hstring{ m_row.DownloadedLine }; }
+    winrt::hstring DownloadRowViewModel::MetaLead() const { return m_row.TransferMeta.empty() ? winrt::hstring{} : winrt::hstring{ m_row.TransferMeta.front() }; }
+    winrt::hstring DownloadRowViewModel::MetaMiddle() const { return winrt::hstring{ MetaMiddleOf(m_row.TransferMeta) }; }
+    winrt::hstring DownloadRowViewModel::MetaLast() const { return winrt::hstring{ MetaLastOf(m_row.TransferMeta) }; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::UpNextVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Queued); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::TransferBodyVisibility() const noexcept { return VisibleWhen(m_row.State != RowState::Queued); }
+    double DownloadRowViewModel::ThumbOpacity() const noexcept { return m_row.State == RowState::Queued ? 0.55 : 1.0; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ChooseSourceVisibility() const noexcept { return VisibleWhen(m_row.RequiresNewSource); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PauseVisibility() const noexcept { return VisibleWhen(m_row.CanPause); }
+    // The row resumes only what the viewer paused; a retryable failure has its own retry button.
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ResumeVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Paused); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::RetryVisibility() const noexcept { return VisibleWhen(m_row.CanRetry); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PanePauseVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Downloading); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PaneResumeVisibility() const noexcept { return VisibleWhen(m_row.CanResume); }
+    winrt::hstring DownloadRowViewModel::StatePill() const { return winrt::hstring{ Presentation::StatePillText(m_row.State) }; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::StateAccentVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Downloading); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::StateCautionVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Paused); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::StateCriticalVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Failed); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::StateNeutralVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Queued); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::FailedNoteVisibility() const noexcept { return VisibleWhen(m_row.State == RowState::Failed); }
+    // `.dl-pane-meta { text-transform: uppercase }`.
+    winrt::hstring DownloadRowViewModel::PaneMeta() const
+    {
+        auto value = m_row.PaneMeta;
+        std::transform(value.begin(), value.end(), value.begin(), [](wchar_t character)
         {
             return static_cast<wchar_t>(std::towupper(character));
         });
-        return winrt::hstring{ L"SUB " + language };
+        return winrt::hstring{ value };
     }
-    winrt::hstring DownloadRowViewModel::Poster() const { return m_item.Poster(); }
-    winrt::hstring DownloadRowViewModel::RowArtwork() const { return m_item.RowArtwork(); }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::DownloadingVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Downloading ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::QueuedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Queued ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PausedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Paused ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::FailedVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::OnDiskVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::OnDisk ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::RetryVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Failed && !m_item.RequiresNewSource() ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ChooseSourceVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Failed && m_item.RequiresNewSource() ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::PauseVisibility() const noexcept
-    {
-        return m_item.State() == winrt::HaloDesktop::DownloadState::Downloading || m_item.State() == winrt::HaloDesktop::DownloadState::Queued ? Visible : Collapsed;
-    }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ResumeVisibility() const noexcept
-    {
-        return m_item.State() == winrt::HaloDesktop::DownloadState::Paused
-                || (m_item.State() == winrt::HaloDesktop::DownloadState::Failed && !m_item.RequiresNewSource())
-            ? Visible
-            : Collapsed;
-    }
-    // The lead line, the progress fill and the subtitle chip are three views of
-    // the same state, so they are projected as visibility pairs rather than as
-    // brushes: the palette stays in the theme dictionaries where it can follow
-    // light and dark.
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::LeadNormalVisibility() const noexcept
-    {
-        auto const state = m_item.State();
-        return state != winrt::HaloDesktop::DownloadState::Paused && state != winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed;
-    }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::LeadCautionVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Paused ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::LeadCriticalVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ProgressAccentVisibility() const noexcept
-    {
-        auto const state = m_item.State();
-        return state != winrt::HaloDesktop::DownloadState::Paused && state != winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed;
-    }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ProgressCautionVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Paused ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::ProgressCriticalVisibility() const noexcept { return m_item.State() == winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed; }
-    // Subs() carries the sidecar sentence, so the muted tone is the "no sidecar" case.
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::SubsNormalVisibility() const noexcept { return m_item.Subs() == NoSubtitleSidecar ? Collapsed : Visible; }
-    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::SubsMutedVisibility() const noexcept { return m_item.Subs() == NoSubtitleSidecar ? Visible : Collapsed; }
-    winrt::hstring DownloadRowViewModel::PauseGlyph() const { return ResumeVisibility() == Visible ? L"" : L""; }
-    winrt::hstring DownloadRowViewModel::PauseLabel() const { return ResumeVisibility() == Visible ? L"Resume transfer" : L"Pause transfer"; }
-    winrt::hstring DownloadRowViewModel::DownloadedLine() const
-    {
-        if (m_item.TotalBytes() == 0) return m_item.State() == winrt::HaloDesktop::DownloadState::OnDisk ? L"SIZE UNKNOWN" : L"SIZE UNKNOWN · " + FormatBytes(m_item.DownloadedBytes());
-        if (m_item.State() == winrt::HaloDesktop::DownloadState::OnDisk) return FormatBytes(m_item.TotalBytes());
-        return FormatBytes(m_item.DownloadedBytes()) + L" / " + FormatBytes(m_item.TotalBytes());
-    }
-    winrt::hstring DownloadRowViewModel::FileName() const { return m_item.FileName(); }
-    winrt::hstring DownloadRowViewModel::AddedLabel() const { return m_item.AddedLabel(); }
-    // The item keeps only whether the release is HDR, not which range it names, so a
-    // Dolby Vision download is stamped HDR rather than DV.
-    ::HaloDesktop::ViewModels::Medal DownloadRowViewModel::MedalForItem() const
-    {
-        return ::HaloDesktop::ViewModels::MedalFor(m_item.Quality(), m_item.Hdr() ? L"HDR" : L"SDR");
-    }
-    winrt::hstring DownloadRowViewModel::QualityBadgeTier() const { return winrt::hstring{ MedalForItem().Plate }; }
-    winrt::hstring DownloadRowViewModel::QualityBadgeDetail() const { return winrt::hstring{ MedalForItem().Tag }; }
-    winrt::HaloDesktop::QualityMedalFinish DownloadRowViewModel::QualityTone() const
-    {
-        return ::HaloDesktop::ViewModels::ToQualityMedalFinish(MedalForItem().Finish);
-    }
+    winrt::hstring DownloadRowViewModel::QualityLine() const { return winrt::hstring{ m_row.QualityLine }; }
+    winrt::hstring DownloadRowViewModel::Subs() const { return winrt::hstring{ m_row.Subs }; }
+    winrt::hstring DownloadRowViewModel::AddedFact() const { return winrt::hstring{ Presentation::AddedFact(m_row.AddedLabel) }; }
+    winrt::hstring DownloadRowViewModel::SizeFactLabel() const { return m_row.State == RowState::OnDisk ? L"Size" : L"Downloaded"; }
+    winrt::hstring DownloadRowViewModel::FileName() const { return winrt::hstring{ m_row.FileName }; }
+    winrt::hstring DownloadRowViewModel::CardTitle() const { return winrt::hstring{ m_row.CardTitle }; }
+    winrt::hstring DownloadRowViewModel::CardSub() const { return winrt::hstring{ m_row.CardSub }; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::CardSubVisibility() const noexcept { return VisibleWhen(!m_row.CardSub.empty()); }
+    winrt::hstring DownloadRowViewModel::CardMeta() const { return winrt::hstring{ m_row.CardMeta }; }
+    winrt::hstring DownloadRowViewModel::QualityBadge() const { return m_row.Badge ? winrt::hstring{ m_row.Badge->Label } : winrt::hstring{}; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::QualityBadgeGoldVisibility() const noexcept { return VisibleWhen(m_row.Badge && m_row.Badge->Gold); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::QualityBadgePlainVisibility() const noexcept { return VisibleWhen(m_row.Badge && !m_row.Badge->Gold); }
+    bool DownloadRowViewModel::IsSelected() const noexcept { return m_selected; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::SelectedVisibility() const noexcept { return VisibleWhen(m_selected); }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::TopRuleVisibility() const noexcept { return VisibleWhen(m_topRule); }
     winrt::event_token DownloadRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
-    void DownloadRowViewModel::RaiseState()
+    void DownloadRowViewModel::Raise(wchar_t const* property)
     {
-        for (auto const property : { L"Tag", L"Name", L"Sub", L"StateLabel", L"Progress", L"Detail", L"QualityLine", L"Size", L"Subs", L"SubsChip", L"Poster", L"DownloadingVisibility", L"QueuedVisibility", L"PausedVisibility", L"FailedVisibility", L"OnDiskVisibility", L"RetryVisibility", L"ChooseSourceVisibility", L"PauseVisibility", L"ResumeVisibility", L"LeadNormalVisibility", L"LeadCautionVisibility", L"LeadCriticalVisibility", L"ProgressAccentVisibility", L"ProgressCautionVisibility", L"ProgressCriticalVisibility", L"SubsNormalVisibility", L"SubsMutedVisibility", L"PauseGlyph", L"PauseLabel", L"DownloadedLine", L"FileName", L"AddedLabel", L"QualityBadgeTier", L"QualityBadgeDetail", L"QualityTone" })
-            ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
     }
-
-    ChartBarViewModel::ChartBarViewModel(double value, bool recent)
-        : m_height((std::max)(2.0, (std::min)(ChartHeight, value))), m_recent(recent)
-    {
-    }
-    double ChartBarViewModel::Height() const noexcept { return m_height; }
-    Microsoft::UI::Xaml::Visibility ChartBarViewModel::RecentVisibility() const noexcept { return m_recent ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility ChartBarViewModel::HistoricalVisibility() const noexcept { return m_recent ? Collapsed : Visible; }
 
     DownloadsViewModel::DownloadsViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_downloads(services.Downloads),
           m_navigation(services.Navigation),
-          m_transfers(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_ready(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_filteredTransfers(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_filteredReady(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_chartBars(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_filteredReady(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         Synchronize();
     }
@@ -300,179 +265,101 @@ namespace winrt::HaloDesktop::implementation
         m_downloads->RemoveChangedHandler(m_changedToken);
         m_changedToken = 0;
     }
-    winrt::Windows::Foundation::IInspectable DownloadsViewModel::Transfers() const { return m_transfers; }
-    winrt::Windows::Foundation::IInspectable DownloadsViewModel::Ready() const { return m_ready; }
-    winrt::Windows::Foundation::IInspectable DownloadsViewModel::ChartBars() const { return m_chartBars; }
+
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::TransfersView() const { return m_filteredTransfers; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ReadyView() const { return m_filteredReady; }
+    std::vector<Presentation::ChartBar> const& DownloadsViewModel::ChartBars() const noexcept { return m_chartBars; }
+
     winrt::hstring DownloadsViewModel::ActionErrorText() const { return m_downloads->ActionError(); }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::ActionErrorVisibility() const noexcept
     {
         return m_downloads->ActionError().empty() ? Collapsed : Visible;
     }
-    winrt::hstring DownloadsViewModel::FilterAllCount() const { return winrt::to_hstring(m_transfers.Size() + m_ready.Size()); }
-    winrt::hstring DownloadsViewModel::FilterActiveCount() const { return winrt::to_hstring(m_transfers.Size()); }
-    winrt::hstring DownloadsViewModel::FilterReadyCount() const { return winrt::to_hstring(m_ready.Size()); }
-    winrt::hstring DownloadsViewModel::FilterFailedCount() const
+    winrt::hstring DownloadsViewModel::SummaryLine() const
     {
-        std::uint32_t count{};
-        for (auto const& item : m_transfers)
-        {
-            if (item.as<winrt::HaloDesktop::DownloadRowViewModel>().StateLabel() == L"FAILED") ++count;
-        }
-        return winrt::to_hstring(count);
+        std::vector<DownloadRow> rows{ m_transferRows };
+        rows.insert(rows.end(), m_readyRows.begin(), m_readyRows.end());
+        return winrt::hstring{ Presentation::SummaryLine(rows) };
     }
-    std::int32_t DownloadsViewModel::FilterIndex() const noexcept { return m_filterIndex; }
-    winrt::hstring DownloadsViewModel::NoMatchesLine() const
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::SummaryVisibility() const noexcept { return VisibleWhen(!m_transferRows.empty() || !m_readyRows.empty()); }
+    winrt::hstring DownloadsViewModel::FilterAllCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).All); }
+    winrt::hstring DownloadsViewModel::FilterActiveCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Active); }
+    winrt::hstring DownloadsViewModel::FilterReadyCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Ready); }
+    winrt::hstring DownloadsViewModel::FilterFailedCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Failed); }
+    std::int32_t DownloadsViewModel::FilterIndex() const noexcept
     {
-        switch (m_filterIndex)
-        {
-        case FilterActive: return L"No active transfers right now.";
-        case FilterReady: return L"No downloads are ready to watch yet.";
-        case FilterFailed: return L"No failed transfers need attention.";
-        default: return L"No downloads match this filter right now.";
-        }
+        auto const found = std::find(Filters.begin(), Filters.end(), m_filter);
+        return static_cast<std::int32_t>(found - Filters.begin());
     }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::TransfersView() const { return m_filteredTransfers; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ReadyView() const { return m_filteredReady; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ChartBarsView() const { return m_chartBars; }
-    winrt::HaloDesktop::DownloadRowViewModel DownloadsViewModel::SelectedRow() const { return m_selected; }
-    winrt::hstring DownloadsViewModel::RateText() const
+    winrt::hstring DownloadsViewModel::PauseAllLabel() const { return m_pausedAll ? L"Resume all" : L"Pause all"; }
+    winrt::hstring DownloadsViewModel::PauseAllGlyph() const { return m_pausedAll ? L"" : L""; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::PauseAllVisibility() const noexcept { return VisibleWhen(m_activeCount > 0 || m_pausedAll); }
+    bool DownloadsViewModel::IsPausedAll() const noexcept { return m_pausedAll; }
+    winrt::hstring DownloadsViewModel::RateValue() const { return winrt::hstring{ Presentation::RateFigureOf(m_rate, m_pausedAll).Value }; }
+    winrt::hstring DownloadsViewModel::RateUnit() const { return winrt::hstring{ Presentation::RateFigureOf(m_rate, m_pausedAll).Unit }; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateUnitVisibility() const noexcept { return VisibleWhen(!m_pausedAll); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateNormalVisibility() const noexcept { return VisibleWhen(Presentation::RateToneOf(m_rate, m_pausedAll) == Presentation::RateTone::Normal); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateIdleVisibility() const noexcept { return VisibleWhen(Presentation::RateToneOf(m_rate, m_pausedAll) == Presentation::RateTone::Idle); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RatePausedVisibility() const noexcept { return VisibleWhen(Presentation::RateToneOf(m_rate, m_pausedAll) == Presentation::RateTone::Paused); }
+    winrt::hstring DownloadsViewModel::ConnectionsText() const { return m_rateNote.Kind == Presentation::RateNoteKind::Connections ? winrt::hstring{ m_rateNote.Text } : winrt::hstring{}; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ConnectionsVisibility() const noexcept { return VisibleWhen(m_rateNote.Kind == Presentation::RateNoteKind::Connections); }
+    winrt::hstring DownloadsViewModel::RateNoteText() const { return m_rateNote.Kind == Presentation::RateNoteKind::Note ? winrt::hstring{ m_rateNote.Text } : winrt::hstring{}; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateNoteVisibility() const noexcept { return VisibleWhen(m_rateNote.Kind == Presentation::RateNoteKind::Note); }
+    winrt::hstring DownloadsViewModel::PeakText() const { return winrt::hstring{ Presentation::PeakText(m_chartValues) }; }
+    winrt::hstring DownloadsViewModel::StorageValue() const { return winrt::hstring{ Presentation::SplitBytes(m_storage.StoredBytes + m_storage.InFlightBytes).Value }; }
+    winrt::hstring DownloadsViewModel::StorageUnitLine() const
     {
-        if (m_downloads->IsPausedAll()) return L"PAUSED";
-        std::wostringstream value;
-        value << std::fixed << std::setprecision(1) << m_downloads->AggregateRate() << L" MB/s";
-        return winrt::hstring(value.str());
+        auto const used = Presentation::SplitBytes(m_storage.StoredBytes + m_storage.InFlightBytes);
+        return winrt::hstring{ used.Unit + L" · " + Presentation::FreeLine(m_storage.FreeBytes) };
     }
-    // Three tones for one number: moving, idle at zero, and held by the user.
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateNormalVisibility() const noexcept
+    winrt::hstring DownloadsViewModel::StoredLine() const { return winrt::hstring{ ::HaloDesktop::Services::DownloadsLogic::FormatDownloadBytes(static_cast<double>(m_storage.StoredBytes)) }; }
+    winrt::hstring DownloadsViewModel::InFlightLine() const { return winrt::hstring{ ::HaloDesktop::Services::DownloadsLogic::FormatDownloadBytes(static_cast<double>(m_storage.InFlightBytes)) }; }
+    // The track's three parts as star columns: stored, in flight, and the rest.
+    Microsoft::UI::Xaml::GridLength DownloadsViewModel::StoredWidth() const noexcept { return Star(m_storage.StoredFraction); }
+    Microsoft::UI::Xaml::GridLength DownloadsViewModel::FlightWidth() const noexcept { return Star(m_storage.UsedFraction - m_storage.StoredFraction); }
+    Microsoft::UI::Xaml::GridLength DownloadsViewModel::FreeWidth() const noexcept
     {
-        return !m_downloads->IsPausedAll() && m_downloads->AggregateRate() > 0.0 ? Visible : Collapsed;
+        return Star(m_storage.UsedFraction > 0.0 ? 1.0 - m_storage.UsedFraction : 1.0);
     }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RateIdleVisibility() const noexcept
-    {
-        return !m_downloads->IsPausedAll() && m_downloads->AggregateRate() <= 0.0 ? Visible : Collapsed;
-    }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RatePausedVisibility() const noexcept
-    {
-        return m_downloads->IsPausedAll() ? Visible : Collapsed;
-    }
-    winrt::hstring DownloadsViewModel::QueueLine() const { return m_downloads->QueueLine(); }
-    winrt::hstring DownloadsViewModel::TransferCountLabel() const
-    {
-        std::wostringstream value;
-        value << m_filteredTransfers.Size() << L" ITEMS";
-        return winrt::hstring(value.str());
-    }
-    winrt::hstring DownloadsViewModel::ReadyCountLabel() const
-    {
-        std::wostringstream value;
-        value << m_filteredReady.Size() << L" ITEMS";
-        return winrt::hstring(value.str());
-    }
-    winrt::hstring DownloadsViewModel::PauseAllLabel() const { return m_downloads->IsPausedAll() ? L"Resume all" : L"Pause all"; }
-    winrt::hstring DownloadsViewModel::PauseAllGlyph() const { return m_downloads->IsPausedAll() ? L"\uE768" : L"\uE769"; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::PauseAllVisibility() const noexcept
-    {
-        return m_downloads->ActiveCount() > 0 || m_downloads->IsPausedAll() ? Visible : Collapsed;
-    }
-    bool DownloadsViewModel::IsPausedAll() const noexcept { return m_downloads->IsPausedAll(); }
-    winrt::hstring DownloadsViewModel::SelectedTag() const { return m_selected ? m_selected.Tag() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedTitle() const { return m_selected ? m_selected.Name() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedSub() const { return m_selected ? m_selected.Sub() : L""; }
-    double DownloadsViewModel::SelectedProgress() const noexcept { return m_selected ? m_selected.Progress() : 0.0; }
-    winrt::hstring DownloadsViewModel::SelectedDetail() const { return m_selected ? m_selected.Detail() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedPercentText() const
-    {
-        if (!m_selected) return {};
-        std::wostringstream value;
-        value << static_cast<int>(m_selected.Progress() * 100.0 + 0.5) << L"%";
-        return winrt::hstring{ value.str() };
-    }
-    winrt::hstring DownloadsViewModel::SelectedQualityLine() const { return m_selected ? m_selected.QualityLine() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedSize() const { return m_selected ? m_selected.DownloadedLine() : L""; }
-    // A finished file has one size; a running transfer has two, so the label says which.
-    winrt::hstring DownloadsViewModel::SelectedSizeFactLabel() const { return SelectedIsReady() ? L"File size" : L"Downloaded"; }
-    winrt::hstring DownloadsViewModel::SelectedSubs() const { return m_selected ? m_selected.Subs() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedAdded() const
-    {
-        if (!m_selected) return {};
-        auto const label = std::wstring{ m_selected.AddedLabel() };
-        constexpr std::wstring_view prefix{ L"ADDED " };
-        return winrt::hstring{ label.starts_with(prefix) ? label.substr(prefix.size()) : label };
-    }
-    winrt::hstring DownloadsViewModel::SelectedFileName() const { return m_selected ? m_selected.FileName() : L""; }
-    winrt::hstring DownloadsViewModel::SelectedPoster() const { return m_selected ? m_selected.Poster() : L""; }
-    winrt::hstring DownloadsViewModel::ReadyActionLabel() const { return L"Play offline"; }
-    // The failure sentence already sits on the row's lead line; the pane adds what
-    // happens to the bytes already on disk, which is the part a viewer acts on.
-    winrt::hstring DownloadsViewModel::PaneNote() const
-    {
-        return PaneNoteVisibility() == Visible
-            ? winrt::hstring{ L"THE PARTIAL FILE IS KEPT UNTIL A NEW SOURCE FINISHES." }
-            : winrt::hstring{};
-    }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::PaneNoteVisibility() const noexcept
-    {
-        auto const item = SelectedItem();
-        return item && item.State() == winrt::HaloDesktop::DownloadState::Failed ? Visible : Collapsed;
-    }
-    winrt::hstring DownloadsViewModel::StorageLine() const
-    {
-        return FormatBytes(m_downloads->StoredBytes()) + L" on this device";
-    }
-    winrt::hstring DownloadsViewModel::FreeLine() const
-    {
-        auto const free = m_downloads->FreeBytes();
-        return free ? FormatBytes(*free) + L" FREE" : winrt::hstring{ L"FREE SPACE UNKNOWN" };
-    }
-    winrt::hstring DownloadsViewModel::StoredLine() const { return FormatBytes(m_downloads->StoredBytes()); }
-    winrt::hstring DownloadsViewModel::InFlightLine() const { return FormatBytes(m_downloads->InFlightBytes()); }
-    winrt::hstring DownloadsViewModel::PeakText() const
-    {
-        auto const values = m_downloads->Throughput();
-        auto peak = 0.0;
-        for (auto const value : values) peak = (std::max)(peak, value);
-        std::wostringstream output;
-        output << L"PEAK " << std::fixed << std::setprecision(1) << peak << L" MB/S";
-        return winrt::hstring{ output.str() };
-    }
-    double DownloadsViewModel::StorageFraction() const noexcept
-    {
-        auto const used = m_downloads->StoredBytes() + m_downloads->InFlightBytes();
-        auto const free = m_downloads->FreeBytes().value_or(0);
-        auto const total = used + free;
-        return total > 0 ? static_cast<double>(used) / static_cast<double>(total) : 0.0;
-    }
-    double DownloadsViewModel::StoredFraction() const noexcept
-    {
-        auto const total = m_downloads->StoredBytes() + m_downloads->InFlightBytes() + m_downloads->FreeBytes().value_or(0);
-        return total > 0 ? static_cast<double>(m_downloads->StoredBytes()) / static_cast<double>(total) : 0.0;
-    }
-    double DownloadsViewModel::InFlightFraction() const noexcept
-    {
-        auto const total = m_downloads->StoredBytes() + m_downloads->InFlightBytes() + m_downloads->FreeBytes().value_or(0);
-        return total > 0 ? static_cast<double>(m_downloads->InFlightBytes()) / static_cast<double>(total) : 0.0;
-    }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::DetailVisibility() const noexcept { return m_selected ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::FolderVisibility() const noexcept { return m_selected ? Collapsed : Visible; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::SelectedTransferVisibility() const noexcept { return m_selected && !SelectedIsReady() ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::SelectedReadyVisibility() const noexcept { return m_selected && SelectedIsReady() ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::PauseVisibility() const noexcept { return SelectedItem() && SelectedItem().State() == winrt::HaloDesktop::DownloadState::Downloading ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ResumeVisibility() const noexcept { auto const item=SelectedItem();return item&&(item.State()==winrt::HaloDesktop::DownloadState::Paused||(item.State()==winrt::HaloDesktop::DownloadState::Failed&&!item.RequiresNewSource()))?Visible:Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ChooseSourceVisibility() const noexcept { return SelectedItem() && SelectedItem().State() == winrt::HaloDesktop::DownloadState::Failed && SelectedItem().RequiresNewSource() ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::TransferSectionVisibility() const noexcept { return m_filteredTransfers.Size() > 0 ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ReadySectionVisibility() const noexcept { return m_filteredReady.Size() > 0 ? Visible : Collapsed; }
-    Microsoft::UI::Xaml::Visibility DownloadsViewModel::EmptyVisibility() const noexcept { return m_transfers.Size() == 0 && m_ready.Size() == 0 ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::StoredVisibility() const noexcept { return VisibleWhen(m_storage.StoredFraction > 0.0); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::FlightVisibility() const noexcept { return VisibleWhen(m_storage.UsedFraction - m_storage.StoredFraction > 0.0); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::QueueVisibility() const noexcept { return VisibleWhen(!m_shownTransfers.empty()); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::ReadySectionVisibility() const noexcept { return VisibleWhen(!m_shownReady.empty()); }
+    winrt::hstring DownloadsViewModel::ReadyHeadline() const { return winrt::hstring{ Presentation::ReadyHeadline(m_readyRows.size(), m_storage.StoredBytes) }; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::EmptyVisibility() const noexcept { return VisibleWhen(m_transferRows.empty() && m_readyRows.empty()); }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::NoMatchesVisibility() const noexcept
     {
-        return EmptyVisibility() == Collapsed && m_filteredTransfers.Size() == 0 && m_filteredReady.Size() == 0 ? Visible : Collapsed;
+        return VisibleWhen((!m_transferRows.empty() || !m_readyRows.empty()) && m_shownTransfers.empty() && m_shownReady.empty());
     }
-    void DownloadsViewModel::Select(winrt::hstring const& id) { m_selectedId = id; ResolveSelection(); RaiseState(); }
+    winrt::hstring DownloadsViewModel::NoMatchesLine() const { return winrt::hstring{ Presentation::NoMatchesLine(m_filter) }; }
+    winrt::HaloDesktop::DownloadRowViewModel DownloadsViewModel::SelectedRow() const { return m_selected; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::DetailVisibility() const noexcept { return VisibleWhen(m_selected != nullptr); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::FolderVisibility() const noexcept { return VisibleWhen(m_selected == nullptr); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::SelectedReadyVisibility() const noexcept
+    {
+        auto const row = SelectedProjection();
+        return VisibleWhen(row && row->State == RowState::OnDisk);
+    }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::SelectedTransferVisibility() const noexcept
+    {
+        auto const row = SelectedProjection();
+        return VisibleWhen(row && row->State != RowState::OnDisk);
+    }
+
+    void DownloadsViewModel::Select(winrt::hstring const& id)
+    {
+        m_selectedId = std::wstring{ id.c_str() };
+        ApplySelection();
+        RaiseState();
+    }
     void DownloadsViewModel::SetFilter(std::int32_t index)
     {
-        if (index < 0 || index >= FilterCount || index == m_filterIndex) return;
-        m_filterIndex = index;
-        RebuildFilteredViews();
-        ResolveSelection();
+        if (index < 0 || index >= static_cast<std::int32_t>(Filters.size())) return;
+        auto const filter = Filters[static_cast<std::size_t>(index)];
+        if (filter == m_filter) return;
+        m_filter = filter;
+        ApplyFilteredViews();
+        ApplySelection();
         RaiseState();
     }
     void DownloadsViewModel::Pause(winrt::hstring const& id) { static_cast<void>(m_downloads->PauseTransfer(id)); }
@@ -486,51 +373,50 @@ namespace winrt::HaloDesktop::implementation
             m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, parameters);
         }
     }
+    void DownloadsViewModel::Play(winrt::hstring const& id)
+    {
+        if (auto const request = m_downloads->BuildPlaybackRequest(id))
+        {
+            m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player, request);
+        }
+    }
     void DownloadsViewModel::OpenDownloadFolder() { static_cast<void>(m_downloads->OpenDownloadDirectory()); }
+    // The pane's "Open folder" shows the file itself; a file the engine will not
+    // stand behind any more falls back to the folder, which reports its own failure.
+    void DownloadsViewModel::RevealSelected()
+    {
+        if (!m_selected) return;
+        if (!m_downloads->RevealInExplorer(winrt::hstring{ m_selectedId }))
+        {
+            static_cast<void>(m_downloads->OpenDownloadDirectory());
+        }
+    }
     void DownloadsViewModel::RetryFailed() { m_downloads->RetryFailedTransfers(); }
     void DownloadsViewModel::PauseAll() { m_downloads->PauseAll(); }
     void DownloadsViewModel::ResumeAll() { m_downloads->ResumeAll(); }
     void DownloadsViewModel::PauseSelected()
     {
-        if (m_selected)
-        {
-            m_downloads->PauseTransfer(m_selectedId);
-        }
+        if (m_selected) static_cast<void>(m_downloads->PauseTransfer(winrt::hstring{ m_selectedId }));
     }
     void DownloadsViewModel::ResumeSelected()
     {
-        if (m_selected)
-        {
-            m_downloads->ResumeTransfer(m_selectedId);
-        }
+        if (m_selected) static_cast<void>(m_downloads->ResumeTransfer(winrt::hstring{ m_selectedId }));
     }
     void DownloadsViewModel::CancelSelected()
     {
-        if (m_selected)
-        {
-            m_downloads->CancelTransfer(m_selectedId);
-        }
+        if (m_selected) static_cast<void>(m_downloads->CancelTransfer(winrt::hstring{ m_selectedId }));
     }
     void DownloadsViewModel::DeleteSelected()
     {
-        if (m_selected)
-        {
-            m_downloads->DeleteReady(m_selectedId);
-        }
+        if (m_selected) static_cast<void>(m_downloads->DeleteReady(winrt::hstring{ m_selectedId }));
     }
     void DownloadsViewModel::OpenPlayer()
     {
-        if (auto const request = m_downloads->BuildPlaybackRequest(m_selectedId))
-        {
-            m_navigation->ShowOverlay(::HaloDesktop::Services::Page::Player, request);
-        }
+        if (m_selected) Play(winrt::hstring{ m_selectedId });
     }
     void DownloadsViewModel::ChooseSource()
     {
-        if (auto const parameters = m_downloads->BuildSourcesNavigation(m_selectedId))
-        {
-            m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, parameters);
-        }
+        if (m_selected) ChooseSourceFor(winrt::hstring{ m_selectedId });
     }
     void DownloadsViewModel::BrowseLibrary()
     {
@@ -549,172 +435,171 @@ namespace winrt::HaloDesktop::implementation
     winrt::event_token DownloadsViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadsViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
 
+    Presentation::StreamFacts DownloadsViewModel::FactsFor(::HaloDesktop::Services::Downloads::DownloadRecord const& record)
+    {
+        auto key = std::make_tuple(
+            record.Media.StreamName,
+            record.Media.StreamTitle,
+            record.FileName,
+            record.TotalBytes,
+            record.Media.VideoSize,
+            record.Media.DynamicRange);
+        if (auto const found = m_facts.find(record.JobId); found != m_facts.end() && found->second.Key == key)
+        {
+            return found->second.Facts;
+        }
+        auto facts = ::HaloDesktop::Services::DownloadStreamFactsOf(record);
+        m_facts.insert_or_assign(record.JobId, CachedFacts{ .Key = std::move(key), .Facts = facts });
+        return facts;
+    }
+
+    DownloadRowViewModel* DownloadsViewModel::RowFor(std::wstring const& id) const
+    {
+        auto const found = m_rows.find(id);
+        return found == m_rows.end() ? nullptr : winrt::get_self<DownloadRowViewModel>(found->second);
+    }
+
+    DownloadRow const* DownloadsViewModel::SelectedProjection() const
+    {
+        return m_selected ? &winrt::get_self<DownloadRowViewModel>(m_selected)->Row() : nullptr;
+    }
+
+    // Every engine change lands here, progress included, so rows are updated in
+    // place: a row keeps its view model while its download exists, and the
+    // bound lists change only when what they show does.
     void DownloadsViewModel::Synchronize()
     {
-        SynchronizeRows(m_downloads->Transfers(), m_transfers);
-        SynchronizeRows(m_downloads->Ready(), m_ready);
-        RebuildFilteredViews();
+        auto const& records = m_downloads->Records();
+        m_transferRows.clear();
+        m_readyRows.clear();
+        std::unordered_set<std::wstring> present;
+        for (auto const& record : records)
+        {
+            auto row = Presentation::RowOf(record, FactsFor(record));
+            present.insert(row.Id);
+            if (auto const existing = RowFor(row.Id))
+            {
+                existing->Update(row);
+            }
+            else
+            {
+                m_rows.emplace(row.Id, winrt::make<DownloadRowViewModel>(row));
+            }
+            (row.State == RowState::OnDisk ? m_readyRows : m_transferRows).push_back(std::move(row));
+        }
+        std::erase_if(m_rows, [&present](auto const& entry) { return !present.contains(entry.first); });
+        std::erase_if(m_facts, [&present](auto const& entry) { return !present.contains(entry.first); });
+
+        m_pausedAll = m_downloads->IsPausedAll();
+        m_rate = Presentation::AggregateRate(records);
+        m_rateNote = Presentation::RateNoteOf(records);
+        m_activeCount = Presentation::ActiveCount(records);
+        m_storage = Presentation::StorageFiguresOf(records, m_downloads->FreeBytes());
+        ApplyFilteredViews();
+        ApplySelection();
         RebuildChart();
-        ResolveSelection();
         RaiseState();
     }
-    // A transfer publishes progress four times a second. Clearing and
-    // refilling the bound vector on every one of those tears the ListView's
-    // containers down and back up: the poster is decoded again and the selection
-    // visual blinks. The membership is compared first so a moving progress bar
-    // costs no collection change at all.
-    void DownloadsViewModel::RebuildFilteredViews()
+
+    void DownloadsViewModel::ApplyFilteredViews()
     {
+        m_shownTransfers.clear();
+        m_shownReady.clear();
+        std::copy_if(m_transferRows.begin(), m_transferRows.end(), std::back_inserter(m_shownTransfers), [this](DownloadRow const& row)
+        {
+            return Presentation::MatchesFilter(row, m_filter);
+        });
+        std::copy_if(m_readyRows.begin(), m_readyRows.end(), std::back_inserter(m_shownReady), [this](DownloadRow const& row)
+        {
+            return Presentation::MatchesFilter(row, m_filter);
+        });
         auto const apply = [this](
-            winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& source,
+            std::vector<DownloadRow> const& rows,
             winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& target)
         {
             std::vector<winrt::HaloDesktop::DownloadRowViewModel> wanted;
-            for (auto const& item : source)
+            wanted.reserve(rows.size());
+            for (auto const& row : rows)
             {
-                auto const row = item.as<winrt::HaloDesktop::DownloadRowViewModel>();
-                if (MatchesFilter(row, m_filterIndex)) wanted.push_back(row);
+                if (auto const found = m_rows.find(row.Id); found != m_rows.end()) wanted.push_back(found->second);
             }
             auto unchanged = target.Size() == wanted.size();
-            if (unchanged)
+            for (std::uint32_t index = 0; unchanged && index < target.Size(); ++index)
             {
-                for (std::uint32_t index = 0; index < target.Size(); ++index)
-                {
-                    if (target.GetAt(index) != wanted[index])
-                    {
-                        unchanged = false;
-                        break;
-                    }
-                }
+                unchanged = target.GetAt(index) == wanted[index];
             }
             if (unchanged) return;
             target.Clear();
             for (auto const& row : wanted) target.Append(row);
         };
-        apply(m_transfers, m_filteredTransfers);
-        apply(m_ready, m_filteredReady);
+        apply(m_shownTransfers, m_filteredTransfers);
+        apply(m_shownReady, m_filteredReady);
     }
-    void DownloadsViewModel::SynchronizeRows(
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> const& source,
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> const& target)
+
+    // The pane follows a download the filter still shows, else the first one
+    // it does, and keeps that as the selection.
+    void DownloadsViewModel::ApplySelection()
     {
-        auto sameMembership = source.Size() == target.Size();
-        if (sameMembership)
+        auto const resolved = Presentation::ResolveSelection(m_selectedId, m_shownReady, m_shownTransfers);
+        if (resolved) m_selectedId = resolved->Id;
+        winrt::HaloDesktop::DownloadRowViewModel selected{ nullptr };
+        if (resolved)
         {
-            for (std::uint32_t index = 0; index < source.Size(); ++index)
+            if (auto const found = m_rows.find(resolved->Id); found != m_rows.end()) selected = found->second;
+        }
+        auto const changed = selected != m_selected;
+        m_selected = selected;
+        for (auto const& [id, row] : m_rows)
+        {
+            winrt::get_self<DownloadRowViewModel>(row)->SetSelected(resolved && id == resolved->Id);
+        }
+        for (std::size_t index = 0; index < m_shownTransfers.size(); ++index)
+        {
+            auto const isSelected = [this](std::size_t position)
             {
-                if (target.GetAt(index).as<winrt::HaloDesktop::DownloadRowViewModel>().Id() != source.GetAt(index).Id())
-                {
-                    sameMembership = false;
-                    break;
-                }
+                return m_selected && m_shownTransfers[position].Id == m_selectedId;
+            };
+            if (auto const row = RowFor(m_shownTransfers[index].Id))
+            {
+                row->SetTopRule(index > 0 && !isSelected(index) && !isSelected(index - 1));
             }
         }
-        if (!sameMembership)
+        if (changed)
         {
-            target.Clear();
-            for (auto const& item : source)
+            for (auto const property : { L"SelectedRow", L"DetailVisibility", L"FolderVisibility" })
             {
-                target.Append(winrt::make<DownloadRowViewModel>(item));
+                ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
             }
-            return;
-        }
-        for (std::uint32_t index = 0; index < source.Size(); ++index)
-        {
-            winrt::get_self<DownloadRowViewModel>(target.GetAt(index).as<winrt::HaloDesktop::DownloadRowViewModel>())->Update(source.GetAt(index));
         }
     }
-    // The strip is a fixed window of samples. A freshly opened app has only a
-    // couple, and without the empty leading slots those two would be stretched
-    // across the whole cell and read as a chart of two enormous readings.
+
+    // The samples move once per bar; rebuilding identical bars would restart
+    // their eased heights on every unrelated change.
     void DownloadsViewModel::RebuildChart()
     {
-        auto const source = m_downloads->Throughput();
-        std::vector<double> values;
-        values.reserve(source.Size());
-        for (auto const value : source) values.push_back(value);
-        // Every state change refreshes the page, but the samples only move once
-        // a second. Rebuilding identical bars would restart their animations.
-        if (m_chartBars.Size() == ChartSlots && values == m_chartValues)
-        {
-            return;
-        }
+        auto const& values = m_downloads->Throughput();
+        if (m_chartBuilt && values == m_chartValues) return;
         m_chartValues = values;
+        m_chartBars = Presentation::ChartBars(m_chartValues);
+        m_chartBuilt = true;
+        ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, L"ChartBars");
+    }
 
-        m_chartBars.Clear();
-        auto peak = 0.0;
-        for (auto const value : values) peak = (std::max)(peak, value);
-        auto const count = static_cast<std::uint32_t>(values.size());
-        auto const taken = (std::min)(count, ChartSlots);
-        for (auto slot = taken; slot < ChartSlots; ++slot)
-        {
-            m_chartBars.Append(winrt::make<ChartBarViewModel>(0.0, false));
-        }
-        for (std::uint32_t index = count - taken; index < count; ++index)
-        {
-            auto const height = peak > 0.0 ? values[index] / peak * ChartHeight : 0.0;
-            m_chartBars.Append(winrt::make<ChartBarViewModel>(height, index + 6 >= count));
-        }
-    }
-    void DownloadsViewModel::ResolveSelection()
-    {
-        m_selected = nullptr;
-        for (auto const& row : m_filteredReady)
-        {
-            auto const candidate = row.as<winrt::HaloDesktop::DownloadRowViewModel>();
-            if (candidate.Id() == m_selectedId)
-            {
-                m_selected = candidate;
-                break;
-            }
-        }
-        if (!m_selected)
-        {
-            for (auto const& row : m_filteredTransfers)
-            {
-                auto const candidate = row.as<winrt::HaloDesktop::DownloadRowViewModel>();
-                if (candidate.Id() == m_selectedId)
-                {
-                    m_selected = candidate;
-                    break;
-                }
-            }
-        }
-        if (!m_selected && m_filteredReady.Size() > 0)
-        {
-            m_selected = m_filteredReady.GetAt(0).as<winrt::HaloDesktop::DownloadRowViewModel>();
-        }
-        if (!m_selected && m_filteredTransfers.Size() > 0)
-        {
-            m_selected = m_filteredTransfers.GetAt(0).as<winrt::HaloDesktop::DownloadRowViewModel>();
-        }
-        if (m_selected)
-        {
-            m_selectedId = m_selected.Id();
-        }
-    }
     void DownloadsViewModel::RaiseState()
     {
-        for (auto const property : { L"ActionErrorText", L"ActionErrorVisibility", L"RateText", L"RateNormalVisibility", L"RateIdleVisibility", L"RatePausedVisibility", L"SelectedRow", L"QueueLine", L"TransferCountLabel", L"ReadyCountLabel", L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll", L"SelectedTag", L"SelectedTitle", L"SelectedSub", L"SelectedProgress", L"SelectedDetail", L"SelectedPercentText", L"SelectedQualityLine", L"SelectedSize", L"SelectedSizeFactLabel", L"SelectedSubs", L"SelectedAdded", L"SelectedFileName", L"SelectedPoster", L"ReadyActionLabel", L"PaneNote", L"PaneNoteVisibility", L"StorageLine", L"FreeLine", L"StoredLine", L"InFlightLine", L"PeakText", L"StorageFraction", L"StoredFraction", L"InFlightFraction", L"DetailVisibility", L"FolderVisibility", L"SelectedTransferVisibility", L"SelectedReadyVisibility", L"PauseVisibility", L"ResumeVisibility", L"ChooseSourceVisibility", L"TransferSectionVisibility", L"ReadySectionVisibility", L"EmptyVisibility", L"NoMatchesVisibility", L"NoMatchesLine", L"FilterAllCount", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex" })
+        for (auto const property : {
+                 L"ActionErrorText", L"ActionErrorVisibility", L"SummaryLine", L"SummaryVisibility",
+                 L"FilterAllCount", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex",
+                 L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll",
+                 L"RateValue", L"RateUnit", L"RateUnitVisibility", L"RateNormalVisibility", L"RateIdleVisibility",
+                 L"RatePausedVisibility", L"ConnectionsText", L"ConnectionsVisibility", L"RateNoteText",
+                 L"RateNoteVisibility", L"PeakText", L"StorageValue", L"StorageUnitLine", L"StoredLine",
+                 L"InFlightLine", L"StoredWidth", L"FlightWidth", L"FreeWidth", L"StoredVisibility",
+                 L"FlightVisibility", L"QueueVisibility", L"ReadySectionVisibility", L"ReadyHeadline",
+                 L"EmptyVisibility", L"NoMatchesVisibility", L"NoMatchesLine", L"SelectedReadyVisibility",
+                 L"SelectedTransferVisibility" })
+        {
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
-    }
-    winrt::HaloDesktop::DownloadItem DownloadsViewModel::SelectedItem() const
-    {
-        return m_selected ? winrt::get_self<DownloadRowViewModel>(m_selected)->Item() : nullptr;
-    }
-    bool DownloadsViewModel::SelectedIsReady() const noexcept
-    {
-        if (!m_selected)
-        {
-            return false;
         }
-        for (auto const& row : m_ready)
-        {
-            if (row.as<winrt::HaloDesktop::DownloadRowViewModel>().Id() == m_selectedId)
-            {
-                return true;
-            }
-        }
-        return false;
     }
 }

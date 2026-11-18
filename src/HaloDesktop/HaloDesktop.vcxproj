@@ -375,6 +375,11 @@
     <ClInclude Include="Services\Downloads\SegmentPlanner.h" />
     <ClInclude Include="Services\Downloads\DownloadHttp.h" />
     <ClInclude Include="Services\Downloads\SegmentedTransfer.h" />
+    <ClInclude Include="Services\DownloadsLogicPolicy.h" />
+    <ClInclude Include="ViewModels\DownloadsPresentationPolicy.h" />
+    <ClInclude Include="Services\DownloadStreamFacts.h" />
+    <ClInclude Include="Views\DownloadsChartPresenter.h" />
+    <ClInclude Include="Views\DownloadReadyCard.xaml.h"><DependentUpon>DownloadReadyCard.xaml</DependentUpon></ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -419,6 +424,8 @@
     <Page Include="Views\SourceDetailsPanel.xaml" />
     <Page Include="Views\SourceSaveButton.xaml" />
     <Page Include="Views\SourcesSheetFooter.xaml" />
+    <Page Include="Styles\Downloads.xaml" />
+    <Page Include="Views\DownloadReadyCard.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -725,6 +732,15 @@
     </ClCompile>
     <ClCompile Include="Services\Downloads\DownloadHttp.cpp" />
     <ClCompile Include="Services\Downloads\SegmentedTransfer.cpp" />
+    <ClCompile Include="Services\DownloadsLogicPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ViewModels\DownloadsPresentationPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\DownloadStreamFacts.cpp" />
+    <ClCompile Include="Views\DownloadsChartPresenter.cpp" />
+    <ClCompile Include="Views\DownloadReadyCard.xaml.cpp"><DependentUpon>DownloadReadyCard.xaml</DependentUpon></ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

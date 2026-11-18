@@ -4,8 +4,6 @@
 #include "Models/Models.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/DownloadArtworkService.h"
-#include "Services/DownloadSourceMatch.h"
-#include "Services/StreamInfo.h"
 
 #include <algorithm>
 #include <chrono>
@@ -27,145 +25,8 @@
 
 namespace
 {
-    using HaloDesktop::Services::Downloads::DownloadFailureCode;
     using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStatus;
-
-    constexpr std::uint32_t ThroughputSlots = 30;
-    constexpr auto ThroughputSampleInterval = std::chrono::seconds{ 1 };
-
-    winrt::hstring FormatBytes(std::uint64_t value)
-    {
-        constexpr std::array<wchar_t const*, 5> units{ L"B", L"KB", L"MB", L"GB", L"TB" };
-        auto amount = static_cast<double>(value);
-        std::size_t unit{};
-        while (amount >= 1024.0 && unit + 1 < units.size())
-        {
-            amount /= 1024.0;
-            ++unit;
-        }
-        std::wostringstream output;
-        output << std::fixed << std::setprecision(unit == 0 ? 0 : 1) << amount << L" " << units[unit];
-        return winrt::hstring{ output.str() };
-    }
-
-    winrt::hstring FormatRate(std::uint64_t bytesPerSecond)
-    {
-        if (bytesPerSecond == 0)
-        {
-            return L"WAITING";
-        }
-        return FormatBytes(bytesPerSecond) + L"/s";
-    }
-
-    winrt::hstring AddedLabel(std::uint64_t milliseconds)
-    {
-        if (milliseconds == 0) return L"ADDED UNKNOWN";
-        auto const time = static_cast<std::time_t>(milliseconds / 1000);
-        std::tm local{};
-        if (localtime_s(&local, &time) != 0) return L"ADDED UNKNOWN";
-        std::wostringstream output;
-        output << L"ADDED " << std::put_time(&local, L"%d %b");
-        auto result = output.str();
-        std::transform(result.begin(), result.end(), result.begin(), [](wchar_t character)
-        {
-            return static_cast<wchar_t>(std::towupper(character));
-        });
-        return winrt::hstring{ result };
-    }
-
-    winrt::hstring Tag(DownloadRecord const& record)
-    {
-        if (record.Media.EpisodeLabel && !record.Media.EpisodeLabel->empty())
-        {
-            return winrt::hstring{ *record.Media.EpisodeLabel };
-        }
-        auto value = record.Media.MediaType;
-        std::transform(value.begin(), value.end(), value.begin(), [](wchar_t character)
-        {
-            return static_cast<wchar_t>(std::towupper(character));
-        });
-        return winrt::hstring{ value.empty() ? L"VIDEO" : value };
-    }
-
-    winrt::hstring Detail(DownloadRecord const& record)
-    {
-        if (record.Status == DownloadStatus::Failed)
-        {
-            return winrt::hstring{ HaloDesktop::Services::Downloads::FailureMessage(
-                record.Failure.value_or(DownloadFailureCode::Unknown)) };
-        }
-        if (record.Status == DownloadStatus::Done)
-        {
-            return L"READY FOR OFFLINE PLAYBACK";
-        }
-        if (record.Status == DownloadStatus::Paused)
-        {
-            return L"PAUSED BY YOU";
-        }
-        if (record.Status == DownloadStatus::Queued)
-        {
-            return L"WAITING FOR THE CURRENT TRANSFER";
-        }
-        return FormatRate(record.BytesPerSecond);
-    }
-
-    winrt::HaloDesktop::DownloadState DisplayState(DownloadStatus status) noexcept
-    {
-        switch (status)
-        {
-        case DownloadStatus::Queued: return winrt::HaloDesktop::DownloadState::Queued;
-        case DownloadStatus::Downloading: return winrt::HaloDesktop::DownloadState::Downloading;
-        case DownloadStatus::Paused: return winrt::HaloDesktop::DownloadState::Paused;
-        case DownloadStatus::Done: return winrt::HaloDesktop::DownloadState::OnDisk;
-        case DownloadStatus::Failed: return winrt::HaloDesktop::DownloadState::Failed;
-        }
-        return winrt::HaloDesktop::DownloadState::Failed;
-    }
-
-    winrt::HaloDesktop::DownloadItem DisplayItem(DownloadRecord const& record)
-    {
-        HaloDesktop::Api::Dto::StreamRecord stream;
-        stream.Name = record.Media.StreamName ? std::optional<winrt::hstring>{ winrt::hstring{ *record.Media.StreamName } } : std::nullopt;
-        stream.Title = record.Media.StreamTitle ? std::optional<winrt::hstring>{ winrt::hstring{ *record.Media.StreamTitle } } : std::nullopt;
-        stream.Filename = winrt::hstring{ record.FileName };
-        stream.VideoSize = record.TotalBytes > 0 ? std::optional<std::uint64_t>{ record.TotalBytes } : record.Media.VideoSize;
-        auto const info = HaloDesktop::Services::ParseStreamInfo(stream);
-        auto const total = record.TotalBytes > 0 ? record.TotalBytes : record.Media.VideoSize.value_or(0);
-        auto const progress = record.Status == DownloadStatus::Done
-            ? 1.0
-            : (total > 0 ? static_cast<double>(record.DownloadedBytes) / static_cast<double>(total) : 0.0);
-        auto const name = record.Media.ShowName.value_or(record.Media.Title);
-        auto const sub = record.Media.ShowName ? record.Media.Title : record.FileName;
-        auto const subtitle = record.SubtitleLanguage
-            ? winrt::hstring{ L"Subtitle: " + *record.SubtitleLanguage }
-            : winrt::hstring{ L"No subtitle sidecar" };
-        auto const requiresNewSource = record.Failure
-            && HaloDesktop::Services::Downloads::RequiresNewSource(*record.Failure);
-        return winrt::make<winrt::HaloDesktop::implementation::DownloadItem>(
-            winrt::hstring{ record.JobId },
-            Tag(record),
-            winrt::hstring{ name },
-            winrt::hstring{ sub },
-            DisplayState(record.Status),
-            progress,
-            Detail(record),
-            info.Quality.value_or(L"UNKNOWN"),
-            info.Codec.value_or(L"UNKNOWN"),
-            FormatBytes(total),
-            subtitle,
-            winrt::hstring{ record.Media.VideoId },
-            winrt::hstring{ record.Media.Poster.value_or(L"") },
-            winrt::hstring{ record.Media.LandscapeArtwork.value_or(L"") },
-            requiresNewSource,
-            record.DownloadedBytes,
-            total,
-            winrt::hstring{ record.FileName },
-            AddedLabel(record.CreatedAt),
-            info.DynamicRange && *info.DynamicRange != L"SDR",
-            record.Status == DownloadStatus::Downloading ? record.ActiveConnections : 0u);
-    }
-
 }
 
 namespace HaloDesktop::Services
@@ -180,18 +41,11 @@ namespace HaloDesktop::Services
           m_session(std::move(session)),
           m_devicePreferences(std::move(devicePreferences)),
           m_artwork(std::move(artwork)),
-          m_dispatcher(std::move(dispatcher)),
-          m_transfers(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
-          m_ready(winrt::single_threaded_observable_vector<winrt::HaloDesktop::DownloadItem>()),
-          m_throughput(winrt::single_threaded_observable_vector<double>())
+          m_dispatcher(std::move(dispatcher))
     {
         if (!m_engine || !m_session || !m_devicePreferences || !m_artwork || !m_dispatcher)
         {
             throw std::invalid_argument{ "DownloadService requires all dependencies." };
-        }
-        for (std::uint32_t index = 0; index < ThroughputSlots; ++index)
-        {
-            m_throughput.Append(0.0);
         }
     }
 
@@ -211,18 +65,22 @@ namespace HaloDesktop::Services
             if (auto const self = weak.lock())
             {
                 auto const accountVersion = self->m_accountVersion.load();
-                self->m_dispatcher.TryEnqueue([weak, record, accountVersion]() mutable
+                // Stamped as the engine raises it, so a list read that began
+                // before this point knows the event may be missing from it.
+                auto const sequence = ++self->m_eventSequence;
+                self->m_dispatcher.TryEnqueue([weak, record, accountVersion, sequence]() mutable
                 {
                     if (auto const owner = weak.lock())
                     {
-                        owner->ApplyEngineProgress(std::move(record), accountVersion);
+                        owner->ApplyEngineProgress(std::move(record), accountVersion, sequence);
                     }
                 });
                 self->RequestSynchronize();
             }
         });
         m_throughputTimer = m_dispatcher.CreateTimer();
-        m_throughputTimer.Interval(ThroughputSampleInterval);
+        m_throughputTimer.Interval(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
+            DownloadsLogic::ThroughputSampleInterval));
         m_throughputTimer.IsRepeating(true);
         m_throughputTickToken = m_throughputTimer.Tick(
             [weak = weak_from_this()](
@@ -276,8 +134,10 @@ namespace HaloDesktop::Services
         m_freeBytes.reset();
         m_directory.clear();
         m_actionError.clear();
-        m_throughput.Clear();
-        RebuildObservables();
+        m_throughput.clear();
+        m_lastEventSequence.clear();
+        m_appliedSince = 0;
+        RecordsChanged();
         auto engine = m_engine;
         auto weak = weak_from_this();
         concurrency::create_task([engine, server, userId, weak, version, accountVersion]()
@@ -309,6 +169,7 @@ namespace HaloDesktop::Services
                     return;
                 }
                 self->m_boundAccountVersion.store(accountVersion);
+                snapshot.Since = self->m_eventSequence.load();
                 snapshot.Records = engine->List();
                 snapshot.FreeBytes = engine->FreeBytes();
                 snapshot.Directory = engine->DownloadDirectory();
@@ -335,22 +196,10 @@ namespace HaloDesktop::Services
     // survive a new transfer appearing while the bulk action is in effect.
     void DownloadService::PauseAll()
     {
-        std::set<std::wstring, std::less<>> retained;
-        std::vector<std::wstring> ids;
-        for (auto const& record : m_records)
-        {
-            if (Downloads::IsActive(record.Status))
-            {
-                ids.push_back(record.JobId);
-                retained.insert(record.JobId);
-            }
-            else if (record.Status == Downloads::DownloadStatus::Paused
-                && m_pauseAllIds.contains(record.JobId))
-            {
-                retained.insert(record.JobId);
-            }
-        }
-        m_pauseAllIds = std::move(retained);
+        auto plan = DownloadsLogic::PlanPauseAll(PausableRecords(), m_pauseAllIds);
+        m_pauseAllIds = std::move(plan.Remembered);
+        auto ids = std::move(plan.Pause);
+        NotifyChanged();
         if (ids.empty())
         {
             return;
@@ -374,16 +223,9 @@ namespace HaloDesktop::Services
         {
             return;
         }
-        std::vector<std::wstring> ids;
-        for (auto const& record : m_records)
-        {
-            if (record.Status == Downloads::DownloadStatus::Paused
-                && m_pauseAllIds.contains(record.JobId))
-            {
-                ids.push_back(record.JobId);
-            }
-        }
+        auto ids = DownloadsLogic::PlanResumeAll(PausableRecords(), m_pauseAllIds);
         m_pauseAllIds.clear();
+        NotifyChanged();
         RunEngineAction([engine = m_engine, ids = std::move(ids)]()
         {
             std::exception_ptr failure;
@@ -583,10 +425,16 @@ namespace HaloDesktop::Services
                 RequestSynchronize();
                 co_return DownloadStartResult{ DownloadStartOutcome::Failed, std::move(*refusal) };
             }
+            // The account changed while the engine created the download. The
+            // reference makes that check just before it commits and refuses
+            // with this sentence; this engine commits inside Start, so the new
+            // download stays with the account that asked for it and comes back
+            // when that account does. The current account did not get it, so
+            // the sheet is told why rather than shown a reasonless failure.
             if (accountVersion != m_accountVersion.load())
             {
                 m_engine->ClearAccount();
-                co_return DownloadStartResult{};
+                co_return DownloadStartResult{ DownloadStartOutcome::Failed, L"The active account changed while starting the download." };
             }
             RequestSynchronize();
             co_return DownloadStartResult{ DownloadStartOutcome::Started, {} };
@@ -677,27 +525,14 @@ namespace HaloDesktop::Services
     // told to move again. Queued counts as moving: it starts on its own.
     bool DownloadService::IsPausedAll() const noexcept
     {
-        if (m_pauseAllIds.empty())
+        try
+        {
+            return DownloadsLogic::IsPausedAll(PausableRecords(), m_pauseAllIds);
+        }
+        catch (...)
         {
             return false;
         }
-        auto trackedRecordFound = false;
-        for (auto const& record : m_records)
-        {
-            if (Downloads::IsActive(record.Status))
-            {
-                return false;
-            }
-            if (m_pauseAllIds.contains(record.JobId))
-            {
-                trackedRecordFound = true;
-                if (record.Status != Downloads::DownloadStatus::Paused)
-                {
-                    return false;
-                }
-            }
-        }
-        return trackedRecordFound;
     }
     bool DownloadService::HasCompleted(winrt::hstring const& videoId) const noexcept
     {
@@ -773,23 +608,8 @@ namespace HaloDesktop::Services
             return Downloads::IsActive(record.Status);
         }));
     }
-    double DownloadService::AggregateRate() const noexcept { return m_aggregateRate; }
-    winrt::hstring DownloadService::QueueLine() const
-    {
-        auto const active = ActiveCount();
-        if (active == 0)
-        {
-            return L"No active transfers";
-        }
-        std::wostringstream output;
-        output << active << (active == 1 ? L" active transfer" : L" active transfers");
-        return winrt::hstring{ output.str() };
-    }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> DownloadService::Transfers() const { return m_transfers; }
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> DownloadService::Ready() const { return m_ready; }
-    winrt::Windows::Foundation::Collections::IObservableVector<double> DownloadService::Throughput() const { return m_throughput; }
-    std::uint64_t DownloadService::StoredBytes() const noexcept { return m_storedBytes; }
-    std::uint64_t DownloadService::InFlightBytes() const noexcept { return m_inFlightBytes; }
+    std::vector<Downloads::DownloadRecord> const& DownloadService::Records() const noexcept { return m_records; }
+    std::vector<double> const& DownloadService::Throughput() const noexcept { return m_throughput; }
     std::optional<std::uint64_t> DownloadService::FreeBytes() const noexcept { return m_freeBytes; }
     std::filesystem::path DownloadService::DownloadDirectory() const { return m_directory; }
 
@@ -842,6 +662,7 @@ namespace HaloDesktop::Services
                 {
                     return;
                 }
+                snapshot.Since = self->m_eventSequence.load();
                 snapshot.Records = engine->List();
                 snapshot.FreeBytes = engine->FreeBytes();
                 snapshot.Directory = engine->DownloadDirectory();
@@ -863,7 +684,13 @@ namespace HaloDesktop::Services
         });
     }
 
-    void DownloadService::ApplyEngineProgress(Downloads::DownloadRecord record, std::uint64_t accountVersion)
+    // Only progress is applied from an event; every other change arrives with
+    // the list read the event also requested. A record applied here stamps its
+    // job, so a list read that began before the event cannot undo it.
+    void DownloadService::ApplyEngineProgress(
+        Downloads::DownloadRecord record,
+        std::uint64_t accountVersion,
+        std::uint64_t sequence)
     {
         if (!m_running || record.Status != DownloadStatus::Downloading
             || accountVersion != m_accountVersion.load()
@@ -882,39 +709,54 @@ namespace HaloDesktop::Services
         {
             return candidate.JobId == record.JobId;
         });
+        if (found != m_records.end() && found->UpdatedAt > record.UpdatedAt)
+        {
+            return;
+        }
+        auto& stamp = m_lastEventSequence[record.JobId];
+        stamp = (std::max)(stamp, sequence);
         if (found == m_records.end())
         {
             m_records.push_back(std::move(record));
+            std::stable_sort(m_records.begin(), m_records.end(), [](DownloadRecord const& left, DownloadRecord const& right)
+            {
+                return std::tie(left.CreatedAt, left.JobId) < std::tie(right.CreatedAt, right.JobId);
+            });
         }
-        else if (found->UpdatedAt <= record.UpdatedAt)
+        else
         {
             *found = std::move(record);
         }
-        RebuildObservables();
+        RecordsChanged();
     }
 
     void DownloadService::ApplySnapshot(Snapshot snapshot, std::uint64_t version)
     {
-        if (!m_running || version < m_snapshotFloor.load() || version <= m_appliedSnapshotVersion)
+        // Reads are requested in order but run on the thread pool, so a newer
+        // request can read the engine before an older one. Only the newest read
+        // of the engine applies: one that read before the last applied one
+        // carries older state for every job.
+        if (!m_running || version < m_snapshotFloor.load() || version <= m_appliedSnapshotVersion
+            || snapshot.Since < m_appliedSince)
         {
             return;
         }
         m_appliedSnapshotVersion = version;
-        for (auto& record : snapshot.Records)
+        m_appliedSince = snapshot.Since;
+        m_records = DownloadsLogic::MergeListRead(
+            std::move(snapshot.Records),
+            m_records,
+            m_lastEventSequence,
+            snapshot.Since);
+        // Every later read that applies began at or after this one, so a stamp
+        // it already covers can never make a job newer again.
+        std::erase_if(m_lastEventSequence, [since = snapshot.Since](auto const& entry)
         {
-            auto const current = std::find_if(m_records.begin(), m_records.end(), [&record](auto const& candidate)
-            {
-                return candidate.JobId == record.JobId;
-            });
-            if (current != m_records.end() && current->UpdatedAt > record.UpdatedAt)
-            {
-                record = *current;
-            }
-        }
-        m_records = std::move(snapshot.Records);
+            return entry.second <= since;
+        });
         m_freeBytes = snapshot.FreeBytes;
         m_directory = std::move(snapshot.Directory);
-        RebuildObservables();
+        RecordsChanged();
         EnrichMissingArtwork();
     }
 
@@ -969,33 +811,21 @@ namespace HaloDesktop::Services
         }
     }
 
-    void DownloadService::RebuildObservables()
+    void DownloadService::RecordsChanged()
     {
-        m_storedBytes = 0;
-        m_inFlightBytes = 0;
-        m_aggregateRate = 0.0;
-        std::vector<winrt::HaloDesktop::DownloadItem> transfers;
-        std::vector<winrt::HaloDesktop::DownloadItem> ready;
-        for (auto const& record : m_records)
-        {
-            m_aggregateRate += static_cast<double>(record.BytesPerSecond) / (1024.0 * 1024.0);
-            if (record.Status == DownloadStatus::Done)
-            {
-                m_storedBytes += record.TotalBytes > 0 ? record.TotalBytes : record.DownloadedBytes;
-                ready.push_back(DisplayItem(record));
-            }
-            else
-            {
-                m_inFlightBytes += record.DownloadedBytes;
-                transfers.push_back(DisplayItem(record));
-            }
-        }
-        m_transfers.Clear();
-        for (auto const& item : transfers) m_transfers.Append(item);
-        m_ready.Clear();
-        for (auto const& item : ready) m_ready.Append(item);
         UpdateThroughputTimer();
         NotifyChanged();
+    }
+
+    std::vector<DownloadsLogic::PausableRecord> DownloadService::PausableRecords() const
+    {
+        std::vector<DownloadsLogic::PausableRecord> result;
+        result.reserve(m_records.size());
+        for (auto const& record : m_records)
+        {
+            result.push_back(DownloadsLogic::PausableRecord{ .JobId = record.JobId, .Status = record.Status });
+        }
+        return result;
     }
 
     bool DownloadService::HasActiveTransfer() const noexcept
@@ -1015,8 +845,8 @@ namespace HaloDesktop::Services
         return false;
     }
 
-    // The chart is a clock, not an event log: one sample per second regardless
-    // of how many transfers are reporting, so thirty slots are thirty seconds.
+    // The chart is a clock, not an event log: one sample per bar regardless of
+    // how many transfers are reporting, so the 28 slots always span one minute.
     // Stopping is left to the sampler, which keeps ticking until the trace has
     // drained; ending it here would freeze the strip mid-plateau.
     void DownloadService::UpdateThroughputTimer()
@@ -1043,11 +873,10 @@ namespace HaloDesktop::Services
             if (record.Status == DownloadStatus::Downloading) bytesPerSecond += record.BytesPerSecond;
         }
         auto const megabytesPerSecond = static_cast<double>(bytesPerSecond) / (1024.0 * 1024.0);
-        if (m_throughput.Size() >= ThroughputSlots) m_throughput.RemoveAt(0);
-        m_throughput.Append(megabytesPerSecond);
+        DownloadsLogic::PushThroughputSample(m_throughput, megabytesPerSecond);
         // Megabits, not mebibytes: the number is compared against what a line is
         // sold as, and the store drops anything that is not a new peak. Only these
-        // once-a-second samples of the engine's windowed rate qualify; a raw
+        // periodic samples of the engine's windowed rate qualify; a raw
         // progress slice would record a burst as the line speed.
         m_devicePreferences->RecordMeasuredLineMbps(static_cast<double>(bytesPerSecond) * 8.0 / 1'000'000.0);
         // Sampling continues after the last transfer ends so the trace falls to

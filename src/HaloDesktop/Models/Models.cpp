@@ -7,9 +7,6 @@
 #if __has_include("ContinueItem.g.cpp")
 #include "ContinueItem.g.cpp"
 #endif
-#if __has_include("DownloadItem.g.cpp")
-#include "DownloadItem.g.cpp"
-#endif
 #if __has_include("DetailNavParams.g.cpp")
 #include "DetailNavParams.g.cpp"
 #endif
@@ -221,118 +218,6 @@ namespace winrt::HaloDesktop::implementation
     std::int32_t SourceGroup::Count() const noexcept { return m_count; }
     bool SourceGroup::Answered() const noexcept { return m_answered; }
     Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> SourceGroup::Sources() const { return m_sources; }
-
-    DownloadItem::DownloadItem(
-        hstring id,
-        hstring tag,
-        hstring name,
-        hstring sub,
-        HaloDesktop::DownloadState state,
-        double progress,
-        hstring detail,
-        hstring quality,
-        hstring codec,
-        hstring size,
-        hstring subs,
-        hstring videoId,
-        hstring poster,
-        hstring rowArtwork,
-        bool requiresNewSource,
-        std::uint64_t downloadedBytes,
-        std::uint64_t totalBytes,
-        hstring fileName,
-        hstring addedLabel,
-        bool hdr,
-        std::uint32_t activeConnections)
-        : m_id(std::move(id)),
-          m_tag(std::move(tag)),
-          m_name(std::move(name)),
-          m_sub(std::move(sub)),
-          m_state(state),
-          m_progress(std::clamp(progress, 0.0, 1.0)),
-          m_detail(std::move(detail)),
-          m_quality(std::move(quality)),
-          m_codec(std::move(codec)),
-          m_size(std::move(size)),
-          m_subs(std::move(subs)),
-          m_videoId(std::move(videoId)),
-          m_poster(std::move(poster)),
-          m_rowArtwork(std::move(rowArtwork)),
-          m_requiresNewSource(requiresNewSource),
-          m_downloadedBytes(downloadedBytes),
-          m_totalBytes(totalBytes),
-          m_fileName(std::move(fileName)),
-          m_addedLabel(std::move(addedLabel)),
-          m_hdr(hdr),
-          m_activeConnections(activeConnections)
-    {
-    }
-
-    hstring DownloadItem::Id() const { return m_id; }
-    hstring DownloadItem::Tag() const { return m_tag; }
-    hstring DownloadItem::Name() const { return m_name; }
-    hstring DownloadItem::Sub() const { return m_sub; }
-    HaloDesktop::DownloadState DownloadItem::State() const noexcept { return m_state; }
-    double DownloadItem::Progress() const noexcept { return m_progress; }
-    hstring DownloadItem::Detail() const { return m_detail; }
-    hstring DownloadItem::Quality() const { return m_quality; }
-    hstring DownloadItem::Codec() const { return m_codec; }
-    hstring DownloadItem::Size() const { return m_size; }
-    hstring DownloadItem::Subs() const { return m_subs; }
-    hstring DownloadItem::VideoId() const { return m_videoId; }
-    hstring DownloadItem::Poster() const { return m_poster; }
-    hstring DownloadItem::RowArtwork() const { return m_rowArtwork.empty() ? m_poster : m_rowArtwork; }
-    bool DownloadItem::RequiresNewSource() const noexcept { return m_requiresNewSource; }
-    std::uint64_t DownloadItem::DownloadedBytes() const noexcept { return m_downloadedBytes; }
-    std::uint64_t DownloadItem::TotalBytes() const noexcept { return m_totalBytes; }
-    hstring DownloadItem::FileName() const { return m_fileName; }
-    hstring DownloadItem::AddedLabel() const { return m_addedLabel; }
-    bool DownloadItem::Hdr() const noexcept { return m_hdr; }
-    std::uint32_t DownloadItem::ActiveConnections() const noexcept { return m_activeConnections; }
-
-    winrt::event_token DownloadItem::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler)
-    {
-        return m_propertyChanged.add(handler);
-    }
-
-    void DownloadItem::PropertyChanged(winrt::event_token const& token) noexcept
-    {
-        m_propertyChanged.remove(token);
-    }
-
-    void DownloadItem::UpdateProgress(double progress, hstring detail)
-    {
-        auto const nextProgress = std::clamp(progress, 0.0, 1.0);
-        if (m_progress != nextProgress)
-        {
-            m_progress = nextProgress;
-            RaisePropertyChanged(L"Progress");
-        }
-        if (m_detail != detail)
-        {
-            m_detail = std::move(detail);
-            RaisePropertyChanged(L"Detail");
-        }
-    }
-
-    void DownloadItem::UpdateState(HaloDesktop::DownloadState state, hstring detail)
-    {
-        if (m_state != state)
-        {
-            m_state = state;
-            RaisePropertyChanged(L"State");
-        }
-        if (m_detail != detail)
-        {
-            m_detail = std::move(detail);
-            RaisePropertyChanged(L"Detail");
-        }
-    }
-
-    void DownloadItem::RaisePropertyChanged(wchar_t const* propertyName)
-    {
-        m_propertyChanged(*this, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs{ propertyName });
-    }
 
     Addon::Addon(
         hstring id,

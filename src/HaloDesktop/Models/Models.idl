@@ -25,15 +25,6 @@ namespace HaloDesktop
         RateLimited = 5,
     };
 
-    enum DownloadState
-    {
-        Downloading = 0,
-        Queued = 1,
-        Paused = 2,
-        OnDisk = 3,
-        Failed = 4,
-    };
-
     [default_interface]
     runtimeclass MediaSummary
     {
@@ -124,32 +115,6 @@ namespace HaloDesktop
         Windows.Foundation.Collections.IVectorView<StreamSource> Sources { get; };
     };
 
-    runtimeclass DownloadItem : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
-    {
-        DownloadItem();
-        String Id { get; };
-        String Tag { get; };
-        String Name { get; };
-        String Sub { get; };
-        DownloadState State { get; };
-        Double Progress { get; };
-        String Detail { get; };
-        String Quality { get; };
-        String Codec { get; };
-        String Size { get; };
-        String Subs { get; };
-        String VideoId { get; };
-        String Poster { get; };
-        String RowArtwork { get; };
-        Boolean RequiresNewSource { get; };
-        UInt64 DownloadedBytes { get; };
-        UInt64 TotalBytes { get; };
-        String FileName { get; };
-        String AddedLabel { get; };
-        Boolean Hdr { get; };
-        // Connections receiving data right now; 0 unless downloading.
-        UInt32 ActiveConnections { get; };
-    };
 
     [default_interface]
     runtimeclass Addon

@@ -54,6 +54,11 @@ namespace HaloDesktop::Services::Downloads
         std::optional<std::wstring> VideoHash;
         std::optional<std::wstring> StreamName;
         std::optional<std::wstring> StreamTitle;
+        // The dynamic range token the source sheet parsed from the whole stream
+        // when the download started (`DV`, `HDR10`, `HLG`, `HDR`). Display only;
+        // absent on records written before it was kept, which then fall back to
+        // what the stored name and title say.
+        std::optional<std::wstring> DynamicRange;
     };
 
     struct SubtitleRequest final

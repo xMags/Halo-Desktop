@@ -284,6 +284,7 @@ namespace HaloDesktop::Services
                 .VideoHash = OptionalText(stream.VideoHash),
                 .StreamName = OptionalText(stream.Name),
                 .StreamTitle = OptionalText(stream.Title),
+                .DynamicRange = OptionalText(info.DynamicRange),
             },
             .Request = Downloads::ProtectedRequest{
                 .Url = std::wstring{ stream.Url.c_str() },

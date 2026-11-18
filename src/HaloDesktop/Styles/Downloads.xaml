@@ -1,0 +1,379 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The Downloads page's own palette and controls: the reference's `dl` tokens
+  (`styles/downloads.css`), the one page drawn on the phone's palette rather than
+  the app's. Merged at app level like the other style files (a page's root cannot read a
+  dictionary merged into its own Resources); every key carries the Dl prefix, so
+  the shell and every other page keep their own brushes.
+-->
+<ResourceDictionary
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <!-- The chart bar's and the stored segment's accent gradients. -->
+      <LinearGradientBrush x:Key="DlChartBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="#FF4CC2FF" />
+        <GradientStop Offset="1" Color="#FF0A84FF" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="DlFillBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#FF0A84FF" />
+        <GradientStop Offset="1" Color="#FF4CC2FF" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="DlBgBrush" Color="#FF0A0C11" />
+      <SolidColorBrush x:Key="DlPanelBrush" Color="#FF11131A" />
+      <SolidColorBrush x:Key="DlSurfaceBrush" Color="#FF14161D" />
+      <SolidColorBrush x:Key="DlSurfaceHighBrush" Color="#FF1C202A" />
+      <SolidColorBrush x:Key="DlSurfaceHoverBrush" Color="#FF232836" />
+      <SolidColorBrush x:Key="DlBorderBrush" Color="#FF252A35" />
+      <SolidColorBrush x:Key="DlRuleBrush" Color="#FF1C202A" />
+      <SolidColorBrush x:Key="DlTextBrush" Color="#FFF4F6FB" />
+      <SolidColorBrush x:Key="DlMetaBrush" Color="#FFC7CDD9" />
+      <SolidColorBrush x:Key="DlDimBrush" Color="#FF8B93A5" />
+      <SolidColorBrush x:Key="DlFaintBrush" Color="#FF6F7789" />
+      <SolidColorBrush x:Key="DlAccentBrush" Color="#FF0A84FF" />
+      <SolidColorBrush x:Key="DlAccentLightBrush" Color="#FF4CC2FF" />
+      <SolidColorBrush x:Key="DlAccentInkBrush" Color="#FF4CC2FF" />
+      <SolidColorBrush x:Key="DlAccentTintBrush" Color="#290A84FF" />
+      <SolidColorBrush x:Key="DlSelectedBrush" Color="#FF0F2440" />
+      <SolidColorBrush x:Key="DlDangerBrush" Color="#FFFF6B6B" />
+      <SolidColorBrush x:Key="DlDangerBgBrush" Color="#FF24161A" />
+      <SolidColorBrush x:Key="DlDangerHoverBrush" Color="#FF2E1A1F" />
+      <SolidColorBrush x:Key="DlDangerBorderBrush" Color="#FF5A2A2E" />
+      <SolidColorBrush x:Key="DlDangerTintBrush" Color="#24FF6B6B" />
+      <SolidColorBrush x:Key="DlSuccessBrush" Color="#FF5DD39E" />
+      <SolidColorBrush x:Key="DlSuccessBgBrush" Color="#1F5DD39E" />
+      <SolidColorBrush x:Key="DlGoldBrush" Color="#FFFFD479" />
+      <SolidColorBrush x:Key="DlOnGoldBrush" Color="#FF14161D" />
+      <SolidColorBrush x:Key="DlCautionBrush" Color="#FFFFD479" />
+      <SolidColorBrush x:Key="DlCautionTintBrush" Color="#24FFD479" />
+      <SolidColorBrush x:Key="DlTrackBrush" Color="#14F4F6FB" />
+      <SolidColorBrush x:Key="DlHoverBrush" Color="#0AF4F6FB" />
+      <SolidColorBrush x:Key="DlSolidBrush" Color="#FFF4F6FB" />
+      <SolidColorBrush x:Key="DlOnSolidBrush" Color="#FF0A0C11" />
+      <SolidColorBrush x:Key="DlOnAccentBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DlBadgeBrush" Color="#CC0A0C11" />
+      <SolidColorBrush x:Key="DlBadgeInkBrush" Color="#FFF4F6FB" />
+      <SolidColorBrush x:Key="DlPlayBrush" Color="#EBF4F6FB" />
+      <SolidColorBrush x:Key="DlOnPlayBrush" Color="#FF0A0C11" />
+    </ResourceDictionary>
+    <!-- The light page: the app's light inks on the phone palette's structure. Its
+         solid button is the accent, since the dark page's white slab would invert
+         to black here. -->
+    <ResourceDictionary x:Key="Light">
+      <!-- The chart bar's and the stored segment's accent gradients. -->
+      <LinearGradientBrush x:Key="DlChartBarBrush" StartPoint="0.5,0" EndPoint="0.5,1">
+        <GradientStop Offset="0" Color="#FF3D93EE" />
+        <GradientStop Offset="1" Color="#FF0070E0" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="DlFillBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#FF0070E0" />
+        <GradientStop Offset="1" Color="#FF3D93EE" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="DlBgBrush" Color="#FFF4F6FA" />
+      <SolidColorBrush x:Key="DlPanelBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DlSurfaceBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DlSurfaceHighBrush" Color="#FFEEF0F4" />
+      <SolidColorBrush x:Key="DlSurfaceHoverBrush" Color="#FFE5E8EE" />
+      <SolidColorBrush x:Key="DlBorderBrush" Color="#FFDDE1E8" />
+      <SolidColorBrush x:Key="DlRuleBrush" Color="#FFECEEF2" />
+      <SolidColorBrush x:Key="DlTextBrush" Color="#FF0E1220" />
+      <SolidColorBrush x:Key="DlMetaBrush" Color="#FF3B4354" />
+      <SolidColorBrush x:Key="DlDimBrush" Color="#FF5D6577" />
+      <SolidColorBrush x:Key="DlFaintBrush" Color="#FF8A92A3" />
+      <SolidColorBrush x:Key="DlAccentBrush" Color="#FF0070E0" />
+      <SolidColorBrush x:Key="DlAccentLightBrush" Color="#FF3D93EE" />
+      <SolidColorBrush x:Key="DlAccentInkBrush" Color="#FF0070E0" />
+      <SolidColorBrush x:Key="DlAccentTintBrush" Color="#1A0070E0" />
+      <SolidColorBrush x:Key="DlSelectedBrush" Color="#FFDCEBFB" />
+      <SolidColorBrush x:Key="DlDangerBrush" Color="#FFD1343B" />
+      <SolidColorBrush x:Key="DlDangerBgBrush" Color="#FFFDE7E9" />
+      <SolidColorBrush x:Key="DlDangerHoverBrush" Color="#FFFBD9DD" />
+      <SolidColorBrush x:Key="DlDangerBorderBrush" Color="#FFF1B5BB" />
+      <SolidColorBrush x:Key="DlDangerTintBrush" Color="#14C42B1C" />
+      <SolidColorBrush x:Key="DlSuccessBrush" Color="#FF13875A" />
+      <SolidColorBrush x:Key="DlSuccessBgBrush" Color="#1A13875A" />
+      <SolidColorBrush x:Key="DlGoldBrush" Color="#FFF2BD4F" />
+      <SolidColorBrush x:Key="DlOnGoldBrush" Color="#FF14161D" />
+      <SolidColorBrush x:Key="DlCautionBrush" Color="#FFA45F00" />
+      <SolidColorBrush x:Key="DlCautionTintBrush" Color="#1FA45F00" />
+      <SolidColorBrush x:Key="DlTrackBrush" Color="#1414161D" />
+      <SolidColorBrush x:Key="DlHoverBrush" Color="#0A14161D" />
+      <SolidColorBrush x:Key="DlSolidBrush" Color="#FF0070E0" />
+      <SolidColorBrush x:Key="DlOnSolidBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DlOnAccentBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="DlBadgeBrush" Color="#CC0A0C11" />
+      <SolidColorBrush x:Key="DlBadgeInkBrush" Color="#FFF4F6FB" />
+      <SolidColorBrush x:Key="DlPlayBrush" Color="#EBF4F6FB" />
+      <SolidColorBrush x:Key="DlOnPlayBrush" Color="#FF0A0C11" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
+
+  <!-- The app's mono face, named here so this dictionary needs nothing from outside it. -->
+  <FontFamily x:Key="DlMonoFont">ms-appx:///Assets/Fonts/JetBrainsMono-Regular.ttf#JetBrains Mono</FontFamily>
+
+  <!-- `.kicker` on this page: mono 12px, wide tracking. -->
+  <Style x:Key="DlKickerStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource DlMonoFont}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="CharacterSpacing" Value="80" />
+    <Setter Property="Foreground" Value="{ThemeResource DlDimBrush}" />
+  </Style>
+  <Style x:Key="DlMonoStyle" TargetType="TextBlock">
+    <Setter Property="FontFamily" Value="{StaticResource DlMonoFont}" />
+    <Setter Property="FontSize" Value="12" />
+    <Setter Property="Foreground" Value="{ThemeResource DlDimBrush}" />
+    <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+    <Setter Property="TextWrapping" Value="NoWrap" />
+  </Style>
+
+  <!--
+    `.dl-btn` and its variants. The hover is a wash laid over the fill rather than a
+    swapped fill, so one template serves the plain, solid, accent and red buttons
+    and every fill stays a ThemeResource.
+  -->
+  <Style x:Key="DlButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="40" />
+    <Setter Property="Padding" Value="16,0" />
+    <Setter Property="CornerRadius" Value="10" />
+    <Setter Property="BorderThickness" Value="1" />
+    <Setter Property="BorderBrush" Value="{ThemeResource DlBorderBrush}" />
+    <Setter Property="Background" Value="{ThemeResource DlSurfaceHighBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource DlTextBrush}" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="FontWeight" Value="SemiBold" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <Grid
+            x:Name="Root"
+            Background="{TemplateBinding Background}"
+            BorderBrush="{TemplateBinding BorderBrush}"
+            BorderThickness="{TemplateBinding BorderThickness}"
+            CornerRadius="{TemplateBinding CornerRadius}">
+            <Border x:Name="HoverLayer" Background="{ThemeResource DlHoverBrush}" Opacity="0" />
+            <ContentPresenter
+              x:Name="ContentPresenter"
+              Padding="{TemplateBinding Padding}"
+              HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+              VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontFamily="{TemplateBinding FontFamily}"
+              FontSize="{TemplateBinding FontSize}"
+              FontWeight="{TemplateBinding FontWeight}"
+              Foreground="{TemplateBinding Foreground}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="ContentPresenter.Opacity" Value="0.8" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+  <!-- `.dl-btn-block`: full width, 44px, radius 12, 15px. -->
+  <Style x:Key="DlBlockButtonStyle" BasedOn="{StaticResource DlButtonStyle}" TargetType="Button">
+    <Setter Property="Height" Value="44" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="CornerRadius" Value="12" />
+    <Setter Property="FontSize" Value="15" />
+  </Style>
+  <!-- `.dl-btn-play`: the solid primary, 46px. -->
+  <Style x:Key="DlPlayButtonStyle" BasedOn="{StaticResource DlBlockButtonStyle}" TargetType="Button">
+    <Setter Property="Height" Value="46" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="{ThemeResource DlSolidBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource DlOnSolidBrush}" />
+  </Style>
+  <!-- `.dl-btn-accent`. -->
+  <Style x:Key="DlAccentButtonStyle" BasedOn="{StaticResource DlButtonStyle}" TargetType="Button">
+    <Setter Property="BorderBrush" Value="Transparent" />
+    <Setter Property="Background" Value="{ThemeResource DlAccentBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource DlOnAccentBrush}" />
+  </Style>
+  <!-- `.dl-btn-delete`: destructive, so red. -->
+  <Style x:Key="DlDeleteButtonStyle" BasedOn="{StaticResource DlBlockButtonStyle}" TargetType="Button">
+    <Setter Property="BorderBrush" Value="{ThemeResource DlDangerBorderBrush}" />
+    <Setter Property="Background" Value="{ThemeResource DlDangerBgBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource DlDangerBrush}" />
+  </Style>
+  <!-- `.dl-icon-btn`: 40px square. -->
+  <Style x:Key="DlIconButtonStyle" BasedOn="{StaticResource DlButtonStyle}" TargetType="Button">
+    <Setter Property="Width" Value="40" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="FontFamily" Value="Segoe Fluent Icons" />
+    <Setter Property="FontSize" Value="13" />
+    <Setter Property="FontWeight" Value="Normal" />
+  </Style>
+  <!-- `.dl-icon-btn-danger`: the red trash. -->
+  <Style x:Key="DlDangerIconButtonStyle" BasedOn="{StaticResource DlIconButtonStyle}" TargetType="Button">
+    <Setter Property="Foreground" Value="{ThemeResource DlDangerBrush}" />
+  </Style>
+
+  <!-- A hit target with no chrome of its own, for the ready card: the card draws its hover. -->
+  <Style x:Key="DlBareButtonStyle" TargetType="Button">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="BorderThickness" Value="0" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="VerticalContentAlignment" Value="Stretch" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="Button">
+          <ContentPresenter
+            x:Name="ContentPresenter"
+            Padding="{TemplateBinding Padding}"
+            HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}"
+            VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}"
+            AutomationProperties.AccessibilityView="Raw"
+            Background="Transparent"
+            Content="{TemplateBinding Content}"
+            CornerRadius="{TemplateBinding CornerRadius}" />
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The filter tray's pills: `.dl-screen .tray-pills .tray-btn`. -->
+  <Style x:Key="DlFilterPillStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="14,7" />
+    <Setter Property="FontSize" Value="14" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="9">
+            <Border x:Name="HoverLayer" Background="{ThemeResource DlHoverBrush}" CornerRadius="9" Opacity="0" />
+            <Border x:Name="SelectionLayer" Background="{ThemeResource DlSelectedBrush}" CornerRadius="9" Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              Foreground="{ThemeResource DlMetaBrush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource DlAccentInkBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
+    A queue row's container: `.dl-row`. Selection is the view model's and drawn by
+    the row itself, so the container only adds the hover wash and the 12px corners.
+  -->
+  <Style x:Key="DlQueueItemStyle" TargetType="ListViewItem">
+    <Setter Property="Margin" Value="-10,0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Stretch" />
+    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="ListViewItem">
+          <Grid CornerRadius="12">
+            <Border x:Name="HoverLayer" Background="{ThemeResource DlHoverBrush}" CornerRadius="12" Opacity="0" />
+            <ContentPresenter
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Stretch"
+              HorizontalContentAlignment="Stretch"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Selected" />
+                <VisualState x:Name="PointerOverSelected">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="PressedSelected">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+</ResourceDictionary>

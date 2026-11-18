@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Services/Downloads/TransferEngine.h"
+#include "Services/DownloadsLogicPolicy.h"
 #include "Services/ServiceInterfaces.h"
 
 #include <atomic>
@@ -9,6 +10,7 @@
 #include <mutex>
 #include <optional>
 #include <set>
+#include <string>
 #include <unordered_map>
 #include <vector>
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -67,13 +69,8 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::vector<Downloads::VideoDownload> DownloadsFor(
             winrt::hstring const& videoId) const override;
         [[nodiscard]] std::int32_t ActiveCount() const noexcept override;
-        [[nodiscard]] double AggregateRate() const noexcept override;
-        [[nodiscard]] winrt::hstring QueueLine() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Transfers() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> Ready() const override;
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<double> Throughput() const override;
-        [[nodiscard]] std::uint64_t StoredBytes() const noexcept override;
-        [[nodiscard]] std::uint64_t InFlightBytes() const noexcept override;
+        [[nodiscard]] std::vector<Downloads::DownloadRecord> const& Records() const noexcept override;
+        [[nodiscard]] std::vector<double> const& Throughput() const noexcept override;
         [[nodiscard]] std::optional<std::uint64_t> FreeBytes() const noexcept override;
         [[nodiscard]] std::filesystem::path DownloadDirectory() const override;
         [[nodiscard]] concurrency::task<void> SetDownloadDirectoryAsync(
@@ -88,13 +85,18 @@ namespace HaloDesktop::Services
             std::vector<Downloads::DownloadRecord> Records;
             std::optional<std::uint64_t> FreeBytes;
             std::filesystem::path Directory;
+            // The engine event sequence when the list read began: events after
+            // it may be missing from the list, and the records that applied
+            // them win for their jobs.
+            std::uint64_t Since{};
         };
 
         void RequestSynchronize();
-        void ApplyEngineProgress(Downloads::DownloadRecord record, std::uint64_t accountVersion);
+        void ApplyEngineProgress(Downloads::DownloadRecord record, std::uint64_t accountVersion, std::uint64_t sequence);
         void ApplySnapshot(Snapshot snapshot, std::uint64_t version);
         void EnrichMissingArtwork();
-        void RebuildObservables();
+        void RecordsChanged();
+        [[nodiscard]] std::vector<DownloadsLogic::PausableRecord> PausableRecords() const;
         void SampleThroughput();
         void UpdateThroughputTimer();
         [[nodiscard]] bool HasActiveTransfer() const noexcept;
@@ -117,12 +119,11 @@ namespace HaloDesktop::Services
         // slots always mean seconds no matter how many transfers are reporting.
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_throughputTimer{ nullptr };
         winrt::event_token m_throughputTickToken{};
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_transfers{ nullptr };
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::DownloadItem> m_ready{ nullptr };
-        winrt::Windows::Foundation::Collections::IObservableVector<double> m_throughput{ nullptr };
+        // MB/s, one sample per chart bar, oldest first; at most ThroughputSlots.
+        std::vector<double> m_throughput;
         std::vector<Downloads::DownloadRecord> m_records;
         std::unordered_map<DownloadChangedToken, DownloadChangedHandler> m_handlers;
-        std::set<std::wstring, std::less<>> m_pauseAllIds;
+        DownloadsLogic::JobIdSet m_pauseAllIds;
         std::set<std::wstring, std::less<>> m_artworkPending;
         Downloads::DownloadChangedToken m_engineToken{};
         DownloadChangedToken m_nextToken{ 1 };
@@ -130,13 +131,17 @@ namespace HaloDesktop::Services
         std::atomic_uint64_t m_snapshotFloor{ 0 };
         std::atomic_uint64_t m_accountVersion{ 0 };
         std::atomic_uint64_t m_boundAccountVersion{ 0 };
+        // Stamped on every engine event as it is raised, on the engine's thread.
+        std::atomic_uint64_t m_eventSequence{ 0 };
+        // The sequence of the last event each job's current record applied.
+        // UI thread only; cleared with the account.
+        std::unordered_map<std::wstring, std::uint64_t> m_lastEventSequence;
         std::mutex m_accountMutex;
         std::uint64_t m_appliedSnapshotVersion{};
-        std::uint64_t m_storedBytes{};
-        std::uint64_t m_inFlightBytes{};
+        // The event sequence the last applied list read began at.
+        std::uint64_t m_appliedSince{};
         std::optional<std::uint64_t> m_freeBytes;
         std::filesystem::path m_directory;
-        double m_aggregateRate{};
         bool m_running{};
         winrt::hstring m_actionError;
     };

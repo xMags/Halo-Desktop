@@ -29,6 +29,7 @@
 #include "WatchOutboxTests.h"
 #include "CallQueueTests.h"
 #include "SegmentPlannerTests.h"
+#include "DownloadsPageTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -919,34 +920,30 @@ namespace
             std::istreambuf_iterator<char>{ input },
             std::istreambuf_iterator<char>{} };
         constexpr std::string_view mutableProperties[]{
-            "Tag",
+            "EpisodeLabel",
+            "EpisodeLabelVisibility",
             "Name",
             "Sub",
-            "DownloadingVisibility",
-            "QueuedVisibility",
-            "PausedVisibility",
-            "FailedVisibility",
+            "AccessibleName",
+            "MetaId",
+            "RowArtwork",
+            "ProgressDone",
+            "ProgressRest",
+            "MetaLead",
+            "MetaMiddle",
+            "MetaLast",
+            "ToneNormalVisibility",
+            "ToneCautionVisibility",
+            "ToneCriticalVisibility",
+            "UpNextVisibility",
+            "TransferBodyVisibility",
+            "ThumbOpacity",
+            "ChooseSourceVisibility",
             "PauseVisibility",
             "ResumeVisibility",
             "RetryVisibility",
-            "ChooseSourceVisibility",
-            "Progress",
-            "Detail",
-            "DownloadedLine",
-            "QualityBadgeTier",
-            "QualityBadgeDetail",
-            "QualityTone",
-            "SubsChip",
-            "SubsNormalVisibility",
-            "SubsMutedVisibility",
-            "RowArtwork",
-            "AddedLabel",
-            "LeadNormalVisibility",
-            "LeadCautionVisibility",
-            "LeadCriticalVisibility",
-            "ProgressAccentVisibility",
-            "ProgressCautionVisibility",
-            "ProgressCriticalVisibility",
+            "SelectedVisibility",
+            "TopRuleVisibility",
         };
         for (auto const property : mutableProperties)
         {
@@ -967,6 +964,37 @@ namespace
             }
             Require(foundExact, "a mutable download row property was not bound");
         }
+    }
+
+    // The ready card is handed a live row and reads every field of it, so each
+    // of its bindings must follow the row as a transfer finishes or a selection moves.
+    void TestReadyCardBindingsFollowTheRow()
+    {
+        auto xamlPath = std::filesystem::path{ L"DownloadReadyCard.xaml" };
+        if (!std::filesystem::is_regular_file(xamlPath))
+        {
+            xamlPath = L"src/HaloDesktop/Views/DownloadReadyCard.xaml";
+        }
+        std::ifstream input{ xamlPath, std::ios::binary };
+        if (!input)
+        {
+            throw std::runtime_error{ "the ready card XAML test resource was unavailable" };
+        }
+        auto const xaml = std::string{
+            std::istreambuf_iterator<char>{ input },
+            std::istreambuf_iterator<char>{} };
+        constexpr std::string_view binding{ "{x:Bind Row." };
+        auto count = 0;
+        for (auto position = xaml.find(binding); position != std::string::npos; position = xaml.find(binding, position + binding.size()))
+        {
+            ++count;
+            auto const close = xaml.find('}', position);
+            Require(close != std::string::npos, "a ready card binding was not closed");
+            Require(
+                std::string_view{ xaml }.substr(position, close - position + 1).ends_with(", Mode=OneWay}"),
+                "a ready card binding to its row was one-time");
+        }
+        Require(count >= 10, "the ready card no longer binds its row");
     }
 
     void TestLandscapeArtworkSelection()
@@ -1381,9 +1409,11 @@ int main()
         RunSourcesSheetTests();
         RunWatchOutboxTests();
         RunCallQueueTests();
+        RunDownloadsPageTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();
         TestMutableDownloadRowBindings();
+        TestReadyCardBindingsFollowTheRow();
         TestLandscapeArtworkSelection();
         TestBrowserSignInListenerCancellation();
         RunStandaloneStorageTests();

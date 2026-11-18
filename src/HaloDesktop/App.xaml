@@ -12,6 +12,7 @@
                 <ResourceDictionary Source="Styles/Typography.xaml" />
                 <ResourceDictionary Source="Styles/Controls.xaml" />
                 <ResourceDictionary Source="Styles/Detail.xaml" />
+                <ResourceDictionary Source="Styles/Downloads.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
     </Application.Resources>

@@ -233,6 +233,7 @@ namespace
         InsertOptionalString(object, L"videoHash", media.VideoHash);
         InsertOptionalString(object, L"streamName", media.StreamName);
         InsertOptionalString(object, L"streamTitle", media.StreamTitle);
+        InsertOptionalString(object, L"dynamicRange", media.DynamicRange);
         return object;
     }
 
@@ -256,6 +257,7 @@ namespace
             .VideoHash = OptionalString(object, L"videoHash"),
             .StreamName = OptionalString(object, L"streamName"),
             .StreamTitle = OptionalString(object, L"streamTitle"),
+            .DynamicRange = OptionalString(object, L"dynamicRange"),
         };
     }
 

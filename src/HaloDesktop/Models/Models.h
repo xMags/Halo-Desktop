@@ -3,7 +3,6 @@
 #include "Addon.g.h"
 #include "ContinueItem.g.h"
 #include "DetailNavParams.g.h"
-#include "DownloadItem.g.h"
 #include "Episode.g.h"
 #include "FeaturedItem.g.h"
 #include "MediaDetail.g.h"
@@ -217,86 +216,6 @@ namespace winrt::HaloDesktop::implementation
         Windows::Foundation::Collections::IVectorView<HaloDesktop::StreamSource> m_sources{ nullptr };
     };
 
-    struct DownloadItem : DownloadItemT<DownloadItem>
-    {
-        DownloadItem() = default;
-        DownloadItem(
-            hstring id,
-            hstring tag,
-            hstring name,
-            hstring sub,
-            HaloDesktop::DownloadState state,
-            double progress,
-            hstring detail,
-            hstring quality,
-            hstring codec,
-            hstring size,
-            hstring subs,
-            hstring videoId = {},
-            hstring poster = {},
-            hstring rowArtwork = {},
-            bool requiresNewSource = false,
-            std::uint64_t downloadedBytes = 0,
-            std::uint64_t totalBytes = 0,
-            hstring fileName = {},
-            hstring addedLabel = {},
-            bool hdr = false,
-            std::uint32_t activeConnections = 0);
-
-        [[nodiscard]] hstring Id() const;
-        [[nodiscard]] hstring Tag() const;
-        [[nodiscard]] hstring Name() const;
-        [[nodiscard]] hstring Sub() const;
-        [[nodiscard]] HaloDesktop::DownloadState State() const noexcept;
-        [[nodiscard]] double Progress() const noexcept;
-        [[nodiscard]] hstring Detail() const;
-        [[nodiscard]] hstring Quality() const;
-        [[nodiscard]] hstring Codec() const;
-        [[nodiscard]] hstring Size() const;
-        [[nodiscard]] hstring Subs() const;
-        [[nodiscard]] hstring VideoId() const;
-        [[nodiscard]] hstring Poster() const;
-        [[nodiscard]] hstring RowArtwork() const;
-        [[nodiscard]] bool RequiresNewSource() const noexcept;
-        [[nodiscard]] std::uint64_t DownloadedBytes() const noexcept;
-        [[nodiscard]] std::uint64_t TotalBytes() const noexcept;
-        [[nodiscard]] hstring FileName() const;
-        [[nodiscard]] hstring AddedLabel() const;
-        [[nodiscard]] bool Hdr() const noexcept;
-        [[nodiscard]] std::uint32_t ActiveConnections() const noexcept;
-
-        winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
-        void PropertyChanged(winrt::event_token const& token) noexcept;
-
-        void UpdateProgress(double progress, hstring detail);
-        void UpdateState(HaloDesktop::DownloadState state, hstring detail);
-
-    private:
-        void RaisePropertyChanged(wchar_t const* propertyName);
-
-        hstring m_id;
-        hstring m_tag;
-        hstring m_name;
-        hstring m_sub;
-        HaloDesktop::DownloadState m_state{ HaloDesktop::DownloadState::Queued };
-        double m_progress{};
-        hstring m_detail;
-        hstring m_quality;
-        hstring m_codec;
-        hstring m_size;
-        hstring m_subs;
-        hstring m_videoId;
-        hstring m_poster;
-        hstring m_rowArtwork;
-        bool m_requiresNewSource{};
-        std::uint64_t m_downloadedBytes{};
-        std::uint64_t m_totalBytes{};
-        hstring m_fileName;
-        hstring m_addedLabel;
-        bool m_hdr{};
-        std::uint32_t m_activeConnections{};
-        winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
-    };
 
     struct Addon : AddonT<Addon>
     {
@@ -528,7 +447,6 @@ namespace winrt::HaloDesktop::factory_implementation
     struct Episode : EpisodeT<Episode, implementation::Episode> {};
     struct StreamSource : StreamSourceT<StreamSource, implementation::StreamSource> {};
     struct SourceGroup : SourceGroupT<SourceGroup, implementation::SourceGroup> {};
-    struct DownloadItem : DownloadItemT<DownloadItem, implementation::DownloadItem> {};
     struct Addon : AddonT<Addon, implementation::Addon> {};
     struct ContinueItem : ContinueItemT<ContinueItem, implementation::ContinueItem> {};
     struct FeaturedItem : FeaturedItemT<FeaturedItem, implementation::FeaturedItem> {};
