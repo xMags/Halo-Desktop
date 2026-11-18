@@ -49,8 +49,9 @@
 //
 // The table goes to a sidecar beside the part, written only after the part is
 // flushed, so a later run resumes each segment and never trusts a byte that was
-// not on disk. A part without a sidecar is read the way it always was: its
-// length is what arrived.
+// not on disk. A part without a sidecar is trusted up to the smaller of its
+// length and the last count stored after a flush (SegmentedJob::FlushedBytes),
+// and cut back to it.
 namespace HaloDesktop::Services::Downloads
 {
     // Every wait the transfer makes. Production uses the defaults; tests shorten
@@ -102,8 +103,15 @@ namespace HaloDesktop::Services::Downloads
         std::uint64_t KnownTotal{};
         // The validator an earlier response gave.
         std::optional<std::wstring> Validator;
-        // The size the addon reported, used only when the source states none.
+        // The size the addon reported: an estimate for the free-space check
+        // and the stand-in check, never the length the body must reach.
         std::optional<std::uint64_t> SizeHint;
+        // The byte count last reported with Persist for this download (under
+        // Validator), or 0 when unknown. A part without a sidecar is trusted
+        // only up to it: after a power cut its length can include bytes that
+        // never reached the disk. 0, or more than the part holds, says
+        // nothing, and the part's length decides as it always did.
+        std::uint64_t FlushedBytes{};
     };
 
     struct SegmentedProgress final

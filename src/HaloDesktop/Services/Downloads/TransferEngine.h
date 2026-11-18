@@ -77,6 +77,11 @@ namespace HaloDesktop::Services::Downloads
         void Pause(std::wstring const& jobId);
         void Resume(std::wstring const& jobId);
         void Remove(std::wstring const& jobId);
+        // Remove for a download that has not finished: decided under the same
+        // removal gate the end of a run takes, so a download that finished
+        // first is left alone (with its file) instead of deleted. Returns
+        // false when it was left alone for that reason.
+        bool Cancel(std::wstring const& jobId);
         bool SetLandscapeArtwork(
             std::wstring const& jobId,
             std::wstring const& expectedAccount,
@@ -94,9 +99,22 @@ namespace HaloDesktop::Services::Downloads
         struct TransferResult;
         struct TransferError;
 
+        enum class RemovalScope
+        {
+            AnyState,
+            // Leaves a finished download alone.
+            UnfinishedOnly,
+        };
+
         // Remove, for a record of one of `owners`, or of the active account
-        // when that is null.
-        void RemoveOwned(std::wstring const& jobId, std::vector<std::wstring> const* owners);
+        // when that is null. False when `scope` left a finished download alone.
+        bool RemoveOwned(
+            std::wstring const& jobId,
+            std::vector<std::wstring> const* owners,
+            RemovalScope scope = RemovalScope::AnyState);
+        // Pause asked for by the viewer (`explicitPause`) or made because the
+        // owner changed, which adoption may undo (AdoptAccount).
+        void PauseFor(std::wstring const& jobId, bool explicitPause);
         void Worker(std::stop_token stopToken);
         [[nodiscard]] TransferResult TransferWithRetries(
             std::wstring const& jobId,

@@ -9,6 +9,7 @@
 #include "Services/Downloads/DownloadHttp.h"
 #include "Services/Downloads/SegmentPlanner.h"
 #include "Services/Downloads/SegmentedTransfer.h"
+#include "Storage/FileStorage.h"
 
 #include <algorithm>
 #include <array>
@@ -776,6 +777,8 @@ namespace
         std::chrono::milliseconds RangedDelay{};
         // How long every request waits for its answer.
         std::chrono::milliseconds ResponseDelay{};
+        // ResponseDelay applies to the first request only.
+        bool DelayFirstOnly{};
         // The first ranged answer sends a little and then nothing more.
         bool StallFirstRanged{};
         // Answers every request with a redirect here instead.
@@ -973,7 +976,9 @@ namespace
                     + "\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
                 return;
             }
-            if (m_options.ResponseDelay.count() > 0 && !Wait(m_options.ResponseDelay))
+            auto const delayed = m_options.ResponseDelay.count() > 0
+                && (!m_options.DelayFirstOnly || !m_delayedOnce.exchange(true));
+            if (delayed && !Wait(m_options.ResponseDelay))
             {
                 return;
             }
@@ -1075,6 +1080,7 @@ namespace
         std::atomic_size_t m_maxActive{};
         std::atomic_int m_forcedStatus{};
         std::atomic_bool m_stalledOnce{};
+        std::atomic_bool m_delayedOnce{};
         std::thread m_acceptor;
     };
 
@@ -1422,6 +1428,105 @@ namespace
         }
     }
 
+    // A source that states no size ends where its body ends. The addon's size
+    // hint, larger or smaller than the real file, must not hold it back.
+    void ASizeHintIsNeverTheLengthOfAnUnstatedBody()
+    {
+        auto const body = Content(1024u * 1024u);
+        for (auto const hint : { std::uint64_t{ 3u * 1024u * 1024u }, std::uint64_t{ 512u * 1024u } })
+        {
+            FileServer server{ FileServerOptions{ .Body = body, .StateSize = false, .Pace = std::chrono::milliseconds{ 1 } } };
+            Fixture fixture{ server.Url() };
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto job = fixture.Job();
+            job.SizeHint = hint;
+            auto const outcome = Run(job, cancel, host, Quick());
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()),
+                "a body of unstated size was held to the addon's size hint");
+            Require(outcome.Finished->Total == server.Body().size(), "an unstated size was not taken from the body");
+            auto const metadata = host.Metadata();
+            Require(metadata.has_value() && metadata->second == 0, "the size hint was reported as the source's size");
+        }
+    }
+
+    // A part without a table is trusted only up to the last count stored
+    // after a flush, and cut back to it; a count of 0, or one the part does not
+    // reach, leaves the length in charge as before.
+    void APartIsTrustedOnlyUpToItsFlushedCount()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u) } };
+        auto options = Quick();
+        options.Tuning.MaxConnections = 1;
+        {
+            Fixture fixture{ server.Url() };
+            // What a power cut can leave: the length grew, the last bytes never landed.
+            std::vector<std::uint8_t> part(server.Body().begin(), server.Body().begin() + 300000);
+            std::fill(part.begin() + 200000, part.end(), std::uint8_t{});
+            WriteBytes(fixture.Part(), part);
+            auto job = fixture.Job(server.Body().size(), WideEtag);
+            job.FlushedBytes = 200000;
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto const before = server.Requests();
+            auto const outcome = Run(job, cancel, host, options);
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()),
+                "bytes past the flushed count were kept");
+            auto const log = server.Log();
+            Require(log.size() == before + 1 && log[before].Range == std::optional<std::uint64_t>{ 200000 },
+                "the part did not resume from its flushed count");
+        }
+        {
+            Fixture fixture{ server.Url() };
+            WriteBytes(fixture.Part(), std::vector<std::uint8_t>(server.Body().begin(), server.Body().begin() + 300000));
+            auto job = fixture.Job(server.Body().size(), WideEtag);
+            job.FlushedBytes = 400000;
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto const before = server.Requests();
+            auto const outcome = Run(job, cancel, host, options);
+            Require(outcome.Finished.has_value() && fixture.PartMatches(server.Body()),
+                "a count past the part's length corrupted the resume");
+            auto const log = server.Log();
+            Require(log.size() == before + 1 && log[before].Range == std::optional<std::uint64_t>{ 300000 },
+                "a count past the part's length was trusted over the length");
+        }
+    }
+
+    // A download folder deep enough that a long temporary name for the table
+    // cannot be created. A short one still can; where even that is too long,
+    // the run stays on one connection instead of failing as a full disk.
+    void ADeepFolderStillDownloads()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(2u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 15 } } };
+        for (auto const partLength : { std::size_t{ 230 }, std::size_t{ 250 } })
+        {
+            TemporaryDirectory directory;
+            auto const base = directory.Path().wstring();
+            std::wstring const name = L"movie.mkv.part";
+            auto const pad = partLength - base.size() - 2 - name.size();
+            Require(pad > 0 && pad < 200, "the deep-folder test cannot build its path here");
+            auto const root = directory.Path() / std::wstring(pad, L'd');
+            std::filesystem::create_directories(root);
+            SegmentedJob const job{ .Url = server.Url(), .Part = root / name, .Root = root };
+            Require(job.Part.native().size() == partLength, "the deep-folder test built the wrong length");
+            std::atomic_bool cancel{};
+            FakeHost host;
+            auto const outcome = Run(job, cancel, host, Quick());
+            Require(outcome.Finished.has_value() && ReadBytes(job.Part) == server.Body(),
+                "a download in a deep folder did not finish");
+            Require(!std::filesystem::exists(Segments::TablePath(job.Part)), "the table outlived the download");
+            if (partLength == 230)
+            {
+                Require(host.MostConnections() > 1, "a folder with room for the table's short name stayed on one connection");
+            }
+            else
+            {
+                Require(host.MostConnections() <= 1, "a run that cannot keep a table used several connections");
+            }
+        }
+    }
+
     void APausedSegmentedDownloadResumesEverySegment()
     {
         FileServer server{ FileServerOptions{ .Body = Content(6u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 25 } } };
@@ -1624,6 +1729,9 @@ namespace
         DifferentBytesFromTwoConnectionsFailAndLeaveNothing();
         ASourceWithoutAValidatorStaysOnOneConnection();
         AnyUnmetConditionKeepsTheRunOnOneConnection();
+        ASizeHintIsNeverTheLengthOfAnUnstatedBody();
+        APartIsTrustedOnlyUpToItsFlushedCount();
+        ADeepFolderStillDownloads();
         APausedSegmentedDownloadResumesEverySegment();
         APartFromBeforeTablesResumesFromItsLength();
         AResumeThroughARedirectToAnotherOriginContinues();
@@ -1968,6 +2076,314 @@ namespace
             "a previous build's partial download did not resume from its length");
     }
 
+    // Holds the download index open the way another program might, until
+    // released. Sharing reads only: the index can be read but not replaced.
+    // Sharing nothing: it cannot be read either.
+    class IndexHold final
+    {
+    public:
+        IndexHold(std::filesystem::path const& index, DWORD share)
+            : m_file(CreateFileW(index.c_str(), GENERIC_READ, share, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr))
+        {
+            if (!m_file)
+            {
+                throw std::runtime_error{ "The test could not hold the download index." };
+            }
+        }
+
+        void Release() noexcept
+        {
+            m_file.close();
+        }
+
+    private:
+        winrt::file_handle m_file;
+    };
+
+    [[nodiscard]] std::filesystem::path IndexOf(TemporaryDirectory const& temporary)
+    {
+        return temporary.Path() / L"downloads-index.json";
+    }
+
+    // The worker reads the index after taking a job's lease. A read that fails
+    // (held open by another program) puts the job back instead of ending the
+    // process, and it runs once the index can be read.
+    void AnUnreadableIndexPutsTheJobBack()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(256u * 1024u) } };
+        TemporaryDirectory temporary;
+        auto record = SeededRecord(L"0123456789abcdef0123456789abcd01", L"movie:index-held", temporary.Path() / L"downloads", L"index-held.mkv", DownloadStatus::Queued);
+        auto request = MakeRequest(server.Url(), L"index-held.mkv", server.Body().size(), false, std::nullopt, L"movie:index-held");
+        record.SourceFingerprint = Sha256Hex(request.Request.Url);
+        record.TotalBytes = 0;
+        record.DownloadedBytes = 0;
+        std::filesystem::create_directories(record.RootPath);
+        DownloadIndexStore seed{ temporary.Path() };
+        seed.Apply({ record });
+        {
+            RequestVault vault{ temporary.Path() / L"download-requests" };
+            vault.Write(record.JobId, std::move(request.Request));
+        }
+        // The job's own lease keeps the worker away until the index is held.
+        auto lease = std::make_unique<HaloDesktop::Storage::FileMutationLock>(
+            seed.Paths().DataRoot / (L"download-job-" + record.JobId));
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        IndexHold hold{ IndexOf(temporary), 0 };
+        lease.reset();
+        // Longer than every read retry, so at least one worker read fails.
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 1500 });
+        Require(server.Requests() == 0, "a job ran although its index could not be read");
+        hold.Release();
+        auto const done = WaitForStatus(engine, record.JobId, DownloadStatus::Done);
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(),
+            "a job put back after an unreadable index was corrupted");
+    }
+
+    // An index that cannot be written while a download runs and ends: the
+    // progress stores are skipped, the finished download is shown as done,
+    // and the next launch finishes it from the file in place without asking
+    // the source again.
+    void AnIndexThatCannotBeWrittenDoesNotFailADownload()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(2u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 10 } } };
+        TemporaryDirectory temporary;
+        auto options = QuickEngine();
+        options.Transfer.Tuning.MaxConnections = 1;
+        options.Transfer.Timeouts.Durable = std::chrono::milliseconds{ 50 };
+        DownloadRecord done;
+        std::size_t requests{};
+        {
+            TransferEngine engine{ temporary.Path(), {}, options };
+            engine.SetAccount(L"https://account.invalid", L"user-a");
+            auto const started = engine.Start(MakeRequest(server.Url(), L"unwritable.mkv", server.Body().size(), false, std::nullopt, L"movie:unwritable"));
+            // The part has data only after the start and the response were stored.
+            WaitForFile(started.PartialPath());
+            IndexHold hold{ IndexOf(temporary), FILE_SHARE_READ };
+            done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+            Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(),
+                "a download that could not store its progress was corrupted");
+            Require(ReadText(IndexOf(temporary)).find("\"downloading\"") != std::string::npos,
+                "the test did not keep the end of the download from being stored");
+            hold.Release();
+            requests = server.Requests();
+        }
+        TransferEngine relaunched{ temporary.Path(), {}, options };
+        relaunched.SetAccount(L"https://account.invalid", L"user-a");
+        auto const finished = WaitForStatus(relaunched, done.JobId, DownloadStatus::Done);
+        Require(server.Requests() == requests, "a finished file was downloaded again at the next launch");
+        Require(ReadBytes(relaunched.FilesForPlayback(finished.JobId).VideoPath) == server.Body(),
+            "a finished file was changed at the next launch");
+        Require(ReadText(IndexOf(temporary)).find("\"done\"") != std::string::npos,
+            "the next launch did not store the finished download");
+    }
+
+    // One source under two videos would give both records one file name, and
+    // removing one would delete the other's video.
+    void TwoDownloadsNeverShareAFile()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u), .Pace = std::chrono::milliseconds{ 20 } } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const first = engine.Start(MakeRequest(server.Url(), L"same-name.mkv", server.Body().size(), false, std::nullopt, L"movie:name-one"));
+        bool refused{};
+        try
+        {
+            static_cast<void>(engine.Start(MakeRequest(server.Url(), L"same-name.mkv", server.Body().size(), false, std::nullopt, L"movie:name-two")));
+        }
+        catch (std::runtime_error const&)
+        {
+            refused = true;
+        }
+        Require(refused, "a second download was given a file another download names");
+        Require(engine.List().size() == 1, "a refused download was listed");
+        static_cast<void>(WaitForStatus(engine, first.JobId, DownloadStatus::Done));
+
+        // Two such records already in the index (written before this check):
+        // removing the unfinished one keeps the file the finished one names.
+        auto const folder = temporary.Path() / L"downloads";
+        auto kept = SeededRecord(L"00000000000000000000000000000011", L"movie:shared-kept", folder, L"shared-seed.mkv", DownloadStatus::Done);
+        auto removed = SeededRecord(L"00000000000000000000000000000012", L"movie:shared-removed", folder, L"shared-seed.mkv", DownloadStatus::Paused);
+        removed.ExplicitPause = true;
+        WriteBytes(kept.TargetPath(), std::vector<std::uint8_t>(5, 7));
+        DownloadIndexStore seed{ temporary.Path() };
+        seed.Apply({ kept, removed });
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        engine.Remove(removed.JobId);
+        Require(!ListsJob(engine, removed.JobId), "the removed record was still listed");
+        Require(std::filesystem::exists(kept.TargetPath()), "removing one record deleted the file another names");
+        auto const stillDone = FindJob(engine, kept.JobId);
+        Require(stillDone && stillDone->Status == DownloadStatus::Done, "the record that kept its file was not left done");
+    }
+
+    // Cancel is for a download that has not finished. One that finished first
+    // keeps its file; Delete of a ready download still removes it.
+    void ACancelLeavesAFinishedDownload()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(256u * 1024u) } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const started = engine.Start(MakeRequest(server.Url(), L"cancel-done.mkv", server.Body().size(), false, std::nullopt, L"movie:cancel-done"));
+        auto const done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+        Require(!engine.Cancel(done.JobId), "a cancel removed a finished download");
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(), "a cancel touched a finished download's file");
+        engine.Remove(done.JobId);
+        Require(!ListsJob(engine, done.JobId) && !std::filesystem::exists(done.TargetPath()),
+            "deleting a ready download did not remove it");
+
+        FileServer slow{ FileServerOptions{ .Body = Content(4u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 40 } } };
+        auto const running = engine.Start(MakeRequest(slow.Url(), L"cancel-running.mkv", slow.Body().size(), false, std::nullopt, L"movie:cancel-running"));
+        WaitForFile(running.PartialPath());
+        Require(engine.Cancel(running.JobId), "a running download was not cancelled");
+        WaitUntil([&engine, &running]()
+        {
+            return !ListsJob(engine, running.JobId)
+                && !std::filesystem::exists(running.PartialPath())
+                && !std::filesystem::exists(TablePathOf(running));
+        }, "a cancelled download left its partial file");
+    }
+
+    [[nodiscard]] DownloadRecord SeedQueuedJob(
+        TemporaryDirectory const& temporary,
+        FileServer const& server,
+        std::wstring jobId,
+        std::wstring const& videoId,
+        std::wstring const& fileName)
+    {
+        auto record = SeededRecord(std::move(jobId), videoId, temporary.Path() / L"downloads", fileName, DownloadStatus::Queued);
+        auto request = MakeRequest(server.Url(), fileName, server.Body().size(), false, std::nullopt, videoId);
+        record.SourceFingerprint = Sha256Hex(request.Request.Url);
+        record.TotalBytes = 0;
+        record.DownloadedBytes = 0;
+        std::filesystem::create_directories(record.RootPath);
+        DownloadIndexStore seed{ temporary.Path() };
+        seed.Apply({ record });
+        RequestVault vault{ temporary.Path() / L"download-requests" };
+        vault.Write(record.JobId, std::move(request.Request));
+        return record;
+    }
+
+    // A pause that comes after the worker took the job's lease but before it
+    // started the transfer: the pause is recorded first and the worker keeps
+    // it, so the call neither waits out a whole download nor loses the pause.
+    void APauseBeforeTheTransferStartsHolds()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(1024u * 1024u), .Pace = std::chrono::milliseconds{ 10 } } };
+        TemporaryDirectory temporary;
+        auto const record = SeedQueuedJob(temporary, server, L"0123456789abcdef0123456789abcd02", L"movie:pause-window", L"pause-window.mkv");
+        auto lease = std::make_unique<HaloDesktop::Storage::FileMutationLock>(
+            DownloadIndexStore{ temporary.Path() }.Paths().DataRoot / (L"download-job-" + record.JobId));
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        // The index held unreadable for a moment keeps the worker between
+        // taking the lease and starting the transfer.
+        IndexHold hold{ IndexOf(temporary), 0 };
+        lease.reset();
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 300 });
+        std::exception_ptr pauseFailure;
+        std::jthread pause{ [&engine, &record, &pauseFailure]()
+        {
+            try { engine.Pause(record.JobId); }
+            catch (...) { pauseFailure = std::current_exception(); }
+        } };
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
+        hold.Release();
+        pause.join();
+        Require(!pauseFailure, "a pause before the transfer started failed");
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 300 });
+        auto const paused = FindJob(engine, record.JobId);
+        Require(paused && paused->Status == DownloadStatus::Paused, "a pause before the transfer started was lost");
+        Require(server.Requests() == 0, "a download paused before it started was transferred");
+    }
+
+    // A pause or exit while the subtitle is fetched does not finish the
+    // download without it: it is fetched by the next run, from the file in
+    // place, without downloading the video again.
+    void APauseDuringTheSubtitleKeepsItForLater()
+    {
+        FileServer video{ FileServerOptions{ .Body = Content(128u * 1024u) } };
+        FileServer subtitle{ FileServerOptions{ .Body = Content(100), .ResponseDelay = std::chrono::seconds{ 8 }, .DelayFirstOnly = true } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const started = engine.Start(MakeRequest(
+            video.Url(),
+            L"subtitle-later.mkv",
+            video.Body().size(),
+            false,
+            SubtitleRequest{ .Url = subtitle.Url(L"/subtitle.srt"), .Language = L"eng", .Id = L"subtitle:later" },
+            L"movie:subtitle-later"));
+        WaitUntil([&started]() { return std::filesystem::exists(started.TargetPath()); },
+            "the video never completed");
+        engine.Pause(started.JobId);
+        auto const paused = FindJob(engine, started.JobId);
+        Require(paused && paused->Status == DownloadStatus::Paused, "a pause during the subtitle finished the download");
+        Require(!paused->SubtitleFileName, "a subtitle that was stopped was recorded");
+        Require(ReadBytes(started.TargetPath()) == video.Body(), "a pause during the subtitle touched the video");
+        auto const requests = video.Requests();
+        engine.Resume(started.JobId);
+        auto const done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+        Require(done.SubtitleFileName.has_value(), "the stopped subtitle was not fetched on the next run");
+        auto const files = engine.FilesForPlayback(done.JobId);
+        Require(files.SubtitlePath.has_value(), "the stopped subtitle was not saved on the next run");
+        Require(ReadBytes(files.VideoPath) == video.Body(), "the next run changed the video");
+        Require(video.Requests() == requests, "the next run downloaded the video again");
+    }
+
+    // Signing in after using Halo without an account: the sign-in paused the
+    // previous owner's running download, and the adoption carries it on. A
+    // download the viewer paused stays paused.
+    void AnAdoptedDownloadCarriesOnUnlessTheViewerPausedIt()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(2u * 1024u * 1024u), .Pace = std::chrono::milliseconds{ 20 } } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://device.invalid", L"guest");
+        auto const running = engine.Start(MakeRequest(server.Url(), L"carried.mkv", server.Body().size(), false, std::nullopt, L"movie:carried"));
+        auto const held = engine.Start(MakeRequest(server.Url(L"/held.mkv"), L"held.mkv", server.Body().size(), false, std::nullopt, L"movie:held"));
+        engine.Pause(held.JobId);
+        WaitForFile(running.PartialPath());
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        engine.AdoptAccount(
+            MakeAccountKey(L"https://device.invalid", L"guest"),
+            MakeAccountKey(L"https://account.invalid", L"user-a"));
+        auto const done = WaitForStatus(engine, running.JobId, DownloadStatus::Done);
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(), "an adopted download was corrupted");
+        auto const stillHeld = FindJob(engine, held.JobId);
+        Require(stillHeld && stillHeld->Status == DownloadStatus::Paused, "a download the viewer paused was resumed by the adoption");
+    }
+
+    // A replacement that is being removed never finishes, so the copy it
+    // named can be removed (as an adoption discarding both must) instead of
+    // being kept forever and coming back as a second copy.
+    void ACopyWhoseReplacementIsBeingRemovedCanBeRemoved()
+    {
+        TemporaryDirectory temporary;
+        DownloadIndexStore seed{ temporary.Path() };
+        auto const folder = seed.Paths().DefaultDownloadDirectory;
+        std::filesystem::create_directories(folder);
+        auto backup = SeededRecord(L"00000000000000000000000000000021", L"movie:replaced", folder, L"backup.mkv", DownloadStatus::Done);
+        auto replacer = SeededRecord(L"00000000000000000000000000000022", L"movie:replaced", folder, L"replacer.mkv", DownloadStatus::Paused);
+        replacer.Replacement = Downloads::ReplacementBackup{ .JobId = backup.JobId, .RootPath = folder, .FileName = backup.FileName };
+        replacer.PendingDeletion = true;
+        replacer.ExplicitPause = true;
+        WriteBytes(backup.TargetPath(), std::vector<std::uint8_t>(5, 3));
+        WriteBytes(replacer.PartialPath(), std::vector<std::uint8_t>(3, 4));
+        seed.Apply({ backup, replacer });
+        // Held open, so the launch cannot finish the replacement's removal.
+        winrt::file_handle const part{ CreateFileW(
+            replacer.PartialPath().c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr) };
+        Require(static_cast<bool>(part), "the test could not hold the replacement's part");
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        Require(ListsJob(engine, backup.JobId), "the copy of a removed replacement was not shown");
+        engine.Remove(backup.JobId);
+        Require(!ListsJob(engine, backup.JobId), "the copy of a removed replacement could not be removed");
+        Require(!std::filesystem::exists(backup.TargetPath()), "the removed copy's file was kept");
+    }
+
     void RunDownloadEngineSafetyTests()
     {
         APauseWhileWaitingForTheSourceIsNoticed();
@@ -1980,6 +2396,14 @@ namespace
         ALockedIndexIsRetriedBeforeFailing();
         AnIndexIsReportedOnlyWhenItWasSetAside();
         APreviousBuildsPartialDownloadResumes();
+        AnUnreadableIndexPutsTheJobBack();
+        AnIndexThatCannotBeWrittenDoesNotFailADownload();
+        TwoDownloadsNeverShareAFile();
+        ACancelLeavesAFinishedDownload();
+        APauseBeforeTheTransferStartsHolds();
+        APauseDuringTheSubtitleKeepsItForLater();
+        AnAdoptedDownloadCarriesOnUnlessTheViewerPausedIt();
+        ACopyWhoseReplacementIsBeingRemovedCanBeRemoved();
     }
 }
 

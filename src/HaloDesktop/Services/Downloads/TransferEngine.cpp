@@ -10,6 +10,7 @@
 #include <array>
 #include <chrono>
 #include <cwctype>
+#include <exception>
 #include <functional>
 #include <limits>
 #include <memory>
@@ -25,6 +26,10 @@ namespace
     constexpr std::size_t TransferChunkSize = 64u * 1024u;
     constexpr std::uint64_t MaximumSubtitleBytes = 32ull * 1024ull * 1024ull;
     constexpr int TransferAttempts = 3;
+    // How often, and after how long a growing wait, the end of a finished
+    // download is stored again when the index cannot be written.
+    constexpr int FinishPersistAttempts = 3;
+    constexpr std::chrono::milliseconds FinishPersistRetry{ 200 };
     constexpr char const* DeleteFailed =
         "Halo could not delete every file for this download. It will try again the next time Halo starts.";
 
@@ -297,9 +302,11 @@ namespace
     // True when any file `record` names is also named by another record, which
     // then still needs it: a replacement and the copy it replaces can share a
     // name when both came from the same source.
+    // `ignored` names one more record that does not count.
     bool SharesFilesWithAnotherRecord(
         HaloDesktop::Services::Downloads::DownloadRecord const& record,
-        std::map<std::wstring, HaloDesktop::Services::Downloads::DownloadRecord, std::less<>> const& records)
+        std::map<std::wstring, HaloDesktop::Services::Downloads::DownloadRecord, std::less<>> const& records,
+        std::wstring_view ignored = {})
     {
         namespace Segments = HaloDesktop::Services::Downloads::Segments;
         auto const table = Segments::TablePath(record.PartialPath());
@@ -315,7 +322,7 @@ namespace
         }
         for (auto const& [jobId, other] : records)
         {
-            if (jobId == record.JobId)
+            if (jobId == record.JobId || (!ignored.empty() && jobId == ignored))
             {
                 continue;
             }
@@ -328,6 +335,42 @@ namespace
             }
         }
         return false;
+    }
+
+    // True when a run of `record` renamed its complete file into place and
+    // stopped before the end was stored (the index could not be written, or a
+    // pause or exit came during the subtitle). No part or table is left, and
+    // the file is exactly the size the source stated. An unknown size is never
+    // taken on trust: that download runs again.
+    bool FinishedFileInPlace(HaloDesktop::Services::Downloads::DownloadRecord const& record) noexcept
+    {
+        try
+        {
+            if (record.TotalBytes == 0)
+            {
+                return false;
+            }
+            namespace Segments = HaloDesktop::Services::Downloads::Segments;
+            std::error_code error;
+            auto const part = record.PartialPath();
+            auto const table = Segments::TablePath(part);
+            if (std::filesystem::exists(part, error) || error
+                || std::filesystem::exists(table, error) || error)
+            {
+                return false;
+            }
+            auto const target = record.TargetPath();
+            if (!std::filesystem::is_regular_file(target, error) || error)
+            {
+                return false;
+            }
+            auto const size = std::filesystem::file_size(target, error);
+            return !error && size == record.TotalBytes;
+        }
+        catch (...)
+        {
+            return false;
+        }
     }
 
     std::wstring SubtitleExtension(std::wstring const& url)
@@ -512,7 +555,9 @@ namespace HaloDesktop::Services::Downloads
         {
             try
             {
-                Pause(jobId);
+                // Not the viewer's pause: an adoption by the next owner
+                // carries the transfer on as it was.
+                PauseFor(jobId, false);
             }
             catch (...)
             {
@@ -605,7 +650,7 @@ namespace HaloDesktop::Services::Downloads
         {
             try
             {
-                Pause(jobId);
+                PauseFor(jobId, false);
             }
             catch (...)
             {
@@ -831,9 +876,32 @@ namespace HaloDesktop::Services::Downloads
             throw std::runtime_error{ "A safe download filename could not be created." };
         }
         auto const target = directory / fileName;
+        // The copy being replaced may name this very file (a replacement from
+        // the same source has the same name); it is the one record allowed to.
+        auto const replacedJob = existing && request.ReplaceExisting
+            ? std::optional<std::wstring>{ existing->JobId }
+            : std::nullopt;
+        auto partial = target;
+        partial += L".part";
         if (std::filesystem::exists(target))
         {
             throw std::runtime_error{ "A file with this download name already exists." };
+        }
+        if (std::filesystem::exists(partial))
+        {
+            bool ownedByReplaced{};
+            try
+            {
+                ownedByReplaced = replacedJob && RecordMayOwnPath(*existing, partial);
+            }
+            catch (...)
+            {
+                // Not comparable: refused, as an unknown owner would be.
+            }
+            if (!ownedByReplaced)
+            {
+                throw std::runtime_error{ "A file with this download name already exists." };
+            }
         }
 
         m_vault.Write(jobId, request.Request);
@@ -871,6 +939,24 @@ namespace HaloDesktop::Services::Downloads
             if (!m_activeAccount || *m_activeAccount != account)
             {
                 throw std::runtime_error{ "The active account changed while starting the download." };
+            }
+            // Decided here, where the record is added, so two starts of one
+            // source under different videos cannot both take the name. Every
+            // owner's records count: removing one must never delete another's
+            // file.
+            bool nameTaken{};
+            try
+            {
+                nameTaken = SharesFilesWithAnotherRecord(
+                    record, m_records, replacedJob ? std::wstring_view{ *replacedJob } : std::wstring_view{});
+            }
+            catch (...)
+            {
+                nameTaken = true;
+            }
+            if (nameTaken)
+            {
+                throw std::runtime_error{ "A file with this download name already exists." };
             }
             if (existing)
             {
@@ -959,11 +1045,32 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::Pause(std::wstring const& jobId)
     {
+        PauseFor(jobId, true);
+    }
+
+    void TransferEngine::PauseFor(std::wstring const& jobId, bool explicitPause)
+    {
         {
             std::scoped_lock const lock{ m_mutex };
             if (auto const flag = m_cancel.find(jobId); flag != m_cancel.end())
             {
                 flag->second->store(true, std::memory_order_release);
+            }
+            else if (auto const live = m_records.find(jobId);
+                live != m_records.end()
+                && m_activeAccount
+                && live->second.AccountKey == *m_activeAccount
+                && IsActive(live->second.Status)
+                && !live->second.PendingDeletion)
+            {
+                // In memory first, as Remove does: a worker that already took
+                // the job's lease but has not published its cancel flag keeps
+                // this pause when it refreshes the record, instead of starting
+                // a transfer this call would then wait out.
+                live->second.Status = DownloadStatus::Paused;
+                live->second.ExplicitPause = explicitPause;
+                live->second.BytesPerSecond = 0;
+                std::erase(m_queue, jobId);
             }
         }
         ::HaloDesktop::Storage::FileMutationLock const jobLease{
@@ -995,8 +1102,10 @@ namespace HaloDesktop::Services::Downloads
             std::erase(m_queue, jobId);
             return;
         }
+        // A pause the viewer already made stays theirs when the owner changes.
+        changed.ExplicitPause = explicitPause
+            || (changed.Status == DownloadStatus::Paused && changed.ExplicitPause);
         changed.Status = DownloadStatus::Paused;
-        changed.ExplicitPause = true;
         changed.BytesPerSecond = 0;
         changed.UpdatedAt = NowMilliseconds();
         m_store.Apply({ changed });
@@ -1067,7 +1176,12 @@ namespace HaloDesktop::Services::Downloads
 
     void TransferEngine::Remove(std::wstring const& jobId)
     {
-        RemoveOwned(jobId, nullptr);
+        static_cast<void>(RemoveOwned(jobId, nullptr));
+    }
+
+    bool TransferEngine::Cancel(std::wstring const& jobId)
+    {
+        return RemoveOwned(jobId, nullptr, RemovalScope::UnfinishedOnly);
     }
 
     void TransferEngine::AdoptAccount(std::wstring const& from, std::wstring const& to)
@@ -1082,6 +1196,49 @@ namespace HaloDesktop::Services::Downloads
         // are settled nothing is deleted, and a stop in between leaves both
         // copies rather than none.
         auto const adopted = m_store.AdoptAccount(from, to, plan.Rekey, NowMilliseconds());
+
+        // The owner change that came first (SetAccount) paused the previous
+        // owner's transfers without the viewer asking. Those carry on under the
+        // new owner; a pause the viewer made stays. Stored before memory moves,
+        // so the worker's refresh from the index does not pause them again; if
+        // it cannot be stored they stay paused and can be resumed by hand.
+        std::vector<DownloadRecord> carriedOn;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (m_activeAccount && *m_activeAccount == to)
+            {
+                for (auto const& record : adopted)
+                {
+                    auto const live = m_records.find(record.JobId);
+                    auto resumed = live != m_records.end() ? live->second : record;
+                    if (resumed.Status != DownloadStatus::Paused
+                        || resumed.ExplicitPause
+                        || resumed.PendingDeletion
+                        || (m_activeJob && *m_activeJob == record.JobId)
+                        || IsHiddenBackupLocked(record.JobId))
+                    {
+                        continue;
+                    }
+                    resumed.AccountKey = record.AccountKey;
+                    resumed.Status = DownloadStatus::Queued;
+                    resumed.BytesPerSecond = 0;
+                    resumed.UpdatedAt = (std::max)(resumed.UpdatedAt, NowMilliseconds());
+                    carriedOn.push_back(std::move(resumed));
+                }
+            }
+        }
+        if (!carriedOn.empty())
+        {
+            try
+            {
+                m_store.Apply(carriedOn);
+            }
+            catch (...)
+            {
+                carriedOn.clear();
+            }
+        }
+
         std::vector<DownloadChangedHandler> handlers;
         std::vector<DownloadRecord> changed;
         {
@@ -1099,6 +1256,27 @@ namespace HaloDesktop::Services::Downloads
                     live->second.UpdatedAt = (std::max)(live->second.UpdatedAt, record.UpdatedAt);
                 }
                 changed.push_back(m_records.at(record.JobId));
+            }
+            for (auto const& resumed : carriedOn)
+            {
+                auto const live = m_records.find(resumed.JobId);
+                if (live != m_records.end()
+                    && live->second.Status == DownloadStatus::Paused
+                    && !live->second.ExplicitPause
+                    && !live->second.PendingDeletion)
+                {
+                    live->second.Status = DownloadStatus::Queued;
+                    live->second.BytesPerSecond = 0;
+                    live->second.UpdatedAt = resumed.UpdatedAt;
+                    auto const listed = std::find_if(changed.begin(), changed.end(), [&resumed](DownloadRecord const& record)
+                    {
+                        return record.JobId == resumed.JobId;
+                    });
+                    if (listed != changed.end())
+                    {
+                        *listed = live->second;
+                    }
+                }
             }
             if (m_activeAccount && *m_activeAccount == to)
             {
@@ -1162,13 +1340,20 @@ namespace HaloDesktop::Services::Downloads
         }
     }
 
-    void TransferEngine::RemoveOwned(std::wstring const& jobId, std::vector<std::wstring> const* owners)
+    bool TransferEngine::RemoveOwned(
+        std::wstring const& jobId,
+        std::vector<std::wstring> const* owners,
+        RemovalScope scope)
     {
         std::unique_lock gate{ m_removalGate };
         auto latest = m_store.Load(false);
+        // A replacement that is itself being removed will never finish, so the
+        // copy it named is free again (as IsHiddenBackupLocked already shows it).
         if (std::any_of(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
             {
-                return record.Replacement && record.Replacement->JobId == jobId;
+                return record.Replacement
+                    && record.Replacement->JobId == jobId
+                    && !record.PendingDeletion;
             }))
         {
             throw std::runtime_error{ "The previous file is retained until its replacement finishes." };
@@ -1186,7 +1371,7 @@ namespace HaloDesktop::Services::Downloads
             {
                 m_records.erase(jobId);
                 std::erase(m_queue, jobId);
-                return;
+                return true;
             }
             // The worker's copy carries the live progress; the stored one is
             // what everyone else last saw.
@@ -1197,6 +1382,15 @@ namespace HaloDesktop::Services::Downloads
             if (!owned)
             {
                 throw std::runtime_error{ "This download belongs to another account." };
+            }
+            // The end of a run stores Done under this same gate, so either copy
+            // saying Done means the transfer finished before the cancel.
+            if (scope == RemovalScope::UnfinishedOnly
+                && (removed.Status == DownloadStatus::Done
+                    || (persisted != latest.end() && persisted->Status == DownloadStatus::Done)
+                    || (live != m_records.end() && live->second.Status == DownloadStatus::Done)))
+            {
+                return false;
             }
             removed.PendingDeletion = true;
             removed.Status = DownloadStatus::Paused;
@@ -1229,7 +1423,7 @@ namespace HaloDesktop::Services::Downloads
         {
             // The run deletes its own files once it has stopped writing them.
             m_condition.notify_all();
-            return;
+            return true;
         }
         // No worker here runs it, and none will start it now. Another process's
         // worker may, so its lease is waited for before anything is deleted.
@@ -1245,7 +1439,7 @@ namespace HaloDesktop::Services::Downloads
         {
             std::scoped_lock const lock{ m_mutex };
             m_records.erase(jobId);
-            return;
+            return true;
         }
         removed = *current;
         if (!removed.PendingDeletion)
@@ -1257,10 +1451,36 @@ namespace HaloDesktop::Services::Downloads
             removed.UpdatedAt = NowMilliseconds();
             m_store.Apply({ removed });
         }
+        // As at the end of a removed run: a file another record still names
+        // (a replacement and the copy it replaces can share a name) stays. A
+        // path that cannot be compared counts as shared, since keeping a file
+        // is recoverable and deleting another record's is not.
+        bool shared{};
+        try
+        {
+            std::map<std::wstring, DownloadRecord, std::less<>> stored;
+            for (auto const& record : latest)
+            {
+                stored.insert_or_assign(record.JobId, record);
+            }
+            shared = SharesFilesWithAnotherRecord(removed, stored);
+            if (!shared)
+            {
+                std::scoped_lock const lock{ m_mutex };
+                shared = SharesFilesWithAnotherRecord(removed, m_records);
+            }
+        }
+        catch (...)
+        {
+            shared = true;
+        }
         try
         {
             m_vault.Remove(jobId);
-            RemoveRecordFiles(removed, m_store.ApprovedRoots());
+            if (!shared)
+            {
+                RemoveRecordFiles(removed, m_store.ApprovedRoots());
+            }
             m_store.Apply({}, { jobId });
             std::scoped_lock const lock{ m_mutex };
             m_records.erase(jobId);
@@ -1280,6 +1500,7 @@ namespace HaloDesktop::Services::Downloads
             // The tombstone stays, so the next launch finishes the deletion.
             throw std::runtime_error{ DeleteFailed };
         }
+        return true;
     }
 
     PlaybackFiles TransferEngine::FilesForPlayback(std::wstring const& jobId)
@@ -1419,7 +1640,33 @@ namespace HaloDesktop::Services::Downloads
                 std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
                 continue;
             }
-            auto latest = m_store.Load(false);
+            std::vector<DownloadRecord> latest;
+            try
+            {
+                latest = m_store.Load(false);
+            }
+            catch (...)
+            {
+                // The index is held open by another program, its lock timed out
+                // or a corrupt copy could not be rewritten. Nothing changed, so
+                // the job waits its turn again, as when its lease is taken.
+                jobLease.reset();
+                {
+                    std::scoped_lock const lock{ m_mutex };
+                    auto const found = m_records.find(jobId);
+                    if (found != m_records.end()
+                        && m_activeAccount
+                        && found->second.AccountKey == *m_activeAccount
+                        && found->second.Status == DownloadStatus::Queued
+                        && !found->second.ExplicitPause
+                        && std::find(m_queue.begin(), m_queue.end(), jobId) == m_queue.end())
+                    {
+                        m_queue.push_back(jobId);
+                    }
+                }
+                std::this_thread::sleep_for(std::chrono::milliseconds{ 100 });
+                continue;
+            }
             {
                 std::scoped_lock const lock{ m_mutex };
                 auto const persisted = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
@@ -1448,6 +1695,18 @@ namespace HaloDesktop::Services::Downloads
                     refreshed.PendingDeletion = true;
                     refreshed.Status = DownloadStatus::Paused;
                     refreshed.ExplicitPause = true;
+                }
+                else if (live != m_records.end()
+                    && live->second.Status == DownloadStatus::Paused
+                    && IsActive(refreshed.Status))
+                {
+                    // The job was queued in memory when it was taken, so only a
+                    // pause made since (Pause, a replacement) can have set this,
+                    // ahead of storing it: the stored copy read here may predate
+                    // it and must not undo it.
+                    refreshed.Status = DownloadStatus::Paused;
+                    refreshed.ExplicitPause = live->second.ExplicitPause;
+                    refreshed.BytesPerSecond = 0;
                 }
                 refreshed.ActiveConnections = 0;
                 m_records.insert_or_assign(jobId, std::move(refreshed));
@@ -1480,24 +1739,29 @@ namespace HaloDesktop::Services::Downloads
                 // the progress reports are. A transfer that ends before its first
                 // progress report would otherwise never be seen downloading.
                 Notify(startedHandlers, started);
+                // The outcome is settled before Finish runs, so a Finish that
+                // throws is never followed by a second Finish that reports a
+                // different outcome (a finished file indexed as failed).
+                std::optional<TransferResult> result;
+                std::optional<TransferError> failure;
                 try
                 {
-                    auto result = TransferWithRetries(jobId, cancel, stopToken);
-                    Finish(started, std::move(result), std::nullopt);
+                    result = TransferWithRetries(jobId, cancel, stopToken);
                 }
                 catch (TransferError const& error)
                 {
-                    Finish(started, std::nullopt, error);
+                    failure = error;
                 }
                 catch (...)
                 {
-                    Finish(started, std::nullopt, TransferError{
+                    failure = TransferError{
                         .Type = stopToken.stop_requested()
                             ? TransferError::Kind::Shutdown
                             : TransferError::Kind::Permanent,
                         .Failure = DownloadFailureCode::Unknown,
-                    });
+                    };
                 }
+                Finish(started, std::move(result), failure);
             }
             catch (...)
             {
@@ -1631,6 +1895,11 @@ namespace HaloDesktop::Services::Downloads
             .KnownTotal = record.TotalBytes,
             .Validator = record.Validator,
             .SizeHint = record.Media.VideoSize,
+            // Every run stores its starting count, and the count is otherwise
+            // stored only after the part is flushed (a durable report, or the
+            // end of a run, which flushes first), so it belongs to this record
+            // and its validator.
+            .FlushedBytes = record.DownloadedBytes,
         };
         SegmentedHost const host{
             .ResponseMetadata = [this, &jobId](std::optional<std::wstring> const& validator, std::uint64_t total)
@@ -1643,41 +1912,76 @@ namespace HaloDesktop::Services::Downloads
             },
         };
         SegmentedFinished finished;
-        try
+        if (FinishedFileInPlace(record))
         {
-            finished = RunSegmentedTransfer(job, *cancel, stopToken, host, m_options.Transfer);
-        }
-        catch (TransferFailure const& failure)
-        {
-            auto kind = TransferError::Kind::Permanent;
-            switch (failure.Kind)
-            {
-            case TransferFailureKind::Permanent: kind = TransferError::Kind::Permanent; break;
-            case TransferFailureKind::Retryable: kind = TransferError::Kind::Retryable; break;
-            case TransferFailureKind::Paused: kind = TransferError::Kind::Paused; break;
-            case TransferFailureKind::Shutdown: kind = TransferError::Kind::Shutdown; break;
-            }
-            throw TransferError{ .Type = kind, .Failure = failure.Code };
-        }
-        if (!MoveFileExW(
-            record.PartialPath().c_str(),
-            record.TargetPath().c_str(),
-            MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
-        {
-            throw TransferError{
-                .Type = TransferError::Kind::Permanent,
-                .Failure = DownloadFailureCode::StorageFull,
+            // An earlier run renamed the complete file into place and stopped
+            // before its end was stored. Nothing is downloaded again.
+            finished = SegmentedFinished{
+                .Bytes = record.TotalBytes,
+                .Total = record.TotalBytes,
+                .Validator = record.Validator,
             };
         }
+        else
+        {
+            try
+            {
+                finished = RunSegmentedTransfer(job, *cancel, stopToken, host, m_options.Transfer);
+            }
+            catch (TransferFailure const& failure)
+            {
+                auto kind = TransferError::Kind::Permanent;
+                switch (failure.Kind)
+                {
+                case TransferFailureKind::Permanent: kind = TransferError::Kind::Permanent; break;
+                case TransferFailureKind::Retryable: kind = TransferError::Kind::Retryable; break;
+                case TransferFailureKind::Paused: kind = TransferError::Kind::Paused; break;
+                case TransferFailureKind::Shutdown: kind = TransferError::Kind::Shutdown; break;
+                }
+                throw TransferError{ .Type = kind, .Failure = failure.Code };
+            }
+            if (!MoveFileExW(
+                record.PartialPath().c_str(),
+                record.TargetPath().c_str(),
+                MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            {
+                throw TransferError{
+                    .Type = TransferError::Kind::Permanent,
+                    .Failure = DownloadFailureCode::StorageFull,
+                };
+            }
+        }
+        auto const total = (std::max)(finished.Total, finished.Bytes);
         std::optional<std::pair<std::wstring, std::wstring>> subtitle;
         if (request.Subtitle && !stopToken.stop_requested()
             && !cancel->load(std::memory_order_acquire))
         {
             subtitle = DownloadSubtitle(*request.Subtitle, record.TargetPath(), cancel, stopToken);
         }
+        if (request.Subtitle && !subtitle
+            && (stopToken.stop_requested() || cancel->load(std::memory_order_acquire)))
+        {
+            // A pause or exit stopped the subtitle, not a failure of it. Done
+            // now would drop the request it needs for good, so the run ends as
+            // paused (or interrupted) instead, with the video's size recorded:
+            // the next run finds the file in place and only fetches the
+            // subtitle (FinishedFileInPlace).
+            {
+                std::scoped_lock const lock{ m_mutex };
+                if (auto const found = m_records.find(jobId); found != m_records.end())
+                {
+                    found->second.TotalBytes = total;
+                    found->second.DownloadedBytes = total;
+                    found->second.Validator = finished.Validator;
+                }
+            }
+            throw TransferError{
+                .Type = stopToken.stop_requested() ? TransferError::Kind::Shutdown : TransferError::Kind::Paused,
+            };
+        }
         return TransferResult{
             .Bytes = finished.Bytes,
-            .Total = (std::max)(finished.Total, finished.Bytes),
+            .Total = total,
             .Validator = std::move(finished.Validator),
             .Subtitle = std::move(subtitle),
         };
@@ -1887,11 +2191,29 @@ namespace HaloDesktop::Services::Downloads
             }
             handlers = HandlersLocked();
         }
-        try
+        std::exception_ptr persistFailure;
+        // A finished file is already in place, so its outcome is worth a few
+        // more tries; any other outcome is given up at once as before.
+        auto const attempts = result ? FinishPersistAttempts : 1;
+        for (int attempt = 1;; ++attempt)
         {
-            Persist(std::move(snapshot), generation);
+            try
+            {
+                Persist(snapshot, generation);
+                persistFailure = nullptr;
+                break;
+            }
+            catch (...)
+            {
+                persistFailure = std::current_exception();
+                if (attempt >= attempts)
+                {
+                    break;
+                }
+            }
+            std::this_thread::sleep_for(FinishPersistRetry * attempt);
         }
-        catch (...)
+        if (persistFailure && !result)
         {
             std::scoped_lock const lock{ m_mutex };
             if (originalCurrent)
@@ -1902,7 +2224,29 @@ namespace HaloDesktop::Services::Downloads
             {
                 m_records.insert_or_assign(originalReplaced->JobId, *originalReplaced);
             }
-            throw;
+            std::rethrow_exception(persistFailure);
+        }
+        if (persistFailure)
+        {
+            // The file was renamed into place but the index still says
+            // "downloading". It is shown as finished now; the index keeps the
+            // old state, the request stays in the vault and the copy it
+            // replaces stays hidden behind it, so the next run of this job
+            // (the next launch, or an account switch back) finds the complete
+            // file and finishes it without downloading again.
+            OutputDebugStringW(L"Halo could not store a finished download; it is completed again at the next run.\n");
+            {
+                std::scoped_lock const lock{ m_mutex };
+                if (originalReplaced)
+                {
+                    m_records.insert_or_assign(originalReplaced->JobId, *originalReplaced);
+                }
+                changed.Status = DownloadStatus::Done;
+                m_records.insert_or_assign(changed.JobId, changed);
+            }
+            Notify(handlers, changed);
+            m_condition.notify_all();
+            return;
         }
         if (result || (error && RequiresNewSource(error->Failure)))
         {
@@ -2010,7 +2354,16 @@ namespace HaloDesktop::Services::Downloads
             generation = ++m_generation;
             snapshot = { found->second };
         }
-        Persist(std::move(snapshot), generation);
+        // Best effort, as every store during a transfer: memory holds the state
+        // and the next durable progress report writes the whole record again. A
+        // busy index must not fail a healthy download.
+        try
+        {
+            Persist(std::move(snapshot), generation);
+        }
+        catch (...)
+        {
+        }
     }
 
     void TransferEngine::UpdateProgress(
@@ -2041,7 +2394,15 @@ namespace HaloDesktop::Services::Downloads
         }
         if (progress.Persist)
         {
-            Persist(std::move(snapshot), generation);
+            // Best effort: the count is kept in memory and stored again at the
+            // next durable report, or by the end of the run.
+            try
+            {
+                Persist(std::move(snapshot), generation);
+            }
+            catch (...)
+            {
+            }
         }
         Notify(handlers, changed);
     }

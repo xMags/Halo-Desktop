@@ -3,7 +3,6 @@
 
 #include "Services/Downloads/DownloadHttp.h"
 #include "Services/Downloads/TransferRateWindow.h"
-#include "Storage/FileStorage.h"
 
 #include <algorithm>
 #include <array>
@@ -556,6 +555,25 @@ namespace
             {
                 throw StorageFull();
             }
+            if (!table && first.Start)
+            {
+                // A contiguous resume continues where the part is trusted to
+                // end; whatever lies past that is cut off before a byte lands.
+                LARGE_INTEGER length{};
+                if (!GetFileSizeEx(m_file.get(), &length))
+                {
+                    throw StorageFull();
+                }
+                if (static_cast<std::uint64_t>(length.QuadPart) > *first.Start)
+                {
+                    FILE_END_OF_FILE_INFO end{};
+                    end.EndOfFile.QuadPart = static_cast<LONGLONG>(*first.Start);
+                    if (!SetFileInformationByHandle(m_file.get(), FileEndOfFileInfo, &end, sizeof(end)))
+                    {
+                        throw StorageFull();
+                    }
+                }
+            }
 
             auto const segmented = table.has_value();
             auto const start = first.Start.value_or(0);
@@ -603,6 +621,21 @@ namespace
                     SizeFile();
                 }
                 CheckInitialSpace();
+                // The run's own starting count, stored before any byte of it
+                // is written: a count an earlier run left (perhaps under a part
+                // this run has just restarted) is never trusted for this one.
+                if (!FlushFileBuffers(m_file.get()))
+                {
+                    throw StorageFull();
+                }
+                if (m_host.Progress)
+                {
+                    m_host.Progress(Downloads::SegmentedProgress{
+                        .Bytes = m_table->Received(),
+                        .Total = m_total,
+                        .Persist = true,
+                    });
+                }
                 m_table->Begin(*firstKey, first.Id);
                 Connection connection;
                 connection.Segment = *firstKey;
@@ -681,7 +714,13 @@ namespace
             {
                 throw Permanent(DownloadFailureCode::InvalidRange);
             }
-            if (partLength > 0 && partLength == m_job.KnownTotal)
+            // Past the last count stored after a flush, the length may cover
+            // bytes that never reached the disk (a power cut). A count of 0, or
+            // one the part does not reach, tells nothing.
+            auto const trusted = m_job.FlushedBytes > 0 && m_job.FlushedBytes < partLength
+                ? m_job.FlushedBytes
+                : partLength;
+            if (trusted > 0 && trusted == m_job.KnownTotal)
             {
                 return ResumePlan{ .Kind = ResumeKind::Complete };
             }
@@ -691,9 +730,9 @@ namespace
                 // Restarting loses bytes; appending could silently corrupt a film.
                 return ResumePlan{};
             }
-            if (partLength > 0)
+            if (trusted > 0)
             {
-                return ResumePlan{ .Kind = ResumeKind::Contiguous, .Done = partLength };
+                return ResumePlan{ .Kind = ResumeKind::Contiguous, .Done = trusted };
             }
             return ResumePlan{};
         }
@@ -845,10 +884,9 @@ namespace
                 result.Total = *head.ContentLength;
                 result.TotalStated = true;
             }
-            else
-            {
-                result.Total = m_job.SizeHint.value_or(0);
-            }
+            // With no stated size the end of the body is the total. The addon's
+            // hint is only an estimate (for the free-space check and the page),
+            // never a length the body is held to.
             // Refused before a byte is kept: taken as the film, the stand-in
             // would finish as a complete download that plays a few seconds.
             if (result.TotalStated && Downloads::IsStandInForVideo(result.Total, m_job.SizeHint))
@@ -976,6 +1014,15 @@ namespace
                 {
                     break;
                 }
+                if (!m_tableStarted && !TableFitsPath())
+                {
+                    // Without a table a split part could not be resumed, and
+                    // its full length would pass for progress. The run stays
+                    // on its one connection, which resumes by length, rather
+                    // than failing as if the disk were full.
+                    m_multiAllowed = false;
+                    break;
+                }
                 StartTable();
                 auto const key = m_table->TakeStep(*step);
                 if (!key)
@@ -1042,22 +1089,71 @@ namespace
                 && (information.dwFileAttributes & FILE_ATTRIBUTE_SPARSE_FILE) != 0;
         }
 
+        // Written beside the table under its short temporary name (the one a
+        // removal also deletes), then renamed over it. Only this coordinator
+        // writes the table, under the job's lease, so the fixed name cannot
+        // collide.
         void WriteTable() const
         {
             if (!m_validator)
             {
                 throw StorageFull();
             }
+            std::string bytes;
             try
             {
-                HaloDesktop::Storage::WriteUtf8FileAtomic(
-                    m_tablePath,
-                    Segments::Encode(m_table->Saved(m_total, *m_validator)));
+                bytes = Segments::Encode(m_table->Saved(m_total, *m_validator));
             }
             catch (...)
             {
+                throw Permanent(DownloadFailureCode::Unknown);
+            }
+            auto const temporary = Segments::TableTempPath(m_tablePath);
+            {
+                wil::unique_hfile file{ CreateFileW(
+                    temporary.c_str(),
+                    GENERIC_WRITE,
+                    0,
+                    nullptr,
+                    CREATE_ALWAYS,
+                    FILE_ATTRIBUTE_NORMAL | FILE_FLAG_WRITE_THROUGH,
+                    nullptr) };
+                if (!file)
+                {
+                    throw StorageFull();
+                }
+                std::size_t offset{};
+                while (offset < bytes.size())
+                {
+                    DWORD written{};
+                    if (!WriteFile(file.get(), bytes.data() + offset, static_cast<DWORD>(bytes.size() - offset), &written, nullptr)
+                        || written == 0)
+                    {
+                        static_cast<void>(DeleteFileW(temporary.c_str()));
+                        throw StorageFull();
+                    }
+                    offset += written;
+                }
+                if (!FlushFileBuffers(file.get()))
+                {
+                    static_cast<void>(DeleteFileW(temporary.c_str()));
+                    throw StorageFull();
+                }
+            }
+            if (!MoveFileExW(temporary.c_str(), m_tablePath.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            {
+                static_cast<void>(DeleteFileW(temporary.c_str()));
                 throw StorageFull();
             }
+        }
+
+        // Windows refuses a path this long here (the app does not opt in to
+        // long paths). The table and its temporary name are a few characters
+        // longer than the part, so in a deep folder the part can be written
+        // when they cannot.
+        [[nodiscard]] bool TableFitsPath() const
+        {
+            return Segments::TableTempPath(m_tablePath).native().size() < MAX_PATH;
         }
 
         void StartConnection(std::uint32_t key, Clock::time_point now)
@@ -1295,18 +1391,8 @@ namespace
             }
             if (segment->End == Segments::Unbounded)
             {
-                // A body of unstated size ends where the source ends it, and is
-                // then held to the size the addon reported, if any.
+                // A body of unstated size ends where the source ends it.
                 auto const arrived = segment->Position;
-                if (m_total > 0 && arrived > m_total)
-                {
-                    throw Permanent(DownloadFailureCode::InvalidRange);
-                }
-                if (m_total > 0 && arrived < m_total)
-                {
-                    Fail(id, Retryable(DownloadFailureCode::Network), std::nullopt, now);
-                    return;
-                }
                 segment->End = arrived;
                 m_total = arrived;
                 Release(id);
@@ -1466,7 +1552,9 @@ namespace
                 return chunk;
             }
             auto const received = m_table->Received();
-            auto const remaining = m_total > received ? m_total - received : 0;
+            // A source that states no size is judged by the addon's estimate.
+            auto const expected = m_total > 0 ? m_total : m_job.SizeHint.value_or(0);
+            auto const remaining = expected > received ? expected - received : 0;
             return (std::max)(remaining, chunk);
         }
 
@@ -1617,7 +1705,17 @@ namespace
                 }
                 return;
             }
-            if (!m_tableStarted || !m_file || !m_table)
+            if (!m_tableStarted)
+            {
+                // A part resumed by its length: flushed, so the count the engine
+                // stores at the end of this run is on disk too.
+                if (m_file)
+                {
+                    static_cast<void>(FlushFileBuffers(m_file.get()));
+                }
+                return;
+            }
+            if (!m_file || !m_table)
             {
                 return;
             }

@@ -270,7 +270,12 @@ namespace HaloDesktop::Services
         {
             return false;
         }
-        RunEngineAction([engine = m_engine, jobId = std::wstring{ id.c_str() }]() { engine->Remove(jobId); });
+        // This copy can be stale: the engine decides again, against the end of
+        // the run, and leaves a download that finished first in place.
+        RunEngineAction([engine = m_engine, jobId = std::wstring{ id.c_str() }]()
+        {
+            static_cast<void>(engine->Cancel(jobId));
+        });
         return true;
     }
 
