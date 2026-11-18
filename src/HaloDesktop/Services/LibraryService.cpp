@@ -1,15 +1,16 @@
 #include "pch.h"
 #include "Services/LibraryService.h"
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include <algorithm>
 #include <stdexcept>
 #include <utility>
 #include <chrono>
 namespace HaloDesktop::Services
 {
-    LibraryService::LibraryService(std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient) : m_apiClient(std::move(apiClient))
+    LibraryService::LibraryService(std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends) : m_backends(std::move(backends))
     {
-        if (!m_apiClient) throw std::invalid_argument{ "LibraryService requires an API client." };
+        if (!m_backends) throw std::invalid_argument{ "LibraryService requires a backend selector." };
     }
     concurrency::task<void> LibraryService::LoadAsync()
     {
@@ -26,7 +27,7 @@ namespace HaloDesktop::Services
             }
         }
         auto const version = ++m_requestVersion;
-        auto rows = co_await m_apiClient->GetLibraryAsync();
+        auto rows = co_await m_backends->Current()->GetLibraryAsync();
         co_await uiContext;
         if (accountVersion == m_accountVersion && version == m_requestVersion)
         {
@@ -103,7 +104,7 @@ namespace HaloDesktop::Services
         }
         try
         {
-            auto rows = co_await m_apiClient->PutLibraryAsync(std::move(changed));
+            auto rows = co_await m_backends->Current()->PutLibraryAsync(std::move(changed));
             co_await uiContext;
             if (accountVersion == m_accountVersion && version == m_requestVersion)
             {

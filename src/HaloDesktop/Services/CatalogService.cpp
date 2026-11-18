@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Services/CatalogService.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Api/CatalogExtrasPolicy.h"
 #include "Models/Models.h"
 #include "Services/AddonService.h"
@@ -135,14 +136,14 @@ namespace
 namespace HaloDesktop::Services
 {
     CatalogService::CatalogService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<AddonService> addons,
         std::shared_ptr<LibraryService> library,
         std::shared_ptr<WatchStateService> watchState,
         std::shared_ptr<ContinueArtworkService> artwork,
         std::shared_ptr<ContinueNextEpisodeService> nextEpisodes,
         std::shared_ptr<SettingsSyncService> settings)
-        : m_apiClient(std::move(apiClient)),
+        : m_backends(std::move(backends)),
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_watchState(std::move(watchState)),
@@ -150,7 +151,7 @@ namespace HaloDesktop::Services
           m_nextEpisodes(std::move(nextEpisodes)),
           m_settings(std::move(settings))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_watchState || !m_artwork ||
+        if (!m_backends || !m_addons || !m_library || !m_watchState || !m_artwork ||
             !m_nextEpisodes || !m_settings)
         {
             throw std::invalid_argument{ "CatalogService requires all dependencies." };
@@ -420,7 +421,7 @@ namespace HaloDesktop::Services
             std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> request;
             try
             {
-                request = m_apiClient->GetCatalogAsync(query->AddonId, query->Catalog.Type, query->Catalog.Id, query->Extras);
+                request = m_backends->Current()->GetCatalogAsync(query->AddonId, query->Catalog.Type, query->Catalog.Id, query->Extras);
             }
             catch (...)
             {
@@ -810,7 +811,7 @@ namespace HaloDesktop::Services
             extras.emplace_back(winrt::hstring{ name }, winrt::hstring{ value });
         }
         extras.emplace_back(L"skip", winrt::to_hstring(static_cast<std::uint64_t>(skip)));
-        auto const page = co_await m_apiClient->GetCatalogAsync(
+        auto const page = co_await m_backends->Current()->GetCatalogAsync(
             winrt::hstring{ source->AddonId },
             winrt::hstring{ source->Type },
             winrt::hstring{ source->CatalogId },
@@ -862,7 +863,7 @@ namespace HaloDesktop::Services
         {
             co_return std::nullopt;
         }
-        auto page = co_await m_apiClient->GetCatalogAsync(
+        auto page = co_await m_backends->Current()->GetCatalogAsync(
             winrt::hstring{ source->AddonId },
             type,
             winrt::hstring{ source->CatalogId },

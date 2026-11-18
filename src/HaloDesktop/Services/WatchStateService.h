@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <vector>
 namespace winrt::Microsoft::UI::Dispatching { struct DispatcherQueue; }
-namespace HaloDesktop::Api { class ApiClient; }
+namespace HaloDesktop::Api { class BackendSelector; }
 namespace HaloDesktop::Services
 {
     class WatchOutbox;
@@ -36,7 +36,7 @@ namespace HaloDesktop::Services
     {
     public:
         WatchStateService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<WatchOutbox> outbox);
         ~WatchStateService();
         WatchStateService(WatchStateService const&) = delete;
@@ -112,7 +112,7 @@ namespace HaloDesktop::Services
         // thread, before anything was awaited) in batches, then reads again.
         [[nodiscard]] concurrency::task<void> RemoveRowsAsync(std::vector<::HaloDesktop::Api::Dto::WatchEntry> targets);
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<WatchOutbox> m_outbox;
         std::vector<::HaloDesktop::Api::Dto::WatchEntry> m_rows;
         std::unordered_map<WatchStateChangedToken, WatchStateChangedHandler> m_changedHandlers;

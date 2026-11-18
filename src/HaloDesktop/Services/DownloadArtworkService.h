@@ -11,7 +11,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -22,7 +22,7 @@ namespace HaloDesktop::Services
     class DownloadArtworkService final
     {
     public:
-        explicit DownloadArtworkService(std::shared_ptr<Api::ApiClient> apiClient);
+        explicit DownloadArtworkService(std::shared_ptr<Api::BackendSelector> backends);
 
         [[nodiscard]] concurrency::task<winrt::hstring> ResolveAsync(
             winrt::hstring type,
@@ -35,7 +35,7 @@ namespace HaloDesktop::Services
             winrt::hstring const& type,
             winrt::hstring const& metaId);
 
-        std::shared_ptr<Api::ApiClient> m_apiClient;
+        std::shared_ptr<Api::BackendSelector> m_backends;
         std::mutex m_mutex;
         std::unordered_map<std::wstring, concurrency::task<Api::Dto::MetaDetail>> m_metadata;
     };

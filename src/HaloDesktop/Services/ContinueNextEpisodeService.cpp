@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Services/ContinueNextEpisodeService.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 
 #include <pplawait.h>
 #include <stdexcept>
@@ -11,13 +12,13 @@
 namespace HaloDesktop::Services
 {
     ContinueNextEpisodeService::ContinueNextEpisodeService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
-        : m_apiClient(std::move(apiClient)), m_dispatcher(std::move(dispatcher))
+        : m_backends(std::move(backends)), m_dispatcher(std::move(dispatcher))
     {
-        if (!m_apiClient || !m_dispatcher)
+        if (!m_backends || !m_dispatcher)
         {
-            throw std::invalid_argument{ "ContinueNextEpisodeService requires an API client and a dispatcher." };
+            throw std::invalid_argument{ "ContinueNextEpisodeService requires a backend selector and a dispatcher." };
         }
     }
 
@@ -100,9 +101,9 @@ namespace HaloDesktop::Services
         try
         {
             // addon and bingeGroup are deliberately empty. They only pre-match a
-            // stream for the player, and ApiClient omits empty values from the
+            // stream for the player, and the backend omits empty values from the
             // query, which is exactly the metadata-only call this wants.
-            auto const payload = co_await m_apiClient->GetNextEpisodeAsync(
+            auto const payload = co_await m_backends->Current()->GetNextEpisodeAsync(
                 winrt::hstring{ request.Type },
                 winrt::hstring{ request.MetaId },
                 winrt::hstring{ request.VideoId },

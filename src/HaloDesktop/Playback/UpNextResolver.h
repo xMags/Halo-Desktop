@@ -7,7 +7,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -41,7 +41,7 @@ namespace HaloDesktop::Playback
     {
     public:
         UpNextResolver(
-            std::shared_ptr<Api::ApiClient> api,
+            std::shared_ptr<Api::BackendSelector> backends,
             std::shared_ptr<Services::SettingsSyncService> settings,
             std::shared_ptr<Services::IDownloadService> downloads);
 
@@ -57,7 +57,7 @@ namespace HaloDesktop::Playback
             winrt::HaloDesktop::PlaybackRequest request);
 
     private:
-        std::shared_ptr<Api::ApiClient> m_api;
+        std::shared_ptr<Api::BackendSelector> m_backends;
         std::shared_ptr<Services::SettingsSyncService> m_settings;
         std::shared_ptr<Services::IDownloadService> m_downloads;
     };

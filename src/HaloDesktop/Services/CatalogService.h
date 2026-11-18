@@ -16,7 +16,7 @@
 #include <utility>
 #include <vector>
 
-namespace HaloDesktop::Api { class ApiClient; }
+namespace HaloDesktop::Api { class BackendSelector; }
 namespace HaloDesktop::Services
 {
     class AddonService;
@@ -36,7 +36,7 @@ namespace HaloDesktop::Services
     {
     public:
         CatalogService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<AddonService> addons,
             std::shared_ptr<LibraryService> library,
             std::shared_ptr<WatchStateService> watchState,
@@ -158,7 +158,7 @@ namespace HaloDesktop::Services
         // The language the account currently asks language catalogs for.
         [[nodiscard]] std::optional<std::wstring> CurrentCatalogLanguage() const;
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<AddonService> m_addons;
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<WatchStateService> m_watchState;

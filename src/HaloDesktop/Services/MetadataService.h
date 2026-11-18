@@ -9,7 +9,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -20,7 +20,7 @@ namespace HaloDesktop::Services
     {
     public:
         MetadataService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> api,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<WatchStateService> watch,
             std::shared_ptr<IDownloadService> downloads);
 
@@ -38,7 +38,7 @@ namespace HaloDesktop::Services
         void OnAccountChanged();
 
     private:
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_api;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<WatchStateService> m_watch;
         std::shared_ptr<IDownloadService> m_downloads;
         winrt::HaloDesktop::MediaDetail m_detail{ nullptr };

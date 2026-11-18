@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Playback/UpNextResolver.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Services/SettingsSyncService.h"
@@ -33,7 +34,7 @@ namespace
     // One next-episode lookup, abandoned after fifteen seconds so a stalled addon
     // cannot hold up either the up-next card or the advance that follows it.
     concurrency::task<std::optional<HaloDesktop::Api::Dto::NextEpisodePayload>> FetchNextEpisodeAsync(
-        HaloDesktop::Api::ApiClient& api,
+        std::shared_ptr<HaloDesktop::Api::IHaloBackend> backend,
         winrt::HaloDesktop::PlaybackRequest const& request)
     {
         using Payload = std::optional<HaloDesktop::Api::Dto::NextEpisodePayload>;
@@ -49,7 +50,7 @@ namespace
             },
             std::chrono::seconds(15));
 
-        api.GetNextEpisodeAsync(
+        backend->GetNextEpisodeAsync(
             request.MediaType(),
             request.MetaId(),
             request.VideoId(),
@@ -113,12 +114,12 @@ namespace
 namespace HaloDesktop::Playback
 {
     UpNextResolver::UpNextResolver(
-        std::shared_ptr<Api::ApiClient> api,
+        std::shared_ptr<Api::BackendSelector> backends,
         std::shared_ptr<Services::SettingsSyncService> settings,
         std::shared_ptr<Services::IDownloadService> downloads)
-        : m_api(std::move(api)), m_settings(std::move(settings)), m_downloads(std::move(downloads))
+        : m_backends(std::move(backends)), m_settings(std::move(settings)), m_downloads(std::move(downloads))
     {
-        if (!m_api || !m_settings || !m_downloads)
+        if (!m_backends || !m_settings || !m_downloads)
         {
             throw std::invalid_argument("UpNextResolver requires its dependencies.");
         }
@@ -163,7 +164,7 @@ namespace HaloDesktop::Playback
             };
         }
 
-        auto const payload = co_await FetchNextEpisodeAsync(*m_api, request);
+        auto const payload = co_await FetchNextEpisodeAsync(m_backends->Current(), request);
         if (!payload || !payload->Video)
         {
             co_return std::nullopt;
@@ -198,7 +199,7 @@ namespace HaloDesktop::Playback
         {
             co_return nullptr;
         }
-        auto const payload = co_await FetchNextEpisodeAsync(*m_api, request);
+        auto const payload = co_await FetchNextEpisodeAsync(m_backends->Current(), request);
         if (!payload || !payload->Video || !payload->Stream)
         {
             co_return nullptr;

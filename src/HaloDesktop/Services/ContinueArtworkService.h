@@ -13,7 +13,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -34,7 +34,7 @@ namespace HaloDesktop::Services
     {
     public:
         ContinueArtworkService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         // Retires whatever fill is in flight and returns the stamp the next one must
@@ -63,7 +63,7 @@ namespace HaloDesktop::Services
 
         static void Apply(winrt::HaloDesktop::ContinueItem const& item, ResolvedMeta const& resolved);
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         // Results come back on a worker thread and are handed to items the shelf
         // has already realised. Queueing them rather than resuming into the UI
         // apartment keeps each update between XAML's own work instead of nested

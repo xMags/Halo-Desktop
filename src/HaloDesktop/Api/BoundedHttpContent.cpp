@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <climits>
+#include <optional>
 #include <cstdint>
 #include <stdexcept>
 #include <string>
@@ -61,6 +62,37 @@ namespace
         }
         return winrt::hstring{ result };
     }
+
+    // Cancels one read while it is in flight, for as long as it lives. With a
+    // token that cannot be cancelled it does nothing.
+    class CancelWhileReading final
+    {
+    public:
+        CancelWhileReading(
+            concurrency::cancellation_token const& cancellation,
+            winrt::Windows::Foundation::IAsyncInfo const& operation)
+            : m_cancellation(cancellation)
+        {
+            if (!m_cancellation.is_cancelable()) return;
+            m_registration = m_cancellation.register_callback([operation]()
+            {
+                try { operation.Cancel(); } catch (...) {}
+            });
+        }
+
+        ~CancelWhileReading()
+        {
+            if (!m_registration) return;
+            try { m_cancellation.deregister_callback(*m_registration); } catch (...) {}
+        }
+
+        CancelWhileReading(CancelWhileReading const&) = delete;
+        CancelWhileReading& operator=(CancelWhileReading const&) = delete;
+
+    private:
+        concurrency::cancellation_token m_cancellation;
+        std::optional<concurrency::cancellation_token_registration> m_registration;
+    };
 }
 
 namespace HaloDesktop::Api
@@ -72,10 +104,28 @@ namespace HaloDesktop::Api
         co_return DecodeUtf8(bytes);
     }
 
+    concurrency::task<winrt::hstring> ReadBoundedJsonTextAsync(
+        winrt::Windows::Web::Http::IHttpContent const& content,
+        concurrency::cancellation_token cancellation)
+    {
+        auto const bytes = co_await ReadBoundedBytesAsync(content, MaximumJsonResponseBytes, cancellation);
+        co_return DecodeUtf8(bytes);
+    }
+
     concurrency::task<std::vector<std::uint8_t>> ReadBoundedBytesAsync(
         winrt::Windows::Web::Http::IHttpContent const& content,
         std::size_t maximumBytes)
     {
+        return ReadBoundedBytesAsync(content, maximumBytes, concurrency::cancellation_token::none());
+    }
+
+    concurrency::task<std::vector<std::uint8_t>> ReadBoundedBytesAsync(
+        winrt::Windows::Web::Http::IHttpContent const& content,
+        std::size_t maximumBytes,
+        concurrency::cancellation_token cancellation)
+    {
+        // `content` is only read before the first suspension: the caller's
+        // reference is not guaranteed to outlive it.
         if (!content)
         {
             throw std::invalid_argument{ "The server returned no response body." };
@@ -88,8 +138,17 @@ namespace HaloDesktop::Api
             declaredBytes = declaredLength.Value();
         }
         ValidateDeclaredResponseSize(declaredBytes, maximumBytes);
+        if (cancellation.is_canceled())
+        {
+            throw winrt::hresult_canceled{};
+        }
 
-        auto input = co_await content.ReadAsInputStreamAsync();
+        auto const opening = content.ReadAsInputStreamAsync();
+        winrt::Windows::Storage::Streams::IInputStream input{ nullptr };
+        {
+            CancelWhileReading const guard{ cancellation, opening };
+            input = co_await opening;
+        }
         winrt::Windows::Storage::Streams::DataReader reader{ input };
         reader.InputStreamOptions(winrt::Windows::Storage::Streams::InputStreamOptions::Partial);
 
@@ -104,7 +163,12 @@ namespace HaloDesktop::Api
             auto const requested = static_cast<std::uint32_t>((std::min)(
                 probeBytes,
                 static_cast<std::size_t>(ReadChunkBytes)));
-            auto const loaded = co_await reader.LoadAsync(requested);
+            auto const load = reader.LoadAsync(requested);
+            std::uint32_t loaded{};
+            {
+                CancelWhileReading const guard{ cancellation, load };
+                loaded = co_await load;
+            }
             if (loaded == 0)
             {
                 break;

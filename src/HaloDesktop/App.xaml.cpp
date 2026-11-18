@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "App.xaml.h"
 #include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
 #include "Api/HttpExecutor.h"
 #include "Config/ServerConfig.h"
 #include "Diagnostics/CrashLog.h"
@@ -114,6 +115,9 @@ namespace winrt::HaloDesktop::implementation
             ::HaloDesktop::Config::ServerBaseUrl,
             m_httpExecutor,
             m_sessionController);
+        // What the services ask for addons, resolution, library, watch history
+        // and settings. Always the account's client today.
+        m_backends = std::make_shared<::HaloDesktop::Api::BackendSelector>(m_apiClient);
         m_sessionService = std::make_shared<::HaloDesktop::Services::SessionService>(
             m_apiClient,
             m_sessionController,
@@ -133,13 +137,14 @@ namespace winrt::HaloDesktop::implementation
 
         auto addonService = std::make_shared<::HaloDesktop::Services::AddonService>(
             m_apiClient,
+            m_backends,
             m_queryCache,
             m_sessionService);
         m_services.Addons = addonService;
-        auto libraryService = std::make_shared<::HaloDesktop::Services::LibraryService>(m_apiClient);
+        auto libraryService = std::make_shared<::HaloDesktop::Services::LibraryService>(m_backends);
         m_services.Library = libraryService;
         auto watchStateService = std::make_shared<::HaloDesktop::Services::WatchStateService>(
-            m_apiClient,
+            m_backends,
             std::make_shared<::HaloDesktop::Services::WatchOutbox>(m_storagePaths->LocalState()));
         m_services.WatchState = watchStateService;
         // Progress left unsent (offline, or a report the window closed on) goes out
@@ -148,21 +153,21 @@ namespace winrt::HaloDesktop::implementation
         // Owned by the catalog service alone: nothing else needs a continue still,
         // and the cache is only useful next to the shelf that reads it.
         auto continueArtworkService = std::make_shared<::HaloDesktop::Services::ContinueArtworkService>(
-            m_apiClient,
+            m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         auto continueNextEpisodeService = std::make_shared<::HaloDesktop::Services::ContinueNextEpisodeService>(
-            m_apiClient,
+            m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         // Built ahead of the catalog, which asks its language rows in the
         // account's synced catalog language.
         auto settingsSyncService = std::make_shared<::HaloDesktop::Services::SettingsSyncService>(
-            m_apiClient,
+            m_backends,
             m_queryCache,
             m_storagePaths,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.SettingsSync = settingsSyncService;
         auto catalogService = std::make_shared<::HaloDesktop::Services::CatalogService>(
-            m_apiClient,
+            m_backends,
             addonService,
             m_services.Library,
             m_services.WatchState,
@@ -171,7 +176,7 @@ namespace winrt::HaloDesktop::implementation
             settingsSyncService);
         m_services.Catalog = catalogService;
         auto searchService = std::make_shared<::HaloDesktop::Services::SearchService>(
-            m_apiClient,
+            m_backends,
             addonService,
             libraryService,
             m_devicePreferences);
@@ -180,7 +185,7 @@ namespace winrt::HaloDesktop::implementation
             m_storagePaths->LocalState(),
             [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });
         auto downloadArtworkService = std::make_shared<::HaloDesktop::Services::DownloadArtworkService>(
-            m_apiClient);
+            m_backends);
         m_downloadService = std::make_shared<::HaloDesktop::Services::DownloadService>(
             m_downloadEngine,
             m_sessionService,
@@ -189,10 +194,11 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Downloads = m_downloadService;
         auto metadataService = std::make_shared<::HaloDesktop::Services::MetadataService>(
-            m_apiClient, m_services.WatchState, m_services.Downloads);
+            m_backends, m_services.WatchState, m_services.Downloads);
         m_services.Metadata = metadataService;
         auto sourceService = std::make_shared<::HaloDesktop::Services::SourceService>(
             m_apiClient,
+            m_backends,
             m_services.Downloads,
             m_services.SettingsSync);
         m_services.Sources = sourceService;
@@ -271,8 +277,8 @@ namespace winrt::HaloDesktop::implementation
         m_services.Playback = std::make_shared<::HaloDesktop::Playback::NullEngine>();
         m_services.ScrubPreview = std::make_shared<::HaloDesktop::Playback::NullScrubPreviewSource>();
 #endif
-        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
-        m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_apiClient,m_services.SettingsSync,m_services.Downloads);
+        m_services.Subtitles=std::make_shared<::HaloDesktop::Playback::SubtitleController>(m_apiClient,m_backends,m_services.Playback,m_services.SettingsSync,m_services.Downloads,m_devicePreferences,m_storagePaths);
+        m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_backends,m_services.SettingsSync,m_services.Downloads);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
         m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();
 

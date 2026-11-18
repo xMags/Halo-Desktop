@@ -9,14 +9,14 @@
 #include <optional>
 #include <vector>
 
-namespace HaloDesktop::Api { class ApiClient; }
+namespace HaloDesktop::Api { class BackendSelector; }
 namespace HaloDesktop::Services
 {
     // UI-thread-only library snapshot repository.
     class LibraryService final
     {
     public:
-        explicit LibraryService(std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient);
+        explicit LibraryService(std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends);
         [[nodiscard]] concurrency::task<void> LoadAsync();
         [[nodiscard]] std::vector<::HaloDesktop::Api::Dto::LibraryRow> Rows() const;
         [[nodiscard]] bool Contains(winrt::hstring type,winrt::hstring metaId) const;
@@ -26,7 +26,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] concurrency::task<bool> SetMembershipAsync(winrt::hstring type,winrt::hstring metaId,winrt::hstring name,std::optional<winrt::hstring> poster,bool present);
         void OnAccountChanged() noexcept;
     private:
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::vector<::HaloDesktop::Api::Dto::LibraryRow> m_rows;
         std::optional<concurrency::task<void>> m_mutationTail;
         std::uint64_t m_requestVersion{};

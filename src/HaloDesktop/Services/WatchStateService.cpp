@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/WatchStateService.h"
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Services/WatchMarkPolicy.h"
 #include "Services/WatchOutbox.h"
 #include "Services/WatchOutboxPolicy.h"
@@ -34,11 +35,11 @@ namespace HaloDesktop::Services
     };
 
     WatchStateService::WatchStateService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<WatchOutbox> outbox)
-        : m_apiClient(std::move(apiClient)), m_outbox(std::move(outbox))
+        : m_backends(std::move(backends)), m_outbox(std::move(outbox))
     {
-        if (!m_apiClient || !m_outbox) throw std::invalid_argument{ "WatchStateService requires an API client and an outbox." };
+        if (!m_backends || !m_outbox) throw std::invalid_argument{ "WatchStateService requires a backend selector and an outbox." };
     }
 
     WatchStateService::~WatchStateService()
@@ -62,7 +63,7 @@ namespace HaloDesktop::Services
         auto const uiContext = winrt::apartment_context{};
         auto const writeVersion = m_writeVersion;
         auto const loadVersion = ++m_loadVersion;
-        auto rows = co_await m_apiClient->GetWatchStateAsync();
+        auto rows = co_await m_backends->Current()->GetWatchStateAsync();
         co_await uiContext;
         if (writeVersion == m_writeVersion && loadVersion == m_loadVersion)
         {
@@ -91,7 +92,7 @@ namespace HaloDesktop::Services
             NoteTimestamp(row.UpdatedAt);
         }
         auto const version = ++m_writeVersion;
-        auto stored = co_await m_apiClient->PutWatchStateAsync(std::move(rows));
+        auto stored = co_await m_backends->Current()->PutWatchStateAsync(std::move(rows));
         co_await uiContext;
         if (version == m_writeVersion)
         {
@@ -150,7 +151,7 @@ namespace HaloDesktop::Services
         std::exception_ptr failure;
         try
         {
-            stored = co_await m_apiClient->PutWatchStateAsync(pending);
+            stored = co_await m_backends->Current()->PutWatchStateAsync(pending);
         }
         catch (...)
         {
@@ -212,7 +213,7 @@ namespace HaloDesktop::Services
                     co_return;
                 }
                 auto const version = ++m_writeVersion;
-                auto stored = co_await m_apiClient->PutWatchStateAsync(std::move(chunk));
+                auto stored = co_await m_backends->Current()->PutWatchStateAsync(std::move(chunk));
                 co_await uiContext;
                 if (epoch != m_accountEpoch)
                 {

@@ -18,7 +18,7 @@
 #include <vector>
 #include <winrt/base.h>
 
-namespace HaloDesktop::Api { class ApiClient; }
+namespace HaloDesktop::Api { class BackendSelector; }
 namespace HaloDesktop::Services
 {
     class AddonService;
@@ -65,7 +65,7 @@ namespace HaloDesktop::Services
     {
     public:
         SearchService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<AddonService> addons,
             std::shared_ptr<LibraryService> library,
             std::shared_ptr<DevicePreferencesStore> preferences);
@@ -124,7 +124,7 @@ namespace HaloDesktop::Services
         void SaveHistory();
         void NotifyChanged();
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<AddonService> m_addons;
         std::shared_ptr<LibraryService> m_library;
         std::shared_ptr<DevicePreferencesStore> m_preferences;

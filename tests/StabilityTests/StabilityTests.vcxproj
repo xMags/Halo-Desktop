@@ -282,6 +282,35 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Auth\LocalAuthSession.cpp">
       <Link>LocalAuthSession.cpp</Link>
     </ClCompile>
+    <ClCompile Include="DeviceBackendTests.cpp" />
+    <ClCompile Include="AddonResolveTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Api\BackendSelector.cpp">
+      <Link>BackendSelector.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\Addons\AddonClientPolicy.cpp">
+      <Link>AddonClientPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\Addons\AddonNormalize.cpp">
+      <Link>AddonNormalize.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\Addons\AddonResolver.cpp">
+      <Link>AddonResolver.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Api\Addons\HttpAddonFetcher.cpp">
+      <Link>HttpAddonFetcher.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceRecordsPolicy.cpp">
+      <Link>DeviceRecordsPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceDocuments.cpp">
+      <Link>DeviceDocuments.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceStore.cpp">
+      <Link>DeviceStore.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceBackend.cpp">
+      <Link>DeviceBackend.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -300,6 +329,9 @@
     <ClInclude Include="DownloadsPageTests.h" />
     <ClInclude Include="SettingsPageTests.h" />
     <ClInclude Include="SignInTests.h" />
+    <ClInclude Include="DeviceBackendTests.h" />
+    <ClInclude Include="AddonResolveTests.h" />
+    <ClInclude Include="AddonTestFakes.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

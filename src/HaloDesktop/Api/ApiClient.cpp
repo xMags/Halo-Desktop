@@ -196,6 +196,16 @@ namespace HaloDesktop::Api
         co_return Mappers::ParseAddons(value);
     }
 
+    concurrency::task<void> ApiClient::PutAddonsAsync(std::vector<winrt::hstring> transportUrls)
+    {
+        return PutAddonsAsync(std::move(transportUrls), false);
+    }
+
+    concurrency::task<void> ApiClient::PatchAddonAsync(winrt::hstring addonId, bool hideCatalogs)
+    {
+        return PatchAddonAsync(std::move(addonId), false, hideCatalogs);
+    }
+
     concurrency::task<void> ApiClient::PutAddonsAsync(
         std::vector<winrt::hstring> transportUrls,
         bool global)

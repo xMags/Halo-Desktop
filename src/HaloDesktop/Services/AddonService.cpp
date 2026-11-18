@@ -2,6 +2,8 @@
 #include "Services/AddonService.h"
 
 #include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 #include "Services/QueryCache.h"
 
@@ -88,14 +90,16 @@ namespace HaloDesktop::Services
 {
     AddonService::AddonService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<QueryCache> queryCache,
         std::shared_ptr<ISessionService> session)
         : m_apiClient(std::move(apiClient)),
+          m_backends(std::move(backends)),
           m_queryCache(std::move(queryCache)),
           m_session(std::move(session)),
           m_items(winrt::single_threaded_observable_vector<winrt::HaloDesktop::Addon>())
     {
-        if (!m_apiClient || !m_queryCache || !m_session)
+        if (!m_apiClient || !m_backends || !m_queryCache || !m_session)
         {
             throw std::invalid_argument{ "AddonService requires all dependencies." };
         }
@@ -182,7 +186,7 @@ namespace HaloDesktop::Services
         }
 
         auto const requestId = m_queryCache->Issue(AddonsCacheKey);
-        auto payload = co_await m_apiClient->GetAddonsAsync();
+        auto payload = co_await m_backends->Current()->GetAddonsAsync();
         co_await uiContext;
         if (accountVersion != m_accountVersion)
         {
@@ -205,8 +209,8 @@ namespace HaloDesktop::Services
             std::optional<::HaloDesktop::Api::Dto::AddonsPayload> seeded;
             try
             {
-                co_await m_apiClient->PutAddonsAsync(std::move(defaults), false);
-                seeded = co_await m_apiClient->GetAddonsAsync();
+                co_await m_backends->Current()->PutAddonsAsync(std::move(defaults));
+                seeded = co_await m_backends->Current()->GetAddonsAsync();
             }
             catch (winrt::hresult_canceled const&)
             {
@@ -279,7 +283,7 @@ namespace HaloDesktop::Services
 
             auto urls = TransportUrls(false);
             urls.push_back(url);
-            co_await m_apiClient->PutAddonsAsync(std::move(urls), false);
+            co_await PutListAsync(std::move(urls), false);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -343,7 +347,7 @@ namespace HaloDesktop::Services
 
             auto urls = TransportUrls(found->IsGlobal);
             std::erase(urls, *found->TransportUrl);
-            co_await m_apiClient->PutAddonsAsync(std::move(urls), found->IsGlobal);
+            co_await PutListAsync(std::move(urls), found->IsGlobal);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -397,7 +401,7 @@ namespace HaloDesktop::Services
             {
                 throw std::runtime_error{ "The addon cannot be changed." };
             }
-            co_await m_apiClient->PatchAddonAsync(found->Id, found->IsGlobal, !visible);
+            co_await PatchListEntryAsync(found->Id, found->IsGlobal, !visible);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -510,7 +514,7 @@ namespace HaloDesktop::Services
             {
                 body.emplace_back(url);
             }
-            co_await m_apiClient->PutAddonsAsync(std::move(body), global);
+            co_await PutListAsync(std::move(body), global);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -567,7 +571,7 @@ namespace HaloDesktop::Services
             {
                 globalUrls.emplace_back(url);
             }
-            co_await m_apiClient->PutAddonsAsync(std::move(globalUrls), true);
+            co_await PutListAsync(std::move(globalUrls), true);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -591,7 +595,7 @@ namespace HaloDesktop::Services
                 }
                 try
                 {
-                    co_await m_apiClient->PutAddonsAsync(std::move(ownUrls), false);
+                    co_await PutListAsync(std::move(ownUrls), false);
                 }
                 catch (winrt::hresult_canceled const&)
                 {
@@ -687,6 +691,24 @@ namespace HaloDesktop::Services
             }
         }
         return result;
+    }
+
+    concurrency::task<void> AddonService::PutListAsync(std::vector<winrt::hstring> transportUrls, bool global)
+    {
+        if (global)
+        {
+            return m_apiClient->PutAddonsAsync(std::move(transportUrls), true);
+        }
+        return m_backends->Current()->PutAddonsAsync(std::move(transportUrls));
+    }
+
+    concurrency::task<void> AddonService::PatchListEntryAsync(winrt::hstring addonId, bool global, bool hideCatalogs)
+    {
+        if (global)
+        {
+            return m_apiClient->PatchAddonAsync(std::move(addonId), true, hideCatalogs);
+        }
+        return m_backends->Current()->PatchAddonAsync(std::move(addonId), hideCatalogs);
     }
 
     void AddonService::OnAccountChanged()

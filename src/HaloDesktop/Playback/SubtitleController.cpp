@@ -3,6 +3,8 @@
 #include "Playback/ScopedReentrancyGuard.h"
 
 #include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 #include "Playback/PlaybackPolicy.h"
 #include "Security/ProtectedHttpHeaders.h"
@@ -80,14 +82,15 @@ namespace HaloDesktop::Playback
 {
     SubtitleController::SubtitleController(
         std::shared_ptr<Api::ApiClient>api,
+        std::shared_ptr<Api::BackendSelector>backends,
         std::shared_ptr<IPlaybackEngine>engine,
         std::shared_ptr<Services::SettingsSyncService>settings,
         std::shared_ptr<Services::IDownloadService>downloads,
         std::shared_ptr<Services::DevicePreferencesStore>preferences,
         std::shared_ptr<Storage::AppStoragePaths const>paths)
-        :m_api(std::move(api)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads)),m_preferences(std::move(preferences)),m_paths(std::move(paths))
+        :m_api(std::move(api)),m_backends(std::move(backends)),m_engine(std::move(engine)),m_settings(std::move(settings)),m_downloads(std::move(downloads)),m_preferences(std::move(preferences)),m_paths(std::move(paths))
     {
-        if(!m_api||!m_engine||!m_settings||!m_downloads||!m_preferences||!m_paths)throw std::invalid_argument("SubtitleController requires dependencies.");
+        if(!m_api||!m_backends||!m_engine||!m_settings||!m_downloads||!m_preferences||!m_paths)throw std::invalid_argument("SubtitleController requires dependencies.");
     }
 
     SubtitleController::~SubtitleController()
@@ -158,7 +161,7 @@ namespace HaloDesktop::Playback
         std::optional<Api::Dto::SubtitlesPayload>payload;
         try
         {
-            payload=co_await m_api->GetSubtitlesAsync(request.MediaType(),request.VideoId(),hash,videoSize,sizeName);
+            payload=co_await m_backends->Current()->GetSubtitlesAsync(request.MediaType(),request.VideoId(),hash,videoSize,sizeName);
         }
         catch(...)
         {

@@ -2,6 +2,8 @@
 #include "Services/SourceService.h"
 
 #include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 #include "Security/ProtectedHttpHeaders.h"
 #include "Services/Downloads/DownloadPreparation.h"
@@ -69,12 +71,13 @@ namespace HaloDesktop::Services
 {
     SourceService::SourceService(
         std::shared_ptr<Api::ApiClient> api,
+        std::shared_ptr<Api::BackendSelector> backends,
         std::shared_ptr<IDownloadService> downloads,
         std::shared_ptr<SettingsSyncService> settings)
-        : m_api(std::move(api)), m_downloads(std::move(downloads)), m_settings(std::move(settings)),
+        : m_api(std::move(api)), m_backends(std::move(backends)), m_downloads(std::move(downloads)), m_settings(std::move(settings)),
           m_current(std::make_shared<Sources::ParsedResolve const>())
     {
-        if (!m_api || !m_downloads || !m_settings) throw std::invalid_argument("SourceService requires its dependencies.");
+        if (!m_api || !m_backends || !m_downloads || !m_settings) throw std::invalid_argument("SourceService requires its dependencies.");
     }
 
     concurrency::task<void> SourceService::LoadAsync(
@@ -165,7 +168,7 @@ namespace HaloDesktop::Services
         std::exception_ptr failure;
         try
         {
-            payload = co_await m_api->GetStreamsAsync(type, videoId);
+            payload = co_await m_backends->Current()->GetStreamsAsync(type, videoId);
         }
         catch (...)
         {
@@ -369,7 +372,7 @@ namespace HaloDesktop::Services
                 size = computed.Size;
             }
 
-            auto const payload = co_await m_api->GetSubtitlesAsync(
+            auto const payload = co_await m_backends->Current()->GetSubtitlesAsync(
                 std::move(mediaType),
                 std::move(videoId),
                 hash,

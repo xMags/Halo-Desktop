@@ -13,7 +13,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -33,7 +33,7 @@ namespace HaloDesktop::Services
     {
     public:
         ContinueNextEpisodeService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         // Retires whatever fill is in flight and returns the stamp the next one
@@ -63,7 +63,7 @@ namespace HaloDesktop::Services
             ContinueNextRequest request,
             std::uint64_t generation);
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         // Keyed by the finished episode's video id, which is what the shelf holds
         // and is already unique per series position.

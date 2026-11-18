@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Services/MetadataService.h"
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 #include "Services/RatingPolicy.h"
 #include "Services/WatchStateService.h"
@@ -57,14 +58,14 @@ namespace
 namespace HaloDesktop::Services
 {
     MetadataService::MetadataService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> api,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<WatchStateService> watch,
         std::shared_ptr<IDownloadService> downloads)
-        : m_api(std::move(api)),
+        : m_backends(std::move(backends)),
           m_watch(std::move(watch)),
           m_downloads(std::move(downloads))
     {
-        if (!m_api || !m_watch || !m_downloads)
+        if (!m_backends || !m_watch || !m_downloads)
         {
             throw std::invalid_argument{ "MetadataService requires dependencies." };
         }
@@ -76,7 +77,7 @@ namespace HaloDesktop::Services
     {
         auto const uiContext = winrt::apartment_context{};
         auto const version = ++m_requestVersion;
-        auto meta = co_await m_api->GetMetaAsync(type, metaId);
+        auto meta = co_await m_backends->Current()->GetMetaAsync(type, metaId);
         co_await m_watch->LoadAsync();
         co_await uiContext;
         if (version != m_requestVersion)
@@ -161,7 +162,7 @@ namespace HaloDesktop::Services
         {
             co_return m_runtimeMinutes;
         }
-        auto const meta = co_await m_api->GetMetaAsync(type, metaId);
+        auto const meta = co_await m_backends->Current()->GetMetaAsync(type, metaId);
         co_return RuntimeMinutesFrom(meta.Runtime);
     }
 

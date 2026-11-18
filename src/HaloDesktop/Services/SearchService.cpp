@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Services/SearchService.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Api/CatalogExtrasPolicy.h"
 #include "Services/AddonService.h"
 #include "Services/DevicePreferencesStore.h"
@@ -104,16 +105,16 @@ namespace HaloDesktop::Services
     }
 
     SearchService::SearchService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<AddonService> addons,
         std::shared_ptr<LibraryService> library,
         std::shared_ptr<DevicePreferencesStore> preferences)
-        : m_apiClient(std::move(apiClient)),
+        : m_backends(std::move(backends)),
           m_addons(std::move(addons)),
           m_library(std::move(library)),
           m_preferences(std::move(preferences))
     {
-        if (!m_apiClient || !m_addons || !m_library || !m_preferences)
+        if (!m_backends || !m_addons || !m_library || !m_preferences)
         {
             throw std::invalid_argument{ "SearchService requires all dependencies." };
         }
@@ -242,7 +243,7 @@ namespace HaloDesktop::Services
             std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> request;
             try
             {
-                request = m_apiClient->GetCatalogAsync(
+                request = m_backends->Current()->GetCatalogAsync(
                     winrt::hstring{ target->AddonId },
                     winrt::hstring{ target->Type },
                     winrt::hstring{ target->Id },
@@ -366,7 +367,7 @@ namespace HaloDesktop::Services
         auto const weak = weak_from_this();
         auto const uiContext = winrt::apartment_context{};
         auto const addons = m_addons;
-        auto const apiClient = m_apiClient;
+        auto const backends = m_backends;
         auto const current = [weak, accountVersion, serial]() -> std::shared_ptr<SearchService>
         {
             auto self = weak.lock();
@@ -421,13 +422,13 @@ namespace HaloDesktop::Services
         self->NotifyChanged();
         self.reset();
 
-        auto const ask = [apiClient](auto const& choice)
+        auto const ask = [backends](auto const& choice)
             -> std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>>
         {
             if (!choice) return std::nullopt;
             try
             {
-                return apiClient->GetCatalogAsync(choice->first, choice->second.Type, choice->second.Id, {});
+                return backends->Current()->GetCatalogAsync(choice->first, choice->second.Type, choice->second.Id, {});
             }
             catch (...)
             {

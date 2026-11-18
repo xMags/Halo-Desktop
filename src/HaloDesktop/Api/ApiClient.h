@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Api/Dto.h"
+#include "Api/HaloBackend.h"
 #include "Api/OpenSubtitlesHash.h"
 
 #include <cstddef>
@@ -37,7 +38,10 @@ namespace HaloDesktop::Api
     // username and password session was opened on a self-hosted server. A
     // request whose target changes while it is under way is cancelled, so one
     // session's token never reaches another session's server.
-    class ApiClient final
+    //
+    // The IHaloBackend part is what Halo used with an account asks; the rest
+    // is account-only.
+    class ApiClient final : public IHaloBackend
     {
     public:
         static constexpr std::size_t MaximumAvatarBytes = 4u * 1024u * 1024u;
@@ -59,36 +63,40 @@ namespace HaloDesktop::Api
         // or empty when it has none. Fetch it again only when
         // Dto::Me::AvatarVersion changes. Larger than MaximumAvatarBytes fails.
         [[nodiscard]] concurrency::task<std::optional<std::vector<std::uint8_t>>> GetAvatarAsync();
-        [[nodiscard]] concurrency::task<Dto::AddonsPayload> GetAddonsAsync();
+        [[nodiscard]] concurrency::task<Dto::AddonsPayload> GetAddonsAsync() override;
+        // The caller's own list: PutAddonsAsync(transportUrls, false).
+        [[nodiscard]] concurrency::task<void> PutAddonsAsync(std::vector<winrt::hstring> transportUrls) override;
         [[nodiscard]] concurrency::task<void> PutAddonsAsync(
             std::vector<winrt::hstring> transportUrls,
             bool global);
+        // The caller's own addon: PatchAddonAsync(addonId, false, hideCatalogs).
+        [[nodiscard]] concurrency::task<void> PatchAddonAsync(winrt::hstring addonId, bool hideCatalogs) override;
         [[nodiscard]] concurrency::task<void> PatchAddonAsync(
             winrt::hstring addonId,
             bool global,
             bool hideCatalogs);
-        [[nodiscard]] concurrency::task<Dto::SettingsPayload> GetSettingsAsync();
+        [[nodiscard]] concurrency::task<Dto::SettingsPayload> GetSettingsAsync() override;
         [[nodiscard]] concurrency::task<Dto::SettingsPayload> PutSettingsAsync(
             winrt::Windows::Data::Json::JsonObject value,
-            std::int64_t updatedAt);
+            std::int64_t updatedAt) override;
         [[nodiscard]] concurrency::task<std::vector<Dto::MetaPreview>> GetCatalogAsync(
             winrt::hstring addonId,
             winrt::hstring type,
             winrt::hstring catalogId,
-            std::vector<std::pair<winrt::hstring, winrt::hstring>> extras = {});
-        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> GetLibraryAsync();
-        [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> GetWatchStateAsync();
-        [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> PutWatchStateAsync(std::vector<Dto::WatchEntry> rows);
-        [[nodiscard]] concurrency::task<Dto::MetaDetail> GetMetaAsync(winrt::hstring type,winrt::hstring metaId);
-        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> PutLibraryAsync(std::vector<Dto::LibraryRow> rows);
-        [[nodiscard]] concurrency::task<Dto::StreamsPayload> GetStreamsAsync(winrt::hstring type,winrt::hstring videoId);
+            std::vector<std::pair<winrt::hstring, winrt::hstring>> extras = {}) override;
+        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> GetLibraryAsync() override;
+        [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> GetWatchStateAsync() override;
+        [[nodiscard]] concurrency::task<std::vector<Dto::WatchEntry>> PutWatchStateAsync(std::vector<Dto::WatchEntry> rows) override;
+        [[nodiscard]] concurrency::task<Dto::MetaDetail> GetMetaAsync(winrt::hstring type,winrt::hstring metaId) override;
+        [[nodiscard]] concurrency::task<std::vector<Dto::LibraryRow>> PutLibraryAsync(std::vector<Dto::LibraryRow> rows) override;
+        [[nodiscard]] concurrency::task<Dto::StreamsPayload> GetStreamsAsync(winrt::hstring type,winrt::hstring videoId) override;
         [[nodiscard]] concurrency::task<Dto::NextEpisodePayload> GetNextEpisodeAsync(
             winrt::hstring type,
             winrt::hstring metaId,
             winrt::hstring videoId,
             winrt::hstring addonId,
-            winrt::hstring bingeGroup);
-        [[nodiscard]] concurrency::task<Dto::SubtitlesPayload> GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename);
+            winrt::hstring bingeGroup) override;
+        [[nodiscard]] concurrency::task<Dto::SubtitlesPayload> GetSubtitlesAsync(winrt::hstring type,winrt::hstring videoId,std::optional<winrt::hstring> videoHash,std::optional<std::uint64_t> videoSize,std::optional<winrt::hstring> filename) override;
         [[nodiscard]] concurrency::task<winrt::Windows::Web::Http::HttpResponseMessage> OpenAddonProxyAsync(winrt::hstring targetUrl);
         [[nodiscard]] concurrency::task<AuthenticatedDownloadRequest> BuildAddonProxyDownloadRequestAsync(
             winrt::hstring targetUrl);

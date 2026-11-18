@@ -18,7 +18,7 @@
 
 namespace HaloDesktop::Api
 {
-    class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Storage
@@ -42,7 +42,7 @@ namespace HaloDesktop::Services
     {
     public:
         SettingsSyncService(
-            std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<QueryCache> queryCache,
             std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> paths,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
@@ -107,7 +107,7 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::int64_t NextTimestamp() const noexcept;
         [[nodiscard]] winrt::Windows::Data::Json::JsonObject Snapshot() const;
 
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<QueryCache> m_queryCache;
         std::filesystem::path m_mirrorRoot;
         std::filesystem::path m_mirrorPath;

@@ -396,6 +396,17 @@
     <ClInclude Include="Views\SignInBackdrop.xaml.h"><DependentUpon>SignInBackdrop.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\SignInPosterFan.xaml.h"><DependentUpon>SignInPosterFan.xaml</DependentUpon></ClInclude>
     <ClInclude Include="Views\SignInSpinner.xaml.h"><DependentUpon>SignInSpinner.xaml</DependentUpon></ClInclude>
+    <ClInclude Include="Api\HaloBackend.h" />
+    <ClInclude Include="Api\BackendSelector.h" />
+    <ClInclude Include="Api\Addons\AddonClientPolicy.h" />
+    <ClInclude Include="Api\Addons\AddonFetcher.h" />
+    <ClInclude Include="Api\Addons\AddonNormalize.h" />
+    <ClInclude Include="Api\Addons\AddonResolver.h" />
+    <ClInclude Include="Api\Addons\HttpAddonFetcher.h" />
+    <ClInclude Include="Services\Device\DeviceRecordsPolicy.h" />
+    <ClInclude Include="Services\Device\DeviceDocuments.h" />
+    <ClInclude Include="Services\Device\DeviceStore.h" />
+    <ClInclude Include="Services\Device\DeviceBackend.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -795,6 +806,15 @@
     -->
     <ClCompile Include="Services\Auth\NoSignInAddons.cpp" Condition="!Exists('$(MSBuildThisFileDirectory)Local\SignInAddons.cpp')" />
     <ClCompile Include="Local\SignInAddons.cpp" Condition="Exists('$(MSBuildThisFileDirectory)Local\SignInAddons.cpp')" />
+    <ClCompile Include="Api\BackendSelector.cpp" />
+    <ClCompile Include="Api\Addons\AddonClientPolicy.cpp" />
+    <ClCompile Include="Api\Addons\AddonNormalize.cpp" />
+    <ClCompile Include="Api\Addons\AddonResolver.cpp" />
+    <ClCompile Include="Api\Addons\HttpAddonFetcher.cpp" />
+    <ClCompile Include="Services\Device\DeviceRecordsPolicy.cpp" />
+    <ClCompile Include="Services\Device\DeviceDocuments.cpp" />
+    <ClCompile Include="Services\Device\DeviceStore.cpp" />
+    <ClCompile Include="Services\Device\DeviceBackend.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

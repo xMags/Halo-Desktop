@@ -2,7 +2,8 @@
 #include "Services/SettingsSyncService.h"
 #include "Services/SettingsSyncPolicy.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Api/Dto.h"
 #include "Services/QueryCache.h"
 #include "Services/Downloads/DownloadTypes.h"
@@ -50,16 +51,16 @@ namespace
 namespace HaloDesktop::Services
 {
     SettingsSyncService::SettingsSyncService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         std::shared_ptr<QueryCache> queryCache,
         std::shared_ptr<::HaloDesktop::Storage::AppStoragePaths const> paths,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
-        : m_apiClient(std::move(apiClient)),
+        : m_backends(std::move(backends)),
           m_queryCache(std::move(queryCache)),
           m_mirrorRoot(paths ? paths->LocalState() / L"settings" : std::filesystem::path{}),
           m_debounceTimer(dispatcher.CreateTimer())
     {
-        if (!m_apiClient || !m_queryCache || !paths || !dispatcher)
+        if (!m_backends || !m_queryCache || !paths || !dispatcher)
         {
             throw std::invalid_argument{ "SettingsSyncService requires all dependencies." };
         }
@@ -96,7 +97,7 @@ namespace HaloDesktop::Services
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> payload;
         try
         {
-            payload = co_await m_apiClient->GetSettingsAsync();
+            payload = co_await m_backends->Current()->GetSettingsAsync();
         }
         catch (...)
         {
@@ -364,7 +365,7 @@ namespace HaloDesktop::Services
         std::optional<::HaloDesktop::Api::Dto::SettingsPayload> echo;
         try
         {
-            echo = co_await m_apiClient->PutSettingsAsync(snapshot, updatedAt);
+            echo = co_await m_backends->Current()->PutSettingsAsync(snapshot, updatedAt);
         }
         catch (...)
         {

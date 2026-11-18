@@ -32,6 +32,8 @@
 #include "DownloadsPageTests.h"
 #include "SettingsPageTests.h"
 #include "SignInTests.h"
+#include "DeviceBackendTests.h"
+#include "AddonResolveTests.h"
 #include "PlaybackSourceResolverTest.h"
 #include "StorageTests.h"
 
@@ -1425,6 +1427,8 @@ int main()
         RunDownloadTransferStabilityTest();
         RunPlaybackSourceResolverTest();
         RunApiClientAuthTest();
+        RunAddonResolveTests();
+        RunDeviceBackendTests();
         std::cout << "StabilityTests passed\n";
         return 0;
     }

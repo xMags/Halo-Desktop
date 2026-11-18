@@ -17,6 +17,7 @@
 namespace HaloDesktop::Api
 {
     class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -30,6 +31,7 @@ namespace HaloDesktop::Services
     public:
         SourceService(
             std::shared_ptr<Api::ApiClient> api,
+            std::shared_ptr<Api::BackendSelector> backends,
             std::shared_ptr<IDownloadService> downloads,
             std::shared_ptr<SettingsSyncService> settings);
 
@@ -70,7 +72,11 @@ namespace HaloDesktop::Services
             winrt::hstring videoId,
             winrt::hstring preferredLanguage);
 
+        // Not backend calls: the subtitle hash reads the stream itself, and the
+        // addon proxy is account-only. Streams and subtitles go through the
+        // current backend.
         std::shared_ptr<Api::ApiClient> m_api;
+        std::shared_ptr<Api::BackendSelector> m_backends;
         std::shared_ptr<IDownloadService> m_downloads;
         std::shared_ptr<SettingsSyncService> m_settings;
         // The parameters the current resolve answered for; null while none does.

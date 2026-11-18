@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Services/ContinueArtworkService.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 #include "Models/Models.h"
 
 #include <pplawait.h>
@@ -12,13 +13,13 @@
 namespace HaloDesktop::Services
 {
     ContinueArtworkService::ContinueArtworkService(
-        std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
-        : m_apiClient(std::move(apiClient)), m_dispatcher(std::move(dispatcher))
+        : m_backends(std::move(backends)), m_dispatcher(std::move(dispatcher))
     {
-        if (!m_apiClient || !m_dispatcher)
+        if (!m_backends || !m_dispatcher)
         {
-            throw std::invalid_argument{ "ContinueArtworkService requires an API client and a dispatcher." };
+            throw std::invalid_argument{ "ContinueArtworkService requires a backend selector and a dispatcher." };
         }
     }
 
@@ -81,7 +82,7 @@ namespace HaloDesktop::Services
         ResolvedMeta resolved;
         try
         {
-            auto const meta = co_await m_apiClient->GetMetaAsync(item.Type(), item.MetaId());
+            auto const meta = co_await m_backends->Current()->GetMetaAsync(item.Type(), item.MetaId());
             resolved.Artwork.Background = meta.Preview.Background.value_or(winrt::hstring{});
             for (auto const& video : meta.Videos)
             {

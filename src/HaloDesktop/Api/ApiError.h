@@ -8,6 +8,9 @@ namespace HaloDesktop::Api::ApiError
 {
     inline constexpr winrt::hresult Transport{ static_cast<std::int32_t>(0x8004A000u) };
     inline constexpr winrt::hresult SessionRejected{ static_cast<std::int32_t>(0x8004A001u) };
+    // A document Halo keeps on this PC without an account exists but cannot
+    // be read back (DeviceDataError in the reference). It is left untouched.
+    inline constexpr winrt::hresult DeviceDataUnreadable{ static_cast<std::int32_t>(0x8004A002u) };
 
     inline constexpr std::uint32_t HttpStatusBase = 0x8004A100u;
 
@@ -24,6 +27,11 @@ namespace HaloDesktop::Api::ApiError
     [[nodiscard]] constexpr bool IsSessionRejected(winrt::hresult code) noexcept
     {
         return code.value == SessionRejected.value;
+    }
+
+    [[nodiscard]] constexpr bool IsDeviceDataUnreadable(winrt::hresult code) noexcept
+    {
+        return code.value == DeviceDataUnreadable.value;
     }
 
     // A refusal by the account's plan (`plan_required`, `plan_limit_reached`).

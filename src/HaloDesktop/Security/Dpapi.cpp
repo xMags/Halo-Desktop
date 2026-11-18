@@ -17,8 +17,6 @@
 
 namespace
 {
-    constexpr std::uint64_t MaximumProtectedFileBytes = 2u * 1024u * 1024u;
-
     struct LocalFreeDeleter final
     {
         void operator()(std::uint8_t* value) const noexcept
@@ -131,14 +129,14 @@ namespace
         }
     }
 
-    std::vector<std::uint8_t> ReadAll(HANDLE file)
+    std::vector<std::uint8_t> ReadAll(HANDLE file, std::uint64_t maximumBytes)
     {
         LARGE_INTEGER size{};
         if (!GetFileSizeEx(file, &size))
         {
             ThrowLastError(L"Windows could not inspect protected Halo data.");
         }
-        if (size.QuadPart < 0 || static_cast<std::uint64_t>(size.QuadPart) > MaximumProtectedFileBytes)
+        if (size.QuadPart < 0 || static_cast<std::uint64_t>(size.QuadPart) > maximumBytes)
         {
             throw std::length_error{ "The protected Halo file is too large." };
         }
@@ -238,7 +236,8 @@ namespace HaloDesktop::Security
     }
 
     concurrency::task<std::optional<std::string>> ReadProtectedTextAsync(
-        std::filesystem::path path)
+        std::filesystem::path path,
+        std::uint64_t maximumBytes)
     {
         co_await winrt::resume_background();
         if (path.empty())
@@ -266,7 +265,7 @@ namespace HaloDesktop::Security
             ThrowLastError(L"Windows could not open protected Halo data.");
         }
 
-        auto protectedBytes = ReadAll(file.get());
+        auto protectedBytes = ReadAll(file.get(), maximumBytes);
         file.reset();
         auto plaintextBytes = Unprotect(protectedBytes);
         auto wipe = wil::scope_exit([&protectedBytes, &plaintextBytes]() noexcept

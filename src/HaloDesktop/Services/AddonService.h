@@ -13,6 +13,7 @@
 namespace HaloDesktop::Api
 {
     class ApiClient;
+    class BackendSelector;
 }
 
 namespace HaloDesktop::Services
@@ -20,12 +21,15 @@ namespace HaloDesktop::Services
     class QueryCache;
 
     // UI-thread-only addon repository. Transport URLs remain in native records;
-    // XAML rows expose only display data and opaque IDs.
+    // XAML rows expose only display data and opaque IDs. The caller's own list
+    // goes through the current backend; the admin's global list is
+    // account-only and goes to the account's API client.
     class AddonService final : public IAddonService
     {
     public:
         AddonService(
             std::shared_ptr<::HaloDesktop::Api::ApiClient> apiClient,
+            std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
             std::shared_ptr<QueryCache> queryCache,
             std::shared_ptr<ISessionService> session);
         ~AddonService() override;
@@ -64,8 +68,12 @@ namespace HaloDesktop::Services
         // Editability and the display rows, from the records and the admin flag.
         void RebuildItems();
         [[nodiscard]] std::vector<winrt::hstring> TransportUrls(bool global) const;
+        // The global list to the account, the caller's own to the current backend.
+        [[nodiscard]] concurrency::task<void> PutListAsync(std::vector<winrt::hstring> transportUrls, bool global);
+        [[nodiscard]] concurrency::task<void> PatchListEntryAsync(winrt::hstring addonId, bool global, bool hideCatalogs);
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_apiClient;
+        std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
         std::shared_ptr<QueryCache> m_queryCache;
         std::shared_ptr<ISessionService> m_session;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::HaloDesktop::Addon> m_items{ nullptr };

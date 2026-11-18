@@ -1,7 +1,8 @@
 #include "pch.h"
 #include "Services/DownloadArtworkService.h"
 
-#include "Api/ApiClient.h"
+#include "Api/BackendSelector.h"
+#include "Api/HaloBackend.h"
 
 #include <exception>
 #include <stdexcept>
@@ -9,12 +10,12 @@
 
 namespace HaloDesktop::Services
 {
-    DownloadArtworkService::DownloadArtworkService(std::shared_ptr<Api::ApiClient> apiClient)
-        : m_apiClient(std::move(apiClient))
+    DownloadArtworkService::DownloadArtworkService(std::shared_ptr<Api::BackendSelector> backends)
+        : m_backends(std::move(backends))
     {
-        if (!m_apiClient)
+        if (!m_backends)
         {
-            throw std::invalid_argument{ "DownloadArtworkService requires an API client." };
+            throw std::invalid_argument{ "DownloadArtworkService requires a backend selector." };
         }
     }
 
@@ -60,7 +61,7 @@ namespace HaloDesktop::Services
         }
         try
         {
-            auto completionTask = m_apiClient->GetMetaAsync(type, metaId).then(
+            auto completionTask = m_backends->Current()->GetMetaAsync(type, metaId).then(
                 [completion](concurrency::task<Api::Dto::MetaDetail> result) mutable
                 {
                     try
