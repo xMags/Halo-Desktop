@@ -826,11 +826,42 @@ namespace
         Require(odd && odd->UserId == L"u1", "a malformed profile field failed the restore");
         Require(!odd->IsAdmin && !odd->Plan && !odd->AvatarVersion, "a malformed profile field was kept");
     }
+
+    // A saved sign-in that could not be read this launch (held open by another
+    // program, or not decryptable) is left on disk for the next launch; only one
+    // that was read and is not a session is removed.
+    void TestUnreadableSessionIsKept()
+    {
+        using HaloDesktop::Services::Auth::SessionStore;
+
+        TemporaryDirectory const temporary{ L"HaloDesktop-Session-" };
+        auto const sessionPath = temporary.Path() / L"auth-session.bin";
+        SessionStore store{ temporary.Path() };
+
+        HaloDesktop::Security::WriteProtectedTextAsync(sessionPath, R"({"kind":"local"})").get();
+        {
+            // No sharing at all: the store's open fails as a sharing violation.
+            wil::unique_hfile const held{ CreateFileW(
+                sessionPath.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr) };
+            Require(static_cast<bool>(held), "the test could not hold the session file open");
+            Require(!store.LoadAsync().get(), "a session file held by another program restored");
+        }
+        Require(std::filesystem::exists(sessionPath), "a session file held by another program was deleted");
+
+        WriteBytes(sessionPath, std::vector<std::uint8_t>{ 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 });
+        Require(!store.LoadAsync().get(), "a session file Windows cannot decrypt restored");
+        Require(std::filesystem::exists(sessionPath), "a session file Windows cannot decrypt was deleted");
+
+        HaloDesktop::Security::WriteProtectedTextAsync(sessionPath, "not a session").get();
+        Require(!store.LoadAsync().get(), "a file that is not a session restored");
+        Require(!std::filesystem::exists(sessionPath), "a file that is not a session was kept");
+    }
 }
 
 void RunStandaloneStorageTests()
 {
     TestSavedIdentityProfile();
+    TestUnreadableSessionIsKept();
     TestPreferenceValidationAndConcurrentMerge();
     TestUnreadablePreferencesAreNotReplaced();
     TestSubtitleMemoryFitsTheFile();

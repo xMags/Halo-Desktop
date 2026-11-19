@@ -242,24 +242,17 @@ namespace HaloDesktop::Services::Auth
     {
         co_await winrt::resume_background();
         std::optional<std::string> raw;
-        bool unreadable{};
         try
         {
             raw = co_await ::HaloDesktop::Security::ReadProtectedTextAsync(m_path);
         }
         catch (...)
         {
-            unreadable = true;
-        }
-        if (unreadable)
-        {
-            try
-            {
-                co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_path);
-            }
-            catch (...)
-            {
-            }
+            // Not read: the file lock timed out, another program holds the file,
+            // the disk failed, or Windows could not decrypt it. Any of those can
+            // pass, so the saved sign-in stays as it is and the next launch tries
+            // again. Signed out for this launch only: every sign-in overwrites or
+            // clears this file, so an older copy never comes back over a newer one.
             co_return std::nullopt;
         }
         if (!raw)
@@ -282,6 +275,7 @@ namespace HaloDesktop::Services::Auth
         {
         }
 
+        // Read and decrypted, but not a session: it never will be, so it goes.
         co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_path);
         co_return std::nullopt;
     }
