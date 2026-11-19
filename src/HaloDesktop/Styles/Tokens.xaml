@@ -84,15 +84,6 @@
       <Color x:Key="HaloGlowBColor">#1AA878FF</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
-      <!-- Laid over a strip's edge while it still hides cards: the ground fading to clear, inward. -->
-      <LinearGradientBrush x:Key="HaloShelfFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="{StaticResource HaloMicaColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="HaloShelfFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
-      </LinearGradientBrush>
       <!-- The hero skeleton's scrim, the hero's own stops: `hs1` to `hs2` at 52%, clear by 92%. -->
       <LinearGradientBrush x:Key="HaloHeroSkeletonScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
         <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
@@ -269,15 +260,6 @@
       <Color x:Key="HaloGlowBColor">#0D7850C8</Color>
 
       <SolidColorBrush x:Key="HaloMicaBrush" Color="{StaticResource HaloMicaColor}" />
-      <!-- Laid over a strip's edge while it still hides cards: the ground fading to clear, inward. -->
-      <LinearGradientBrush x:Key="HaloShelfFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="{StaticResource HaloMicaColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloMicaClearColor}" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="HaloShelfFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="{StaticResource HaloMicaClearColor}" />
-        <GradientStop Offset="1" Color="{StaticResource HaloMicaColor}" />
-      </LinearGradientBrush>
       <!-- The hero skeleton's scrim, the light hero's stops: `hs1` to 24%, `hs2` at 46%, clear by 68%. -->
       <LinearGradientBrush x:Key="HaloHeroSkeletonScrimBrush" StartPoint="0,0.5" EndPoint="1,0.5">
         <GradientStop Offset="0" Color="{StaticResource HaloHeroScrim1Color}" />
