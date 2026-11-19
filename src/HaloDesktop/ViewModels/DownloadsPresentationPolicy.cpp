@@ -277,6 +277,20 @@ namespace HaloDesktop::ViewModels::DownloadsPresentation
         return true;
     }
 
+    TransferSection SectionOf(RowState state) noexcept
+    {
+        switch (state)
+        {
+        case RowState::Queued: return TransferSection::Waiting;
+        case RowState::Failed: return TransferSection::Attention;
+        case RowState::Downloading:
+        case RowState::Paused:
+        case RowState::OnDisk:
+            return TransferSection::Running;
+        }
+        return TransferSection::Running;
+    }
+
     FilterCounts CountFilters(std::span<DownloadRow const> transfers, std::span<DownloadRow const> ready)
     {
         return FilterCounts{

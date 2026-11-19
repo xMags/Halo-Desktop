@@ -763,6 +763,8 @@ namespace winrt::HaloDesktop::implementation
             : Microsoft::UI::Xaml::Visibility::Collapsed);
         UpdateAccountToolTip();
         UpdatePaneToggleOffset();
+        m_paneShownOpen = open;
+        UpdateDownloadBadge();
     }
 
     // The toggle belongs to the NavigationView's template, so it exists only once
@@ -977,9 +979,17 @@ namespace winrt::HaloDesktop::implementation
         auto const count = App::Services().Downloads->ActiveCount();
         auto const badge = DownloadsBadgeControl();
         badge.Value(count);
-        badge.Visibility(count == 0
-            ? Microsoft::UI::Xaml::Visibility::Collapsed
-            : Microsoft::UI::Xaml::Visibility::Visible);
+        // The count beside the label with the pane open; a dot on the icon with
+        // it closed, where a number would crowd the glyph.
+        badge.Visibility(count != 0 && m_paneShownOpen
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed);
+        if (auto const dot = DownloadsDot())
+        {
+            dot.Visibility(count != 0 && !m_paneShownOpen
+                ? Microsoft::UI::Xaml::Visibility::Visible
+                : Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
     }
 
     void ShellPage::RefreshJumpBackIn()

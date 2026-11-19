@@ -62,6 +62,13 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility SelectedVisibility { get; };
         // The hairline above a queue row: not over the first row, nor beside the selected one.
         Microsoft.UI.Xaml.Visibility TopRuleVisibility { get; };
+        // The row's progress bar draws its paused look.
+        Boolean IsPaused { get; };
+        // The row's details (quality, size, subtitle, added, file) are open.
+        Boolean IsExpanded { get; };
+        Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
+        // The details chevron: 0 shut, 180 open.
+        Double ChevronAngle { get; };
     }
 
     runtimeclass DownloadsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
@@ -110,7 +117,13 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility FolderVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedReadyVisibility { get; };
         Microsoft.UI.Xaml.Visibility SelectedTransferVisibility { get; };
+        Microsoft.UI.Xaml.Visibility RunningVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WaitingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AttentionVisibility { get; };
+        String WaitingLine { get; };
+        String StatusLine { get; };
         void Select(String id);
+        void ToggleDetails(String id);
         void SetFilter(Int32 index);
         void Pause(String id);
         void Resume(String id);

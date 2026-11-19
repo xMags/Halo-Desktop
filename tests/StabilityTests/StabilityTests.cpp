@@ -1043,31 +1043,39 @@ namespace
         auto const xaml = std::string{
             std::istreambuf_iterator<char>{ input },
             std::istreambuf_iterator<char>{} };
+        // Every row property the page draws that changes while the row lives
+        // (progress ticks, state changes, a source chosen again, details
+        // opened). Each must be bound, and bound one-way, or a reused row keeps
+        // what it first showed.
         constexpr std::string_view mutableProperties[]{
             "EpisodeLabel",
-            "EpisodeLabelVisibility",
             "Name",
-            "Sub",
+            "CardTitle",
             "AccessibleName",
             "MetaId",
             "RowArtwork",
-            "ProgressDone",
-            "ProgressRest",
+            "Progress",
+            "IsPaused",
+            "Lead",
             "MetaLead",
             "MetaMiddle",
             "MetaLast",
             "ToneNormalVisibility",
             "ToneCautionVisibility",
             "ToneCriticalVisibility",
-            "UpNextVisibility",
-            "TransferBodyVisibility",
             "ThumbOpacity",
             "ChooseSourceVisibility",
             "PauseVisibility",
             "ResumeVisibility",
             "RetryVisibility",
-            "SelectedVisibility",
-            "TopRuleVisibility",
+            "ChevronAngle",
+            "DetailsVisibility",
+            "QualityLine",
+            "SizeFactLabel",
+            "DownloadedLine",
+            "Subs",
+            "AddedFact",
+            "FileName",
         };
         for (auto const property : mutableProperties)
         {

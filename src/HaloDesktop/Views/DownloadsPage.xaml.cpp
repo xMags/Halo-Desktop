@@ -10,7 +10,6 @@
 #include "ViewModels/DownloadsViewModel.h"
 
 #include <array>
-#include <cmath>
 #include <cstdint>
 #include <microsoft.ui.xaml.window.h>
 #include <winrt/Microsoft.UI.Interop.h>
@@ -18,18 +17,6 @@
 
 namespace
 {
-    // `.dl-pane`: 380px, 320px on a content surface narrower than 1200px.
-    constexpr double PaneWide = 380.0;
-    constexpr double PaneNarrow = 320.0;
-    constexpr double PaneBreakpoint = 1200.0;
-    // `@container dl-main (max-width: 840px)`: storage goes under the chart.
-    constexpr double InstrumentBreakpoint = 840.0;
-    // `.dl-pane-inner { padding: 28px 24px 24px }`.
-    constexpr double PaneHorizontalPadding = 48.0;
-    // `.dl-instrument { gap: 28px }` either side of the 1px rule.
-    constexpr double InstrumentRuleWidth = 57.0;
-    constexpr double StorageWidth = 240.0;
-
     winrt::hstring TagOf(winrt::Windows::Foundation::IInspectable const& sender)
     {
         auto const element = sender.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>();
@@ -41,6 +28,11 @@ namespace
         auto const card = sender.try_as<winrt::HaloDesktop::DownloadReadyCard>();
         auto const row = card ? card.Row() : nullptr;
         return row ? row.Id() : winrt::hstring{};
+    }
+
+    winrt::Microsoft::UI::Xaml::Visibility VisibleWhen(bool visible) noexcept
+    {
+        return visible ? winrt::Microsoft::UI::Xaml::Visibility::Visible : winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
     }
 }
 
@@ -55,7 +47,9 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const viewModel = winrt::get_self<DownloadsViewModel>(m_viewModel);
         viewModel->Activate();
-        TransferList().ItemsSource(viewModel->TransfersView());
+        RunningList().ItemsSource(viewModel->RunningView());
+        WaitingList().ItemsSource(viewModel->WaitingView());
+        AttentionList().ItemsSource(viewModel->AttentionView());
         ReadyGrid().ItemsSource(viewModel->ReadyView());
         m_chart.Attach(ChartHost(), ChartBrushSource());
         if (m_viewModelChangedToken.value == 0)
@@ -64,12 +58,17 @@ namespace winrt::HaloDesktop::implementation
                 winrt::Windows::Foundation::IInspectable const&,
                 Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args)
             {
-                if (args.PropertyName() != L"ChartBars") return;
-                if (auto const self = weak.get()) self->ApplyChart();
+                auto const self = weak.get();
+                if (!self) return;
+                auto const name = args.PropertyName();
+                if (name == L"ChartBars") self->ApplyChart();
+                else if (name == L"FilterAllCount") self->UpdateFilterTexts();
             });
         }
         ApplyChart();
+        UpdateFilterTexts();
         SyncFilterSelection();
+        ApplyFoldedCards();
     }
     void DownloadsPage::OnUnloaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
@@ -84,85 +83,72 @@ namespace winrt::HaloDesktop::implementation
     {
         m_chart.Apply(winrt::get_self<DownloadsViewModel>(m_viewModel)->ChartBars());
     }
-    // The page is cached, so a return visit reuses the markup's initial checked
-    // state while the view model still holds the filter the viewer left on.
+
+    // The filter names carry their counts, as Windows' own selector bars do.
+    // The view model raises every count together, so one of them stands for all.
+    void DownloadsPage::UpdateFilterTexts()
+    {
+        try
+        {
+            AllFilterItem().Text(L"All (" + m_viewModel.FilterAllCount() + L")");
+            ActiveFilterItem().Text(L"Active (" + m_viewModel.FilterActiveCount() + L")");
+            ReadyFilterItem().Text(L"Ready (" + m_viewModel.FilterReadyCount() + L")");
+            FailedFilterItem().Text(L"Failed (" + m_viewModel.FilterFailedCount() + L")");
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+    }
+
+    // The page is cached, so a return visit reuses the markup's initial
+    // selection while the view model still holds the filter the viewer left on.
+    // Selecting it raises SelectionChanged, which sets the filter it already has.
     void DownloadsPage::SyncFilterSelection()
     {
-        std::array<wchar_t const*, 4> const names{ L"AllFilter", L"ActiveFilter", L"ReadyFilter", L"FailedFilter" };
+        std::array const items{ AllFilterItem(), ActiveFilterItem(), ReadyFilterItem(), FailedFilterItem() };
         auto const index = m_viewModel.FilterIndex();
-        for (std::size_t position = 0; position < names.size(); ++position)
+        if (index < 0 || static_cast<std::size_t>(index) >= items.size()) return;
+        auto const& wanted = items[static_cast<std::size_t>(index)];
+        if (FilterBar().SelectedItem() != wanted) FilterBar().SelectedItem(wanted);
+    }
+    void DownloadsPage::OnFilterSelectionChanged(Microsoft::UI::Xaml::Controls::SelectorBar const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&)
+    {
+        auto const selected = sender.SelectedItem();
+        std::array const items{ AllFilterItem(), ActiveFilterItem(), ReadyFilterItem(), FailedFilterItem() };
+        for (std::size_t position = 0; position < items.size(); ++position)
         {
-            if (auto const button = FindName(names[position]).try_as<Microsoft::UI::Xaml::Controls::RadioButton>())
+            if (items[position] == selected)
             {
-                button.IsChecked(static_cast<std::int32_t>(position) == index);
+                m_viewModel.SetFilter(static_cast<std::int32_t>(position));
+                return;
             }
         }
     }
 
-    // Layout only; a refusal leaves the last layout in place.
-    void DownloadsPage::OnPageSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    void DownloadsPage::ApplyFoldedCards()
     {
-        try
-        {
-            auto const width = args.NewSize().Width < PaneBreakpoint ? PaneNarrow : PaneWide;
-            if (auto const column = PaneColumn(); column && column.Width().Value != width)
-            {
-                column.Width(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(width));
-            }
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
+        StatusDetails().Visibility(VisibleWhen(m_statusOpen));
+        StatusChevronTurn().Angle(m_statusOpen ? 180.0 : 0.0);
+        StatusHint().Text(m_statusOpen ? L"Hide details" : L"Details");
+        WaitingList().Visibility(VisibleWhen(m_waitingOpen));
+        WaitingChevronTurn().Angle(m_waitingOpen ? 180.0 : 0.0);
     }
-    void DownloadsPage::OnMainSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    void DownloadsPage::OnStatusToggleClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        try
-        {
-            SetInstrumentStacked(args.NewSize().Width <= InstrumentBreakpoint);
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
+        m_statusOpen = !m_statusOpen;
+        ApplyFoldedCards();
     }
-    void DownloadsPage::SetInstrumentStacked(bool stacked)
+    void DownloadsPage::OnWaitingToggleClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        if (stacked == m_instrumentStacked) return;
-        m_instrumentStacked = stacked;
-        auto const storage = StorageBlock();
-        Microsoft::UI::Xaml::Controls::Grid::SetRow(storage, stacked ? 1 : 0);
-        Microsoft::UI::Xaml::Controls::Grid::SetColumn(storage, stacked ? 0 : 2);
-        storage.Margin(Microsoft::UI::Xaml::ThicknessHelper::FromLengths(0, stacked ? 18 : 0, 0, 0));
-        InstrumentRule().Visibility(stacked ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
-        InstrumentRuleColumn().Width(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(stacked ? 0.0 : InstrumentRuleWidth));
-        InstrumentStorageColumn().Width(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(stacked ? 0.0 : StorageWidth));
+        m_waitingOpen = !m_waitingOpen;
+        ApplyFoldedCards();
     }
-    // The pane's content is at least the pane's height, so the delete button
-    // sits at its foot, and its art keeps 16:9 at the pane's width.
-    void DownloadsPage::OnPaneSizeChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    void DownloadsPage::OnToggleDetailsClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        try
-        {
-            auto const size = args.NewSize();
-            if (auto const content = PaneContent()) content.MinHeight(size.Height);
-            auto const artWidth = size.Width - PaneHorizontalPadding;
-            if (artWidth > 0.0)
-            {
-                if (auto const art = PaneArt()) art.Height(std::round(artWidth * 9.0 / 16.0));
-            }
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
+        if (auto const id = TagOf(sender); !id.empty()) m_viewModel.ToggleDetails(id);
     }
 
-    void DownloadsPage::OnTransferItemClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ItemClickEventArgs const& args)
-    {
-        if (auto const row = args.ClickedItem().try_as<winrt::HaloDesktop::DownloadRowViewModel>()) m_viewModel.Select(row.Id());
-    }
-    void DownloadsPage::OnCardSelected(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        if (auto const id = CardIdOf(sender); !id.empty()) m_viewModel.Select(id);
-    }
+    // A ready card plays when clicked or when its play button is pressed.
     void DownloadsPage::OnCardPlayRequested(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         auto const id = CardIdOf(sender);
@@ -170,10 +156,30 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.Select(id);
         m_viewModel.Play(id);
     }
-    void DownloadsPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
-    void DownloadsPage::OnActiveFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
-    void DownloadsPage::OnReadyFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
-    void DownloadsPage::OnFailedFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(3); }
+    // The card's right-click menu. Reveal and delete act on the selection, so
+    // the card is selected first.
+    void DownloadsPage::OnReadyPlayClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const id = TagOf(sender);
+        if (id.empty()) return;
+        m_viewModel.Select(id);
+        m_viewModel.Play(id);
+    }
+    void DownloadsPage::OnReadyRevealClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const id = TagOf(sender);
+        if (id.empty()) return;
+        m_viewModel.Select(id);
+        m_viewModel.RevealSelected();
+    }
+    void DownloadsPage::OnReadyDeleteClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const id = TagOf(sender);
+        if (id.empty()) return;
+        m_viewModel.Select(id);
+        ShowDeleteDialog();
+    }
+
     void DownloadsPage::OnPauseAllClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (m_viewModel.IsPausedAll())
@@ -183,18 +189,14 @@ namespace winrt::HaloDesktop::implementation
         }
         ShowPauseAllDialog();
     }
-    void DownloadsPage::OnPauseSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.PauseSelected(); }
-    void DownloadsPage::OnResumeSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ResumeSelected(); }
-    void DownloadsPage::OnCancelSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowCancelDialog(L""); }
-    void DownloadsPage::OnDeleteSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowDeleteDialog(); }
-    void DownloadsPage::OnPlaySelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenPlayer(); }
-    void DownloadsPage::OnRevealSelectedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RevealSelected(); }
-    void DownloadsPage::OnChooseSourceClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ChooseSource(); }
     void DownloadsPage::OnPauseRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Pause(TagOf(sender)); }
     void DownloadsPage::OnResumeRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Resume(TagOf(sender)); }
     void DownloadsPage::OnRetryRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(TagOf(sender)); }
     void DownloadsPage::OnChooseSourceRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ChooseSourceFor(TagOf(sender)); }
-    void DownloadsPage::OnCancelRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowCancelDialog(TagOf(sender)); }
+    void DownloadsPage::OnCancelRowClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (auto const id = TagOf(sender); !id.empty()) ShowCancelDialog(id);
+    }
     void DownloadsPage::OnManageFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { PickDownloadFolder(); }
     void DownloadsPage::OnOpenFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDownloadFolder(); }
     void DownloadsPage::OnRetryFailedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RetryFailed(); }

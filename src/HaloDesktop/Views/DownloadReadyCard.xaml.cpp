@@ -58,8 +58,7 @@ namespace winrt::HaloDesktop::implementation
                 auto const self = weak.get();
                 if (!self) return;
                 auto const name = args.PropertyName();
-                if (name == L"IsSelected") self->UpdatePlayButton();
-                else if (name == L"AccessibleName") self->UpdatePlayName();
+                if (name == L"AccessibleName") self->UpdatePlayName();
             });
         }
         // The card is handed its row by the grid's template, which can be after
@@ -145,7 +144,7 @@ namespace winrt::HaloDesktop::implementation
     {
         try
         {
-            auto const shown = m_hovered || m_playFocused || (m_row && m_row.IsSelected());
+            auto const shown = m_hovered || m_playFocused;
             if (auto const play = PlayButton()) play.Opacity(shown ? 1.0 : 0.0);
         }
         catch (winrt::hresult_error const&)

@@ -89,16 +89,10 @@
         </StackPanel>
       </Grid>
     </Button>
-    <!-- The art's 1px frame, and the selected card's 2px accent ring 2px outside it. -->
+    <!-- The art's 1px frame. No selected ring: the page has no detail pane for a
+         selection to fill, and clicking the card plays it. -->
     <Border Margin="-1" BorderBrush="{ThemeResource DlBorderBrush}" BorderThickness="1" CornerRadius="13" IsHitTestVisible="False" />
-    <Border
-      Margin="-4"
-      BorderBrush="{ThemeResource DlAccentBrush}"
-      BorderThickness="2"
-      CornerRadius="16"
-      IsHitTestVisible="False"
-      Visibility="{x:Bind Row.SelectedVisibility, Mode=OneWay}" />
-    <!-- The play button sits over the art's corner, shown on hover, selection or focus. -->
+    <!-- The play button sits over the art's corner, shown on hover or focus. -->
     <Button
       x:Name="PlayButton"
       Width="34"

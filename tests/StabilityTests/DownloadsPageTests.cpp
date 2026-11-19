@@ -502,6 +502,18 @@ namespace
             "the queue line was worded differently");
     }
 
+    // The page's three transfer sections: moving or paused in the list, queued
+    // in the folded Up next card, failed above both as an error bar.
+    void TestTransferSections()
+    {
+        using Presentation::SectionOf;
+        using Presentation::TransferSection;
+        Require(SectionOf(RowState::Downloading) == TransferSection::Running, "a downloading transfer was not in the main list");
+        Require(SectionOf(RowState::Paused) == TransferSection::Running, "a paused transfer left the main list");
+        Require(SectionOf(RowState::Queued) == TransferSection::Waiting, "a queued transfer was not up next");
+        Require(SectionOf(RowState::Failed) == TransferSection::Attention, "a failed transfer was not flagged for attention");
+    }
+
     void TestChart()
     {
         std::vector<double> const samples{ 1, 2, 4 };
@@ -752,6 +764,7 @@ void RunDownloadsPageTests()
     TestRowArtwork();
     TestFiltersAndCounts();
     TestSelection();
+    TestTransferSections();
     TestRate();
     TestChart();
     TestSummary();

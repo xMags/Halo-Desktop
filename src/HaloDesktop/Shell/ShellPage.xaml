@@ -70,10 +70,15 @@
           <FontIcon Glyph="&#xE823;" />
         </NavigationViewItem.Icon>
       </NavigationViewItem>
+      <!-- Windows' cloud-download glyph. While anything downloads the open pane
+           shows the count beside the label, and the closed rail a dot on the icon. -->
       <NavigationViewItem x:Name="DownloadsItem" Tag="Downloads">
         <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE896;" />
+          <FontIcon Glyph="&#xE753;" />
         </NavigationViewItem.Icon>
+        <NavigationViewItem.InfoBadge>
+          <InfoBadge x:Name="DownloadsDot" Visibility="Collapsed" />
+        </NavigationViewItem.InfoBadge>
         <NavigationViewItem.Content>
           <Grid>
             <Grid.ColumnDefinitions>

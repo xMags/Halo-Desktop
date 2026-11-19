@@ -83,6 +83,11 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool IsSelected() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopRuleVisibility() const noexcept;
+        [[nodiscard]] bool IsPaused() const noexcept;
+        [[nodiscard]] bool IsExpanded() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailsVisibility() const noexcept;
+        [[nodiscard]] double ChevronAngle() const noexcept;
+        void SetExpanded(bool expanded);
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
@@ -93,6 +98,7 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::ViewModels::DownloadsPresentation::DownloadRow m_row;
         bool m_selected{};
         bool m_topRule{};
+        bool m_expanded{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
@@ -103,7 +109,10 @@ namespace winrt::HaloDesktop::implementation
         void Activate();
         void Deactivate() noexcept;
 
-        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> TransfersView() const;
+        // The unfinished transfers the filter shows, by section (SectionOf).
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> RunningView() const;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> WaitingView() const;
+        [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> AttentionView() const;
         [[nodiscard]] winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> ReadyView() const;
         // The 28 bars of the last minute's throughput, oldest first. Raised as
         // "ChartBars" only when a new sample changes them.
@@ -155,6 +164,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SelectedTransferVisibility() const noexcept;
 
         void Select(winrt::hstring const& id);
+        // Opens a row's details, or shuts them when they are the ones open.
+        void ToggleDetails(winrt::hstring const& id);
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility RunningVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility WaitingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AttentionVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring WaitingLine() const;
+        // The status card's second line: the rate (or that all is paused) and the free space.
+        [[nodiscard]] winrt::hstring StatusLine() const;
         void SetFilter(std::int32_t index);
         void Pause(winrt::hstring const& id);
         void Resume(winrt::hstring const& id);
@@ -211,7 +228,11 @@ namespace winrt::HaloDesktop::implementation
         std::vector<::HaloDesktop::ViewModels::DownloadsPresentation::DownloadRow> m_readyRows;
         std::vector<::HaloDesktop::ViewModels::DownloadsPresentation::DownloadRow> m_shownTransfers;
         std::vector<::HaloDesktop::ViewModels::DownloadsPresentation::DownloadRow> m_shownReady;
-        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredTransfers{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_runningView{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_waitingView{ nullptr };
+        winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_attentionView{ nullptr };
+        // The row whose details are open; one at a time, none at first.
+        std::wstring m_expandedId;
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_filteredReady{ nullptr };
         std::vector<double> m_chartValues;
         std::vector<::HaloDesktop::ViewModels::DownloadsPresentation::ChartBar> m_chartBars;

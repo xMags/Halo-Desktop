@@ -115,7 +115,8 @@ namespace winrt::HaloDesktop::implementation
             for (auto const property : {
                      L"UpNextVisibility", L"TransferBodyVisibility", L"ThumbOpacity", L"ResumeVisibility",
                      L"PanePauseVisibility", L"StatePill", L"StateAccentVisibility", L"StateCautionVisibility",
-                     L"StateCriticalVisibility", L"StateNeutralVisibility", L"FailedNoteVisibility", L"SizeFactLabel" })
+                     L"StateCriticalVisibility", L"StateNeutralVisibility", L"FailedNoteVisibility", L"SizeFactLabel",
+                     L"IsPaused" })
             {
                 Raise(property);
             }
@@ -225,6 +226,16 @@ namespace winrt::HaloDesktop::implementation
     bool DownloadRowViewModel::IsSelected() const noexcept { return m_selected; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::SelectedVisibility() const noexcept { return VisibleWhen(m_selected); }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::TopRuleVisibility() const noexcept { return VisibleWhen(m_topRule); }
+    bool DownloadRowViewModel::IsPaused() const noexcept { return m_row.State == RowState::Paused; }
+    bool DownloadRowViewModel::IsExpanded() const noexcept { return m_expanded; }
+    Microsoft::UI::Xaml::Visibility DownloadRowViewModel::DetailsVisibility() const noexcept { return VisibleWhen(m_expanded); }
+    double DownloadRowViewModel::ChevronAngle() const noexcept { return m_expanded ? 180.0 : 0.0; }
+    void DownloadRowViewModel::SetExpanded(bool expanded)
+    {
+        if (m_expanded == expanded) return;
+        m_expanded = expanded;
+        for (auto const property : { L"IsExpanded", L"DetailsVisibility", L"ChevronAngle" }) Raise(property);
+    }
     winrt::event_token DownloadRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     void DownloadRowViewModel::Raise(wchar_t const* property)
@@ -235,7 +246,9 @@ namespace winrt::HaloDesktop::implementation
     DownloadsViewModel::DownloadsViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_downloads(services.Downloads),
           m_navigation(services.Navigation),
-          m_filteredTransfers(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_runningView(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_waitingView(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_attentionView(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_filteredReady(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
         Synchronize();
@@ -266,7 +279,22 @@ namespace winrt::HaloDesktop::implementation
         m_changedToken = 0;
     }
 
-    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::TransfersView() const { return m_filteredTransfers; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::RunningView() const { return m_runningView; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::WaitingView() const { return m_waitingView; }
+    winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::AttentionView() const { return m_attentionView; }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::RunningVisibility() const noexcept { return VisibleWhen(m_runningView.Size() > 0); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::WaitingVisibility() const noexcept { return VisibleWhen(m_waitingView.Size() > 0); }
+    Microsoft::UI::Xaml::Visibility DownloadsViewModel::AttentionVisibility() const noexcept { return VisibleWhen(m_attentionView.Size() > 0); }
+    winrt::hstring DownloadsViewModel::WaitingLine() const
+    {
+        return winrt::to_hstring(m_waitingView.Size()) + L" waiting";
+    }
+    winrt::hstring DownloadsViewModel::StatusLine() const
+    {
+        auto const rate = Presentation::RateFigureOf(m_rate, m_pausedAll);
+        auto const speed = m_pausedAll ? std::wstring{ L"All paused" } : rate.Value + (rate.Unit.empty() ? std::wstring{} : L" " + rate.Unit);
+        return winrt::hstring{ speed + L" \x00B7 " + Presentation::FreeLine(m_storage.FreeBytes) };
+    }
     winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> DownloadsViewModel::ReadyView() const { return m_filteredReady; }
     std::vector<Presentation::ChartBar> const& DownloadsViewModel::ChartBars() const noexcept { return m_chartBars; }
 
@@ -351,6 +379,15 @@ namespace winrt::HaloDesktop::implementation
         m_selectedId = std::wstring{ id.c_str() };
         ApplySelection();
         RaiseState();
+    }
+    void DownloadsViewModel::ToggleDetails(winrt::hstring const& id)
+    {
+        auto const wanted = std::wstring{ id.c_str() };
+        m_expandedId = m_expandedId == wanted ? std::wstring{} : wanted;
+        for (auto const& [rowId, row] : m_rows)
+        {
+            winrt::get_self<DownloadRowViewModel>(row)->SetExpanded(!m_expandedId.empty() && rowId == m_expandedId);
+        }
     }
     void DownloadsViewModel::SetFilter(std::int32_t index)
     {
@@ -532,7 +569,21 @@ namespace winrt::HaloDesktop::implementation
             target.Clear();
             for (auto const& row : wanted) target.Append(row);
         };
-        apply(m_shownTransfers, m_filteredTransfers);
+        std::vector<DownloadRow> running;
+        std::vector<DownloadRow> waiting;
+        std::vector<DownloadRow> attention;
+        for (auto const& row : m_shownTransfers)
+        {
+            switch (Presentation::SectionOf(row.State))
+            {
+            case Presentation::TransferSection::Running: running.push_back(row); break;
+            case Presentation::TransferSection::Waiting: waiting.push_back(row); break;
+            case Presentation::TransferSection::Attention: attention.push_back(row); break;
+            }
+        }
+        apply(running, m_runningView);
+        apply(waiting, m_waitingView);
+        apply(attention, m_attentionView);
         apply(m_shownReady, m_filteredReady);
     }
 
@@ -597,7 +648,8 @@ namespace winrt::HaloDesktop::implementation
                  L"InFlightLine", L"StoredWidth", L"FlightWidth", L"FreeWidth", L"StoredVisibility",
                  L"FlightVisibility", L"QueueVisibility", L"ReadySectionVisibility", L"ReadyHeadline",
                  L"EmptyVisibility", L"NoMatchesVisibility", L"NoMatchesLine", L"SelectedReadyVisibility",
-                 L"SelectedTransferVisibility" })
+                 L"SelectedTransferVisibility", L"RunningVisibility", L"WaitingVisibility", L"AttentionVisibility",
+                 L"WaitingLine", L"StatusLine" })
         {
             ::HaloDesktop::detail::RaisePropertyChanged(m_propertyChanged, *this, property);
         }

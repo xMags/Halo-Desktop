@@ -137,6 +137,8 @@ namespace winrt::HaloDesktop::implementation
         // showing them is going. UI thread only.
         std::vector<std::wstring> m_pendingSkippedAddons;
         bool m_skippedNoticeRunning{};
+        // The pane as last drawn, for which download badge shows. UI thread only.
+        bool m_paneShownOpen{};
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

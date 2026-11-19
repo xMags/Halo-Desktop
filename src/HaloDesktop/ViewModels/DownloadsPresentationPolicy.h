@@ -123,6 +123,18 @@ namespace HaloDesktop::ViewModels::DownloadsPresentation
     // Active is everything not yet on disk, failed transfers included.
     [[nodiscard]] bool MatchesFilter(DownloadRow const& row, Filter filter) noexcept;
 
+    // Where an unfinished transfer sits on the page: moving (or paused by the
+    // viewer) in the main list, waiting its turn in the folded "Up next" card,
+    // or stopped and needing the viewer, as an error bar above both.
+    enum class TransferSection
+    {
+        Running,
+        Waiting,
+        Attention,
+    };
+
+    [[nodiscard]] TransferSection SectionOf(RowState state) noexcept;
+
     struct FilterCounts final
     {
         std::size_t All{};
