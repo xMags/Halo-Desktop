@@ -112,7 +112,7 @@ namespace HaloDesktop::Views
         void UpdatePlaceholder();
         void RestartClock();
         void StopClock();
-        void ApplyScrimColors();
+        void ApplySideFade();
         void ResizeArt();
         void ResizeLogoShadow();
         void OnLayerLoaded(winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface, bool succeeded);
@@ -127,8 +127,8 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Composition::ContainerVisual m_artRoot{ nullptr };
         winrt::Microsoft::UI::Composition::CompositionRoundedRectangleGeometry m_artClip{ nullptr };
         winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_fadeMask{ nullptr };
-        winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_scrimGradient{ nullptr };
-        winrt::Microsoft::UI::Composition::SpriteVisual m_scrim{ nullptr };
+        // The scrim as an alpha mask on the art: see ApplySideFade.
+        winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_sideMask{ nullptr };
         winrt::Microsoft::UI::Composition::ImplicitAnimationCollection m_crossfade{ nullptr };
         winrt::Microsoft::UI::Composition::Visual m_bodyVisual{ nullptr };
         winrt::Microsoft::UI::Composition::ScalarKeyFrameAnimation m_bodyFade{ nullptr };

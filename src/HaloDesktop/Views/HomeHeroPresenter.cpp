@@ -3,6 +3,7 @@
 
 #include "Controls/ThemeColorLookup.h"
 
+#include <cstdint>
 #include <stdexcept>
 #include <utility>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -140,16 +141,10 @@ namespace HaloDesktop::Views
         m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(0.5F, opaque));
         m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(1.0F, Transparent(opaque)));
 
-        m_scrimGradient = m_compositor.CreateLinearGradientBrush();
-        m_scrimGradient.StartPoint({ 0.0F, 0.0F });
-        m_scrimGradient.EndPoint({ 1.0F, 0.0F });
-        ApplyScrimColors();
-        auto const scrimBrush = m_compositor.CreateMaskBrush();
-        scrimBrush.Source(m_scrimGradient);
-        scrimBrush.Mask(m_fadeMask);
-        m_scrim = m_compositor.CreateSpriteVisual();
-        m_scrim.Brush(scrimBrush);
-        m_artRoot.Children().InsertAtTop(m_scrim);
+        m_sideMask = m_compositor.CreateLinearGradientBrush();
+        m_sideMask.StartPoint({ 0.0F, 0.0F });
+        m_sideMask.EndPoint({ 1.0F, 0.0F });
+        ApplySideFade();
         ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, m_artRoot);
 
         // CSS `ease`, the reference's timing for both the crossfade and the body.
@@ -267,9 +262,14 @@ namespace HaloDesktop::Views
                     art.Stretch(winrt::Microsoft::UI::Composition::CompositionStretch::UniformToFill);
                     art.HorizontalAlignmentRatio(0.5F);
                     art.VerticalAlignmentRatio(0.5F);
+                    // Faded out over its lower half and toward the text side:
+                    // two masks, one inside the other.
+                    auto const faded = m_compositor.CreateMaskBrush();
+                    faded.Source(art);
+                    faded.Mask(m_fadeMask);
                     auto const masked = m_compositor.CreateMaskBrush();
-                    masked.Source(art);
-                    masked.Mask(m_fadeMask);
+                    masked.Source(faded);
+                    masked.Mask(m_sideMask);
                     layer.Visual.Brush(masked);
                     layer.Loaded = layer.Surface.LoadCompleted(winrt::auto_revoke, [this](
                         winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
@@ -289,7 +289,7 @@ namespace HaloDesktop::Views
                 }
             }
             layer.Visual.ImplicitAnimations(m_crossfade);
-            m_artRoot.Children().InsertBelow(layer.Visual, m_scrim);
+            m_artRoot.Children().InsertAtTop(layer.Visual);
             m_layers.push_back(std::move(layer));
         }
     }
@@ -605,33 +605,46 @@ namespace HaloDesktop::Views
 
     void HomeHeroPresenter::OnThemeChanged()
     {
-        ApplyScrimColors();
+        ApplySideFade();
         UpdateTitleTreatment();
     }
 
-    void HomeHeroPresenter::ApplyScrimColors()
+    // The reference lays a scrim of the page colour over the art's text side.
+    // Over an opaque page that is the same as fading the art out toward that
+    // side, but over the translucent window the scrim's near-solid page colour
+    // showed as a pale (or dark) block in the hero's corner. So the art itself
+    // fades instead, as the bottom does, keeping the reference's stops and
+    // strengths: where the scrim covered a share of the art, that share of the
+    // art is let through to whatever is really behind the hero.
+    void HomeHeroPresenter::ApplySideFade()
     {
-        if (!m_scrimGradient)
+        if (!m_sideMask)
         {
             return;
         }
         auto const first = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim1Color").value_or(FallbackScrim1);
         auto const second = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim2Color").value_or(FallbackScrim2);
-        auto stops = m_scrimGradient.ColorStops();
+        // The art's own alpha where the scrim had `scrim`'s.
+        auto const shown = [](winrt::Windows::UI::Color scrim) noexcept
+        {
+            return winrt::Windows::UI::Color{ static_cast<std::uint8_t>(0xFF - scrim.A), 0x00, 0x00, 0x00 };
+        };
+        winrt::Windows::UI::Color const whole{ 0xFF, 0x00, 0x00, 0x00 };
+        auto stops = m_sideMask.ColorStops();
         stops.Clear();
         if (m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light)
         {
             // Light keeps the art: the haze stays behind the text and is gone by
             // the middle, rather than whitening the whole picture.
-            stops.Append(m_compositor.CreateColorGradientStop(0.0F, first));
-            stops.Append(m_compositor.CreateColorGradientStop(0.24F, first));
-            stops.Append(m_compositor.CreateColorGradientStop(0.46F, second));
-            stops.Append(m_compositor.CreateColorGradientStop(0.68F, Transparent(second)));
+            stops.Append(m_compositor.CreateColorGradientStop(0.0F, shown(first)));
+            stops.Append(m_compositor.CreateColorGradientStop(0.24F, shown(first)));
+            stops.Append(m_compositor.CreateColorGradientStop(0.46F, shown(second)));
+            stops.Append(m_compositor.CreateColorGradientStop(0.68F, whole));
             return;
         }
-        stops.Append(m_compositor.CreateColorGradientStop(0.0F, first));
-        stops.Append(m_compositor.CreateColorGradientStop(0.52F, second));
-        stops.Append(m_compositor.CreateColorGradientStop(0.92F, Transparent(second)));
+        stops.Append(m_compositor.CreateColorGradientStop(0.0F, shown(first)));
+        stops.Append(m_compositor.CreateColorGradientStop(0.52F, shown(second)));
+        stops.Append(m_compositor.CreateColorGradientStop(0.92F, whole));
     }
 
     void HomeHeroPresenter::ResizeArt()
@@ -639,7 +652,6 @@ namespace HaloDesktop::Views
         auto const size = m_parts.ArtHost.ActualSize();
         if (m_artRoot) m_artRoot.Size(size);
         if (m_artClip) m_artClip.Size(size);
-        if (m_scrim) m_scrim.Size(size);
         for (auto const& layer : m_layers)
         {
             layer.Visual.Size(size);
