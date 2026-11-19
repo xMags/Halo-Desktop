@@ -47,6 +47,7 @@
 #include "Services/TitleLookupService.h"
 #include "Services/ServerFeaturesService.h"
 #include "Services/PeopleService.h"
+#include "Services/MagnetService.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
@@ -211,6 +212,11 @@ namespace winrt::HaloDesktop::implementation
             m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.People = peopleService;
+        auto magnetService = std::make_shared<::HaloDesktop::Services::MagnetService>(
+            m_apiClient,
+            m_backends,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        m_services.Magnets = magnetService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState(),
             [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });
@@ -243,6 +249,7 @@ namespace winrt::HaloDesktop::implementation
         std::weak_ptr<::HaloDesktop::Services::TitleLookupService> weakTitleLookup = titleLookupService;
         std::weak_ptr<::HaloDesktop::Services::ServerFeaturesService> weakServerFeatures = serverFeaturesService;
         std::weak_ptr<::HaloDesktop::Services::PeopleService> weakPeople = peopleService;
+        std::weak_ptr<::HaloDesktop::Services::MagnetService> weakMagnets = magnetService;
         std::weak_ptr<::HaloDesktop::Services::MetadataService> weakMetadata = metadataService;
         std::weak_ptr<::HaloDesktop::Services::SettingsSyncService> weakSettings = settingsSyncService;
         std::weak_ptr<::HaloDesktop::Services::SourceService> weakSources = sourceService;
@@ -260,6 +267,7 @@ namespace winrt::HaloDesktop::implementation
              weakTitleLookup,
              weakServerFeatures,
              weakPeople,
+             weakMagnets,
              weakMetadata,
              weakSettings,
              weakSources,
@@ -315,6 +323,7 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const search = weakSearch.lock()) search->OnAccountChanged();
                 if (auto const titleLookup = weakTitleLookup.lock()) titleLookup->OnAccountChanged();
                 if (auto const people = weakPeople.lock()) people->OnAccountChanged();
+                if (auto const magnets = weakMagnets.lock()) magnets->OnAccountChanged();
                 if (auto const features = weakServerFeatures.lock()) features->OnAccountChanged();
                 if (auto const metadata = weakMetadata.lock()) metadata->OnAccountChanged();
                 if (auto const sources = weakSources.lock()) sources->OnAccountChanged();

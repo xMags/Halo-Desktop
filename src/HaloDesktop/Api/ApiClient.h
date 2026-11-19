@@ -117,6 +117,17 @@ namespace HaloDesktop::Api
         // 404: nothing known by that id.
         [[nodiscard]] concurrency::task<Dto::IdLookup> LookupAsync(winrt::hstring source, winrt::hstring id);
 
+        // A pasted magnet, sent as its info hash (40 lower-case hex) and an
+        // optional display name; never the magnet link or its trackers. Each
+        // file's play link is rebuilt on this session's server (ParseMagnet),
+        // and is meant to be opened bare: no token is ever attached to it.
+        // 404: magnets are not available to this account.
+        [[nodiscard]] concurrency::task<Dto::MagnetRequest> AddMagnetAsync(winrt::hstring infoHash, winrt::hstring name);
+        // The request again, to follow a download. 404: no such request.
+        [[nodiscard]] concurrency::task<Dto::MagnetRequest> GetMagnetAsync(winrt::hstring id);
+        // Forgets the request; the server removes the torrent it added for it.
+        [[nodiscard]] concurrency::task<void> ForgetMagnetAsync(winrt::hstring id);
+
     private:
         [[nodiscard]] static winrt::Windows::Foundation::Uri Endpoint(winrt::hstring const& server, wchar_t const* path);
         [[nodiscard]] winrt::hstring ServerFor(::HaloDesktop::Services::Auth::SessionTarget const& target) const;

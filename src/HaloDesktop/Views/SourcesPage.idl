@@ -142,6 +142,13 @@ namespace HaloDesktop
         String Heading { get; };
         String CountLine { get; };
 
+        // The magnet pasted into Search, when one of its files is this video.
+        Microsoft.UI.Xaml.Visibility MagnetVisibility { get; };
+        String MagnetName { get; };
+        String MagnetFileName { get; };
+        String MagnetSize { get; };
+        void PlayMagnet();
+
         Microsoft.UI.Xaml.Visibility OfflineVisibility { get; };
         Microsoft.UI.Xaml.Visibility OfflineMedalVisibility { get; };
         String OfflinePlate { get; };

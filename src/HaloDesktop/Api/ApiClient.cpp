@@ -90,6 +90,27 @@ namespace
         if (source != L"imdb" || text.size() < 3 || text.size() > 12) return false;
         return (text.starts_with(L"tt") || text.starts_with(L"nm")) && AllDigits(text.substr(2));
     }
+
+    bool IsLowerHex(std::wstring_view text) noexcept
+    {
+        return std::all_of(text.begin(), text.end(), [](wchar_t character)
+        {
+            return (character >= L'0' && character <= L'9') || (character >= L'a' && character <= L'f');
+        });
+    }
+
+    // The ids the server mints for magnet requests (`mg_` and plain
+    // characters); nothing else is ever put in a magnet URL.
+    bool IsMagnetId(winrt::hstring const& id)
+    {
+        std::wstring_view const text{ id };
+        if (text.size() < 4 || text.size() > 67 || !text.starts_with(L"mg_")) return false;
+        return std::all_of(text.begin() + 3, text.end(), [](wchar_t character)
+        {
+            return (character >= L'a' && character <= L'z') || (character >= L'A' && character <= L'Z')
+                || (character >= L'0' && character <= L'9') || character == L'_' || character == L'-';
+        });
+    }
 }
 
 namespace HaloDesktop::Api
@@ -430,6 +451,56 @@ namespace HaloDesktop::Api
         auto const response = co_await SendAuthenticatedJsonAsync(
             winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
         co_return Mappers::ParseIdLookup(response);
+    }
+
+    concurrency::task<Dto::MagnetRequest> ApiClient::AddMagnetAsync(winrt::hstring infoHash, winrt::hstring name)
+    {
+        if (infoHash.size() != 40 || !IsLowerHex(infoHash))
+        {
+            throw std::invalid_argument{ "A magnet is sent as its 40-character hex info hash." };
+        }
+        // The server takes at most 200 plain characters, display only.
+        auto const shownName = TrimmedText(name);
+        auto const plainName = shownName.size() <= 200 && std::none_of(shownName.begin(), shownName.end(), [](wchar_t character)
+        {
+            return std::iswcntrl(character) != 0;
+        });
+        winrt::Windows::Data::Json::JsonObject body;
+        body.Insert(L"infoHash", winrt::Windows::Data::Json::JsonValue::CreateStringValue(infoHash));
+        if (!shownName.empty() && plainName)
+        {
+            body.Insert(L"name", winrt::Windows::Data::Json::JsonValue::CreateStringValue(shownName));
+        }
+        // The play links are rebuilt on the server this request goes to; a
+        // session that moves meanwhile is cancelled by the send itself.
+        auto const server = ServerFor(m_tokenProvider->CurrentTarget());
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Post(), L"/magnets", body.Stringify());
+        co_return Mappers::ParseMagnet(response, std::wstring_view{ server });
+    }
+
+    concurrency::task<Dto::MagnetRequest> ApiClient::GetMagnetAsync(winrt::hstring id)
+    {
+        if (!IsMagnetId(id))
+        {
+            throw std::invalid_argument{ "A magnet request id must be the server's own." };
+        }
+        auto const server = ServerFor(m_tokenProvider->CurrentTarget());
+        auto const path = winrt::hstring{ L"/magnets/" } + id;
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
+        co_return Mappers::ParseMagnet(response, std::wstring_view{ server });
+    }
+
+    concurrency::task<void> ApiClient::ForgetMagnetAsync(winrt::hstring id)
+    {
+        if (!IsMagnetId(id))
+        {
+            throw std::invalid_argument{ "A magnet request id must be the server's own." };
+        }
+        auto const path = winrt::hstring{ L"/magnets/" } + id;
+        static_cast<void>(co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Delete(), path.c_str()));
     }
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(

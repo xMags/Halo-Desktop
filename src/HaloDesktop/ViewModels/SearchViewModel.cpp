@@ -39,8 +39,7 @@ namespace
     // The status line while a query's results are not revealed yet.
     constexpr wchar_t SearchingNote[] = L"Searching…";
 
-    // The action card's words. Magnets get a card of their own in a later
-    // stage; until then it says so.
+    // The action card's words; a magnet's come from MagnetCardPolicy.
     constexpr wchar_t LookingUpPrefix[] = L"Looking up ";
     constexpr wchar_t LookingUpSecondary[] = L"Asking your addons which title this is.";
     constexpr wchar_t NoAddonKnowsTitleText[] = L"No addon knows this title";
@@ -58,9 +57,11 @@ namespace
     constexpr wchar_t OpenPersonText[] = L"Open person page";
     constexpr wchar_t WebLinkSecondary[] = L"Plays straight from this address. Not added to your history.";
     constexpr wchar_t CannotPlayText[] = L"This link can't be played";
-    constexpr wchar_t MagnetNotYetText[] = L"Magnet links aren't available yet";
     constexpr wchar_t OpenTitleText[] = L"Open title";
     constexpr wchar_t PlayLinkText[] = L"Play this link";
+    // The legend's link item, with magnets and without.
+    constexpr wchar_t LinksHintWithMagnets[] = L"HTTP & Magnet Links";
+    constexpr wchar_t LinksHintPlain[] = L"HTTP Links";
     // The box's placeholder, with people search and without.
     constexpr wchar_t PlaceholderWithPeople[] = L"Search films, series and people, or paste a link";
     constexpr wchar_t PlaceholderTitlesOnly[] = L"Search films and series, or paste a link";
@@ -187,6 +188,7 @@ namespace winrt::HaloDesktop::implementation
           m_titleLookup(services.TitleLookup),
           m_features(services.ServerFeatures),
           m_peopleService(services.People),
+          m_magnets(services.Magnets),
           m_dispatcher(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread()),
           m_suggestions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_recent(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -194,7 +196,7 @@ namespace winrt::HaloDesktop::implementation
           m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_people(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_search || !m_navigation || !m_titleLookup || !m_features || !m_peopleService || !m_dispatcher)
+        if (!m_search || !m_navigation || !m_titleLookup || !m_features || !m_peopleService || !m_magnets || !m_dispatcher)
         {
             throw winrt::hresult_invalid_argument{ L"Search needs its services, navigation and a dispatcher." };
         }
@@ -274,6 +276,12 @@ namespace winrt::HaloDesktop::implementation
                         again->StartServerLookup();
                         again->RaiseAction();
                     }
+                    // And the magnet's request, which the change forgot.
+                    if (again->IsMagnet())
+                    {
+                        again->StartMagnet();
+                        again->RaiseAction();
+                    }
                     again->m_search->Search(again->m_activeQuery, true);
                     again->AskPeople(false);
                     again->Refresh();
@@ -310,6 +318,11 @@ namespace winrt::HaloDesktop::implementation
         {
             m_peopleService->CancelSearch();
             m_peopleService->CancelLookup();
+        }
+        if (m_magnets && m_magnetTracked)
+        {
+            m_magnets->Stop();
+            m_magnets->SetWatching(false);
         }
     }
 
@@ -380,6 +393,11 @@ namespace winrt::HaloDesktop::implementation
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleHintVisibility() const noexcept { return VisibleIf(PeopleAvailable()); }
+
+    winrt::hstring SearchViewModel::LinksHintText() const
+    {
+        return m_features->Magnets() ? LinksHintWithMagnets : LinksHintPlain;
+    }
 
     winrt::hstring SearchViewModel::Placeholder() const
     {
@@ -648,9 +666,17 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::Shown()
     {
-        // People search and server lookups follow what the server offers.
+        // People search, server lookups and magnets follow what the server offers.
         m_features->EnsureLoaded();
+        m_onScreen = true;
+        UpdateMagnetWatching();
         Refresh();
+    }
+
+    void SearchViewModel::Hidden()
+    {
+        m_onScreen = false;
+        UpdateMagnetWatching();
     }
 
     std::optional<std::wstring> SearchViewModel::FilterType() const
@@ -1072,6 +1098,7 @@ namespace winrt::HaloDesktop::implementation
             // Back to words: the card goes, and the words are searched as usual.
             m_titleLookup->Cancel();
             m_peopleService->CancelLookup();
+            StopMagnet();
             m_input = {};
             m_lookupState = LookupState::None;
             m_lookupTitle.reset();
@@ -1104,6 +1131,14 @@ namespace winrt::HaloDesktop::implementation
         else
         {
             m_peopleService->CancelLookup();
+        }
+        if (IsMagnet())
+        {
+            StartMagnet();
+        }
+        else
+        {
+            StopMagnet();
         }
         // No catalog is asked about a link; what an earlier query asked is dropped.
         m_activeQuery.clear();
@@ -1311,10 +1346,17 @@ namespace winrt::HaloDesktop::implementation
     {
         Raise(L"Placeholder");
         Raise(L"PeopleHintVisibility");
+        Raise(L"LinksHintText");
         // A TVDB or IMDb person card that waited for the server's answer.
         if (IsServerLookup() && !m_serverLookupAsked)
         {
             StartServerLookup();
+            RaiseAction();
+        }
+        // So did a magnet card.
+        if (IsMagnet() && !m_magnetTracked)
+        {
+            StartMagnet();
             RaiseAction();
         }
         // A query already under way gets its people now; they land below
@@ -1363,7 +1405,166 @@ namespace winrt::HaloDesktop::implementation
 
     bool SearchViewModel::ShowsPoster() const noexcept
     {
-        return LookupFound() || ServerTitleFound() || ServerPersonFound();
+        return LookupFound() || ServerTitleFound() || ServerPersonFound() || MagnetShowsPoster();
+    }
+
+    bool SearchViewModel::IsMagnet() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::Magnet;
+    }
+
+    bool SearchViewModel::MagnetShowsPoster() const noexcept
+    {
+        return IsMagnet() && m_magnetCard.ShowsPoster && m_magnetCard.Identity.has_value();
+    }
+
+    void SearchViewModel::SetMagnetPhase(::HaloDesktop::Services::MagnetPhase phase)
+    {
+        m_magnetPhase = phase;
+        m_magnetCard = ::HaloDesktop::Services::BuildMagnetCard({
+            .Phase = phase,
+            .LinkName = m_input.DisplayName,
+            .Request = m_magnetRequest,
+        });
+    }
+
+    void SearchViewModel::StartMagnet()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        m_magnetRequest.reset();
+        m_magnetTracked = false;
+        m_features->EnsureLoaded();
+        // Until the server says what it offers, the card reads as checking;
+        // its answer (OnFeaturesChanged) asks or says it cannot.
+        if (!m_features->Settled())
+        {
+            m_magnets->Stop();
+            SetMagnetPhase(Services::MagnetPhase::Checking);
+            return;
+        }
+        // Without an account the features read as none, so this covers
+        // Halo without an account too: no magnet call is made.
+        if (!m_features->Magnets())
+        {
+            m_magnets->Stop();
+            SetMagnetPhase(Services::MagnetPhase::Unavailable);
+            return;
+        }
+        SetMagnetPhase(Services::MagnetPhase::Checking);
+        m_magnetTracked = true;
+        // Only the info hash and the display name the classifier kept are
+        // sent; never the magnet link or its trackers.
+        m_magnets->Track(m_input.InfoHashHex, m_input.DisplayName, [weak = get_weak(), hash = m_input.InfoHashHex](
+            Services::MagnetOutcome outcome,
+            std::optional<::HaloDesktop::Api::Dto::MagnetRequest> request)
+        {
+            auto const self = weak.get();
+            if (!self || !self->IsMagnet() || self->m_input.InfoHashHex != hash)
+            {
+                return;
+            }
+            self->OnMagnetAnswer(outcome, std::move(request));
+        });
+        UpdateMagnetWatching();
+    }
+
+    void SearchViewModel::StopMagnet()
+    {
+        if (m_magnetTracked)
+        {
+            m_magnets->Stop();
+        }
+        m_magnetTracked = false;
+        m_magnetRequest.reset();
+        UpdateMagnetWatching();
+    }
+
+    void SearchViewModel::OnMagnetAnswer(
+        ::HaloDesktop::Services::MagnetOutcome outcome,
+        std::optional<::HaloDesktop::Api::Dto::MagnetRequest> request)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        switch (outcome)
+        {
+        case Services::MagnetOutcome::Answered:
+            m_magnetRequest = std::move(request);
+            SetMagnetPhase(m_magnetRequest ? Services::MagnetPhase::Answered : Services::MagnetPhase::Failed);
+            break;
+        case Services::MagnetOutcome::NotAvailable:
+            m_magnetRequest.reset();
+            SetMagnetPhase(Services::MagnetPhase::Unavailable);
+            break;
+        case Services::MagnetOutcome::Failed:
+            // The last good answer is kept for nothing: the card says it
+            // could not check, and Try again asks anew.
+            m_magnetRequest.reset();
+            SetMagnetPhase(Services::MagnetPhase::Failed);
+            break;
+        }
+        RaiseAction();
+    }
+
+    void SearchViewModel::UpdateMagnetWatching()
+    {
+        m_magnets->SetWatching(m_onScreen && IsMagnet() && m_magnetTracked);
+    }
+
+    void SearchViewModel::OpenMagnetTitle()
+    {
+        if (!IsMagnet() || m_magnetCard.Action != ::HaloDesktop::Services::MagnetCardAction::OpenTitle || !m_magnetCard.Identity)
+        {
+            return;
+        }
+        auto const& identity = *m_magnetCard.Identity;
+        // The normal title page; the magnet waits in its Sources sheet.
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Detail,
+            winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(
+                identity.Type, identity.Id, identity.Name, identity.Poster.value_or(winrt::hstring{})));
+    }
+
+    void SearchViewModel::PlayUnidentifiedMagnet()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        if (!IsMagnet() || m_magnetCard.Action != Services::MagnetCardAction::PlayUnidentified || !m_magnetCard.UnidentifiedFile)
+        {
+            return;
+        }
+        auto const& file = *m_magnetCard.UnidentifiedFile;
+        // The mapper rebuilt the link on the app's own server; read once more
+        // as a web link, as a pasted one is, so nothing else (a local path)
+        // can ever reach playback.
+        auto const link = Services::ClassifySearchInput(std::wstring_view{ file.PlayUrl });
+        if (link.Kind != Services::SearchInputKind::WebLink || link.Url != std::wstring_view{ file.PlayUrl })
+        {
+            return;
+        }
+        std::wstring title{ file.Name };
+        if (title.size() > Services::SearchWebLinkTitleMaxLength) title.resize(Services::SearchWebLinkTitleMaxLength);
+        // As a pasted link: no video id, item id or title page, so nothing is
+        // kept in watch history and no addon is asked for subtitles. The
+        // link is opened bare; the account's token never goes with it.
+        auto const request = winrt::make<winrt::HaloDesktop::implementation::PlaybackRequest>(
+            file.PlayUrl,
+            false,
+            L"",
+            L"",
+            L"movie",
+            L"",
+            L"",
+            L"",
+            winrt::hstring{ title },
+            L"",
+            L"",
+            L"",
+            L"",
+            L"",
+            file.Name,
+            file.SizeBytes,
+            L"",
+            std::vector<std::pair<winrt::hstring, winrt::hstring>>{},
+            false);
+        m_navigation->ShowOverlay(Services::Page::Player, request);
     }
 
     std::wstring const& SearchViewModel::ServerLookupId() const noexcept
@@ -1383,8 +1584,16 @@ namespace winrt::HaloDesktop::implementation
             if (m_lookupState == LookupState::Looking || m_lookupState == LookupState::Found) return SearchActionTone::Accent;
             if (m_lookupState == LookupState::Failed) return SearchActionTone::Warn;
             return SearchActionTone::Mute;
-        case Kind::TvdbSlug:
         case Kind::Magnet:
+            switch (m_magnetCard.Tone)
+            {
+            case ::HaloDesktop::Services::MagnetCardTone::Accent: return SearchActionTone::Accent;
+            case ::HaloDesktop::Services::MagnetCardTone::Warn: return SearchActionTone::Warn;
+            case ::HaloDesktop::Services::MagnetCardTone::Bad: return SearchActionTone::Bad;
+            case ::HaloDesktop::Services::MagnetCardTone::Mute: break;
+            }
+            return SearchActionTone::Mute;
+        case Kind::TvdbSlug:
         case Kind::UnsupportedLink:
         case Kind::Text: break;
         }
@@ -1439,7 +1648,7 @@ namespace winrt::HaloDesktop::implementation
             if (m_lookupState == LookupState::NotFound) return NoAddonKnowsTitleText;
             return winrt::hstring{ std::wstring{ LookingUpPrefix } + m_input.ImdbId + L"…" };
         case Kind::WebLink: return winrt::hstring{ m_input.DisplayName.empty() ? m_input.Host : m_input.DisplayName };
-        case Kind::Magnet: return MagnetNotYetText;
+        case Kind::Magnet: return winrt::hstring{ m_magnetCard.Title };
         case Kind::TvdbNumeric:
         case Kind::ImdbPerson:
             if (ServerTitleFound() || ServerPersonFound()) return m_idLookup->Name;
@@ -1467,11 +1676,13 @@ namespace winrt::HaloDesktop::implementation
         if (LookupFound()) return m_lookupTitle->Type == L"series" ? L"SERIES" : L"MOVIE";
         if (ServerTitleFound()) return m_idLookup->Type == L"series" ? L"SERIES" : L"MOVIE";
         if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return winrt::hstring{ m_input.Host };
+        if (IsMagnet()) return winrt::hstring{ m_magnetCard.Mono };
         return {};
     }
 
     winrt::hstring SearchViewModel::ActionYear() const
     {
+        if (IsMagnet()) return winrt::hstring{ m_magnetCard.Plain };
         if (ServerTitleFound()) return m_idLookup->Year.value_or(winrt::hstring{});
         if (!LookupFound()) return {};
         return winrt::hstring{ m_lookupTitle->ReleaseInfo.value_or(L"") };
@@ -1479,7 +1690,27 @@ namespace winrt::HaloDesktop::implementation
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionMetaVisibility() const noexcept
     {
-        try { return VisibleIf(!ActionRating().empty() || !ActionMono().empty() || !ActionYear().empty()); } catch (...) { return Collapsed; }
+        try { return VisibleIf(!ActionRating().empty() || !ActionMono().empty() || !ActionYear().empty() || !ActionTail().empty()); } catch (...) { return Collapsed; }
+    }
+
+    winrt::hstring SearchViewModel::ActionTail() const
+    {
+        return IsMagnet() ? winrt::hstring{ m_magnetCard.Tail } : winrt::hstring{};
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionTailVisibility() const noexcept
+    {
+        return VisibleIf(IsMagnet() && !m_magnetCard.Tail.empty());
+    }
+
+    double SearchViewModel::ActionProgress() const noexcept
+    {
+        return IsMagnet() && m_magnetCard.Progress ? *m_magnetCard.Progress * 100.0 : 0.0;
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionProgressVisibility() const noexcept
+    {
+        return VisibleIf(IsMagnet() && m_magnetCard.Progress.has_value());
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionRatingVisibility() const noexcept
@@ -1521,7 +1752,7 @@ namespace winrt::HaloDesktop::implementation
             case LookupState::Found: break;
             }
             return {};
-        case Kind::Magnet:
+        case Kind::Magnet: return winrt::hstring{ m_magnetCard.Secondary };
         case Kind::Text: break;
         }
         return {};
@@ -1535,6 +1766,7 @@ namespace winrt::HaloDesktop::implementation
     // A found person leads with their photo in the poster's frame.
     winrt::hstring SearchViewModel::ActionPoster() const
     {
+        if (MagnetShowsPoster()) return m_magnetCard.Identity->Poster.value_or(winrt::hstring{});
         if (ServerTitleFound()) return m_idLookup->Poster.value_or(winrt::hstring{});
         if (ServerPersonFound()) return m_idLookup->Photo.value_or(winrt::hstring{});
         if (!LookupFound() || ::HaloDesktop::Services::HasNoPoster(*m_lookupTitle)) return {};
@@ -1543,6 +1775,7 @@ namespace winrt::HaloDesktop::implementation
 
     winrt::hstring SearchViewModel::ActionMetaId() const
     {
+        if (MagnetShowsPoster()) return m_magnetCard.Identity->Id;
         if (ServerTitleFound()) return m_idLookup->Id;
         return LookupFound() ? winrt::hstring{ m_lookupTitle->Id } : winrt::hstring{};
     }
@@ -1564,7 +1797,56 @@ namespace winrt::HaloDesktop::implementation
         return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink
             || LookupFound()
             || ServerTitleFound()
-            || (ServerPersonFound() && PeopleAvailable()));
+            || (ServerPersonFound() && PeopleAvailable())
+            || (IsMagnet() && m_magnetCard.Action == ::HaloDesktop::Services::MagnetCardAction::OpenTitle));
+    }
+
+    winrt::hstring SearchViewModel::ActionPlainButtonLabel() const
+    {
+        return IsMagnet() ? winrt::hstring{ m_magnetCard.ActionLabel } : winrt::hstring{};
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionPlainButtonVisibility() const noexcept
+    {
+        using Action = ::HaloDesktop::Services::MagnetCardAction;
+        return VisibleIf(IsMagnet() && m_magnetCard.Action != Action::None && m_magnetCard.Action != Action::OpenTitle);
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionPlainButtonGlyphVisibility() const noexcept
+    {
+        return VisibleIf(IsMagnet() && m_magnetCard.Action == ::HaloDesktop::Services::MagnetCardAction::PlayUnidentified);
+    }
+
+    void SearchViewModel::ActivatePlainAction()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        if (!IsMagnet())
+        {
+            return;
+        }
+        switch (m_magnetCard.Action)
+        {
+        case Services::MagnetCardAction::Cancel:
+            m_magnets->Forget();
+            // Still handled: a later answer about the server's features must
+            // not ask about it again by itself.
+            m_magnetTracked = true;
+            m_magnetRequest.reset();
+            SetMagnetPhase(Services::MagnetPhase::Stopped);
+            UpdateMagnetWatching();
+            RaiseAction();
+            return;
+        case Services::MagnetCardAction::Retry:
+            StartMagnet();
+            RaiseAction();
+            return;
+        case Services::MagnetCardAction::PlayUnidentified:
+            PlayUnidentifiedMagnet();
+            return;
+        case Services::MagnetCardAction::OpenTitle:
+        case Services::MagnetCardAction::None:
+            return;
+        }
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonGlyphVisibility() const noexcept
@@ -1586,6 +1868,11 @@ namespace winrt::HaloDesktop::implementation
         else if (IsServerLookup())
         {
             OpenServerLookup();
+        }
+        else if (IsMagnet())
+        {
+            // Only Open title; the card's other buttons act by a click on them.
+            OpenMagnetTitle();
         }
     }
 
@@ -1645,7 +1932,9 @@ namespace winrt::HaloDesktop::implementation
                  L"ActionRating", L"ActionMono", L"ActionYear", L"ActionMetaVisibility", L"ActionRatingVisibility",
                  L"ActionMonoVisibility", L"ActionYearVisibility", L"ActionSecondary", L"ActionSecondaryVisibility",
                  L"ActionPoster", L"ActionMetaId", L"ActionPosterVisibility", L"ActionButtonLabel",
-                 L"ActionButtonVisibility", L"ActionButtonGlyphVisibility" })
+                 L"ActionButtonVisibility", L"ActionButtonGlyphVisibility", L"ActionTail", L"ActionTailVisibility",
+                 L"ActionProgress", L"ActionProgressVisibility", L"ActionPlainButtonLabel",
+                 L"ActionPlainButtonVisibility", L"ActionPlainButtonGlyphVisibility" })
         {
             Raise(name);
         }
@@ -1683,7 +1972,7 @@ namespace winrt::HaloDesktop::implementation
                  L"RecentVisibility", L"HintsVisibility", L"StatusVisibility", L"StatusFailed", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
                  L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
                  L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility",
-                 L"PeopleAboveVisibility", L"PeopleBelowVisibility", L"PeopleHintVisibility", L"Placeholder" })
+                 L"PeopleAboveVisibility", L"PeopleBelowVisibility", L"PeopleHintVisibility", L"LinksHintText", L"Placeholder" })
         {
             Raise(name);
         }

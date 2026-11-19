@@ -287,6 +287,13 @@ namespace winrt::HaloDesktop::implementation
         if (!m_viewModel.PlayOffline()) ShowOfflineMissingAsync();
     }
 
+    void SourcesPage::OnPlayMagnetClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_viewModel.PlayMagnet();
+    }
+
     void SourcesPage::OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterAll); }
     void SourcesPage::OnUltraHdFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterUltraHd); }
     void SourcesPage::OnFullHdFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(FilterFullHd); }

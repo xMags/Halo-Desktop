@@ -443,6 +443,9 @@
     <ClInclude Include="Views\PersonPage.xaml.h">
       <DependentUpon>PersonPage.xaml</DependentUpon>
     </ClInclude>
+    <ClInclude Include="Services\MagnetService.h" />
+    <ClInclude Include="Services\MagnetCardPolicy.h" />
+    <ClInclude Include="Services\MagnetSourcePolicy.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -906,6 +909,10 @@
     <ClCompile Include="Views\PersonPage.xaml.cpp">
       <DependentUpon>PersonPage.xaml</DependentUpon>
     </ClCompile>
+    <ClCompile Include="Api\MagnetMappers.cpp" />
+    <ClCompile Include="Services\MagnetService.cpp" />
+    <ClCompile Include="Services\MagnetCardPolicy.cpp" />
+    <ClCompile Include="Services\MagnetSourcePolicy.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

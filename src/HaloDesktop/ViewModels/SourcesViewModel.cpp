@@ -31,6 +31,7 @@
 #include "Models/Models.h"
 #include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
+#include "Services/SearchInputPolicy.h"
 #include "Services/SettingsSyncService.h"
 #include "Services/WatchStateService.h"
 #include "ViewModels/ObservableHelper.h"
@@ -325,12 +326,13 @@ namespace winrt::HaloDesktop::implementation
           m_downloads(services.Downloads),
           m_devicePreferences(services.DevicePreferences),
           m_watch(services.WatchState),
+          m_magnets(services.Magnets),
           m_items(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_providerItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_qualityItems(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_pickerRules(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_sources || !m_navigation || !m_settings || !m_downloads || !m_devicePreferences || !m_watch || !m_metadata)
+        if (!m_sources || !m_navigation || !m_settings || !m_downloads || !m_devicePreferences || !m_watch || !m_metadata || !m_magnets)
         {
             throw std::invalid_argument{ "SourcesViewModel requires its dependencies." };
         }
@@ -388,6 +390,62 @@ namespace winrt::HaloDesktop::implementation
         if (m_loading) return L"Asking your addons\x2026";
         if (m_error) return L"No addon could be reached";
         return m_resolve.Summary;
+    }
+
+    Microsoft::UI::Xaml::Visibility SourcesViewModel::MagnetVisibility() const noexcept { return VisibleIf(m_magnetRow.has_value()); }
+    winrt::hstring SourcesViewModel::MagnetName() const { return m_magnetRow ? m_magnetRow->Name : winrt::hstring{}; }
+    winrt::hstring SourcesViewModel::MagnetFileName() const { return m_magnetRow ? m_magnetRow->FileName : winrt::hstring{}; }
+    winrt::hstring SourcesViewModel::MagnetSize() const { return m_magnetRow ? m_magnetRow->Size : winrt::hstring{}; }
+
+    void SourcesViewModel::ReadMagnet()
+    {
+        m_magnetFile = m_parameters ? m_magnets->FileFor(m_parameters.Type(), m_parameters.VideoId()) : std::nullopt;
+        m_magnetRow = m_magnetFile ? std::optional<::HaloDesktop::Services::MagnetSourceRow>{ ::HaloDesktop::Services::BuildMagnetSourceRow(*m_magnetFile) } : std::nullopt;
+    }
+
+    void SourcesViewModel::RaiseMagnet()
+    {
+        for (auto const* property : { L"MagnetVisibility", L"MagnetName", L"MagnetFileName", L"MagnetSize" }) Raise(property);
+    }
+
+    void SourcesViewModel::PlayMagnet()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        // Asked again rather than trusted from the card: another magnet may
+        // have been pasted since the sheet opened.
+        ReadMagnet();
+        RaiseMagnet();
+        if (!m_parameters || !m_magnetFile) return;
+        auto const& file = *m_magnetFile;
+        // The mapper rebuilt the link on the app's own server; read once more
+        // as a web link, so nothing else (a local path) can reach playback.
+        auto const link = Services::ClassifySearchInput(std::wstring_view{ file.PlayUrl });
+        if (link.Kind != Services::SearchInputKind::WebLink || link.Url != std::wstring_view{ file.PlayUrl }) return;
+        // An identified title's video: kept in history like any source. No
+        // addon and no request headers, so the account's token never goes
+        // with the link.
+        auto const request = winrt::make<winrt::HaloDesktop::implementation::PlaybackRequest>(
+            file.PlayUrl,
+            false,
+            L"",
+            L"",
+            m_parameters.Type(),
+            m_parameters.VideoId(),
+            m_parameters.ItemId(),
+            m_parameters.MetaId(),
+            m_parameters.Title(),
+            m_parameters.ShowName(),
+            m_parameters.EpisodeLabel(),
+            m_parameters.Poster(),
+            L"",
+            L"",
+            file.Name,
+            file.SizeBytes,
+            L"",
+            std::vector<std::pair<winrt::hstring, winrt::hstring>>{},
+            true);
+        m_navigation->ShowOverlay(Services::Page::Player, request);
+        m_navigation->CloseSheet();
     }
 
     Microsoft::UI::Xaml::Visibility SourcesViewModel::OfflineVisibility() const noexcept { return VisibleIf(m_offline.has_value()); }
@@ -541,7 +599,9 @@ namespace winrt::HaloDesktop::implementation
         {
             m_loading = false;
             m_error = true;
+            ReadMagnet();
             RaiseState();
+            RaiseMagnet();
             return;
         }
         static_cast<void>(LoadAsync(::HaloDesktop::Services::StreamReuse::Recent));
@@ -799,10 +859,12 @@ namespace winrt::HaloDesktop::implementation
         m_listing = {};
         Rebuild();
         // The saved copy is shown whatever the addons answer, so it is read before
-        // they are asked.
+        // they are asked; so is the magnet pasted into Search.
         ReadDownloads();
+        ReadMagnet();
         RaiseState();
         RaiseOffline();
+        RaiseMagnet();
 
         bool failed{};
         try { co_await m_sources->LoadAsync(m_parameters, reuse); }

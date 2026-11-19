@@ -4,6 +4,8 @@
 #include "SearchViewModel.g.h"
 #include "Api/Dto.h"
 #include "Services/AppServices.h"
+#include "Services/MagnetCardPolicy.h"
+#include "Services/MagnetService.h"
 #include "Services/SearchInputPolicy.h"
 #include "Services/SearchResultBoard.h"
 #include "Services/SearchResultsPolicy.h"
@@ -99,6 +101,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleBelowVisibility() const noexcept;
         // The legend's people item, and the box's words, follow the server.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleHintVisibility() const noexcept;
+        // The legend's link item names magnets only when the server opens them.
+        [[nodiscard]] winrt::hstring LinksHintText() const;
         [[nodiscard]] winrt::hstring Placeholder() const;
         [[nodiscard]] bool ShowKindBadges() const noexcept;
         [[nodiscard]] winrt::hstring ResultCountText() const;
@@ -165,6 +169,12 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionRatingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionMonoVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionYearVisibility() const noexcept;
+        // A second value in mono at the end of the meta row (a size, a percentage).
+        [[nodiscard]] winrt::hstring ActionTail() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionTailVisibility() const noexcept;
+        // A download's progress, 0 to 100, while the server fetches a magnet.
+        [[nodiscard]] double ActionProgress() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionProgressVisibility() const noexcept;
         // The quieter sentence under the title.
         [[nodiscard]] winrt::hstring ActionSecondary() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionSecondaryVisibility() const noexcept;
@@ -176,8 +186,15 @@ namespace winrt::HaloDesktop::implementation
         // The play glyph, on the one button that plays.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionButtonGlyphVisibility() const noexcept;
         // Opens the IMDb title's page or plays the pasted link; nothing for a
-        // card that only says something.
+        // card that only says something. Enter, a click on the card and its
+        // accent button all come here.
         void ActivateAction();
+        // The magnet card's standard button (Cancel, Try again, Play as
+        // unidentified video): only by a click on it, never by Enter.
+        [[nodiscard]] winrt::hstring ActionPlainButtonLabel() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionPlainButtonVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionPlainButtonGlyphVisibility() const noexcept;
+        void ActivatePlainAction();
 
         void SetFilter(std::int32_t index);
         void SetBoxFocused(bool focused);
@@ -202,6 +219,8 @@ namespace winrt::HaloDesktop::implementation
         // Arriving with Home's text: searched at once, not recorded.
         void Arrive(winrt::hstring const& query);
         void Shown();
+        // The page left the screen: a magnet download is no longer followed.
+        void Hidden();
         // Keeps the query among the recent terms, which opening any of its
         // results does, from the poster menu too.
         void RecordQuery();
@@ -270,6 +289,18 @@ namespace winrt::HaloDesktop::implementation
         void RecordIfText(std::wstring_view term);
         void OpenFoundTitle();
         void PlayPastedLink();
+        // A pasted magnet: asked of the server once its features are known;
+        // the card says so when it cannot be.
+        [[nodiscard]] bool IsMagnet() const noexcept;
+        void StartMagnet();
+        void StopMagnet();
+        void OnMagnetAnswer(::HaloDesktop::Services::MagnetOutcome outcome, std::optional<::HaloDesktop::Api::Dto::MagnetRequest> request);
+        void SetMagnetPhase(::HaloDesktop::Services::MagnetPhase phase);
+        // Polling runs only while this page is on screen with the magnet card.
+        void UpdateMagnetWatching();
+        [[nodiscard]] bool MagnetShowsPoster() const noexcept;
+        void OpenMagnetTitle();
+        void PlayUnidentifiedMagnet();
         void SearchNow();
         // Brings the page to where the service's answers stand.
         void Refresh();
@@ -314,6 +345,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::TitleLookupService> m_titleLookup;
         std::shared_ptr<::HaloDesktop::Services::ServerFeaturesService> m_features;
         std::shared_ptr<::HaloDesktop::Services::PeopleService> m_peopleService;
+        std::shared_ptr<::HaloDesktop::Services::MagnetService> m_magnets;
         ::HaloDesktop::Services::ServerFeaturesChangedToken m_featuresToken{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
         // Runs only while the current query is asked and not yet revealed.
@@ -336,6 +368,17 @@ namespace winrt::HaloDesktop::implementation
         // Whether that lookup was asked of the server (not only waiting for
         // the server's features).
         bool m_serverLookupAsked{};
+
+        // The pasted magnet: where it stands, the server's last answer, and
+        // the card both make (MagnetCardPolicy).
+        ::HaloDesktop::Services::MagnetPhase m_magnetPhase{ ::HaloDesktop::Services::MagnetPhase::Checking };
+        std::optional<::HaloDesktop::Api::Dto::MagnetRequest> m_magnetRequest;
+        ::HaloDesktop::Services::MagnetCard m_magnetCard;
+        // Whether the magnet was handed to the service (not only waiting for
+        // the server's features).
+        bool m_magnetTracked{};
+        // Between Shown and Hidden.
+        bool m_onScreen{};
 
         // The people asked for the query `m_peopleQuery` (trimmed): asked,
         // and the answer once it is in (an empty list when nobody, or failed).

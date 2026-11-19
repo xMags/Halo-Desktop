@@ -10,6 +10,8 @@
 #include "SourceSaveViewModel.g.h"
 #include "SourcesViewModel.g.h"
 #include "Services/AppServices.h"
+#include "Services/MagnetService.h"
+#include "Services/MagnetSourcePolicy.h"
 #include "Services/ServiceInterfaces.h"
 #include "ViewModels/SourcePresentation.h"
 #include "ViewModels/SourcesModel.h"
@@ -254,6 +256,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring Heading() const;
         [[nodiscard]] winrt::hstring CountLine() const;
 
+        // The magnet pasted into Search, when one of its files is this video
+        // (MagnetService::FileFor): first, outside the ranking, never the pick.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility MagnetVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring MagnetName() const;
+        [[nodiscard]] winrt::hstring MagnetFileName() const;
+        [[nodiscard]] winrt::hstring MagnetSize() const;
+        void PlayMagnet();
+
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OfflineVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility OfflineMedalVisibility() const noexcept;
         [[nodiscard]] winrt::hstring OfflinePlate() const;
@@ -355,6 +365,9 @@ namespace winrt::HaloDesktop::implementation
         void RaiseState();
         void RaisePick();
         void RaiseOffline();
+        // Asks MagnetService which magnet file, if any, is this video.
+        void ReadMagnet();
+        void RaiseMagnet();
         void Raise(wchar_t const* property);
         [[nodiscard]] ::HaloDesktop::Sources::SaveState SaveStateOf(winrt::hstring const& key) const;
         [[nodiscard]] winrt::HaloDesktop::SourceSaveViewModel SaveFor(winrt::hstring const& key);
@@ -377,6 +390,9 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::IDownloadService> m_downloads;
         std::shared_ptr<::HaloDesktop::Services::DevicePreferencesStore> m_devicePreferences;
         std::shared_ptr<::HaloDesktop::Services::WatchStateService> m_watch;
+        std::shared_ptr<::HaloDesktop::Services::MagnetService> m_magnets;
+        std::optional<::HaloDesktop::Api::Dto::MagnetFile> m_magnetFile;
+        std::optional<::HaloDesktop::Services::MagnetSourceRow> m_magnetRow;
 
         winrt::HaloDesktop::SourcesNavParams m_parameters{ nullptr };
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable> m_items{ nullptr };

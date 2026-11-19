@@ -55,6 +55,11 @@ namespace HaloDesktop::Services
         return m_state == State::Loaded && m_capabilities.Lookup;
     }
 
+    bool ServerFeaturesService::Magnets() const noexcept
+    {
+        return m_state == State::Loaded && m_capabilities.Magnets;
+    }
+
     bool ServerFeaturesService::Settled() const noexcept
     {
         return m_state == State::Loaded || m_state == State::Failed;

@@ -204,6 +204,8 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModelChanged.revoke();
         m_onScreen = false;
+        // A magnet download is followed only while this page is on screen.
+        m_viewModel.Hidden();
         UpdateSkeletonPulse();
         if (m_metricsToken == 0) return;
         if (auto const metrics = App::Services().LayoutMetrics) metrics->RemoveChangedHandler(m_metricsToken);
@@ -394,6 +396,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     void SearchPage::OnActionButtonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ActivateAction(); }
+    void SearchPage::OnActionPlainButtonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ActivatePlainAction(); }
     void SearchPage::OnTryAgainClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RetrySearch(); }
     void SearchPage::OnOpenSettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenSettings(); }
 

@@ -49,6 +49,8 @@ namespace HaloDesktop::Services
         void EnsureLoaded();
         [[nodiscard]] bool People() const noexcept;
         [[nodiscard]] bool Lookup() const noexcept;
+        // Pasted magnets, for this account.
+        [[nodiscard]] bool Magnets() const noexcept;
         // Whether the answer for this account is in (an answer that failed counts).
         [[nodiscard]] bool Settled() const noexcept;
 

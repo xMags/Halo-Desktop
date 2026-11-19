@@ -43,6 +43,7 @@ namespace HaloDesktop::Services
     class TitleLookupService;
     class ServerFeaturesService;
     class PeopleService;
+    class MagnetService;
     class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
@@ -59,6 +60,9 @@ namespace HaloDesktop::Services
         std::shared_ptr<ServerFeaturesService> ServerFeatures;
         // People search, person pages and id lookups on the account's server.
         std::shared_ptr<PeopleService> People;
+        // Pasted magnets on the account's server, and the last one that came
+        // back ready, offered in the Sources sheet.
+        std::shared_ptr<MagnetService> Magnets;
         std::shared_ptr<IMetadataService> Metadata;
         std::shared_ptr<ISourceService> Sources;
         std::shared_ptr<IDownloadService> Downloads;

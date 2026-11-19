@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdint>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <vector>
 #include <winrt/Windows.Data.Json.h>
@@ -247,8 +248,74 @@ namespace HaloDesktop::Api::Dto
         bool People{};
         // Pasted TVDB numbers and IMDb ids looked up through the server.
         bool Lookup{};
+        // Pasted magnets, for the calling account (`magnets.enabled`).
+        bool Magnets{};
+        // The server only opens magnets its debrid account already holds
+        // (`magnets.cachedOnly`); true when the server does not say.
+        bool MagnetsCachedOnly{ true };
 
         bool operator==(Capabilities const&) const = default;
+    };
+
+    // Where a pasted magnet's request stands on the server, from its fixed list.
+    enum class MagnetState
+    {
+        Ready,
+        NotCached,
+        Downloading,
+        NoVideo,
+        TooLarge,
+        Failed,
+    };
+
+    // One video file of a ready magnet. Only video files are ever listed.
+    struct MagnetFile final
+    {
+        winrt::hstring Id;
+        winrt::hstring Name;
+        std::uint64_t SizeBytes{};
+        // What the server read from the file's name; both are needed to offer
+        // the file for an episode.
+        std::optional<std::int32_t> Season;
+        std::optional<std::int32_t> Episode;
+        // Rebuilt on the signed-in server (Mappers::MagnetPlayLinkOn); played
+        // bare, never with the token.
+        winrt::hstring PlayUrl;
+
+        bool operator==(MagnetFile const&) const = default;
+    };
+
+    // The title the server matched a magnet's name to.
+    struct MagnetIdentity final
+    {
+        // `movie` or `series`.
+        winrt::hstring Type;
+        // `tt` and digits.
+        winrt::hstring Id;
+        winrt::hstring Name;
+        std::optional<winrt::hstring> Year;
+        std::optional<winrt::hstring> Poster;
+
+        bool operator==(MagnetIdentity const&) const = default;
+    };
+
+    // `POST /magnets` and `GET /magnets/:id`.
+    struct MagnetRequest final
+    {
+        // `mg_` and the server's own id; opaque, used only to ask about it again.
+        winrt::hstring Id;
+        MagnetState State{ MagnetState::Failed };
+        // Why a Failed request failed (`unidentified`, `upstream`, ...), lower case.
+        std::optional<winrt::hstring> Reason;
+        winrt::hstring Name;
+        std::uint64_t SizeBytes{};
+        // 0 to 1.
+        double Progress{};
+        // Only when Ready, and then never empty.
+        std::vector<MagnetFile> Files;
+        std::optional<MagnetIdentity> Identified;
+
+        bool operator==(MagnetRequest const&) const = default;
     };
 
     // The department a person is best known for, as the server names it.
@@ -368,6 +435,21 @@ namespace HaloDesktop::Api::Mappers
     // An image URL the people answers may carry: https on image.tmdb.org,
     // under /t/p/, in plain path characters only.
     [[nodiscard]] bool IsTmdbImageUrl(std::wstring_view url) noexcept;
+
+    // Api/MagnetMappers.cpp. Strict: any field of the wrong type, shape or
+    // bound, or any file whose play link is not of MagnetPlayLinkOn's shape,
+    // throws std::invalid_argument, so a bad answer is an error and never
+    // half-read. Each file's PlayUrl is the link rebuilt on `serverUrl`.
+    [[nodiscard]] Dto::MagnetRequest ParseMagnet(
+        winrt::Windows::Data::Json::IJsonValue const& value,
+        std::wstring_view serverUrl);
+    // A magnet play link the server sent, moved onto the app's own server:
+    // `url` must be a well-formed http(s) link (no user name or password, no
+    // query, no fragment) whose path ends in exactly
+    // `/play/m1.<token>/<file name>`; that tail is joined onto `serverUrl`
+    // and the scheme, host and port `url` named are discarded. Empty for any
+    // other link.
+    [[nodiscard]] std::optional<std::wstring> MagnetPlayLinkOn(std::wstring_view url, std::wstring_view serverUrl);
 
     // The server's sentence when an account's plan refuses something
     // (`{ code: "plan_required" | "plan_limit_reached", error }`), sanitised

@@ -272,7 +272,17 @@ namespace HaloDesktop::Api::Mappers
     Dto::Capabilities ParseCapabilities(IJsonValue const& value)
     {
         auto const object = RequireObject(value, "The capabilities response must be an object.");
-        return { .People = Boolean(object, L"people"), .Lookup = Boolean(object, L"lookup") };
+        Dto::Capabilities capabilities{ .People = Boolean(object, L"people"), .Lookup = Boolean(object, L"lookup") };
+        // An older server has no `magnets` at all, which reads as off.
+        if (auto const magnets = Field(object, L"magnets", JsonValueType::Object))
+        {
+            auto const settings = magnets->GetObject();
+            capabilities.Magnets = Boolean(settings, L"enabled");
+            // Only an explicit false says uncached torrents may be fetched.
+            auto const cachedOnly = Field(settings, L"cachedOnly", JsonValueType::Boolean);
+            capabilities.MagnetsCachedOnly = !cachedOnly || cachedOnly->GetBoolean();
+        }
+        return capabilities;
     }
 
     std::vector<Dto::PersonSummary> ParsePeopleSearch(IJsonValue const& value)

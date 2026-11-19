@@ -361,6 +361,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Shell\WindowPlacementPolicy.cpp">
       <Link>WindowPlacementPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="MagnetTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Api\MagnetMappers.cpp">
+      <Link>MagnetMappers.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\MagnetCardPolicy.cpp">
+      <Link>MagnetCardPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\MagnetSourcePolicy.cpp">
+      <Link>MagnetSourcePolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -386,6 +396,7 @@
     <ClInclude Include="AddonTestFakes.h" />
     <ClInclude Include="DeviceModeTests.h" />
     <ClInclude Include="ShellInputTests.h" />
+    <ClInclude Include="MagnetTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">
