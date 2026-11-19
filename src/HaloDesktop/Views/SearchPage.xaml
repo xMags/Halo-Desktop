@@ -105,18 +105,18 @@
     </Style>
     <!-- One item of the empty page's legend: a line glyph over its label. Not clickable. -->
     <Style x:Key="SearchHintStyle" TargetType="StackPanel">
-      <Setter Property="Padding" Value="8,14" />
+      <Setter Property="Padding" Value="8,8" />
       <Setter Property="HorizontalAlignment" Value="Stretch" />
-      <Setter Property="Spacing" Value="18" />
+      <Setter Property="Spacing" Value="12" />
     </Style>
     <Style x:Key="SearchHintGlyphStyle" TargetType="FontIcon">
       <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="FontSize" Value="52" />
+      <Setter Property="FontSize" Value="30" />
       <Setter Property="Foreground" Value="{ThemeResource HaloText3Brush}" />
     </Style>
     <Style x:Key="SearchHintLabelStyle" TargetType="TextBlock">
       <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="FontSize" Value="{StaticResource HaloFontEmphasis}" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
       <Setter Property="Foreground" Value="{ThemeResource HaloText2Brush}" />
       <Setter Property="TextAlignment" Value="Center" />
       <Setter Property="TextWrapping" Value="Wrap" />
@@ -458,17 +458,17 @@
             magnets join it when the app can do them. The code-behind places
             the shown items in the grid.
           -->
-          <StackPanel Padding="0,96,0,40" Spacing="52" Visibility="{x:Bind ViewModel.HintsVisibility, Mode=OneWay}">
+          <StackPanel Padding="0,96,0,40" Spacing="32" Visibility="{x:Bind ViewModel.HintsVisibility, Mode=OneWay}">
             <TextBlock
               HorizontalAlignment="Center"
               FontFamily="Segoe UI Variable Display"
-              FontSize="26"
+              FontSize="{StaticResource HaloFontShelf}"
               Foreground="{ThemeResource HaloText3Brush}"
               Text="You can search anything&#x2026;"
               TextAlignment="Center"
               TextWrapping="Wrap" />
-            <!-- At least 170 per item, at most 920 in all; two columns on a narrow window (code-behind). -->
-            <Grid x:Name="HintsGrid" MaxWidth="920" ColumnSpacing="16" RowSpacing="28" SizeChanged="OnHintsGridSizeChanged">
+            <!-- At least 170 per item, at most 760 in all; two columns on a narrow window (code-behind). -->
+            <Grid x:Name="HintsGrid" MaxWidth="760" ColumnSpacing="16" RowSpacing="20" SizeChanged="OnHintsGridSizeChanged">
               <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -492,16 +492,16 @@
               </StackPanel>
               <StackPanel x:Name="HintIds" Grid.Column="2" Style="{StaticResource SearchHintStyle}">
                 <!-- No IMDb mark in Segoe Fluent Icons: the word, heavy, in a rounded frame, as tall as the other glyphs. -->
-                <Border Height="52" Padding="0,10" HorizontalAlignment="Center">
+                <Border Height="30" Padding="0,5" HorizontalAlignment="Center">
                   <Border
-                    Padding="7,0"
+                    Padding="5,0"
                     BorderBrush="{ThemeResource HaloText3Brush}"
-                    BorderThickness="2.5"
-                    CornerRadius="5">
+                    BorderThickness="1.5"
+                    CornerRadius="4">
                     <TextBlock
                       VerticalAlignment="Center"
                       CharacterSpacing="-20"
-                      FontSize="19"
+                      FontSize="12"
                       FontWeight="ExtraBold"
                       Foreground="{ThemeResource HaloText3Brush}"
                       Text="IMDb" />
