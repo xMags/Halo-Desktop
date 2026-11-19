@@ -15,6 +15,7 @@
 #include <system_error>
 #include <utility>
 #include <vector>
+#include <wil/resource.h>
 
 namespace
 {
@@ -77,7 +78,9 @@ namespace
         if (outbox.Bind(accountKey))
         {
             auto const epoch = outbox.Epoch();
-            outbox.Adopt(epoch, outbox.ReadStoredAsync(accountKey).get());
+            auto stored = outbox.ReadStoredAsync(accountKey).get();
+            Require(stored.has_value(), "a readable outbox file reported a failed read");
+            outbox.Adopt(epoch, std::move(*stored));
         }
         // The adoption rewrites the file; a test must not leave that write queued
         // behind it for a folder that is about to go.
@@ -213,8 +216,8 @@ namespace
         Require(outbox.Bind(L"account-b"), "a new account did not ask for its stored rows");
         Require(outbox.Pending().empty(), "a row of the old account was still pending under the new one");
         auto const read = outbox.ReadStoredAsync(L"account-b").get();
-        Require(read.empty(), "the old account's rows were read for the new one");
-        outbox.Adopt(outbox.Epoch(), read);
+        Require(read && read->empty(), "the old account's rows were read for the new one");
+        outbox.Adopt(outbox.Epoch(), *read);
 
         // A send that began under the old account cannot settle the new one's rows.
         outbox.Stage({ Row(L"a", 5, 50) });
@@ -262,6 +265,52 @@ namespace
         Require(reopened.Pending().size() == 1 && reopened.Pending()[0].PositionSec == 32,
             "the row kept after a settle was not on disk");
     }
+
+    // A file that could not be read when the owner was bound (another program
+    // held it) is neither adopted nor written over: progress staged meanwhile
+    // waits in memory, and once a later read succeeds both reach the disk.
+    void TestUnreadableFileIsKeptUntilRead()
+    {
+        ScratchFolder folder;
+        {
+            WatchOutbox earlier{ folder.Path() };
+            BindAndLoad(earlier, L"account-a");
+            earlier.Stage({ Row(L"a", 30, 100) });
+            earlier.FlushAsync().get();
+        }
+
+        WatchOutbox outbox{ folder.Path() };
+        {
+            // No sharing at all: the outbox's open fails as a sharing violation.
+            wil::unique_hfile const held{ CreateFileW(
+                folder.File().c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr) };
+            Require(static_cast<bool>(held), "the test could not hold the outbox file open");
+            Require(outbox.Bind(L"account-a"), "an account did not ask for its stored rows");
+            Require(!outbox.ReadStoredAsync(L"account-a").get().has_value(), "a file another program held read as readable");
+        }
+        Require(outbox.AwaitingStored(), "a failed read did not leave the stored rows awaited");
+
+        // Staged and settled before the stored rows are read: nothing is written.
+        outbox.Stage({ Row(L"b", 40, 200) });
+        outbox.Settle(outbox.Epoch(), { Row(L"b", 40, 200) });
+        outbox.Stage({ Row(L"c", 50, 300) });
+        outbox.FlushAsync().get();
+        auto const untouched = HaloDesktop::Storage::ReadUtf8File(folder.File(), HaloDesktop::Services::WatchOutboxMaximumBytes);
+        auto const kept = HaloDesktop::Services::ParseWatchOutbox(untouched, L"account-a");
+        Require(kept.size() == 1 && kept[0].VideoId == L"a", "a write replaced stored rows that were never read");
+
+        // The retry reads them, and the merge keeps both runs' rows.
+        auto const retried = outbox.ReadStoredAsync(L"account-a").get();
+        Require(retried && retried->size() == 1, "the stored rows did not read once the file was free");
+        outbox.Adopt(outbox.Epoch(), *retried);
+        Require(!outbox.AwaitingStored(), "adopting the stored rows left them awaited");
+        outbox.FlushAsync().get();
+        WatchOutbox reopened{ folder.Path() };
+        BindAndLoad(reopened, L"account-a");
+        auto const rows = reopened.Pending();
+        Require(rows.size() == 2 && rows[0].VideoId == L"a" && rows[1].VideoId == L"c",
+            "the last run's row and this run's were not both kept");
+    }
 }
 
 void RunWatchOutboxTests()
@@ -274,4 +323,5 @@ void RunWatchOutboxTests()
     TestCorruptAndOversizedFilesAreReplaced();
     TestAccountChangeClearsFirst();
     TestSettleDuringSendKeepsNewerStage();
+    TestUnreadableFileIsKeptUntilRead();
 }

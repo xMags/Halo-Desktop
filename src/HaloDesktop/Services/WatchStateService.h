@@ -125,6 +125,9 @@ namespace HaloDesktop::Services
         std::uint64_t m_loadVersion{};
         std::uint64_t m_accountEpoch{};
         std::uint32_t m_sendsInFlight{};
+        // The outbox epoch whose stored rows are being read, if any: at most one
+        // read per owner at a time, however often progress is staged meanwhile.
+        std::optional<std::uint64_t> m_outboxReadEpoch;
         // Deliberately kept across account changes: stamps only ever move forward.
         std::int64_t m_lastTimestamp{};
         bool m_loaded{};

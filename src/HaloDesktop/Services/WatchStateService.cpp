@@ -106,6 +106,13 @@ namespace HaloDesktop::Services
         std::vector<::HaloDesktop::Api::Dto::WatchEntry> rows;
         rows.push_back(std::move(row));
         m_outbox->Stage(std::move(rows));
+        // The last run's rows could not be read when this owner was bound, so
+        // nothing reaches the disk until they are: try the read again, one at a
+        // time. Progress is staged every couple of seconds while playing.
+        if (m_outbox->AwaitingStored() && m_outboxReadEpoch != m_outbox->Epoch())
+        {
+            LoadOutboxAsync(m_outbox->Epoch(), m_outbox->AccountKey());
+        }
     }
 
     concurrency::task<void> WatchStateService::ReportProgressAsync(::HaloDesktop::Api::Dto::WatchEntry row)
@@ -345,7 +352,8 @@ namespace HaloDesktop::Services
         auto const weak = weak_from_this();
         auto const uiContext = winrt::apartment_context{};
         auto const outbox = m_outbox;
-        std::vector<::HaloDesktop::Api::Dto::WatchEntry> stored;
+        m_outboxReadEpoch = epoch;
+        std::optional<std::vector<::HaloDesktop::Api::Dto::WatchEntry>> stored;
         try
         {
             stored = co_await outbox->ReadStoredAsync(std::move(accountKey));
@@ -355,17 +363,32 @@ namespace HaloDesktop::Services
         }
         co_await uiContext;
         auto const self = weak.lock();
-        if (!self || epoch != self->m_outbox->Epoch())
+        if (!self)
+        {
+            co_return;
+        }
+        // Only this read's own mark: a newer owner's read may be out already.
+        if (self->m_outboxReadEpoch == epoch)
+        {
+            self->m_outboxReadEpoch.reset();
+        }
+        if (epoch != self->m_outbox->Epoch())
+        {
+            co_return;
+        }
+        // Not read this time: nothing is adopted, so the file and its rows stay
+        // as they are, and the next staged progress tries again (StageProgress).
+        if (!stored)
         {
             co_return;
         }
         // A row left by the last run was stamped then; whatever this run stamps
         // next (a removal above all) has to outrank it.
-        for (auto const& row : stored)
+        for (auto const& row : *stored)
         {
             self->NoteTimestamp(row.UpdatedAt);
         }
-        self->m_outbox->Adopt(epoch, std::move(stored));
+        self->m_outbox->Adopt(epoch, std::move(*stored));
         // What the last run could not send goes out as the app starts.
         if (self->m_outbox->HasPending())
         {

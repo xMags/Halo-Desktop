@@ -52,17 +52,24 @@ namespace HaloDesktop::Services
             }
         }
 
-        [[nodiscard]] std::vector<Api::Dto::WatchEntry> Read(std::wstring const& accountKey) const noexcept
+        // The rows stored for `accountKey`, or nothing when the file could not be
+        // read this time (the lock timed out, it could not be opened, the read was
+        // cut short): those can pass, and the file is left for a later read.
+        [[nodiscard]] std::optional<std::vector<Api::Dto::WatchEntry>> Read(std::wstring const& accountKey) const noexcept
         {
             try
             {
                 Storage::FileMutationLock const lock{ Path };
-                // An oversized file throws here and reads as nothing staged.
                 return ParseWatchOutbox(Storage::ReadUtf8File(Path, WatchOutboxMaximumBytes), accountKey);
+            }
+            catch (std::length_error const&)
+            {
+                // Oversized: no read will ever take it, so it reads as nothing staged.
+                return std::vector<Api::Dto::WatchEntry>{};
             }
             catch (...)
             {
-                return {};
+                return std::nullopt;
             }
         }
     };
@@ -94,15 +101,18 @@ namespace HaloDesktop::Services
         // read below and kept only if they belong to the owner bound now.
         if (leavingAccount)
         {
-            Persist();
+            Enqueue(std::nullopt);
         }
+        // Until the new owner's stored rows are merged, the file may hold rows
+        // that are not in memory, so nothing is written over it (see Persist).
+        m_awaitingStored = !m_accountKey.empty();
         return !m_accountKey.empty();
     }
 
-    concurrency::task<std::vector<Api::Dto::WatchEntry>> WatchOutbox::ReadStoredAsync(std::wstring accountKey) const
+    concurrency::task<std::optional<std::vector<Api::Dto::WatchEntry>>> WatchOutbox::ReadStoredAsync(std::wstring accountKey) const
     {
         auto const files = m_files;
-        concurrency::task<std::vector<Api::Dto::WatchEntry>> read;
+        concurrency::task<std::optional<std::vector<Api::Dto::WatchEntry>>> read;
         {
             std::scoped_lock const lock{ files->Mutex };
             read = files->Tail.then(
@@ -111,7 +121,7 @@ namespace HaloDesktop::Services
                     return files->Read(accountKey);
                 });
             files->Tail = read.then(
-                [](concurrency::task<std::vector<Api::Dto::WatchEntry>> completed)
+                [](concurrency::task<std::optional<std::vector<Api::Dto::WatchEntry>>> completed)
                 {
                     try { static_cast<void>(completed.get()); } catch (...) {}
                 });
@@ -128,8 +138,11 @@ namespace HaloDesktop::Services
         // What was staged since the read began is newer for its video, and the
         // merge keeps the newer row either way.
         m_pending = MergePendingWatchRows(stored, m_pending);
+        m_awaitingStored = false;
         Persist();
     }
+
+    bool WatchOutbox::AwaitingStored() const noexcept { return m_awaitingStored; }
 
     void WatchOutbox::Stage(std::vector<Api::Dto::WatchEntry> rows)
     {
@@ -169,6 +182,14 @@ namespace HaloDesktop::Services
 
     void WatchOutbox::Persist()
     {
+        // A file whose rows were not read yet is not written over: that would
+        // replace (or, with nothing staged, remove) unsent progress the last run
+        // left. The rows stay in memory, are still sent, and reach the disk with
+        // the stored ones once a read succeeds and Adopt merges them.
+        if (m_awaitingStored)
+        {
+            return;
+        }
         // Serialized here, on the owning thread, so the write carries exactly the
         // state of this moment whatever happens to the rows before it runs.
         std::optional<std::string> content;
@@ -176,6 +197,11 @@ namespace HaloDesktop::Services
         {
             content = SerializeWatchOutbox(m_accountKey, m_pending);
         }
+        Enqueue(std::move(content));
+    }
+
+    void WatchOutbox::Enqueue(std::optional<std::string> content)
+    {
         auto const files = m_files;
         std::scoped_lock const lock{ files->Mutex };
         files->Tail = files->Tail.then(

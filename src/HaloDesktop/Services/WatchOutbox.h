@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <ppltasks.h>
 #include <string>
 #include <vector>
@@ -41,13 +42,20 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool Bind(std::wstring accountKey);
 
         // The rows stored for `accountKey`, read after every write already asked
-        // for. Empty for a missing, foreign, corrupt or oversized file; never throws.
-        [[nodiscard]] concurrency::task<std::vector<Api::Dto::WatchEntry>> ReadStoredAsync(std::wstring accountKey) const;
+        // for. Empty for a missing, foreign, corrupt or oversized file; nothing
+        // (std::nullopt) when the file could not be read this time, which leaves
+        // it as it is for another try. Never throws.
+        [[nodiscard]] concurrency::task<std::optional<std::vector<Api::Dto::WatchEntry>>> ReadStoredAsync(std::wstring accountKey) const;
 
         // Merges rows read from disk into what was staged meanwhile, newest per
         // video, when `epoch` is still the current owner's; then writes the result,
         // which also replaces a file that could not be used.
         void Adopt(std::uint64_t epoch, std::vector<Api::Dto::WatchEntry> stored);
+
+        // True from binding an account until its stored rows are adopted. Nothing
+        // is written to the file meanwhile (a write would lose rows not read yet);
+        // staged rows wait in memory, and the caller tries the read again.
+        [[nodiscard]] bool AwaitingStored() const noexcept;
 
         // Keeps these rows until they are settled. Ignored while nobody is signed in.
         void Stage(std::vector<Api::Dto::WatchEntry> rows);
@@ -70,11 +78,14 @@ namespace HaloDesktop::Services
         struct FileChain;
 
         void Persist();
+        // Queues writing `content`, or removing the file when there is none.
+        void Enqueue(std::optional<std::string> content);
 
         std::shared_ptr<FileChain> m_files;
         std::vector<Api::Dto::WatchEntry> m_pending;
         std::wstring m_accountKey;
         std::uint64_t m_epoch{};
         bool m_bound{};
+        bool m_awaitingStored{};
     };
 }
