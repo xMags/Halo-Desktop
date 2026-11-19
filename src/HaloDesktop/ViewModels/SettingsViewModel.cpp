@@ -151,6 +151,19 @@ namespace winrt::HaloDesktop::implementation
     {
         return Microsoft::UI::Xaml::Thickness{ 0, m_firstInCard ? 0.0 : 1.0, 0, 0 };
     }
+    double AddonRowViewModel::ActionSlotWidth() const noexcept { return m_actionSlotWidth; }
+    Microsoft::UI::Xaml::Visibility AddonRowViewModel::ActionSlotVisibility() const noexcept { return VisibleWhen(m_actionSlotWidth > 0.0); }
+    double AddonRowViewModel::ActionsWidth() const noexcept { return ::HaloDesktop::Services::AddonActionsWidth(m_content.Actions); }
+    void AddonRowViewModel::SetActionSlotWidth(double width)
+    {
+        if (m_actionSlotWidth == width)
+        {
+            return;
+        }
+        m_actionSlotWidth = width;
+        Raise(L"ActionSlotWidth");
+        Raise(L"ActionSlotVisibility");
+    }
     winrt::event_token AddonRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void AddonRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }
     bool AddonRowViewModel::IsMovable() const noexcept { return m_content.Actions.Movable; }
@@ -835,6 +848,7 @@ namespace winrt::HaloDesktop::implementation
         }
         m_listShown = true;
         RefreshRowDividers();
+        RefreshActionSlots();
         RebuildCatalogLanguage();
         RaiseAddonState();
     }
@@ -859,6 +873,32 @@ namespace winrt::HaloDesktop::implementation
                 {
                     winrt::get_self<AddonRowViewModel>(row)->SetFirstInCard(first);
                     first = false;
+                }
+            }
+        }
+    }
+
+    void SettingsViewModel::RefreshActionSlots()
+    {
+        // Both lists share one card, so they share one slot width.
+        auto width = 0.0;
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            for (auto const& item : rows)
+            {
+                if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+                {
+                    width = (std::max)(width, winrt::get_self<AddonRowViewModel>(row)->ActionsWidth());
+                }
+            }
+        }
+        for (auto const& rows : { m_globalAddons, m_ownAddons })
+        {
+            for (auto const& item : rows)
+            {
+                if (auto const row = item.try_as<winrt::HaloDesktop::AddonRowViewModel>())
+                {
+                    winrt::get_self<AddonRowViewModel>(row)->SetActionSlotWidth(width);
                 }
             }
         }

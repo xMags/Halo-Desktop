@@ -34,6 +34,18 @@ namespace HaloDesktop::Services
         return scope == AddonScope::Yours && transportUrl && IsDefaultAddonUrl(*transportUrl);
     }
 
+    double AddonActionsWidth(AddonRowActions const& actions) noexcept
+    {
+        constexpr double ButtonWidth = 28.0;
+        constexpr double ButtonSpacing = 2.0;
+        auto const buttons = (actions.ShowInstallForEveryone ? 1 : 0) + (actions.ShowRemove ? 1 : 0);
+        if (buttons == 0)
+        {
+            return 0.0;
+        }
+        return buttons * ButtonWidth + (buttons - 1) * ButtonSpacing;
+    }
+
     AddonRowActions EvaluateAddonRow(AddonRowFacts const& facts, AddonRowContext const& context) noexcept
     {
         AddonRowActions actions;

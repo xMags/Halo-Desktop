@@ -57,12 +57,19 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RemoveVisibility() const noexcept;
         [[nodiscard]] bool ListActionsEnabled() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness DividerThickness() const noexcept;
+        // Room kept at the row's end for buttons: the widest any row in the card
+        // needs, so the switches line up, and none when no row has a button.
+        [[nodiscard]] double ActionSlotWidth() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionSlotVisibility() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
         [[nodiscard]] bool IsMovable() const noexcept;
         void SetListBusy(bool busy);
         void SetFirstInCard(bool first);
+        void SetActionSlotWidth(double width);
+        // What this row's own buttons need; the card reserves the widest.
+        [[nodiscard]] double ActionsWidth() const noexcept;
         // Called on the UI thread with the addon's id and the value asked for.
         void SetCatalogToggleHandler(std::function<void(winrt::hstring const&, bool)> handler);
 
@@ -73,6 +80,7 @@ namespace winrt::HaloDesktop::implementation
         std::function<void(winrt::hstring const&, bool)> m_catalogToggle;
         winrt::hstring m_initials;
         bool m_firstInCard{};
+        double m_actionSlotWidth{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
     };
 
@@ -215,6 +223,7 @@ namespace winrt::HaloDesktop::implementation
         void SynchronizeAddons();
         void ClearAddonRows();
         void RefreshRowDividers();
+        void RefreshActionSlots();
         void SetListBusy(bool busy);
         void SetAdding(bool adding);
         void SetAddError(std::wstring text);

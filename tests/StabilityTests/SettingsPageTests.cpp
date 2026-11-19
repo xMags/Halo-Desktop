@@ -30,6 +30,18 @@ namespace
     constexpr std::wstring_view Cinemeta = L"https://v3-cinemeta.strem.io/manifest.json";
     constexpr std::wstring_view Torrentio = L"https://torrentio.example/manifest.json";
 
+    // The card reserves the widest row's buttons on every row, so a card with
+    // no buttons at all puts its switches at the edge.
+    void TestAddonActionsWidth()
+    {
+        using Services::AddonActionsWidth;
+        using Services::AddonRowActions;
+        Require(AddonActionsWidth(AddonRowActions{}) == 0.0, "a row with no buttons reserved room for one");
+        Require(AddonActionsWidth(AddonRowActions{ .ShowRemove = true }) == 28.0, "one button did not take one button's width");
+        Require(AddonActionsWidth(AddonRowActions{ .ShowInstallForEveryone = true }) == 28.0, "install for everyone did not take one button's width");
+        Require(AddonActionsWidth(AddonRowActions{ .ShowInstallForEveryone = true, .ShowRemove = true }) == 58.0, "two buttons did not take two widths and their gap");
+    }
+
     void TestAddonRowActions()
     {
         using Services::AddonGripHint;
@@ -335,6 +347,7 @@ namespace
 void RunSettingsPageTests()
 {
     TestAddonRowActions();
+    TestAddonActionsWidth();
     TestAddonTextLines();
     TestAddField();
     TestReordering();

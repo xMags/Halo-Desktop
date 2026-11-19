@@ -22,6 +22,8 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility RemoveVisibility { get; };
         Boolean ListActionsEnabled { get; };
         Microsoft.UI.Xaml.Thickness DividerThickness { get; };
+        Double ActionSlotWidth { get; };
+        Microsoft.UI.Xaml.Visibility ActionSlotVisibility { get; };
     }
 
     runtimeclass SettingsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged

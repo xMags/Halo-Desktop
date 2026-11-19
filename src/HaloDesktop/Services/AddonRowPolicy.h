@@ -74,6 +74,12 @@ namespace HaloDesktop::Services
 
     [[nodiscard]] AddonRowActions EvaluateAddonRow(AddonRowFacts const& facts, AddonRowContext const& context) noexcept;
 
+    // The width a row's buttons (install for everyone, remove) take at its end:
+    // 28 each, 2 apart, 0 with none. The addon card gives every row the widest
+    // any row needs, so the catalog switches line up down the card and sit at
+    // its edge when no row has a button.
+    [[nodiscard]] double AddonActionsWidth(AddonRowActions const& actions) noexcept;
+
     [[nodiscard]] std::wstring_view AddonGripToolTip(AddonGripHint hint) noexcept;
 
     inline constexpr std::wstring_view ShadowedAddonLine = L"Provided globally, so this copy is not used";

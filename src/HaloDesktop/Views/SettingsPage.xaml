@@ -46,18 +46,27 @@
     -->
     <DataTemplate x:Key="SettingsAddonRowTemplate" x:DataType="local:AddonRowViewModel">
       <Grid Padding="14,13" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="{x:Bind DividerThickness, Mode=OneWay}" ColumnSpacing="13">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="12" /><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+        <Grid.ColumnDefinitions><ColumnDefinition Width="12" /><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
         <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloText4Brush}" Glyph="&#xE76F;" Opacity="{x:Bind IdentityOpacity}" ToolTipService.ToolTip="{x:Bind GripToolTip}" />
         <Border Grid.Column="1" Width="34" Height="34" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="6" Opacity="{x:Bind IdentityOpacity}"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Initials}" /></Border>
         <StackPanel Grid.Column="2" VerticalAlignment="Center" Opacity="{x:Bind IdentityOpacity}" Spacing="3">
           <StackPanel Orientation="Horizontal" Spacing="9"><TextBlock FontSize="{StaticResource HaloFontBody}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Version}" /><Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind GlobalVisibility}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="GLOBAL" /></Border><Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="3" Visibility="{x:Bind YoursVisibility}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" Text="YOURS" /></Border></StackPanel>
           <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Provides}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
         </StackPanel>
-        <ToggleSwitch Grid.Column="3" VerticalAlignment="Center" AutomationProperties.Name="{x:Bind CatalogSwitchLabel}" IsEnabled="{x:Bind CatalogSwitchEnabled}" IsOn="{x:Bind CatalogsShown, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" Visibility="{x:Bind CatalogSwitchVisibility}" />
-        <!-- One button's width even with none, so the switches line up down the list. -->
-        <StackPanel Grid.Column="4" MinWidth="28" HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="2">
-          <Button Width="28" Height="28" MinWidth="0" Padding="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Install for every user" Click="OnInstallForEveryoneClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Install for every user" Visibility="{x:Bind InstallForEveryoneVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE774;" /></Button>
-          <Button Width="28" Height="28" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Remove addon" Click="OnDeleteAddonClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Style="{StaticResource HaloDangerIconButtonStyle}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Remove addon" Visibility="{x:Bind RemoveVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE74D;" /></Button>
+        <!--
+          The switch, then the buttons, at the row's end. The buttons' slot is as
+          wide as the widest row in the card needs, so the switches line up down
+          the card, and it is gone (with its gap) when no row has a button, so the
+          switches sit at the card's edge.
+        -->
+        <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="13">
+          <ToggleSwitch VerticalAlignment="Center" AutomationProperties.Name="{x:Bind CatalogSwitchLabel}" IsEnabled="{x:Bind CatalogSwitchEnabled}" IsOn="{x:Bind CatalogsShown, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" Visibility="{x:Bind CatalogSwitchVisibility}" />
+          <Grid MinWidth="{x:Bind ActionSlotWidth, Mode=OneWay}" VerticalAlignment="Center" Visibility="{x:Bind ActionSlotVisibility, Mode=OneWay}">
+            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="2">
+              <Button Width="28" Height="28" MinWidth="0" Padding="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Install for every user" Click="OnInstallForEveryoneClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Install for every user" Visibility="{x:Bind InstallForEveryoneVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE774;" /></Button>
+              <Button Width="28" Height="28" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Remove addon" Click="OnDeleteAddonClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Style="{StaticResource HaloDangerIconButtonStyle}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Remove addon" Visibility="{x:Bind RemoveVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE74D;" /></Button>
+            </StackPanel>
+          </Grid>
         </StackPanel>
       </Grid>
     </DataTemplate>
