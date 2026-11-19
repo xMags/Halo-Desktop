@@ -22,10 +22,14 @@ namespace HaloDesktop::Services::Downloads
     };
 
     // Every record of `from` moves to `to`, except where `to` already shows
-    // the same video: there a finished download beats an unfinished one, and
-    // when both are finished (or neither is) the one already in `to` stays. A
-    // losing record's replacement backup goes with it, so it cannot resurface
-    // as a second copy. Adopting into the same partition changes nothing.
+    // the same video: there a finished download beats an unfinished one, a
+    // re-download whose replacement backup is finished counts in between (it
+    // beats a copy with nothing finished and loses to a finished one), and on a
+    // tie the one already in `to` stays. A losing record's replacement backup
+    // goes with it, so it cannot resurface as a second copy; a winning record
+    // keeps its backup. So a finished file is never discarded while the copy
+    // kept for that video has nothing finished. Adopting into the same
+    // partition changes nothing.
     [[nodiscard]] AdoptionPlan PlanAdoption(
         std::span<DownloadRecord const> records,
         std::wstring const& from,

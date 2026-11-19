@@ -24,6 +24,21 @@ namespace
     {
         return record.AccountKey == account && !record.PendingDeletion && !IsHiddenBackup(records, record.JobId);
     }
+
+    // How much of a finished file a visible record stands for: 2 when it is
+    // finished itself; 1 when it is a re-download whose backup (the copy it
+    // replaces, hidden until it completes) is finished; 0 when nothing is.
+    int FinishedRank(std::span<Downloads::DownloadRecord const> records, Downloads::DownloadRecord const& record)
+    {
+        if (record.Status == Downloads::DownloadStatus::Done) return 2;
+        if (!record.Replacement) return 0;
+        auto const& backupId = record.Replacement->JobId;
+        auto const backup = std::find_if(records.begin(), records.end(), [&backupId](Downloads::DownloadRecord const& candidate)
+        {
+            return candidate.JobId == backupId;
+        });
+        return backup != records.end() && !backup->PendingDeletion && backup->Status == Downloads::DownloadStatus::Done ? 1 : 0;
+    }
 }
 
 namespace HaloDesktop::Services::Downloads
@@ -46,7 +61,11 @@ namespace HaloDesktop::Services::Downloads
                 return Visible(records, candidate, to) && candidate.Media.VideoId == moving.Media.VideoId;
             });
             if (existing == records.end()) continue;
-            auto const movingWins = moving.Status == DownloadStatus::Done && existing->Status != DownloadStatus::Done;
+            // A re-download with a finished backup counts as holding a finished
+            // file: losing would discard that backup with it, so it beats a copy
+            // with nothing finished, and only a finished copy beats it. A tie
+            // keeps the copy already in `to`.
+            auto const movingWins = FinishedRank(records, moving) > FinishedRank(records, *existing);
             auto const& loser = movingWins ? *existing : moving;
             discard.insert(loser.JobId);
             if (loser.Replacement)

@@ -621,6 +621,65 @@ namespace
         Require(plan.Discard == std::vector<std::wstring>{ L"d0", L"d1" }, "a losing download's backup was left behind");
     }
 
+    // A re-download whose backup is finished holds a finished file: it is never
+    // discarded (backup and all) for a copy that has nothing finished.
+    void TestAdoptionNeverTradesAFinishedBackupForAnUnfinishedCopy()
+    {
+        auto const replacing = [](wchar_t const* jobId, wchar_t const* owner, wchar_t const* backupId)
+        {
+            auto record = Owned(jobId, owner, L"movie:1", Downloads::DownloadStatus::Paused);
+            record.Replacement = Downloads::ReplacementBackup{ backupId, {}, L"old.mkv", std::nullopt };
+            return record;
+        };
+        auto const backup = [](wchar_t const* jobId, wchar_t const* owner)
+        {
+            return Owned(jobId, owner, L"movie:1", Downloads::DownloadStatus::Done);
+        };
+
+        // The device's re-download has the finished file, the account's copy is
+        // unfinished: the device side wins and keeps re-downloading over its backup.
+        std::vector<Downloads::DownloadRecord> const deviceHolds{
+            replacing(L"d1", L"device", L"d0"),
+            backup(L"d0", L"device"),
+            Owned(L"a1", L"account", L"movie:1", Downloads::DownloadStatus::Paused),
+        };
+        auto const moved = Downloads::PlanAdoption(deviceHolds, L"device", L"account");
+        Require(moved.Rekey == std::vector<std::wstring>{ L"d0", L"d1" } && moved.Discard == std::vector<std::wstring>{ L"a1" },
+            "a finished backup was discarded for an unfinished copy");
+
+        // The mirror: the account's re-download holds it and the device copy is
+        // unfinished, so the account keeps its own, backup included.
+        std::vector<Downloads::DownloadRecord> const accountHolds{
+            Owned(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Failed),
+            replacing(L"a1", L"account", L"a0"),
+            backup(L"a0", L"account"),
+        };
+        auto const kept = Downloads::PlanAdoption(accountHolds, L"device", L"account");
+        Require(kept.Rekey.empty() && kept.Discard == std::vector<std::wstring>{ L"d1" },
+            "the account's re-download or its finished backup was discarded for an unfinished copy");
+
+        // A copy that is finished itself still beats a re-download in progress.
+        std::vector<Downloads::DownloadRecord> const deviceFinished{
+            Owned(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Done),
+            replacing(L"a1", L"account", L"a0"),
+            backup(L"a0", L"account"),
+        };
+        auto const finished = Downloads::PlanAdoption(deviceFinished, L"device", L"account");
+        Require(finished.Rekey == std::vector<std::wstring>{ L"d1" } && finished.Discard == std::vector<std::wstring>{ L"a0", L"a1" },
+            "a finished copy lost to a re-download still in progress");
+
+        // Both re-downloading over finished backups: a tie, the account's stays.
+        std::vector<Downloads::DownloadRecord> const both{
+            replacing(L"d1", L"device", L"d0"),
+            backup(L"d0", L"device"),
+            replacing(L"a1", L"account", L"a0"),
+            backup(L"a0", L"account"),
+        };
+        auto const tie = Downloads::PlanAdoption(both, L"device", L"account");
+        Require(tie.Rekey.empty() && tie.Discard == std::vector<std::wstring>{ L"d0", L"d1" },
+            "a tie between two re-downloads did not keep the account's");
+    }
+
     // Every partition but the active one, once each, sorted: the owners whose
     // downloads the active account takes over.
     void TestOtherOwners()
@@ -1017,6 +1076,7 @@ void RunDeviceModeTests()
     TestAdoptionMovesEveryDownloadWithoutADuplicate();
     TestAdoptionKeepsTheFinishedCopyOfADuplicate();
     TestAdoptionDiscardsALosingDownloadsBackupWithIt();
+    TestAdoptionNeverTradesAFinishedBackupForAnUnfinishedCopy();
     TestAdoptingIntoTheSamePartitionChangesNothing();
     TestOtherOwners();
     TestTaskbarProgress();
