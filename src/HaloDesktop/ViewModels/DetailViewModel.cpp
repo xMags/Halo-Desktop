@@ -157,7 +157,7 @@ namespace winrt::HaloDesktop::implementation
           m_role(credit.Role.value_or(std::wstring{})),
           m_photo(credit.Photo.value_or(std::wstring{})),
           m_initials(::HaloDesktop::ViewModels::Initials(credit.Name)),
-          m_tooltip(L"Look up " + credit.Name + L" on IMDb"),
+          m_tooltip(L"More about " + credit.Name),
           m_searchUrl(::HaloDesktop::ViewModels::PersonSearchUrl(credit.Name)),
           m_tmdbId(credit.TmdbId)
     {

@@ -18,10 +18,11 @@ namespace HaloDesktop::Services
 
     inline constexpr std::size_t PeopleRowLimit = 3;
 
-    // At most PeopleRowLimit people whose name is the query or starts with
-    // its words (NameRelevance 0 or 1), best named first, then most popular.
-    // When the titles found have a best tier, a person named worse than that
-    // title is left out: "dune" finds the film, not someone called Dunel.
+    // At most PeopleRowLimit people whose name holds every word of the query
+    // (NameRelevance 0 to 3, so a surname alone finds its people), best named
+    // first, then most popular. When a title is named exactly what was typed,
+    // only people named exactly that stay: "dune" finds the film, not
+    // someone called Dune Smith.
     [[nodiscard]] std::vector<Api::Dto::PersonSummary> ChoosePeopleRow(
         std::span<Api::Dto::PersonSummary const> people,
         std::wstring_view query,

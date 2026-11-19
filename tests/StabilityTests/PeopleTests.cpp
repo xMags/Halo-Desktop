@@ -252,8 +252,13 @@ namespace
         auto const capped = Services::ChoosePeopleRow(people, L"denis villeneuve", 0);
         Require(capped.size() == 2 && capped[0].TmdbId == 5 && capped[1].TmdbId == 2,
             "a person named worse than the best title was shown");
-        Require(Services::ChoosePeopleRow(people, L"villeneuve", std::nullopt).empty(),
-            "a surname alone matched beyond the row's rule");
+        auto const surname = Services::ChoosePeopleRow(people, L"villeneuve", 1);
+        Require(surname.size() == 3 && surname[0].TmdbId == 4 && surname[1].TmdbId == 6 && surname[2].TmdbId == 1,
+            "a surname alone did not find its people, most popular first");
+        Require(Services::ChoosePeopleRow(people, L"villeneuve", 0).empty(),
+            "a surname stayed beside a title named exactly that");
+        Require(Services::ChoosePeopleRow(people, L"spielberg", std::nullopt).empty(),
+            "someone not named by the query reached the people row");
         Require(Services::ChoosePeopleRow({}, L"dune", std::nullopt).empty(), "nobody made a people row");
 
         std::vector<Services::SearchTitle> titles(2);

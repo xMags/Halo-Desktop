@@ -9,8 +9,10 @@ namespace HaloDesktop::Services
 {
     namespace
     {
-        // The row admits a name that is the query or starts with its words.
-        constexpr int LoosestPersonTier = 1;
+        // The row admits a name holding every word typed: the whole name, its
+        // start, or a surname alone ("nolan").
+        constexpr int LoosestPersonTier = 3;
+        constexpr int ExactNameTier = 0;
     }
 
     std::vector<Api::Dto::PersonSummary> ChoosePeopleRow(
@@ -29,7 +31,8 @@ namespace HaloDesktop::Services
         {
             auto const tier = NameRelevance(person.Name, trimmed);
             if (tier > LoosestPersonTier) continue;
-            if (bestTitleTier && tier > *bestTitleTier) continue;
+            // A title named exactly what was typed is what was meant.
+            if (bestTitleTier && *bestTitleTier == ExactNameTier && tier > ExactNameTier) continue;
             candidates.push_back({ &person, tier });
         }
         std::stable_sort(candidates.begin(), candidates.end(), [](Candidate const& a, Candidate const& b)
