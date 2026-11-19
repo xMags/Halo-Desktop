@@ -142,8 +142,8 @@ namespace
         for (auto const light : { false, true })
         {
             auto const strength = HaloDesktop::Shell::AcrylicStrengthFor(light);
-            Require(strength.TintOpacity >= 0.7f && strength.TintOpacity <= 1.0f, "the palette tint was too weak to keep the window's colour");
-            Require(strength.LuminosityOpacity >= 0.7f && strength.LuminosityOpacity <= 1.0f, "the backdrop's luminosity was too weak to keep text readable");
+            Require(strength.TintOpacity >= 0.5f && strength.TintOpacity <= 1.0f, "the palette tint was too weak to keep the window's colour");
+            Require(strength.LuminosityOpacity >= 0.5f && strength.LuminosityOpacity <= 1.0f, "the backdrop's luminosity was too weak to keep text readable");
         }
     }
 

@@ -17,7 +17,7 @@ namespace HaloDesktop::Shell
         // A light ground needs a little more of itself to stay as bright as the
         // palette's grey over a dark wallpaper.
         return lightTheme
-            ? AcrylicStrength{ .TintOpacity = 0.78f, .LuminosityOpacity = 0.9f }
-            : AcrylicStrength{ .TintOpacity = 0.8f, .LuminosityOpacity = 0.85f };
+            ? AcrylicStrength{ .TintOpacity = 0.6f, .LuminosityOpacity = 0.82f }
+            : AcrylicStrength{ .TintOpacity = 0.62f, .LuminosityOpacity = 0.72f };
     }
 }
