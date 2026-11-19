@@ -2,15 +2,13 @@
 
 #include "DownloadReadyCard.g.h"
 
-#include "Controls/CardHoverShadow.h"
-
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
 {
     // One finished download in the "Ready to watch" grid. View behaviour only:
-    // the 16:9 art at the column's width, the hover (art scale, shadow, play
+    // the 16:9 art at the column's width, the hover (art scale, frame, play
     // button) and the clicks handed to the page.
     struct DownloadReadyCard : DownloadReadyCardT<DownloadReadyCard>
     {
@@ -38,7 +36,6 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::HaloDesktop::DownloadRowViewModel m_row{ nullptr };
         winrt::event_token m_rowChangedToken{};
-        ::HaloDesktop::Controls::CardHoverShadow m_hoverShadow;
         bool m_hovered{};
         bool m_playFocused{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_selectedEvent;

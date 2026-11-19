@@ -49,6 +49,7 @@
       <SolidColorBrush x:Key="DlCautionTintBrush" Color="#24FFD479" />
       <SolidColorBrush x:Key="DlTrackBrush" Color="#14F4F6FB" />
       <SolidColorBrush x:Key="DlHoverBrush" Color="#0AF4F6FB" />
+      <SolidColorBrush x:Key="DlCardHoverStrokeBrush" Color="#73F4F6FB" />
       <SolidColorBrush x:Key="DlSolidBrush" Color="#FFF4F6FB" />
       <SolidColorBrush x:Key="DlOnSolidBrush" Color="#FF0A0C11" />
       <SolidColorBrush x:Key="DlOnAccentBrush" Color="#FFFFFFFF" />
@@ -99,6 +100,7 @@
       <SolidColorBrush x:Key="DlCautionTintBrush" Color="#1FA45F00" />
       <SolidColorBrush x:Key="DlTrackBrush" Color="#1414161D" />
       <SolidColorBrush x:Key="DlHoverBrush" Color="#0A14161D" />
+      <SolidColorBrush x:Key="DlCardHoverStrokeBrush" Color="#590E1220" />
       <SolidColorBrush x:Key="DlSolidBrush" Color="#FF0070E0" />
       <SolidColorBrush x:Key="DlOnSolidBrush" Color="#FFFFFFFF" />
       <SolidColorBrush x:Key="DlOnAccentBrush" Color="#FFFFFFFF" />

@@ -107,8 +107,8 @@ namespace winrt::HaloDesktop::implementation
             if (!std::isfinite(width) || width <= 0.0) return;
             auto const height = std::round(width * ArtAspect);
             auto const length = Microsoft::UI::Xaml::GridLengthHelper::FromPixels(height);
-            if (auto const row = ArtRow(); row && row.Height().Value != height) row.Height(length);
             if (auto const row = ButtonArtRow(); row && row.Height().Value != height) row.Height(length);
+            if (auto const overlay = ArtOverlay(); overlay && overlay.Height() != height) overlay.Height(height);
             if (auto const art = ArtScale())
             {
                 art.CenterPoint({ static_cast<float>(width / 2.0), static_cast<float>(height / 2.0), 0.0F });
@@ -126,8 +126,7 @@ namespace winrt::HaloDesktop::implementation
         m_hovered = hovered;
         try
         {
-            if (hovered) m_hoverShadow.Prepare(ShadowHost(), *this);
-            if (auto const fade = ShadowFade()) fade.Opacity(hovered ? 1.0 : 0.0);
+            if (auto const frame = HoverFrame()) frame.Opacity(hovered ? 1.0 : 0.0);
             if (auto const art = ArtScale())
             {
                 auto const scale = hovered ? HoverScale : 1.0F;

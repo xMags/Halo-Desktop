@@ -14,25 +14,13 @@
     the mono meta line. The art's height follows the column's width (set in
     SizeChanged), since the grid stretches its columns.
 
-    The two API families are kept on separate elements, as XAML refuses to mix
-    them on one: ArtScale uses the facade Scale with its transition, ShadowFade
-    an opacity transition, and only ShadowHost (inside ShadowFade) is handed a
-    composition visual.
+    The hover stays on the art: it zooms a little inside its frame, the frame
+    brightens and the play button fades in on its corner. No shadow and no fill
+    behind the text, so the card never reads as a raised grey box.
   -->
   <Grid>
-    <Grid.RowDefinitions>
-      <RowDefinition x:Name="ArtRow" Height="124" />
-      <RowDefinition Height="Auto" />
-    </Grid.RowDefinitions>
-    <Border x:Name="ShadowFade" IsHitTestVisible="False" Opacity="0">
-      <Border.OpacityTransition>
-        <ScalarTransition Duration="0:0:0.2" />
-      </Border.OpacityTransition>
-      <Border x:Name="ShadowHost" />
-    </Border>
     <Button
       x:Name="CardButton"
-      Grid.RowSpan="2"
       AutomationProperties.Name="{x:Bind Row.AccessibleName, Mode=OneWay}"
       Click="OnCardClick"
       CornerRadius="12"
@@ -89,32 +77,42 @@
         </StackPanel>
       </Grid>
     </Button>
-    <!-- The art's 1px frame. No selected ring: the page has no detail pane for a
-         selection to fill, and clicking the card plays it. -->
-    <Border Margin="-1" BorderBrush="{ThemeResource DlBorderBrush}" BorderThickness="1" CornerRadius="13" IsHitTestVisible="False" />
-    <!-- The play button sits over the art's corner, shown on hover or focus. -->
-    <Button
-      x:Name="PlayButton"
-      Width="34"
-      Height="34"
-      Margin="8"
-      HorizontalAlignment="Right"
-      VerticalAlignment="Bottom"
-      Background="{ThemeResource DlPlayBrush}"
-      BorderThickness="0"
-      Click="OnPlayClick"
-      CornerRadius="17"
-      Foreground="{ThemeResource DlOnPlayBrush}"
-      GotFocus="OnPlayFocusChanged"
-      LostFocus="OnPlayFocusChanged"
-      Opacity="0"
-      Padding="0"
-      Style="{StaticResource DlButtonStyle}"
-      ToolTipService.ToolTip="Play offline">
-      <Button.OpacityTransition>
-        <ScalarTransition Duration="0:0:0.15" />
-      </Button.OpacityTransition>
-      <FontIcon FontSize="13" Glyph="&#xE768;" />
-    </Button>
+    <!-- Laid over the art alone: its height is the art's, set in SizeChanged,
+         so the frame and the play button never reach the text below. -->
+    <Grid x:Name="ArtOverlay" Height="124" VerticalAlignment="Top">
+      <!-- The art's 1px frame, and its brighter hover twin faded over it. No
+           selected ring: the page has no detail pane for a selection to fill,
+           and clicking the card plays it. -->
+      <Border BorderBrush="{ThemeResource DlBorderBrush}" BorderThickness="1" CornerRadius="12" IsHitTestVisible="False" />
+      <Border x:Name="HoverFrame" BorderBrush="{ThemeResource DlCardHoverStrokeBrush}" BorderThickness="1" CornerRadius="12" IsHitTestVisible="False" Opacity="0">
+        <Border.OpacityTransition>
+          <ScalarTransition Duration="0:0:0.15" />
+        </Border.OpacityTransition>
+      </Border>
+      <!-- The play button sits on the art's corner, shown on hover or focus. -->
+      <Button
+        x:Name="PlayButton"
+        Width="34"
+        Height="34"
+        Margin="10"
+        HorizontalAlignment="Right"
+        VerticalAlignment="Bottom"
+        Background="{ThemeResource DlPlayBrush}"
+        BorderThickness="0"
+        Click="OnPlayClick"
+        CornerRadius="17"
+        Foreground="{ThemeResource DlOnPlayBrush}"
+        GotFocus="OnPlayFocusChanged"
+        LostFocus="OnPlayFocusChanged"
+        Opacity="0"
+        Padding="0"
+        Style="{StaticResource DlButtonStyle}"
+        ToolTipService.ToolTip="Play offline">
+        <Button.OpacityTransition>
+          <ScalarTransition Duration="0:0:0.15" />
+        </Button.OpacityTransition>
+        <FontIcon FontSize="13" Glyph="&#xE768;" />
+      </Button>
+    </Grid>
   </Grid>
 </UserControl>
