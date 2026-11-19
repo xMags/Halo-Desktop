@@ -35,9 +35,9 @@ namespace HaloDesktop::Shell
     [[nodiscard]] WindowBackdrop ResolveWindowBackdrop(WindowBackdropInput const& input) noexcept;
 
     // How strongly the palette's ground colour is laid over the blurred
-    // desktop. Low enough that the desktop clearly shows through, high enough
-    // (at least half) that the window still reads as Halo's own colour and
-    // small grey text stays readable over a busy wallpaper.
+    // desktop. About as see-through as a standard Windows acrylic surface: the
+    // desktop shows as a soft hint of colour, and the window still reads as
+    // Halo's own colour with small grey text readable over a busy wallpaper.
     struct AcrylicStrength final
     {
         float TintOpacity{};

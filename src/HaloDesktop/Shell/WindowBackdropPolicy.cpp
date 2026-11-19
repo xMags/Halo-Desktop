@@ -14,10 +14,12 @@ namespace HaloDesktop::Shell
 
     AcrylicStrength AcrylicStrengthFor(bool lightTheme) noexcept
     {
-        // A light ground needs a little more of itself to stay as bright as the
-        // palette's grey over a dark wallpaper.
+        // The luminosity values are the ones Windows uses for its own standard
+        // acrylic in each theme; luminosity is what holds back the wallpaper's
+        // colours, so it does most of the work. The tint then keeps the result
+        // on the palette's ground colour rather than Windows' neutral grey.
         return lightTheme
-            ? AcrylicStrength{ .TintOpacity = 0.6f, .LuminosityOpacity = 0.82f }
-            : AcrylicStrength{ .TintOpacity = 0.62f, .LuminosityOpacity = 0.72f };
+            ? AcrylicStrength{ .TintOpacity = 0.8f, .LuminosityOpacity = 0.9f }
+            : AcrylicStrength{ .TintOpacity = 0.8f, .LuminosityOpacity = 0.96f };
     }
 }
