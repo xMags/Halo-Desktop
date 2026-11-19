@@ -13,6 +13,7 @@
 #include "Controls/PosterSkeleton.xaml.h"
 #include "Controls/ShelfScrollPolicy.h"
 #include "Controls/SidewaysWheelGuard.h"
+#include "Controls/SmoothWheelScroll.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
@@ -193,6 +194,7 @@ namespace winrt::HaloDesktop::implementation
             auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
             ContinueList().ItemsSource(viewModel->ContinueItemsView());
             ShelfList().ItemsSource(viewModel->ShelvesView());
+            ::HaloDesktop::Controls::AttachSmoothWheelScroll(PageScroller());
             if (auto const metrics = App::Services().LayoutMetrics)
             {
                 try
