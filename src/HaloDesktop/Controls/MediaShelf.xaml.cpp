@@ -207,14 +207,11 @@ namespace winrt::HaloDesktop::implementation
         };
         apply(ScrollLeftButton(), edges.AtStart);
         apply(ScrollRightButton(), edges.AtEnd);
-        // The fade marks the side that still hides cards, so it follows the
-        // same ends the chevrons do.
-        auto const fade = [](Microsoft::UI::Xaml::UIElement const& element, bool atEnd)
+        // The start fade marks that cards are scrolled past, so it follows the
+        // same end the left chevron does.
+        if (auto const fade = StartFade())
         {
-            if (!element) return;
-            element.Visibility(atEnd ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
-        };
-        fade(StartFade(), edges.AtStart);
-        fade(EndFade(), edges.AtEnd);
+            fade.Visibility(edges.AtStart ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
+        }
     }
 }

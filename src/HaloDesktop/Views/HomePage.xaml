@@ -375,9 +375,7 @@
               </ItemsRepeater>
             </Grid>
           </ScrollViewer>
-          <Rectangle x:Name="ContinueStartFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Left" Fill="{ThemeResource HaloShelfFadeStartBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
-          <Rectangle x:Name="ContinueEndFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Right" Fill="{ThemeResource HaloShelfFadeEndBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
-        </Grid>
+          <Rectangle x:Name="ContinueStartFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Left" Fill="{ThemeResource HaloShelfFadeStartBrush}" IsHitTestVisible="False" Visibility="Collapsed" />        </Grid>
       </StackPanel>
       <!--
         A repeater, not an items control: the catalog cap allows sixteen shelves

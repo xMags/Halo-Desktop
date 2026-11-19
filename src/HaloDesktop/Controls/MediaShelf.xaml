@@ -86,8 +86,9 @@
     </StackPanel>
     <!-- The reference fades 12px at whichever side still hides cards. XAML has no
          opacity mask for live content, so the page ground is laid over that edge
-         instead, fading to clear; UpdateEdges shows each one with its chevron. -->
+         instead, fading to clear; UpdateEdges shows it with its chevron. Only the
+         start side: the strip runs out under the window's right edge, where a
+         band of opaque ground over the translucent window reads as haze. -->
     <Rectangle x:Name="StartFade" Grid.Row="1" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Left" Fill="{ThemeResource HaloShelfFadeStartBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
-    <Rectangle x:Name="EndFade" Grid.Row="1" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Right" Fill="{ThemeResource HaloShelfFadeEndBrush}" IsHitTestVisible="False" Visibility="Collapsed" />
   </Grid>
 </UserControl>
