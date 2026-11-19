@@ -1,10 +1,20 @@
 namespace HaloDesktop
 {
+    // What a placeholder stands in for. Plain is the striped tile every art slot
+    // uses; a movie or series poster gets a soft surface with that kind's glyph.
+    enum PlaceholderKind
+    {
+        Plain,
+        Movie,
+        Series,
+    };
+
     [default_interface]
     runtimeclass PlaceholderArt : Microsoft.UI.Xaml.Controls.UserControl
     {
         PlaceholderArt();
         String Caption;
         Microsoft.UI.Xaml.CornerRadius ArtCornerRadius;
+        PlaceholderKind Kind;
     }
 }

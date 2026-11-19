@@ -37,10 +37,6 @@ namespace
     constexpr double SlotTextMinWidth = 280.0;
     // A slot narrower than this is on a window under about 640 wide.
     constexpr double SlotNarrowWidth = 592.0;
-    // The box keeps at least this much beside the chips, or the chips go under it.
-    constexpr double HeadBoxMinWidth = 420.0;
-    constexpr double HeadGap = 16.0;
-    constexpr double HeadWrappedGap = 12.0;
     // The empty page's hints: all in one row while each gets 170, else two to a row.
     constexpr double HintMinWidth = 170.0;
     constexpr double HintGap = 16.0;
@@ -223,13 +219,17 @@ namespace winrt::HaloDesktop::implementation
 
     // WinUI's box shows its own clear button only while it has the caret. The
     // page draws one that stays whenever there is text, so the built-in one is
-    // given no width; its visual states only ever change its visibility.
+    // given no width; its visual states only ever change its visibility. A
+    // button does not clip its content, so at no width its glyph still drew
+    // past it, over whatever sits at the box's right edge: it is also made
+    // fully transparent, which those states never touch.
     void SearchPage::OnQueryBoxLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (auto const builtIn = FindNamedDescendant(QueryBox(), L"DeleteButton").try_as<Microsoft::UI::Xaml::FrameworkElement>())
         {
             builtIn.Width(0.0);
             builtIn.MinWidth(0.0);
+            builtIn.Opacity(0.0);
             builtIn.Margin({});
             builtIn.IsHitTestVisible(false);
             if (auto const control = builtIn.try_as<Microsoft::UI::Xaml::Controls::Control>()) control.IsTabStop(false);
@@ -347,8 +347,6 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchPage::OnTopMatchContentSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
     {
-        // The content decides the card's height; the art fills exactly that.
-        TopMatchArt().Height(args.NewSize().Height);
         auto const width = args.NewSize().Width;
         auto const posterWidth = width < SlotNarrowWidth ? SlotNarrowPosterWidth : SlotPosterWidth;
         if (TopMatchPosterColumn().Width().Value != posterWidth)
@@ -423,22 +421,6 @@ namespace winrt::HaloDesktop::implementation
         if (content.ColumnSpacing() != columnSpacing) content.ColumnSpacing(columnSpacing);
         if (content.RowSpacing() != rowSpacing) content.RowSpacing(rowSpacing);
         visual.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Left);
-    }
-
-    void SearchPage::OnSearchHeadSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
-    {
-        using Microsoft::UI::Xaml::Controls::Grid;
-        auto const chips = FilterChips();
-        auto const stacked = args.NewSize().Width < HeadBoxMinWidth + HeadGap + chips.DesiredSize().Width;
-        auto const row = stacked ? 1 : 0;
-        auto const column = stacked ? 0 : 1;
-        if (Grid::GetRow(chips) != row) Grid::SetRow(chips, row);
-        if (Grid::GetColumn(chips) != column) Grid::SetColumn(chips, column);
-        auto const head = SearchHead();
-        auto const columnSpacing = stacked ? 0.0 : HeadGap;
-        auto const rowSpacing = stacked ? HeadWrappedGap : 0.0;
-        if (head.ColumnSpacing() != columnSpacing) head.ColumnSpacing(columnSpacing);
-        if (head.RowSpacing() != rowSpacing) head.RowSpacing(rowSpacing);
     }
 
     // The suggestions hang from the box at its own width.
@@ -519,8 +501,7 @@ namespace winrt::HaloDesktop::implementation
         auto const metrics = App::Services().LayoutMetrics;
         if (!metrics) return;
         auto const current = metrics->Current();
-        PageBody().Padding({ current.Gutter, 0.0, current.Gutter, 40.0 });
-        PageTitle().Margin({ current.Gutter, 28.0, current.Gutter, 10.0 });
+        PageBody().Padding({ current.Gutter, 40.0, current.Gutter, 40.0 });
         for (auto const& layout : { LibraryLayout(), ResultsLayout() })
         {
             if (!layout) continue;

@@ -20,8 +20,9 @@ namespace
     constexpr double CaptionHeight = 52.0;
     constexpr double LiftBand = 4.0;
     // The header's text goes under the photo when it would be narrower than this.
-    constexpr double PhotoWidth = 112.0;
-    constexpr double HeadGap = 22.0;
+    constexpr double PhotoWidth = 220.0;
+    constexpr double HeadGap = 48.0;
+    constexpr double HeadStackedGap = 24.0;
     constexpr double HeadTextMinWidth = 320.0;
 }
 
@@ -139,9 +140,28 @@ namespace winrt::HaloDesktop::implementation
         if (Grid::GetColumn(text) != column) Grid::SetColumn(text, column);
         if (Grid::GetColumnSpan(text) != span) Grid::SetColumnSpan(text, span);
         auto const columnSpacing = stacked ? 0.0 : HeadGap;
-        auto const rowSpacing = stacked ? HeadGap : 0.0;
+        auto const rowSpacing = stacked ? HeadStackedGap : 0.0;
         if (head.ColumnSpacing() != columnSpacing) head.ColumnSpacing(columnSpacing);
         if (head.RowSpacing() != rowSpacing) head.RowSpacing(rowSpacing);
+    }
+
+    // Read more shows only while there is more to read, and stays as Show less once open.
+    void PersonPage::OnBiographyTrimmedChanged(
+        Microsoft::UI::Xaml::Controls::TextBlock const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::IsTextTrimmedChangedEventArgs const&)
+    {
+        auto const show = m_biographyOpen || sender.IsTextTrimmed();
+        ReadMoreButton().Visibility(show ? Microsoft::UI::Xaml::Visibility::Visible : Microsoft::UI::Xaml::Visibility::Collapsed);
+    }
+
+    void PersonPage::OnReadMoreClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_biographyOpen = !m_biographyOpen;
+        // Zero lifts the limit; four is the closed biography.
+        BiographyText().MaxLines(m_biographyOpen ? 0 : 4);
+        ReadMoreLabel().Text(m_biographyOpen ? L"Show less" : L"Read more");
     }
 
     void PersonPage::ApplyLayoutMetrics()

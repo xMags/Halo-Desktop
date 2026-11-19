@@ -444,6 +444,72 @@
   </Style>
 
   <!--
+    The quiet pill: no stroke at rest, a soft wash under the pointer, and the
+    chosen one a plain wash in the strongest ink. Search's kind filters and a
+    person's role filters, which sit under content rather than lead it.
+  -->
+  <Style x:Key="HaloQuietChipRadioStyle" TargetType="RadioButton">
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Height" Value="30" />
+    <Setter Property="Padding" Value="14,0" />
+    <Setter Property="FontSize" Value="{StaticResource HaloFontSmall}" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="15">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="15" Opacity="0" />
+            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloQuietSelectedBrush}" CornerRadius="15" Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              Padding="{TemplateBinding Padding}"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              FontSize="{TemplateBinding FontSize}"
+              Foreground="{ThemeResource HaloText2Brush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Root.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloText1Brush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!--
     List rows in the design are self-contained cards, and selection is an accent
     border rather than the stock selection pill, so the container is templated.
   -->

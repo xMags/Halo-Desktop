@@ -19,8 +19,14 @@
     CornerRadius="{StaticResource HaloControlCornerRadius}">
     <Grid>
       <Image
+        x:Name="Stripes"
         Source="{ThemeResource HaloPlaceholderStripe}"
         Stretch="UniformToFill" />
+      <!-- A movie or series poster: a soft surface and one faint glyph, nothing else. -->
+      <Grid x:Name="PosterSurface" Background="{ThemeResource HaloPosterPlaceholderBrush}" Visibility="Collapsed">
+        <FontIcon x:Name="MovieGlyph" FontSize="30" Foreground="{ThemeResource HaloPosterPlaceholderGlyphBrush}" Glyph="&#xE8B2;" Visibility="Collapsed" />
+        <FontIcon x:Name="SeriesGlyph" FontSize="30" Foreground="{ThemeResource HaloPosterPlaceholderGlyphBrush}" Glyph="&#xE7F4;" Visibility="Collapsed" />
+      </Grid>
       <TextBlock
         x:Name="CaptionText"
         HorizontalAlignment="Center"

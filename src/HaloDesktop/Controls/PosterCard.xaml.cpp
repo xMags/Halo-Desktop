@@ -129,7 +129,16 @@ namespace winrt::HaloDesktop::implementation
         }
     }
     winrt::hstring PosterCard::KindLabel() const { return m_kindLabel; }
-    void PosterCard::KindLabel(winrt::hstring const& value) { m_kindLabel = value; if (auto text = FindName(L"KindText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
+    void PosterCard::KindLabel(winrt::hstring const& value)
+    {
+        m_kindLabel = value;
+        if (auto text = FindName(L"KindText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value);
+        // The missing-poster surface shows the kind's glyph: a TV for a series, film for anything else.
+        if (auto placeholder = FindName(L"Placeholder").try_as<winrt::HaloDesktop::PlaceholderArt>())
+        {
+            placeholder.Kind(value == L"SERIES" ? winrt::HaloDesktop::PlaceholderKind::Series : winrt::HaloDesktop::PlaceholderKind::Movie);
+        }
+    }
     bool PosterCard::ShowKindBadge() const noexcept { return m_showKindBadge; }
     void PosterCard::ShowKindBadge(bool value)
     {

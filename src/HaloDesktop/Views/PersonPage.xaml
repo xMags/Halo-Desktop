@@ -31,8 +31,19 @@
         </StackPanel>
       </Button>
 
-      <!-- `.phead`: the 112 round photo (initials until it loads), then who they are. -->
-      <Grid x:Name="PersonHead" ColumnSpacing="22" SizeChanged="OnPersonHeadSizeChanged">
+      <!--
+        The header, in one quiet box: the 220 round photo (initials until it
+        loads), then who they are. The biography stops at four lines until
+        Read more opens it. Both sides hang from the top, so an opened
+        biography grows downward and the photo stays where it was.
+      -->
+      <Border
+        Padding="40,36"
+        Background="{ThemeResource HaloCardBrush}"
+        BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+        BorderThickness="1"
+        CornerRadius="16">
+      <Grid x:Name="PersonHead" ColumnSpacing="48" SizeChanged="OnPersonHeadSizeChanged">
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
@@ -43,50 +54,83 @@
         </Grid.RowDefinitions>
         <Grid
           x:Name="PersonPhoto"
-          Width="112"
-          Height="112"
+          Width="220"
+          Height="220"
           VerticalAlignment="Top"
           Background="{ThemeResource HaloAccentTintBrush}"
-          CornerRadius="56">
+          BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+          BorderThickness="1"
+          CornerRadius="110">
           <TextBlock
             x:Name="PersonInitials"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
             FontFamily="Segoe UI Variable Display"
-            FontSize="36"
+            FontSize="60"
             FontWeight="SemiBold"
             Foreground="{ThemeResource HaloAccentBrush}"
             Text="{x:Bind ViewModel.Initials, Mode=OneWay}" />
-          <local:ArtworkImage DecodeWidth="224" Placeholder="{x:Bind PersonInitials}" SourceUrl="{x:Bind ViewModel.Photo, Mode=OneWay}" />
+          <local:ArtworkImage DecodeWidth="440" Placeholder="{x:Bind PersonInitials}" SourceUrl="{x:Bind ViewModel.Photo, Mode=OneWay}" />
         </Grid>
-        <StackPanel x:Name="PersonText" Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+        <StackPanel x:Name="PersonText" Grid.Column="1" VerticalAlignment="Top" Spacing="12">
           <TextBlock
-            Foreground="{ThemeResource HaloAccentBrush}"
-            Style="{StaticResource HaloMonoKicker}"
+            FontSize="{StaticResource HaloFontSmall}"
+            Foreground="{ThemeResource HaloText3Brush}"
             Text="{x:Bind ViewModel.Kicker, Mode=OneWay}"
             Visibility="{x:Bind ViewModel.KickerVisibility, Mode=OneWay}" />
           <TextBlock
             FontFamily="Segoe UI Variable Display"
-            FontSize="28"
+            FontSize="44"
             FontWeight="SemiBold"
+            CharacterSpacing="-10"
+            LineHeight="50"
             Foreground="{ThemeResource HaloText1Brush}"
             Text="{x:Bind ViewModel.Name, Mode=OneWay}"
             TextWrapping="Wrap" />
-          <!-- About 68 characters to a line. -->
+          <!-- About 130 characters to a line; four lines until Read more opens it. -->
           <TextBlock
-            MaxWidth="560"
+            x:Name="BiographyText"
+            MaxWidth="980"
+            Margin="0,6,0,0"
             HorizontalAlignment="Left"
-            FontSize="{StaticResource HaloFontLabel}"
+            FontSize="{StaticResource HaloFontBody}"
             Foreground="{ThemeResource HaloText2Brush}"
-            LineHeight="21"
+            IsTextTrimmedChanged="OnBiographyTrimmedChanged"
+            LineHeight="25"
+            MaxLines="4"
             Text="{x:Bind ViewModel.Biography, Mode=OneWay}"
+            TextTrimming="CharacterEllipsis"
             TextWrapping="Wrap"
             Visibility="{x:Bind ViewModel.BiographyVisibility, Mode=OneWay}" />
+          <!-- Shown only while the biography is cut short, or open. -->
+          <Button
+            x:Name="ReadMoreButton"
+            Padding="0,2"
+            MinWidth="0"
+            MinHeight="0"
+            HorizontalAlignment="Left"
+            Background="Transparent"
+            BorderThickness="0"
+            Click="OnReadMoreClick"
+            Visibility="Collapsed">
+            <Button.Resources>
+              <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
+              <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
+            </Button.Resources>
+            <TextBlock
+              x:Name="ReadMoreLabel"
+              FontSize="{StaticResource HaloFontLabel}"
+              FontWeight="SemiBold"
+              Foreground="{ThemeResource HaloText1Brush}"
+              Text="Read more"
+              TextDecorations="Underline" />
+          </Button>
         </StackPanel>
       </Grid>
+      </Border>
 
-      <!-- `.body`: sections 26 apart, 24 under the header. -->
-      <StackPanel Margin="0,24,0,0" Spacing="26">
+      <!-- The body: 32 under the header box, its sections 26 apart. -->
+      <StackPanel Margin="0,32,0,0" Spacing="26">
         <ProgressRing
           Width="28"
           Height="28"
@@ -118,18 +162,18 @@
               <ColumnDefinition Width="*" />
               <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoKicker}" Text="FILMS AND SERIES" />
-            <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" />
+            <TextBlock VerticalAlignment="Center" FontFamily="Segoe UI Variable Display" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="Films and series" />
+            <TextBlock Grid.Column="1" Margin="0,3,0,0" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" />
             <StackPanel
               x:Name="RoleChips"
               Grid.Column="3"
               Orientation="Horizontal"
-              Spacing="8"
+              Spacing="6"
               Visibility="{x:Bind ViewModel.ChipsVisibility, Mode=OneWay}">
-              <RadioButton x:Name="AllRolesChip" GroupName="PersonRoles" IsChecked="True" Click="OnAllRolesClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
-              <RadioButton x:Name="ActingChip" GroupName="PersonRoles" Click="OnActingClick" Content="Acting" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.ActingChipVisibility, Mode=OneWay}" />
-              <RadioButton x:Name="DirectingChip" GroupName="PersonRoles" Click="OnDirectingClick" Content="Directing" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.DirectingChipVisibility, Mode=OneWay}" />
-              <RadioButton x:Name="WritingChip" GroupName="PersonRoles" Click="OnWritingClick" Content="Writing" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.WritingChipVisibility, Mode=OneWay}" />
+              <RadioButton x:Name="AllRolesChip" GroupName="PersonRoles" IsChecked="True" Click="OnAllRolesClick" Content="All" Style="{StaticResource HaloQuietChipRadioStyle}" />
+              <RadioButton x:Name="ActingChip" GroupName="PersonRoles" Click="OnActingClick" Content="Acting" Style="{StaticResource HaloQuietChipRadioStyle}" Visibility="{x:Bind ViewModel.ActingChipVisibility, Mode=OneWay}" />
+              <RadioButton x:Name="DirectingChip" GroupName="PersonRoles" Click="OnDirectingClick" Content="Directing" Style="{StaticResource HaloQuietChipRadioStyle}" Visibility="{x:Bind ViewModel.DirectingChipVisibility, Mode=OneWay}" />
+              <RadioButton x:Name="WritingChip" GroupName="PersonRoles" Click="OnWritingClick" Content="Writing" Style="{StaticResource HaloQuietChipRadioStyle}" Visibility="{x:Bind ViewModel.WritingChipVisibility, Mode=OneWay}" />
             </StackPanel>
           </Grid>
           <!-- The app's poster grid; no kind badges, the line under each title is its year and role. -->

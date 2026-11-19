@@ -172,6 +172,14 @@
         <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
         <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
       </LinearGradientBrush>
+      <!-- A movie or series poster that has not arrived: a soft surface and one faint glyph. -->
+      <LinearGradientBrush x:Key="HaloPosterPlaceholderBrush" StartPoint="0.3,0" EndPoint="0.7,1">
+        <GradientStop Offset="0" Color="#FF23263A" />
+        <GradientStop Offset="1" Color="#FF1A1C2B" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloPosterPlaceholderGlyphBrush" Color="#2EFFFFFF" />
+      <!-- The chosen quiet pill: a plain wash, no stroke. -->
+      <SolidColorBrush x:Key="HaloQuietSelectedBrush" Color="#1FFFFFFF" />
       <RadialGradientBrush x:Key="HaloGlowABrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
         <GradientStop Offset="0" Color="{StaticResource HaloGlowAColor}" />
         <GradientStop Offset="1" Color="#000A84FF" />
@@ -356,6 +364,14 @@
         <GradientStop Offset="0" Color="{StaticResource HaloTileTopColor}" />
         <GradientStop Offset="1" Color="{StaticResource HaloTileBottomColor}" />
       </LinearGradientBrush>
+      <!-- A movie or series poster that has not arrived: a soft surface and one faint glyph. -->
+      <LinearGradientBrush x:Key="HaloPosterPlaceholderBrush" StartPoint="0.3,0" EndPoint="0.7,1">
+        <GradientStop Offset="0" Color="#FFE6E9F1" />
+        <GradientStop Offset="1" Color="#FFDADEE8" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloPosterPlaceholderGlyphBrush" Color="#38101828" />
+      <!-- The chosen quiet pill: a plain wash, no stroke. -->
+      <SolidColorBrush x:Key="HaloQuietSelectedBrush" Color="#14101828" />
       <RadialGradientBrush x:Key="HaloGlowABrush" Center="0.5,0.5" GradientOrigin="0.5,0.5" RadiusX="0.5" RadiusY="0.5">
         <GradientStop Offset="0" Color="{StaticResource HaloGlowAColor}" />
         <GradientStop Offset="1" Color="#000070E0" />

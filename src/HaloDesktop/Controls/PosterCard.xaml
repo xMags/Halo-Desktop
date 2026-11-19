@@ -19,6 +19,9 @@
     <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
   </UserControl.Resources>
   <!--
+    The button fills the card: a stock Button is left-aligned, which sized a card
+    in a stretched grid column to whatever its art asked for, so a missing poster
+    (whose surface asks for no width) left the card narrower than its column.
     The four pixels above the button are the room the card lifts into on hover.
     The lift is a render-time translation, so with no space of its own the card
     slid straight out of whatever clips it: a shelf is a scroll viewer exactly
@@ -31,6 +34,7 @@
     x:Name="CardButton"
     Margin="0,4,0,0"
     Padding="0"
+    HorizontalAlignment="Stretch"
     HorizontalContentAlignment="Stretch"
     Background="Transparent"
     BorderThickness="0"

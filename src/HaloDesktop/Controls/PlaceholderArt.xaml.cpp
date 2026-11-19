@@ -32,6 +32,33 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
+    winrt::HaloDesktop::PlaceholderKind PlaceholderArt::Kind() const noexcept
+    {
+        return m_kind;
+    }
+
+    void PlaceholderArt::Kind(winrt::HaloDesktop::PlaceholderKind value)
+    {
+        if (m_kind == value) return;
+        m_kind = value;
+        ApplyKind();
+    }
+
+    // A poster kind swaps the stripes for the soft surface and shows only its own glyph.
+    void PlaceholderArt::ApplyKind()
+    {
+        using Microsoft::UI::Xaml::Visibility;
+        auto const poster = m_kind != winrt::HaloDesktop::PlaceholderKind::Plain;
+        auto const show = [](Microsoft::UI::Xaml::UIElement const& element, bool visible)
+        {
+            if (element) element.Visibility(visible ? Visibility::Visible : Visibility::Collapsed);
+        };
+        show(FindName(L"Stripes").try_as<Microsoft::UI::Xaml::UIElement>(), !poster);
+        show(FindName(L"PosterSurface").try_as<Microsoft::UI::Xaml::UIElement>(), poster);
+        show(FindName(L"MovieGlyph").try_as<Microsoft::UI::Xaml::UIElement>(), m_kind == winrt::HaloDesktop::PlaceholderKind::Movie);
+        show(FindName(L"SeriesGlyph").try_as<Microsoft::UI::Xaml::UIElement>(), m_kind == winrt::HaloDesktop::PlaceholderKind::Series);
+    }
+
     winrt::hstring PlaceholderArt::Caption() const
     {
         return m_caption;
