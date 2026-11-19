@@ -320,6 +320,10 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\Device\DeviceMovePolicy.cpp">
       <Link>DeviceMovePolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadAttentionPolicy.cpp">
+      <Link>DownloadAttentionPolicy.cpp</Link>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\Downloads\DownloadAdoptionPolicy.cpp">
       <Link>DownloadAdoptionPolicy.cpp</Link>
     </ClCompile>

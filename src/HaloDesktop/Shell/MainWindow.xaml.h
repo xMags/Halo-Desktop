@@ -3,6 +3,7 @@
 #include "MainWindow.g.h"
 
 #include "Services/NavigationService.h"
+#include "Shell/DownloadAttentionPresenter.h"
 #include "Shell/WindowReveal.h"
 #include "Shell/WindowSizing.h"
 
@@ -32,6 +33,8 @@ namespace winrt::HaloDesktop::implementation
 
         std::unique_ptr<::HaloDesktop::Shell::WindowSizing> m_windowSizing;
         std::shared_ptr<::HaloDesktop::Shell::WindowReveal> m_reveal;
+        // The downloads on the taskbar button and in Windows notifications.
+        std::shared_ptr<::HaloDesktop::Shell::DownloadAttentionPresenter> m_downloadAttention;
         winrt::event_token m_appWindowClosingToken{};
         winrt::event_token m_activatedToken{};
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChangedRevoker{};

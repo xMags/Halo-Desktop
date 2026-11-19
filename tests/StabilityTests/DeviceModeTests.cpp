@@ -15,6 +15,7 @@
 #include "Services/Device/DeviceMovePolicy.h"
 #include "Services/Device/DeviceStore.h"
 #include "Services/Downloads/DownloadAdoptionPolicy.h"
+#include "Services/Downloads/DownloadAttentionPolicy.h"
 #include "Services/Downloads/DownloadIndexStore.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Services/Downloads/TransferEngine.h"
@@ -25,6 +26,7 @@
 #include <fstream>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -635,6 +637,102 @@ namespace
         Require(Downloads::OtherOwners({}, L"account").empty(), "an empty index named an owner");
     }
 
+    Downloads::DownloadRecord Sized(wchar_t const* job, Downloads::DownloadStatus status, std::uint64_t done, std::uint64_t total)
+    {
+        auto record = Owned(job, L"account", job, status);
+        record.DownloadedBytes = done;
+        record.TotalBytes = total;
+        return record;
+    }
+
+    // The taskbar button: running work wins over paused, paused over failed,
+    // and the bar is the bytes of the downloads its state is about.
+    void TestTaskbarProgress()
+    {
+        using Downloads::DownloadStatus;
+        using Downloads::TaskbarProgress;
+        using Downloads::TaskbarProgressState;
+        using Downloads::SummarizeTaskbarProgress;
+        Require(SummarizeTaskbarProgress({}) == TaskbarProgress{}, "an empty list showed progress");
+        std::vector<Downloads::DownloadRecord> const finished{ Sized(L"a", DownloadStatus::Done, 10, 10) };
+        Require(SummarizeTaskbarProgress(finished) == TaskbarProgress{}, "finished downloads kept the bar");
+
+        std::vector<Downloads::DownloadRecord> const mixed{
+            Sized(L"a", DownloadStatus::Downloading, 30, 100),
+            Sized(L"b", DownloadStatus::Paused, 10, 100),
+            Sized(L"c", DownloadStatus::Failed, 5, 100),
+            Sized(L"d", DownloadStatus::Done, 50, 50),
+        };
+        Require(SummarizeTaskbarProgress(mixed) == TaskbarProgress{ TaskbarProgressState::Normal, 40, 200 },
+            "running work did not show the bytes of everything still to come, paused included");
+
+        std::vector<Downloads::DownloadRecord> const paused{ Sized(L"b", DownloadStatus::Paused, 10, 100), Sized(L"c", DownloadStatus::Failed, 5, 100) };
+        Require(SummarizeTaskbarProgress(paused) == TaskbarProgress{ TaskbarProgressState::Paused, 10, 100 },
+            "paused work did not win over failed");
+        std::vector<Downloads::DownloadRecord> const failed{ Sized(L"c", DownloadStatus::Failed, 5, 100) };
+        Require(SummarizeTaskbarProgress(failed) == TaskbarProgress{ TaskbarProgressState::Error, 5, 100 },
+            "only failed work did not show the error bar");
+
+        std::vector<Downloads::DownloadRecord> const unknown{ Sized(L"a", DownloadStatus::Queued, 0, 0) };
+        Require(SummarizeTaskbarProgress(unknown) == TaskbarProgress{ TaskbarProgressState::Indeterminate, 0, 0 },
+            "work of unknown size did not run the bar without a value");
+        std::vector<Downloads::DownloadRecord> const pausedUnknown{ Sized(L"a", DownloadStatus::Paused, 0, 0) };
+        Require(SummarizeTaskbarProgress(pausedUnknown) == TaskbarProgress{ TaskbarProgressState::Paused, 1, 1 },
+            "paused work of unknown size vanished from the bar");
+
+        auto leaving = Sized(L"a", DownloadStatus::Downloading, 30, 100);
+        leaving.PendingDeletion = true;
+        std::vector<Downloads::DownloadRecord> const deleting{ leaving };
+        Require(SummarizeTaskbarProgress(deleting) == TaskbarProgress{}, "a download being deleted kept the bar");
+    }
+
+    // Only a download seen unfinished first announces itself, and only once.
+    void TestNewlyFinishedDownloads()
+    {
+        using Downloads::DownloadStatus;
+        std::set<std::wstring, std::less<>> unfinished;
+        std::vector<Downloads::DownloadRecord> start{
+            Sized(L"old", DownloadStatus::Done, 1, 1),
+            Sized(L"run", DownloadStatus::Downloading, 1, 2),
+        };
+        Require(Downloads::TakeNewlyFinished(start, unfinished).empty(), "a download done before the app started announced itself");
+        Require(unfinished == std::set<std::wstring, std::less<>>{ L"run" }, "the unfinished downloads were not remembered");
+
+        start[1].Status = DownloadStatus::Done;
+        Require(Downloads::TakeNewlyFinished(start, unfinished) == std::vector<std::wstring>{ L"run" },
+            "a download that finished was not announced");
+        Require(Downloads::TakeNewlyFinished(start, unfinished).empty(), "a finished download announced itself twice");
+
+        std::vector<Downloads::DownloadRecord> arrived{ Sized(L"other", DownloadStatus::Done, 1, 1) };
+        Require(Downloads::TakeNewlyFinished(arrived, unfinished).empty(), "a list that arrived done announced itself");
+    }
+
+    // The finished-download notification: the title cannot change its shape,
+    // and a click comes back as the job it was about.
+    void TestReadyToWatchNotification()
+    {
+        auto const xml = Downloads::ReadyToWatchToastXml(L"Tom & Jerry <\"Live\">", L"job one&x=y");
+        Require(xml.find(L"Tom &amp; Jerry &lt;&quot;Live&quot;&gt;") != std::wstring::npos, "the title was not escaped");
+        Require(xml.find(L"<toast launch=\"action=open&amp;job=job%0020one%0026x%003Dy\">") != std::wstring::npos,
+            "clicking the notification did not open Downloads for its job, encoded");
+        Require(xml.find(L"content=\"Play\" activationType=\"foreground\" arguments=\"action=play&amp;job=job%0020one%0026x%003Dy\"")
+                != std::wstring::npos,
+            "the Play button did not carry its job, encoded");
+        Require(Downloads::ReadyToWatchToastXml(L"", L"a").find(L"<text>A download has finished.</text>") != std::wstring::npos,
+            "an untitled download had no line");
+
+        Require(Downloads::ParseToastArguments(L"action=play&job=job%0020one%0026x%003Dy")
+                == std::optional<Downloads::ToastAnswer>{ Downloads::ToastAnswer{ true, L"job one&x=y" } },
+            "a Play click did not come back as its job");
+        Require(Downloads::ParseToastArguments(L"action=open&job=abc-123")
+                == std::optional<Downloads::ToastAnswer>{ Downloads::ToastAnswer{ false, L"abc-123" } },
+            "a click on the notification did not come back as opening Downloads");
+        Require(!Downloads::ParseToastArguments(L"action=delete&job=a") && !Downloads::ParseToastArguments(L"")
+                && !Downloads::ParseToastArguments(L"action=play&job=a%00") && !Downloads::ParseToastArguments(L"action=play&job=a&b")
+                && !Downloads::ParseToastArguments(L"action=play&job=%00ZZ"),
+            "arguments the notification never wrote were acted on");
+    }
+
     void TestAdoptingIntoTheSamePartitionChangesNothing()
     {
         std::vector<Downloads::DownloadRecord> const records{ Owned(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Done) };
@@ -921,6 +1019,9 @@ void RunDeviceModeTests()
     TestAdoptionDiscardsALosingDownloadsBackupWithIt();
     TestAdoptingIntoTheSamePartitionChangesNothing();
     TestOtherOwners();
+    TestTaskbarProgress();
+    TestNewlyFinishedDownloads();
+    TestReadyToWatchNotification();
     TestAdoptionOnATemporaryIndex();
     TestDownloadsUnderAnotherAccountKeyJoinTheActiveOne();
     TestAdoptionThatCannotWriteChangesNothing();

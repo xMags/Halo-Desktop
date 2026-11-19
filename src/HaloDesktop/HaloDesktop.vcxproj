@@ -415,6 +415,8 @@
     <ClInclude Include="Services\Device\DeviceMovePolicy.h" />
     <ClInclude Include="Services\Device\DeviceDataMove.h" />
     <ClInclude Include="Services\Downloads\DownloadAdoptionPolicy.h" />
+    <ClInclude Include="Services\Downloads\DownloadAttentionPolicy.h" />
+    <ClInclude Include="Shell\DownloadAttentionPresenter.h" />
     <ClInclude Include="Shell\PointerFocusPolicy.h" />
     <ClInclude Include="Controls\SidewaysWheelGuard.h" />
     <ClInclude Include="Shell\WindowBackdropPolicy.h" />
@@ -839,6 +841,10 @@
     <ClCompile Include="Services\Device\DeviceMovePolicy.cpp" />
     <ClCompile Include="Services\Device\DeviceDataMove.cpp" />
     <ClCompile Include="Services\Downloads\DownloadAdoptionPolicy.cpp" />
+    <ClCompile Include="Services\Downloads\DownloadAttentionPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Shell\DownloadAttentionPresenter.cpp" />
     <ClCompile Include="Shell\PointerFocusPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

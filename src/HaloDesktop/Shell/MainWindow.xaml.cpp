@@ -44,6 +44,20 @@ namespace winrt::HaloDesktop::implementation
         App::Services().WindowBackdrop->Attach(*this, RootGridControl(), WindowGround());
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
+        try
+        {
+            m_downloadAttention = std::make_shared<::HaloDesktop::Shell::DownloadAttentionPresenter>(
+                reinterpret_cast<HWND>(m_windowSizing->WindowHandle()),
+                App::Services().Downloads,
+                App::Services().Navigation,
+                DispatcherQueue());
+            m_downloadAttention->Attach();
+        }
+        catch (...)
+        {
+            // The taskbar and notifications are extras; the app runs without them.
+            m_downloadAttention.reset();
+        }
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
         App::Services().Navigation->AttachSheetFrame(SheetFrameControl());
         // Raised after every shell navigation and every overlay opening or closing,
@@ -181,6 +195,11 @@ namespace winrt::HaloDesktop::implementation
             App::Services().DiscordPresence->Clear();
             App::Services().Playback->Stop();
             App::Services().Playback->DetachVideoSurface();
+            if (m_downloadAttention)
+            {
+                m_downloadAttention->Detach();
+                m_downloadAttention.reset();
+            }
             App::Services().Downloads->Stop();
             App::Services().Navigation->Detach();
             if (m_activatedToken.value != 0)
