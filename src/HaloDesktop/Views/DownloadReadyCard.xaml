@@ -21,6 +21,7 @@
   <Grid>
     <Button
       x:Name="CardButton"
+      VerticalAlignment="Top"
       AutomationProperties.Name="{x:Bind Row.AccessibleName, Mode=OneWay}"
       Click="OnCardClick"
       CornerRadius="12"
