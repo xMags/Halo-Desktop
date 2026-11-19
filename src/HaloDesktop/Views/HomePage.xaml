@@ -347,7 +347,7 @@
             <FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE76C;" />
           </Button>
         </Grid>
-        <!-- Holds the strip and its edge fades, which lie over it. -->
+        <!-- Holds the strip. No edge fades: see MediaShelf.xaml. -->
         <Grid>
           <ScrollViewer x:Name="ContinueScroller" Margin="0,-4,0,0" HorizontalScrollBarVisibility="Hidden" HorizontalScrollMode="Disabled" VerticalScrollMode="Disabled" ZoomMode="Disabled" ViewChanged="OnContinueViewChanged" SizeChanged="OnContinueScrollerSizeChanged">
             <!-- The wheel handler belongs on the content, not on the scroller. A
@@ -375,7 +375,7 @@
               </ItemsRepeater>
             </Grid>
           </ScrollViewer>
-          <Rectangle x:Name="ContinueStartFade" Width="12" Margin="0,-4,0,0" HorizontalAlignment="Left" Fill="{ThemeResource HaloShelfFadeStartBrush}" IsHitTestVisible="False" Visibility="Collapsed" />        </Grid>
+        </Grid>
       </StackPanel>
       <!--
         A repeater, not an items control: the catalog cap allows sixteen shelves
