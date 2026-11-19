@@ -74,7 +74,7 @@
            shows the count beside the label, and the closed rail a dot on the icon. -->
       <NavigationViewItem x:Name="DownloadsItem" Tag="Downloads">
         <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE753;" />
+          <FontIcon Glyph="&#xEBD3;" />
         </NavigationViewItem.Icon>
         <NavigationViewItem.InfoBadge>
           <InfoBadge x:Name="DownloadsDot" Visibility="Collapsed" />

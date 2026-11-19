@@ -158,7 +158,7 @@
                   <ColumnDefinition Width="Auto" />
                   <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
-                <FontIcon VerticalAlignment="Center" FontSize="20" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xE753;" />
+                <FontIcon VerticalAlignment="Center" FontSize="20" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xEBD3;" />
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
                   <TextBlock Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind ViewModel.SummaryLine, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
                   <TextBlock Style="{StaticResource DlCaptionStyle}" Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
@@ -411,7 +411,7 @@
         <!-- First run: nothing to show yet, so no status, filters' content or storage. -->
         <StackPanel MaxWidth="560" Margin="0,48,0,0" HorizontalAlignment="Center" Spacing="20" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}">
           <Border Width="64" Height="64" HorizontalAlignment="Center" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="16">
-            <FontIcon FontSize="30" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xE753;" />
+            <FontIcon FontSize="30" Foreground="{ThemeResource HaloAccentBrush}" Glyph="&#xEBD3;" />
           </Border>
           <StackPanel Spacing="6">
             <TextBlock HorizontalAlignment="Center" FontSize="20" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="Watch without a connection" />
