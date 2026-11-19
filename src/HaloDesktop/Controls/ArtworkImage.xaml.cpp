@@ -7,7 +7,9 @@
 #include "Controls/ArtworkUrlPolicy.h"
 
 #include <algorithm>
+#include <chrono>
 #include <string_view>
+#include <winrt/Windows.UI.ViewManagement.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -80,6 +82,31 @@ namespace winrt::HaloDesktop::implementation
         ShowPlaceholder(!m_opened);
     }
 
+    void ArtworkImage::EnsureFade(Microsoft::UI::Xaml::Controls::Image const& image)
+    {
+        if (m_fadeChecked || !image) return;
+        m_fadeChecked = true;
+        try
+        {
+            if (!winrt::Windows::UI::ViewManagement::UISettings{}.AnimationsEnabled()) return;
+            m_fade = Microsoft::UI::Xaml::ScalarTransition{};
+            m_fade.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(std::chrono::milliseconds{ 167 }));
+            image.OpacityTransition(m_fade);
+        }
+        catch (winrt::hresult_error const&)
+        {
+            m_fade = nullptr;
+        }
+    }
+
+    void ArtworkImage::HideImage(Microsoft::UI::Xaml::Controls::Image const& image)
+    {
+        if (!image) return;
+        if (m_fade) image.OpacityTransition(nullptr);
+        image.Opacity(0);
+        if (m_fade) image.OpacityTransition(m_fade);
+    }
+
     void ArtworkImage::ShowPlaceholder(bool visible)
     {
         if (!m_placeholder) return;
@@ -96,6 +123,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         auto const image = FindName(L"Artwork").try_as<Microsoft::UI::Xaml::Controls::Image>();
+        EnsureFade(image);
         if (image && image.Source() != nullptr) return;
         Refresh();
     }
@@ -122,7 +150,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::ExceptionRoutedEventArgs const& args)
     {
-        sender.as<Microsoft::UI::Xaml::Controls::Image>().Opacity(0);
+        HideImage(sender.as<Microsoft::UI::Xaml::Controls::Image>());
         m_opened = false;
         ShowPlaceholder(true);
         TryNextSource();
@@ -139,7 +167,8 @@ namespace winrt::HaloDesktop::implementation
         m_exhausted = false;
         m_retries = 0;
         StopRetry();
-        image.Opacity(0);
+        EnsureFade(image);
+        HideImage(image);
         // Back to the placeholder until the new artwork actually opens, or a
         // recycled card would keep showing the previous item's picture.
         m_opened = false;
@@ -173,7 +202,7 @@ namespace winrt::HaloDesktop::implementation
             }
         }
         image.Source(nullptr);
-        image.Opacity(0);
+        HideImage(image);
         m_exhausted = true;
         // Something was there to show and none of it loaded: worth another go.
         if (!m_attempted.empty()) ScheduleRetry();
@@ -248,7 +277,7 @@ namespace winrt::HaloDesktop::implementation
         catch (...)
         {
             image.Source(nullptr);
-            image.Opacity(0);
+            HideImage(image);
             return false;
         }
     }

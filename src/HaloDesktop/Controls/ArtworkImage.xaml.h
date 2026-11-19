@@ -65,6 +65,9 @@ namespace winrt::HaloDesktop::implementation
         // False when the URL could not even be handed to the bitmap.
         [[nodiscard]] bool SetImageSource(winrt::hstring const& value);
         void ShowPlaceholder(bool visible);
+        void EnsureFade(Microsoft::UI::Xaml::Controls::Image const& image);
+        // Opacity 0 at once, the fade put back for the next picture.
+        void HideImage(Microsoft::UI::Xaml::Controls::Image const& image);
         // Arms the next round after the chain ran out, if one is left.
         void ScheduleRetry();
         void StopRetry() noexcept;
@@ -79,6 +82,11 @@ namespace winrt::HaloDesktop::implementation
         std::vector<std::wstring> m_attempted;
         bool m_exhausted{};
         bool m_opened{};
+        // The fade a picture comes in with (Windows' fast 167ms), when
+        // animation effects are on. Lifted while the picture is cleared, so a
+        // recycled card drops its last picture at once rather than fading it.
+        Microsoft::UI::Xaml::ScalarTransition m_fade{ nullptr };
+        bool m_fadeChecked{};
         // Rounds tried again since the last refresh; a round bypasses the cache.
         int m_retries{};
         Microsoft::UI::Dispatching::DispatcherQueueTimer m_retryTimer{ nullptr };
