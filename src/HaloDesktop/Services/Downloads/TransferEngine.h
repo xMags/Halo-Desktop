@@ -71,6 +71,15 @@ namespace HaloDesktop::Services::Downloads
         // index cannot be rewritten, which changes nothing. Blocking: call it
         // off the UI thread.
         void AdoptAccount(std::wstring const& from, std::wstring const& to);
+        // Gives every other partition's downloads (OtherOwners) to the active
+        // account, one AdoptAccount each. The downloads on this PC are its
+        // viewer's: a changed server address or a reinstall gives the same
+        // person a new account key, and without this the downloads saved under
+        // the old key would be hidden while keeping their storage. Does nothing
+        // without an active account. Throws, like AdoptAccount, when the index
+        // cannot be rewritten; owners adopted before that stay adopted.
+        // Blocking: call it off the UI thread.
+        void AdoptOtherOwners();
         [[nodiscard]] std::vector<DownloadRecord> List();
 
         [[nodiscard]] DownloadRecord Start(DownloadStartRequest request);

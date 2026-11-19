@@ -30,4 +30,13 @@ namespace HaloDesktop::Services::Downloads
         std::span<DownloadRecord const> records,
         std::wstring const& from,
         std::wstring const& to);
+
+    // Every partition other than `active` that holds a download, each once,
+    // sorted. The files on this PC are its viewer's whichever server address or
+    // account saved them: a changed address or a reinstall makes a new account
+    // key, and without adoption the downloads under the old key would be hidden
+    // and keep their storage. So the active partition adopts all of these.
+    [[nodiscard]] std::vector<std::wstring> OtherOwners(
+        std::span<DownloadRecord const> records,
+        std::wstring const& active);
 }

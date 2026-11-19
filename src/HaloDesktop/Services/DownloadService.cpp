@@ -164,6 +164,18 @@ namespace HaloDesktop::Services
                 else
                 {
                     engine->SetAccount(server, userId);
+                    // Downloads saved under another account key (an earlier
+                    // server address, a reinstall) are this viewer's too: they
+                    // join this account rather than sitting hidden on disk. A
+                    // failure leaves them where they are for the next bind.
+                    try
+                    {
+                        engine->AdoptOtherOwners();
+                    }
+                    catch (...)
+                    {
+                        OutputDebugStringW(L"Halo could not bring downloads saved under another account into this one; it tries again next time.\n");
+                    }
                 }
                 if (accountVersion != self->m_accountVersion.load())
                 {

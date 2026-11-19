@@ -619,6 +619,22 @@ namespace
         Require(plan.Discard == std::vector<std::wstring>{ L"d0", L"d1" }, "a losing download's backup was left behind");
     }
 
+    // Every partition but the active one, once each, sorted: the owners whose
+    // downloads the active account takes over.
+    void TestOtherOwners()
+    {
+        std::vector<Downloads::DownloadRecord> const records{
+            Owned(L"a1", L"account", L"movie:1", Downloads::DownloadStatus::Done),
+            Owned(L"o1", L"old-address", L"movie:2", Downloads::DownloadStatus::Done),
+            Owned(L"o2", L"old-address", L"movie:3", Downloads::DownloadStatus::Paused),
+            Owned(L"d1", L"device", L"movie:4", Downloads::DownloadStatus::Done),
+        };
+        Require(Downloads::OtherOwners(records, L"account") == std::vector<std::wstring>{ L"device", L"old-address" },
+            "the other owners were not each listed once, sorted, without the active one");
+        Require(Downloads::OtherOwners(records, L"nobody").size() == 3, "an owner was missed");
+        Require(Downloads::OtherOwners({}, L"account").empty(), "an empty index named an owner");
+    }
+
     void TestAdoptingIntoTheSamePartitionChangesNothing()
     {
         std::vector<Downloads::DownloadRecord> const records{ Owned(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Done) };
@@ -776,6 +792,63 @@ namespace
         Require(saved && saved->AccountKey == accountKey, "a whole-index save gave a moved record back to this PC");
     }
 
+    // A changed server address (or a reinstall) signs the same viewer in under
+    // a new account key. Their downloads saved under the old keys join the new
+    // account instead of sitting hidden, one copy per video, files untouched.
+    void TestDownloadsUnderAnotherAccountKeyJoinTheActiveOne()
+    {
+        TemporaryDirectory temporary{ L"HaloDesktop-AdoptOthers-" };
+        auto const oldAddress = Downloads::MakeAccountKey(L"https://old.invalid", L"user-a");
+        auto const otherUser = Downloads::MakeAccountKey(L"https://old.invalid", L"user-b");
+        auto const current = Downloads::MakeAccountKey(L"https://new.invalid", L"user-a");
+
+        auto const film = Seeded(L"00000000000000000000000000000011", oldAddress, L"movie:film", {}, Downloads::DownloadStatus::Done);
+        auto const halfway = Seeded(L"00000000000000000000000000000012", oldAddress, L"movie:halfway", {}, Downloads::DownloadStatus::Paused);
+        auto const elsewhere = Seeded(L"00000000000000000000000000000013", otherUser, L"movie:elsewhere", {}, Downloads::DownloadStatus::Done);
+        auto const oldCopy = Seeded(L"00000000000000000000000000000014", oldAddress, L"movie:both", {}, Downloads::DownloadStatus::Done);
+        auto const currentCopy = Seeded(L"00000000000000000000000000000015", current, L"movie:both", {}, Downloads::DownloadStatus::Done);
+        std::vector<Downloads::DownloadRecord> seeded{ film, halfway, elsewhere, oldCopy, currentCopy };
+        {
+            Downloads::DownloadIndexStore seed{ temporary.Path() };
+            auto const folder = seed.DownloadDirectory();
+            for (auto& record : seeded) record.RootPath = folder;
+            seed.Apply(seeded);
+        }
+        for (auto const& record : seeded)
+        {
+            WriteFileBytes(record.Status == Downloads::DownloadStatus::Done ? record.TargetPath() : record.PartialPath(), "12345");
+        }
+
+        {
+            Downloads::TransferEngine engine{ temporary.Path() };
+            engine.SetAccount(L"https://new.invalid", L"user-a");
+            Require(engine.List().size() == 1, "the check needs the other keys' downloads hidden before adoption");
+            engine.AdoptOtherOwners();
+            auto const listed = engine.List();
+            auto const has = [&listed](std::wstring const& jobId)
+            {
+                return std::any_of(listed.begin(), listed.end(), [&jobId](Downloads::DownloadRecord const& record) { return record.JobId == jobId; });
+            };
+            Require(has(film.JobId) && has(halfway.JobId) && has(elsewhere.JobId) && has(currentCopy.JobId) && listed.size() == 4,
+                "a download saved under another account key is still hidden, or a video shows twice");
+            // Nothing left over to adopt, and asking again changes nothing.
+            engine.AdoptOtherOwners();
+            Require(engine.List().size() == 4, "adopting a second time changed the list");
+        }
+
+        for (auto const& record : { film, halfway, elsewhere, currentCopy })
+        {
+            auto const stored = FindStored(temporary.Path(), record.JobId);
+            Require(stored && stored->AccountKey == current, "the index does not name the active account as the owner");
+        }
+        Require(!FindStored(temporary.Path(), oldCopy.JobId), "the duplicate under the old key is still in the index");
+        // `seeded` holds the copies with the folder set.
+        Require(std::filesystem::exists(seeded[0].TargetPath()) && std::filesystem::exists(seeded[1].PartialPath())
+                    && std::filesystem::exists(seeded[2].TargetPath()) && std::filesystem::exists(seeded[4].TargetPath()),
+            "an adopted download's file was touched");
+        Require(!std::filesystem::exists(seeded[3].TargetPath()), "the duplicate under the old key left its file behind");
+    }
+
     void TestAdoptionThatCannotWriteChangesNothing()
     {
         TemporaryDirectory temporary{ L"HaloDesktop-AdoptRefused-" };
@@ -847,7 +920,9 @@ void RunDeviceModeTests()
     TestAdoptionKeepsTheFinishedCopyOfADuplicate();
     TestAdoptionDiscardsALosingDownloadsBackupWithIt();
     TestAdoptingIntoTheSamePartitionChangesNothing();
+    TestOtherOwners();
     TestAdoptionOnATemporaryIndex();
+    TestDownloadsUnderAnotherAccountKeyJoinTheActiveOne();
     TestAdoptionThatCannotWriteChangesNothing();
     TestClearRemovesTheProfileLast();
 }

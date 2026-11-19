@@ -1184,6 +1184,23 @@ namespace HaloDesktop::Services::Downloads
         return RemoveOwned(jobId, nullptr, RemovalScope::UnfinishedOnly);
     }
 
+    void TransferEngine::AdoptOtherOwners()
+    {
+        std::wstring active;
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount)
+            {
+                return;
+            }
+            active = *m_activeAccount;
+        }
+        for (auto const& owner : OtherOwners(m_store.Load(false), active))
+        {
+            AdoptAccount(owner, active);
+        }
+    }
+
     void TransferEngine::AdoptAccount(std::wstring const& from, std::wstring const& to)
     {
         if (from.empty() || to.empty() || from == to)

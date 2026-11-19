@@ -66,4 +66,17 @@ namespace HaloDesktop::Services::Downloads
         plan.Discard.assign(discard.begin(), discard.end());
         return plan;
     }
+
+    std::vector<std::wstring> OtherOwners(std::span<DownloadRecord const> records, std::wstring const& active)
+    {
+        std::set<std::wstring> owners;
+        for (auto const& record : records)
+        {
+            if (!record.AccountKey.empty() && record.AccountKey != active)
+            {
+                owners.insert(record.AccountKey);
+            }
+        }
+        return { owners.begin(), owners.end() };
+    }
 }
