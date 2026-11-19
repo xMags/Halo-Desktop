@@ -206,6 +206,9 @@
     <ClCompile Include="..\..\src\HaloDesktop\Views\DetailLayoutPolicy.cpp">
       <Link>DetailLayoutPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Views\HeroLogoPolicy.cpp">
+      <Link>HeroLogoPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="SourcesSheetTests.cpp" />
     <ClCompile Include="..\..\src\HaloDesktop\ViewModels\SourcePresentation.cpp">
       <Link>SourcePresentation.cpp</Link>

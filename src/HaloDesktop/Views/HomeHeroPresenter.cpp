@@ -1,8 +1,12 @@
 #include "pch.h"
 #include "Views/HomeHeroPresenter.h"
 
+#include "Views/HeroLogoPolicy.h"
+
 
 #include <cstdint>
+#include <optional>
+#include <pplawait.h>
 #include <stdexcept>
 #include <utility>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
@@ -201,7 +205,10 @@ namespace HaloDesktop::Views
             m_keys = std::move(keys);
             m_logos.clear();
             m_failedLogos.clear();
+            m_pendingLogos.clear();
+            ++m_logoGeneration;
             m_shownLogo.clear();
+            PreloadLogos(featured);
             m_active = -1;
             RebuildLayers(featured);
             ResizeArt();
@@ -438,9 +445,57 @@ namespace HaloDesktop::Views
         m_pipWidths.Begin();
     }
 
-    // The logo art when the title has one and it loads, else the name. Logos
-    // are drawn for dark backdrops, and over the light theme's pale scrim most
-    // would vanish, so the light theme always shows the name.
+    void HomeHeroPresenter::PreloadLogos(std::vector<winrt::HaloDesktop::FeaturedItem> const& items)
+    {
+        for (auto const& item : items)
+        {
+            std::wstring url{ item.Logo() };
+            if (url.empty() || m_logos.contains(url) || m_failedLogos.contains(url) || m_pendingLogos.contains(url)) continue;
+            if (!::HaloDesktop::Views::IsHeroLogoUrl(url))
+            {
+                m_failedLogos.insert(url);
+                continue;
+            }
+            m_pendingLogos.insert(url);
+            PreloadLogo(std::move(url), m_logoGeneration);
+        }
+    }
+
+    winrt::fire_and_forget HomeHeroPresenter::PreloadLogo(std::wstring url, std::uint64_t generation)
+    {
+        // Copied before the first suspension: `this` may be gone by the end.
+        std::weak_ptr<bool> const alive = m_alive;
+        auto const uiContext = winrt::apartment_context{};
+        if (!m_logoClient) m_logoClient = winrt::Windows::Web::Http::HttpClient{};
+        auto const client = m_logoClient;
+        std::optional<LoadedHeroLogo> loaded;
+        try
+        {
+            loaded = co_await LoadHeroLogoAsync(client, url);
+        }
+        catch (...)
+        {
+            loaded.reset();
+        }
+        // Back on the UI thread, where this presenter is destroyed, so the
+        // check below cannot race its destruction.
+        co_await uiContext;
+        if (alive.expired() || generation != m_logoGeneration) co_return;
+        m_pendingLogos.erase(url);
+        if (loaded && loaded->Image)
+        {
+            m_logos.insert_or_assign(url, std::move(*loaded));
+        }
+        else
+        {
+            m_failedLogos.insert(url);
+        }
+        UpdateTitleTreatment();
+    }
+
+    // The logo art when the title has one, it has loaded and it reads over the
+    // hero (HeroLogoReadable), else the name. Logos are drawn for dark
+    // backdrops, so in the light theme a mostly white one keeps the name.
     void HomeHeroPresenter::UpdateTitleTreatment()
     {
         auto const item = m_active >= 0 && static_cast<std::size_t>(m_active) < m_items.size()
@@ -448,29 +503,13 @@ namespace HaloDesktop::Views
             : winrt::HaloDesktop::FeaturedItem{ nullptr };
         std::wstring const url = item ? std::wstring{ item.Logo() } : std::wstring{};
         auto const light = m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light;
-        auto showLogo = !url.empty() && !light && !m_failedLogos.contains(url);
+        auto const ready = url.empty() || m_failedLogos.contains(url) ? m_logos.end() : m_logos.find(url);
+        auto const showLogo = ready != m_logos.end()
+            && ::HaloDesktop::Views::HeroLogoReadable(ready->second.Luminance, light);
         if (showLogo && url != m_shownLogo)
         {
-            auto cached = m_logos.find(url);
-            if (cached == m_logos.end())
-            {
-                try
-                {
-                    winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
-                    bitmap.UriSource(winrt::Windows::Foundation::Uri{ url });
-                    cached = m_logos.emplace(url, bitmap).first;
-                }
-                catch (...)
-                {
-                    m_failedLogos.insert(url);
-                    showLogo = false;
-                }
-            }
-            if (showLogo)
-            {
-                m_shownLogo = url;
-                m_parts.Logo.Source(cached->second);
-            }
+            m_shownLogo = url;
+            m_parts.Logo.Source(ready->second.Image);
         }
         if (!showLogo)
         {

@@ -355,6 +355,8 @@
     <ClInclude Include="ViewModels\EpisodePagesPolicy.h" />
     <ClInclude Include="Services\SimilarTitlesPolicy.h" />
     <ClInclude Include="Views\DetailLayoutPolicy.h" />
+    <ClInclude Include="Views\HeroLogoLoader.h" />
+    <ClInclude Include="Views\HeroLogoPolicy.h" />
     <ClInclude Include="Views\DetailScrollRow.h" />
     <ClInclude Include="Views\DetailBackdropPresenter.h" />
     <ClInclude Include="Views\DetailHero.xaml.h"><DependentUpon>DetailHero.xaml</DependentUpon></ClInclude>
@@ -745,6 +747,10 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Views\DetailLayoutPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Views\HeroLogoLoader.cpp" />
+    <ClCompile Include="Views\HeroLogoPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Views\DetailScrollRow.cpp" />

@@ -7,6 +7,7 @@
 #include "ViewModels/DetailFactsPolicy.h"
 #include "ViewModels/EpisodePagesPolicy.h"
 #include "Views/DetailLayoutPolicy.h"
+#include "Views/HeroLogoPolicy.h"
 
 #include <cmath>
 #include <cstddef>
@@ -450,6 +451,38 @@ namespace
             "a button not laid out yet, or collapsed, showed the compact bar as soon as the page opened");
     }
 
+    // Home's featured logo: judged by its visible pixels, shown in the light
+    // theme only when dark enough to read over the pale side.
+    void TestHeroLogo()
+    {
+        using HaloDesktop::Views::HeroLogoLuminance;
+        using HaloDesktop::Views::HeroLogoReadable;
+        using HaloDesktop::Views::IsHeroLogoUrl;
+        Require(IsHeroLogoUrl(L"https://images.example.test/logo.png") && IsHeroLogoUrl(L"HTTPS://a.test/x"),
+            "an https logo address was refused");
+        Require(!IsHeroLogoUrl(L"http://a.test/x") && !IsHeroLogoUrl(L"file:///c:/x.png") && !IsHeroLogoUrl(L"https://")
+                && !IsHeroLogoUrl(L"https://a.test/x y") && !IsHeroLogoUrl(L""),
+            "a logo address that is not plain https was accepted");
+
+        // B, G, R, A.
+        std::vector<std::uint8_t> const white{ 255, 255, 255, 255, 0, 0, 0, 0 };
+        std::vector<std::uint8_t> const navy{ 90, 50, 30, 255, 255, 255, 255, 0 };
+        std::vector<std::uint8_t> const clear{ 255, 255, 255, 0, 255, 255, 255, 0 };
+        auto const whiteLuma = HeroLogoLuminance(white);
+        auto const navyLuma = HeroLogoLuminance(navy);
+        Require(whiteLuma && std::abs(*whiteLuma - 1.0) < 1e-9, "a white logo's transparent pixels counted toward its brightness");
+        Require(navyLuma && *navyLuma < 0.25, "a dark logo did not read as dark");
+        Require(!HeroLogoLuminance(clear) && !HeroLogoLuminance({}) && !HeroLogoLuminance(std::vector<std::uint8_t>{ 1, 2, 3 }),
+            "an invisible or broken sample was given a brightness");
+
+        Require(HeroLogoReadable(whiteLuma, false) && HeroLogoReadable(std::nullopt, false),
+            "the dark theme stopped showing every logo");
+        Require(!HeroLogoReadable(whiteLuma, true) && HeroLogoReadable(navyLuma, true),
+            "the light theme did not keep the name for a white logo, or hid a dark one");
+        Require(!HeroLogoReadable(std::nullopt, true), "the light theme showed a logo it could not judge");
+        Require(HeroLogoReadable(0.55, true) && !HeroLogoReadable(0.56, true), "the light theme's brightness limit moved");
+    }
+
     void TestScrollRow()
     {
         using HaloDesktop::Controls::ScrollRowPageTarget;
@@ -477,5 +510,6 @@ void RunDetailPageTests()
     TestSimilarShelf();
     TestVideoIdTags();
     TestLayout();
+    TestHeroLogo();
     TestScrollRow();
 }

@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -18,6 +19,9 @@
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.UI.ViewManagement.h>
+#include <winrt/Windows.Web.Http.h>
+
+#include "Views/HeroLogoLoader.h"
 
 namespace HaloDesktop::Views
 {
@@ -111,6 +115,11 @@ namespace HaloDesktop::Views
         // the reference draws a new run's pips afresh.
         void UpdatePips(std::vector<winrt::HaloDesktop::FeaturedItem> const& items, bool animateWidths);
         void AnimatePipWidths(std::size_t count, std::array<double, HeroPipCount> const& from);
+        // Fetches and decodes every title's logo as soon as the run arrives, so
+        // a title's logo is ready before its turn; until it is, or if it
+        // fails or would not read, the name shows. Never an empty title.
+        void PreloadLogos(std::vector<winrt::HaloDesktop::FeaturedItem> const& items);
+        winrt::fire_and_forget PreloadLogo(std::wstring url, std::uint64_t generation);
         void UpdateTitleTreatment();
         void UpdatePlaceholder();
         void RestartClock();
@@ -158,8 +167,17 @@ namespace HaloDesktop::Views
         // The run of titles the layers were built for, by type, id and art.
         std::vector<std::wstring> m_keys;
         std::vector<winrt::HaloDesktop::FeaturedItem> m_items;
-        std::unordered_map<std::wstring, winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage> m_logos;
+        // Logos ready to show, by address, for this run of titles.
+        std::unordered_map<std::wstring, LoadedHeroLogo> m_logos;
         std::unordered_set<std::wstring> m_failedLogos;
+        // Logos still being fetched, so one is never asked for twice.
+        std::unordered_set<std::wstring> m_pendingLogos;
+        // A new run of titles retires the loads still out for the old one.
+        std::uint64_t m_logoGeneration{};
+        winrt::Windows::Web::Http::HttpClient m_logoClient{ nullptr };
+        // Held only by this presenter: a load that finishes after it has gone
+        // finds this expired and touches nothing.
+        std::shared_ptr<bool> m_alive{ std::make_shared<bool>(true) };
         std::wstring m_shownLogo;
         std::array<winrt::hstring, HeroPipCount> m_pipTitles;
         std::int32_t m_active{ -1 };
