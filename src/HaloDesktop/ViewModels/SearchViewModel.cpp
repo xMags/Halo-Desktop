@@ -11,6 +11,8 @@
 #include "Services/NavigationService.h"
 #include "Services/PlayableVideoPolicy.h"
 #include "Services/RatingPolicy.h"
+#include "Services/SearchRankingPolicy.h"
+#include "Services/SearchRevealPolicy.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <algorithm>
@@ -24,6 +26,10 @@ namespace
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
     using ::HaloDesktop::Services::SearchTitle;
+
+    // How often an unrevealed query checks whether its reveal is due.
+    constexpr std::chrono::milliseconds RevealCheckInterval{ 100 };
+    constexpr wchar_t AddonsUnreachableNote[] = L"Search could not reach your addons. Check your connection and try again.";
 
     winrt::Microsoft::UI::Xaml::Visibility VisibleIf(bool value) noexcept
     {
@@ -156,6 +162,16 @@ namespace winrt::HaloDesktop::implementation
                 self->SearchNow();
             }
         });
+        m_revealTimer = m_dispatcher.CreateTimer();
+        m_revealTimer.Interval(RevealCheckInterval);
+        m_revealTimer.IsRepeating(true);
+        m_revealTimer.Tick([weak = get_weak()](auto const&, auto const&)
+        {
+            if (auto const self = weak.get())
+            {
+                self->OnRevealTick();
+            }
+        });
         m_searchToken = m_search->AddChangedHandler([weak = get_weak()]()
         {
             auto const self = weak.get();
@@ -167,25 +183,29 @@ namespace winrt::HaloDesktop::implementation
             if (version == self->m_accountVersion)
             {
                 self->RebuildHistoryLists();
-                self->Recompose();
+                self->Refresh();
                 return;
             }
-            // Another account: what was found and what failed to load belong
-            // to the old one. Asked again once the change has finished.
+            // Another account: what was found belongs to the old one. Asked
+            // again once the change has finished.
             self->m_accountVersion = version;
-            self->m_missingArt.clear();
+            self->m_board = {};
+            self->m_boardSerial.reset();
+            self->m_hasShown = false;
+            self->ForgetShown();
+            self->Refresh();
             self->m_dispatcher.TryEnqueue([weak = self->get_weak()]()
             {
                 if (auto const again = weak.get())
                 {
                     again->m_search->Search(again->m_activeQuery, true);
                     again->m_search->EnsurePopular();
-                    again->Recompose();
+                    again->Refresh();
                 }
             });
         });
         RebuildHistoryLists();
-        Recompose();
+        Refresh();
     }
 
     SearchViewModel::~SearchViewModel()
@@ -193,6 +213,10 @@ namespace winrt::HaloDesktop::implementation
         if (m_debounceTimer)
         {
             m_debounceTimer.Stop();
+        }
+        if (m_revealTimer)
+        {
+            m_revealTimer.Stop();
         }
         if (m_search && m_searchToken != 0)
         {
@@ -211,6 +235,13 @@ namespace winrt::HaloDesktop::implementation
         }
         SetQueryText(capped);
         m_debounceTimer.Stop();
+        // Too short to search: back to recent and popular at once, not after the pause.
+        if (!::HaloDesktop::Services::IsSearchableQuery(capped))
+        {
+            m_activeQuery = std::wstring{ capped };
+            SearchNow();
+            return;
+        }
         m_debounceTimer.Start();
     }
 
@@ -232,7 +263,7 @@ namespace winrt::HaloDesktop::implementation
         // A search the addons could not even be listed for is asked again.
         auto const retry = m_search->Phase() == ::HaloDesktop::Services::SearchPhase::AddonsFailed;
         m_search->Search(m_activeQuery, retry);
-        Recompose();
+        Refresh();
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ClearVisibility() const noexcept { return VisibleIf(!m_query.empty()); }
@@ -243,9 +274,9 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable SearchViewModel::ResultItems() const { return m_results; }
     bool SearchViewModel::ShowKindBadges() const noexcept { return m_filterIndex == 0; }
     winrt::hstring SearchViewModel::ResultCountText() const { return winrt::to_hstring(static_cast<std::uint64_t>(m_resultCount)); }
-    winrt::hstring SearchViewModel::FailureNote() const { return m_failureNote; }
-    winrt::hstring SearchViewModel::StillAskingText() const { return m_stillAsking; }
+    winrt::hstring SearchViewModel::StatusText() const { return m_statusText; }
     bool SearchViewModel::StillAsking() const noexcept { return m_stillAskingShown; }
+    bool SearchViewModel::ResultsStale() const noexcept { return m_resultsStale; }
 
     winrt::hstring SearchViewModel::FilteredEmptyText() const
     {
@@ -331,14 +362,13 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility SearchViewModel::PopularVisibility() const noexcept { return VisibleIf(m_popularSection); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::PopularGridVisibility() const noexcept { return VisibleIf(m_popularSection && !m_popularSkeleton); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::PopularSkeletonVisibility() const noexcept { return VisibleIf(m_popularSection && m_popularSkeleton); }
-    Microsoft::UI::Xaml::Visibility SearchViewModel::FailureNoteVisibility() const noexcept { return VisibleIf(!m_failureNote.empty()); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::NoAddonsVisibility() const noexcept { return VisibleIf(m_noAddons); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::TopMatchVisibility() const noexcept { return VisibleIf(m_topMatch != nullptr); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::TopMatchSkeletonVisibility() const noexcept { return VisibleIf(m_topMatchSkeleton); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::LibraryVisibility() const noexcept { return VisibleIf(!m_libraryShown.empty()); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::ResultsVisibility() const noexcept { return VisibleIf(m_active && m_resultCount > 0); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::ResultsSkeletonVisibility() const noexcept { return VisibleIf(m_resultsSkeleton); }
-    Microsoft::UI::Xaml::Visibility SearchViewModel::StillAskingVisibility() const noexcept { return VisibleIf(m_stillAskingShown); }
+    Microsoft::UI::Xaml::Visibility SearchViewModel::StatusVisibility() const noexcept { return VisibleIf(m_active); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::FilteredEmptyVisibility() const noexcept { return VisibleIf(m_filteredEmpty); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::NothingFoundVisibility() const noexcept { return VisibleIf(m_nothingFound); }
 
@@ -355,7 +385,11 @@ namespace winrt::HaloDesktop::implementation
         }
         m_filterIndex = index;
         Raise(L"ShowKindBadges");
-        Recompose();
+        if (m_board.Revealed())
+        {
+            ShowSubsequence();
+        }
+        Refresh();
     }
 
     void SearchViewModel::SetBoxFocused(bool focused)
@@ -447,26 +481,6 @@ namespace winrt::HaloDesktop::implementation
                 media.Poster()));
     }
 
-    void SearchViewModel::ReportMissingArt(winrt::Windows::Foundation::IInspectable const& item)
-    {
-        auto const media = item.try_as<winrt::HaloDesktop::MediaSummary>();
-        if (!media || !m_missingArt.insert(std::wstring{ media.Type() } + L':' + std::wstring{ media.Id() }).second)
-        {
-            return;
-        }
-        // Several cards fail together as a screenful loads: one recompose
-        // after them, not one each.
-        m_dispatcher.TryEnqueue(
-            Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
-            [weak = get_weak()]()
-            {
-                if (auto const self = weak.get())
-                {
-                    self->Recompose();
-                }
-            });
-    }
-
     void SearchViewModel::Arrive(winrt::hstring const& query)
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(query) };
@@ -478,7 +492,7 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::Shown()
     {
         m_search->EnsurePopular();
-        Recompose();
+        Refresh();
     }
 
     std::optional<std::wstring> SearchViewModel::FilterType() const
@@ -525,67 +539,113 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    void SearchViewModel::Recompose()
+    void SearchViewModel::Refresh()
     {
         namespace Services = ::HaloDesktop::Services;
         auto const query = Services::TrimmedText(m_activeQuery);
         m_active = Services::IsSearchableQuery(query);
-        auto const type = FilterType();
+        if (!m_active)
+        {
+            ComposeIdle();
+            return;
+        }
+        // The service has not been asked this query (an account change
+        // cleared it, and it is asked again shortly): nothing new is known.
+        if (m_search->Term() != query)
+        {
+            ComposePending({});
+            return;
+        }
+        if (m_boardSerial != m_search->Serial())
+        {
+            StartBoard(m_search->Serial());
+        }
         auto const phase = m_search->Phase();
-        auto const current = m_active && m_search->Term() == query;
-        auto const waitingForAddons = current && phase == Services::SearchPhase::LoadingAddons;
-        auto const asking = current && phase == Services::SearchPhase::Asking;
+        if (phase == Services::SearchPhase::LoadingAddons)
+        {
+            ComposePending({});
+            return;
+        }
+        // With the addons not even listed, no catalog was asked: settled at
+        // once, with nothing from the addons.
+        auto const asking = phase == Services::SearchPhase::Asking;
+        auto const states = asking ? m_search->States() : std::vector<Services::SearchTargetState>{};
+        auto const progress = asking ? Services::SearchProgress(m_search->Targets(), states) : Services::SearchProgressResult{};
+        if (!m_board.Revealed())
+        {
+            if (asking && !RevealIsDue(states, progress))
+            {
+                ComposePending(progress);
+                return;
+            }
+            RevealNow(states, progress);
+            return;
+        }
+        AbsorbLate(states);
+        ComposeRevealed(progress);
+        FinishCompose();
+    }
 
-        Services::SearchProgressResult progress;
-        if (asking)
-        {
-            auto const states = m_search->States();
-            progress = Services::SearchProgress(m_search->Targets(), states, std::wstring_view{ query });
-        }
-        auto const pending = progress.Pending > 0 || waitingForAddons;
-        auto const waiting = m_active && pending;
+    void SearchViewModel::StartBoard(std::uint64_t serial)
+    {
+        m_board = {};
+        m_boardSerial = serial;
+        m_absorbed.clear();
+        m_askedAt = std::chrono::steady_clock::now();
+        m_revealTimer.Start();
+    }
 
-        // Picked before the kind filter, so the filter does not move it, and
-        // shown once above everything, so the lists below leave it out; so do
-        // the results for whatever the library already shows.
-        std::vector<SearchTitle> fromLibrary;
-        if (m_active)
+    bool SearchViewModel::RevealIsDue(
+        std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+        ::HaloDesktop::Services::SearchProgressResult const& progress) const
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const answeredWithItems = static_cast<std::size_t>(std::count_if(states.begin(), states.end(), [](Services::SearchTargetState const& state)
         {
-            auto const library = m_search->LibraryEntries();
-            fromLibrary = OfType(Services::LibraryMatches(library, query), type);
-        }
-        std::vector<SearchTitle> shownAbove = fromLibrary;
-        if (progress.TopMatch) shownAbove.push_back(*progress.TopMatch);
-        std::vector<std::vector<SearchTitle>> lists;
-        std::vector<std::vector<SearchTitle>> allLists;
-        lists.reserve(progress.Groups.size());
-        allLists.reserve(progress.Groups.size() + 1);
-        if (progress.TopMatch) allLists.push_back({ *progress.TopMatch });
-        for (auto const& group : progress.Groups)
-        {
-            lists.push_back(OfType(group.Titles, type));
-            allLists.push_back(group.Titles);
-        }
-        auto const merged = Services::Interleave(lists, shownAbove);
-        auto results = Services::RefineResults(merged, query, m_missingArt);
+            return state.Status == Services::SearchTargetStatus::Done && !state.Titles.empty();
+        }));
+        auto const sinceAsked = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_askedAt);
+        return Services::DecideReveal(progress.Pending, progress.Total, answeredWithItems, sinceAsked) == Services::RevealDecision::Reveal;
+    }
 
-        // The top match as the card shows it: the same title, with what the
-        // other addons' copies of it know.
-        std::optional<SearchTitle> topShown;
-        if (progress.TopMatch)
+    void SearchViewModel::OnRevealTick()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        if (m_board.Revealed())
         {
-            auto const enriched = Services::Interleave(allLists);
-            topShown = enriched.empty() ? *progress.TopMatch : enriched.front();
+            m_revealTimer.Stop();
+            return;
         }
-        if (topShown != m_topMatchTitle)
+        // Only the board's own query, once its catalogs are asked; anything
+        // else arrives through the service's notification.
+        if (!m_active
+            || m_boardSerial != m_search->Serial()
+            || m_search->Phase() != Services::SearchPhase::Asking
+            || m_search->Term() != Services::TrimmedText(m_activeQuery))
         {
-            m_topMatchTitle = topShown;
-            m_topMatch = topShown ? ToMedia(*topShown) : nullptr;
+            return;
         }
-        m_topMatchInLibrary = m_topMatchTitle && m_search->InLibrary(m_topMatchTitle->Type, m_topMatchTitle->Id);
+        auto const states = m_search->States();
+        auto const progress = Services::SearchProgress(m_search->Targets(), states);
+        if (RevealIsDue(states, progress))
+        {
+            RevealNow(states, progress);
+        }
+    }
+
+    void SearchViewModel::ComposeIdle()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        m_revealTimer.Stop();
+        m_board = {};
+        m_boardSerial.reset();
+        m_absorbed.clear();
+        m_hasShown = false;
+        ForgetShown();
 
         // Popular, before a search: the first films and first series catalogs
         // taking turns, narrowed by the kind filter.
+        auto const type = FilterType();
         auto const& popular = m_search->Popular();
         std::vector<std::vector<SearchTitle>> popularLists{
             type && *type == L"series" ? std::vector<SearchTitle>{} : popular.Movies,
@@ -595,32 +655,230 @@ namespace winrt::HaloDesktop::implementation
         if (popularTitles.size() > Services::SearchPopularShown) popularTitles.resize(Services::SearchPopularShown);
         auto const popularLoading = (!(type && *type == L"series") && popular.MoviesLoading)
             || (!(type && *type == L"movie") && popular.SeriesLoading);
-        m_popularSection = !m_active && (popularLoading || !popularTitles.empty());
+        m_popularSection = popularLoading || !popularTitles.empty();
         m_popularSkeleton = popularTitles.empty();
-
         Sync(m_popular, m_popularShown, std::move(popularTitles));
-        Sync(m_library, m_libraryShown, std::move(fromLibrary));
-        m_resultCount = results.size();
-        Sync(m_results, m_resultsShown, m_active ? std::move(results) : std::vector<SearchTitle>{});
 
-        if (current && phase == Services::SearchPhase::AddonsFailed)
+        m_resultsStale = false;
+        m_topMatchSkeleton = false;
+        m_resultsSkeleton = false;
+        m_stillAskingShown = false;
+        m_statusText = {};
+        m_noAddons = false;
+        m_filteredEmpty = false;
+        m_nothingFound = false;
+        FinishCompose();
+    }
+
+    void SearchViewModel::ComposePending(::HaloDesktop::Services::SearchProgressResult const& progress)
+    {
+        // The previous query's results stay, dimmed; placeholders only when
+        // nothing has been shown since the box was last idle.
+        m_popularSection = false;
+        m_resultsStale = m_hasShown;
+        m_topMatchSkeleton = !m_hasShown;
+        m_resultsSkeleton = !m_hasShown;
+        m_stillAskingShown = true;
+        m_statusText = progress.Total > 0
+            ? winrt::hstring{ ::HaloDesktop::Services::SearchStillAskingNote(progress.Pending) }
+            : winrt::hstring{};
+        m_noAddons = false;
+        m_filteredEmpty = false;
+        m_nothingFound = false;
+        m_resultCount = m_displayed.size();
+        FinishCompose();
+    }
+
+    void SearchViewModel::RevealNow(
+        std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+        ::HaloDesktop::Services::SearchProgressResult const& progress)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const query = Services::TrimmedText(m_activeQuery);
+        auto const answers = AnswersFrom(states, false);
+        m_board.Reveal(answers, Services::ParseSearchQuery(query));
+        m_revealTimer.Stop();
+        m_libraryAll = Services::LibraryMatches(m_search->LibraryEntries(), query);
+        m_hasShown = true;
+        // Chosen before the kind filter, so the filter does not move it.
+        SetTopMatch(m_board.TopMatch());
+        ShowSubsequence();
+        ComposeRevealed(progress);
+        FinishCompose();
+    }
+
+    std::vector<::HaloDesktop::Services::SearchAnswer> SearchViewModel::AnswersFrom(
+        std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+        bool onlyNew)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const& targets = m_search->Targets();
+        auto const& ranks = m_search->TargetAddonRanks();
+        std::vector<Services::SearchAnswer> answers;
+        auto const count = (std::min)(targets.size(), states.size());
+        for (std::size_t index = 0; index < count; ++index)
+        {
+            auto const& state = states[index];
+            if (state.Status == Services::SearchTargetStatus::Pending)
+            {
+                continue;
+            }
+            auto const fresh = m_absorbed.insert(targets[index].Key).second;
+            if ((onlyNew && !fresh) || state.Status != Services::SearchTargetStatus::Done || state.Titles.empty())
+            {
+                continue;
+            }
+            // A target the service gave no rank for goes after every ranked one.
+            auto const rank = index < ranks.size() ? ranks[index] : targets.size();
+            answers.push_back({ targets[index], state.Titles, rank });
+        }
+        return answers;
+    }
+
+    void SearchViewModel::AbsorbLate(std::vector<::HaloDesktop::Services::SearchTargetState> const& states)
+    {
+        // Each diff is applied before the next answer is absorbed, so its
+        // appends start where the grid's board indices end.
+        for (auto const& answer : AnswersFrom(states, true))
+        {
+            auto const diff = m_board.Absorb(answer);
+            if (!diff.Empty())
+            {
+                ApplyDiff(diff);
+            }
+        }
+    }
+
+    void SearchViewModel::ApplyDiff(::HaloDesktop::Services::BoardDiff const& diff)
+    {
+        if (diff.TopMatchUpdate)
+        {
+            SetTopMatch(diff.TopMatchUpdate);
+        }
+        for (auto const& [index, title] : diff.Updates)
+        {
+            auto const at = std::lower_bound(m_displayed.begin(), m_displayed.end(), index);
+            if (at == m_displayed.end() || *at != index)
+            {
+                // Held back by the kind chip or the library row; the board keeps it current.
+                continue;
+            }
+            m_results.SetAt(static_cast<std::uint32_t>(at - m_displayed.begin()), ToMedia(title));
+        }
+        auto const firstAppend = m_board.Titles().size() - diff.Appends.size();
+        for (std::size_t offset = 0; offset < diff.Appends.size(); ++offset)
+        {
+            auto const& title = diff.Appends[offset];
+            if (!ShownInGrid(title))
+            {
+                continue;
+            }
+            m_displayed.push_back(firstAppend + offset);
+            m_results.Append(ToMedia(title));
+        }
+        m_resultCount = m_displayed.size();
+    }
+
+    bool SearchViewModel::ShownInGrid(SearchTitle const& title) const
+    {
+        if (auto const type = FilterType(); type && title.Type != *type)
+        {
+            return false;
+        }
+        auto const identities = ::HaloDesktop::Services::TitleIdentities(title);
+        return std::none_of(identities.begin(), identities.end(), [this](std::wstring const& identity)
+        {
+            return m_libraryIdentities.contains(identity);
+        });
+    }
+
+    void SearchViewModel::ShowSubsequence()
+    {
+        auto library = OfType(m_libraryAll, FilterType());
+        m_libraryIdentities.clear();
+        for (auto const& title : library)
+        {
+            for (auto& identity : ::HaloDesktop::Services::TitleIdentities(title)) m_libraryIdentities.insert(std::move(identity));
+        }
+        Sync(m_library, m_libraryShown, std::move(library));
+
+        auto const& titles = m_board.Titles();
+        m_displayed.clear();
+        std::vector<winrt::Windows::Foundation::IInspectable> media;
+        for (std::size_t index = 0; index < titles.size(); ++index)
+        {
+            if (!ShownInGrid(titles[index]))
+            {
+                continue;
+            }
+            m_displayed.push_back(index);
+            media.push_back(ToMedia(titles[index]));
+        }
+        m_results.ReplaceAll(media);
+        m_resultCount = m_displayed.size();
+    }
+
+    void SearchViewModel::ComposeRevealed(::HaloDesktop::Services::SearchProgressResult const& progress)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const phase = m_search->Phase();
+        auto const pending = progress.Pending > 0;
+        m_popularSection = false;
+        m_resultsStale = false;
+        m_topMatchSkeleton = false;
+        m_resultsSkeleton = false;
+        m_stillAskingShown = pending;
+        if (phase == Services::SearchPhase::AddonsFailed)
         {
             // No catalog could be asked at all, which reads as every one failing.
-            m_failureNote = L"Search could not reach your addons. Check your connection and try again.";
+            m_statusText = AddonsUnreachableNote;
+        }
+        else if (pending)
+        {
+            m_statusText = winrt::hstring{ Services::SearchStillAskingNote(progress.Pending) };
         }
         else
         {
-            m_failureNote = m_active ? winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) } : winrt::hstring{};
+            m_statusText = winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) };
         }
-        m_noAddons = asking && progress.Total == 0;
-        m_topMatchSkeleton = waiting && !progress.TopMatch;
-        m_resultsSkeleton = waiting && m_resultCount == 0;
-        m_stillAskingShown = waiting && m_resultCount > 0;
-        m_stillAsking = winrt::hstring{ Services::SearchStillAskingNote(progress.Pending) };
-        auto const settledEmpty = m_active && !pending && m_libraryShown.empty() && m_resultCount == 0;
+        m_noAddons = phase == Services::SearchPhase::Asking && progress.Total == 0;
+        m_resultCount = m_displayed.size();
+        // Only once every catalog has settled, so an empty state never flashes
+        // before a slow answer.
+        auto const type = FilterType();
+        auto const settledEmpty = !pending && m_libraryShown.empty() && m_resultCount == 0;
         m_filteredEmpty = settledEmpty && !progress.Groups.empty() && type.has_value();
-        m_nothingFound = settledEmpty && !progress.TopMatch && !type && progress.Total > 0
+        m_nothingFound = settledEmpty && !m_topMatchTitle && !type && progress.Total > 0
             && progress.Failed.size() < progress.Total;
+    }
+
+    void SearchViewModel::ForgetShown()
+    {
+        m_displayed.clear();
+        if (m_results.Size() > 0)
+        {
+            m_results.Clear();
+        }
+        m_libraryAll.clear();
+        m_libraryIdentities.clear();
+        Sync(m_library, m_libraryShown, {});
+        SetTopMatch(std::nullopt);
+        m_resultCount = 0;
+    }
+
+    void SearchViewModel::SetTopMatch(std::optional<SearchTitle> title)
+    {
+        if (title == m_topMatchTitle)
+        {
+            return;
+        }
+        m_topMatch = title ? ToMedia(*title) : nullptr;
+        m_topMatchTitle = std::move(title);
+    }
+
+    void SearchViewModel::FinishCompose()
+    {
+        m_topMatchInLibrary = m_topMatchTitle && m_search->InLibrary(m_topMatchTitle->Type, m_topMatchTitle->Id);
         m_recentShown = !m_active && m_recent.Size() > 0;
         RaiseAll();
     }
@@ -643,13 +901,13 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::RaiseAll()
     {
         for (auto const name : {
-                 L"ResultCountText", L"FailureNote", L"StillAskingText", L"StillAsking", L"FilteredEmptyText",
+                 L"ResultCountText", L"StatusText", L"StillAsking", L"ResultsStale", L"FilteredEmptyText",
                  L"TopMatch", L"TopMatchTitle", L"TopMatchRating", L"TopMatchKind", L"TopMatchYear", L"TopMatchBlurb",
                  L"TopMatchPoster", L"TopMatchMetaId", L"TopMatchBackdrop", L"TopMatchSoftBackdrop", L"TopMatchActionLabel",
                  L"TopMatchRatingVisibility", L"TopMatchYearVisibility", L"TopMatchInLibraryVisibility", L"TopMatchBlurbVisibility",
                  L"RecentVisibility", L"PopularVisibility", L"PopularGridVisibility", L"PopularSkeletonVisibility",
-                 L"FailureNoteVisibility", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
-                 L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility", L"StillAskingVisibility",
+                 L"StatusVisibility", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
+                 L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
                  L"FilteredEmptyVisibility", L"NothingFoundVisibility" })
         {
             Raise(name);

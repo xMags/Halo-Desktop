@@ -183,6 +183,15 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchResultsPolicy.cpp">
       <Link>SearchResultsPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchRankingPolicy.cpp">
+      <Link>SearchRankingPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchRevealPolicy.cpp">
+      <Link>SearchRevealPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchResultBoard.cpp">
+      <Link>SearchResultBoard.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchHistoryPolicy.cpp">
       <Link>SearchHistoryPolicy.cpp</Link>
     </ClCompile>

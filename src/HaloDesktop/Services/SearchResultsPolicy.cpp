@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <climits>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <winrt/Windows.Data.Text.h>
 
@@ -23,10 +24,6 @@ namespace
     constexpr int BeginsWithQuery = 2;
     constexpr int SomeWords = 5;
     constexpr int UnrelatedName = 6;
-    // Results with a year and artwork that make the ones without artwork not worth showing.
-    constexpr std::size_t EnoughComplete = 8;
-    // Results holding every word of the query that make the ones holding only some not worth showing.
-    constexpr std::size_t EnoughNamed = 8;
 
     bool IsAscii(std::wstring_view text) noexcept
     {
@@ -227,13 +224,6 @@ namespace
         return value.has_value() && !value->empty();
     }
 
-    // `^tt\d+$`.
-    bool IsImdbId(std::wstring_view id) noexcept
-    {
-        return id.size() > 2 && id.starts_with(L"tt")
-            && std::all_of(id.begin() + 2, id.end(), [](wchar_t unit) { return IsAsciiDigit(unit); });
-    }
-
     // MediaFusion's id for an entry it made from a file name: `^mf\d+$`.
     bool IsFileNameEntry(std::wstring_view id) noexcept
     {
@@ -296,99 +286,6 @@ namespace
         auto index = scheme.size();
         while (index < url.size() && (IsAsciiLower(url[index]) || IsAsciiDigit(url[index]) || url[index] == L'-')) ++index;
         return index > scheme.size() && url.substr(index).starts_with(L".metahub.space/");
-    }
-
-    // `^[A-Z]{2,6}-\d{3,5}\b`: how adult video is catalogued.
-    bool IsProductCodeName(std::wstring_view name) noexcept
-    {
-        std::size_t letters = 0;
-        while (letters < name.size() && IsAsciiUpper(name[letters])) ++letters;
-        if (letters < 2 || letters > 6 || letters >= name.size() || name[letters] != L'-') return false;
-        auto const digitsStart = letters + 1;
-        auto index = digitsStart;
-        while (index < name.size() && IsAsciiDigit(name[index])) ++index;
-        auto const digits = index - digitsStart;
-        if (digits < 3 || digits > 5) return false;
-        if (index == name.size()) return true;
-        auto const next = name[index];
-        return !(IsAsciiAlnum(next) || next == L'_');
-    }
-
-    // "Doctor Strange (2016)", as entries made from file names are named: the
-    // name without the year, and the year as the release line when there was none.
-    SearchTitle WithYearOutOfName(SearchTitle title)
-    {
-        std::wstring_view const name{ title.Name };
-        if (name.size() < 7 || name.back() != L')' || name[name.size() - 6] != L'(') return title;
-        auto const year = name.substr(name.size() - 5, 4);
-        if (!std::all_of(year.begin(), year.end(), [](wchar_t unit) { return IsAsciiDigit(unit); })) return title;
-        auto prefix = name.substr(0, name.size() - 6);
-        while (!prefix.empty() && IsJsWhitespace(static_cast<char32_t>(prefix.back()))) prefix.remove_suffix(1);
-        if (prefix.empty()) return title;
-        std::wstring kept{ prefix };
-        std::wstring yearText{ year };
-        title.Name = std::move(kept);
-        if (!HaloDesktop::Services::ReleaseYear(title.ReleaseInfo))
-        {
-            title.ReleaseInfo = std::move(yearText);
-        }
-        return title;
-    }
-
-    // The better-ranked copy, with what only the other copy knew. The id stays
-    // the kept copy's, since that is the one streams are found by.
-    SearchTitle WithDetailsFrom(SearchTitle kept, SearchTitle const& other)
-    {
-        auto const poster = HaloDesktop::Services::HasNoPoster(kept) || IsMetahubPoster(kept.Poster)
-            ? (HaloDesktop::Services::HasNoPoster(other) ? kept.Poster : other.Poster)
-            : kept.Poster;
-        if (Truthy(poster)) kept.Poster = poster;
-        if (!Truthy(kept.Rating) && Truthy(other.Rating)) kept.Rating = other.Rating;
-        if (!Truthy(kept.ReleaseInfo) && Truthy(other.ReleaseInfo)) kept.ReleaseInfo = other.ReleaseInfo;
-        if (!Truthy(kept.Description) && Truthy(other.Description)) kept.Description = other.Description;
-        return kept;
-    }
-
-    // The better-ranked copy leads, unless only the other is named by its IMDb id.
-    SearchTitle OneTitleFrom(SearchTitle const& kept, SearchTitle const& other)
-    {
-        return IsImdbId(kept.Id) || !IsImdbId(other.Id) ? WithDetailsFrom(kept, other) : WithDetailsFrom(other, kept);
-    }
-
-    struct Candidate final
-    {
-        SearchTitle const* Title{};
-        bool AfterPending{};
-    };
-
-    std::optional<SearchTitle> ChooseTopMatch(
-        std::vector<Candidate> const& candidates,
-        std::size_t pending,
-        std::optional<std::wstring_view> query)
-    {
-        if (candidates.empty()) return std::nullopt;
-        auto const& first = candidates.front();
-        if (!query) return first.AfterPending ? std::nullopt : std::optional<SearchTitle>{ *first.Title };
-        std::vector<int> relevance;
-        relevance.reserve(candidates.size());
-        for (auto const& candidate : candidates)
-        {
-            relevance.push_back(HaloDesktop::Services::NameRelevance(candidate.Title->Name, *query));
-        }
-        if (pending > 0)
-        {
-            for (std::size_t index = 0; index < candidates.size(); ++index)
-            {
-                if (relevance[index] == ExactName)
-                {
-                    return candidates[index].AfterPending ? std::nullopt : std::optional<SearchTitle>{ *candidates[index].Title };
-                }
-            }
-            return std::nullopt;
-        }
-        // The first of the best keeps a tie, as the reference's stable sort does.
-        auto const best = std::min_element(relevance.begin(), relevance.end());
-        return *candidates[static_cast<std::size_t>(best - relevance.begin())].Title;
     }
 }
 
@@ -591,7 +488,7 @@ namespace HaloDesktop::Services
                 }
                 if (kept)
                 {
-                    merged[*kept] = OneTitleFrom(merged[*kept], title);
+                    merged[*kept] = MergeCopies(merged[*kept], title);
                     // Whatever else the second copy is known by now finds the same card.
                     for (auto const& identity : identities) placed.insert_or_assign(identity, *kept);
                     continue;
@@ -614,75 +511,78 @@ namespace HaloDesktop::Services
         return HasNoPoster(title.Poster, std::wstring_view{ title.Id });
     }
 
-    std::vector<SearchTitle> RefineResults(
-        std::span<SearchTitle const> titles,
-        std::wstring_view query,
-        std::unordered_set<std::wstring> const& missingArt)
+    bool IsImdbId(std::wstring_view id) noexcept
     {
-        struct Entry final
+        return id.size() > 2 && id.starts_with(L"tt")
+            && std::all_of(id.begin() + 2, id.end(), [](wchar_t unit) { return IsAsciiDigit(unit); });
+    }
+
+    bool IsProductCodeName(std::wstring_view name) noexcept
+    {
+        std::size_t letters = 0;
+        while (letters < name.size() && IsAsciiUpper(name[letters])) ++letters;
+        if (letters < 2 || letters > 6 || letters >= name.size() || name[letters] != L'-') return false;
+        auto const digitsStart = letters + 1;
+        auto index = digitsStart;
+        while (index < name.size() && IsAsciiDigit(name[index])) ++index;
+        auto const digits = index - digitsStart;
+        if (digits < 3 || digits > 5) return false;
+        if (index == name.size()) return true;
+        auto const next = name[index];
+        return !(IsAsciiAlnum(next) || next == L'_');
+    }
+
+    SearchTitle WithYearOutOfName(SearchTitle title)
+    {
+        std::wstring_view const name{ title.Name };
+        if (name.size() < 7 || name.back() != L')' || name[name.size() - 6] != L'(') return title;
+        auto const year = name.substr(name.size() - 5, 4);
+        if (!std::all_of(year.begin(), year.end(), [](wchar_t unit) { return IsAsciiDigit(unit); })) return title;
+        auto prefix = name.substr(0, name.size() - 6);
+        while (!prefix.empty() && IsJsWhitespace(static_cast<char32_t>(prefix.back()))) prefix.remove_suffix(1);
+        if (prefix.empty()) return title;
+        std::wstring kept{ prefix };
+        std::wstring yearText{ year };
+        title.Name = std::move(kept);
+        if (!ReleaseYear(title.ReleaseInfo))
         {
-            SearchTitle const* Title{};
-            int Relevance{};
-            bool Undated{};
-            bool Artless{};
-        };
-        std::vector<Entry> listed;
-        listed.reserve(titles.size());
-        for (auto const& title : titles)
-        {
-            if (IsProductCodeName(title.Name)) continue;
-            auto const missing = missingArt.contains(TitleKey(title));
-            listed.push_back({
-                &title,
-                NameRelevance(title.Name, query),
-                !ReleaseYear(title.ReleaseInfo).has_value(),
-                HasNoPoster(title) ? (!IsImdbId(title.Id) || missing) : missing,
-            });
+            title.ReleaseInfo = std::move(yearText);
         }
-        auto const someNamed = std::any_of(listed.begin(), listed.end(), [](Entry const& entry)
+        return title;
+    }
+
+    SearchTitle FillMissingDetails(SearchTitle kept, SearchTitle const& other)
+    {
+        auto const poster = HasNoPoster(kept) || IsMetahubPoster(kept.Poster)
+            ? (HasNoPoster(other) ? kept.Poster : other.Poster)
+            : kept.Poster;
+        if (Truthy(poster)) kept.Poster = poster;
+        if (!Truthy(kept.Rating) && Truthy(other.Rating)) kept.Rating = other.Rating;
+        if (!Truthy(kept.ReleaseInfo) && Truthy(other.ReleaseInfo)) kept.ReleaseInfo = other.ReleaseInfo;
+        if (!Truthy(kept.Description) && Truthy(other.Description)) kept.Description = other.Description;
+        return kept;
+    }
+
+    SearchTitle MergeCopies(SearchTitle kept, SearchTitle const& other)
+    {
+        if (IsImdbId(kept.Id) || !IsImdbId(other.Id))
         {
-            return entry.Relevance < UnrelatedName;
-        });
-        auto const wellNamed = static_cast<std::size_t>(std::count_if(listed.begin(), listed.end(), [](Entry const& entry)
-        {
-            return entry.Relevance < SomeWords;
-        })) >= EnoughNamed;
-        std::erase_if(listed, [someNamed, wellNamed](Entry const& entry)
-        {
-            return (someNamed && entry.Relevance == UnrelatedName) || (wellNamed && entry.Relevance == SomeWords);
-        });
-        auto const plenty = static_cast<std::size_t>(std::count_if(listed.begin(), listed.end(), [](Entry const& entry)
-        {
-            return !entry.Undated && !entry.Artless;
-        })) >= EnoughComplete;
-        std::erase_if(listed, [plenty](Entry const& entry)
-        {
-            return entry.Artless && (entry.Undated || plenty);
-        });
-        std::stable_sort(listed.begin(), listed.end(), [](Entry const& a, Entry const& b)
-        {
-            auto const aIncomplete = a.Undated || a.Artless;
-            auto const bIncomplete = b.Undated || b.Artless;
-            if (aIncomplete != bIncomplete) return !aIncomplete;
-            return a.Relevance < b.Relevance;
-        });
-        std::vector<SearchTitle> result;
-        result.reserve(listed.size());
-        for (auto const& entry : listed)
-        {
-            result.push_back(*entry.Title);
+            return FillMissingDetails(std::move(kept), other);
         }
-        return result;
+        return FillMissingDetails(other, kept);
+    }
+
+    bool IsSearchedCatalogType(std::wstring_view type) noexcept
+    {
+        return type == L"movie" || type == L"series";
     }
 
     SearchProgressResult SearchProgress(
         std::span<SearchTarget const> targets,
-        std::span<SearchTargetState const> states,
-        std::optional<std::wstring_view> query)
+        std::span<SearchTargetState const> states)
     {
         SearchProgressResult result;
         result.Total = targets.size();
-        std::vector<Candidate> candidates;
         static SearchTargetState const pendingState{};
         for (std::size_t index = 0; index < targets.size(); ++index)
         {
@@ -700,9 +600,7 @@ namespace HaloDesktop::Services
             }
             if (state.Titles.empty()) continue;
             result.Groups.push_back({ target.Key, target.Title, target.AddonName, target.Type, state.Titles });
-            candidates.push_back({ &state.Titles.front(), result.Pending > 0 });
         }
-        result.TopMatch = ChooseTopMatch(candidates, result.Pending, query);
         return result;
     }
 

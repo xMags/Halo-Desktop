@@ -22,9 +22,9 @@ namespace HaloDesktop
         Object ResultItems { get; };
         Boolean ShowKindBadges { get; };
         String ResultCountText { get; };
-        String FailureNote { get; };
-        String StillAskingText { get; };
+        String StatusText { get; };
         Boolean StillAsking { get; };
+        Boolean ResultsStale { get; };
         String FilteredEmptyText { get; };
 
         MediaSummary TopMatch { get; };
@@ -48,14 +48,13 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PopularVisibility { get; };
         Microsoft.UI.Xaml.Visibility PopularGridVisibility { get; };
         Microsoft.UI.Xaml.Visibility PopularSkeletonVisibility { get; };
-        Microsoft.UI.Xaml.Visibility FailureNoteVisibility { get; };
         Microsoft.UI.Xaml.Visibility NoAddonsVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchSkeletonVisibility { get; };
         Microsoft.UI.Xaml.Visibility LibraryVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResultsSkeletonVisibility { get; };
-        Microsoft.UI.Xaml.Visibility StillAskingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StatusVisibility { get; };
         Microsoft.UI.Xaml.Visibility FilteredEmptyVisibility { get; };
         Microsoft.UI.Xaml.Visibility NothingFoundVisibility { get; };
 
@@ -70,7 +69,6 @@ namespace HaloDesktop
         void OpenDetail(Object item);
         void OpenTopMatch();
         void PlayTopMatch();
-        void ReportMissingArt(Object item);
         void Arrive(String query);
         void Shown();
     }

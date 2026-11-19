@@ -140,6 +140,7 @@ namespace HaloDesktop::Services
         ++m_serial;
         m_board.Reset();
         m_targets.clear();
+        m_targetRanks.clear();
         m_answers.clear();
         m_term = std::move(term);
         if (m_term.empty())
@@ -185,18 +186,26 @@ namespace HaloDesktop::Services
     void SearchService::AskTargets()
     {
         std::vector<SearchTarget> targets;
+        std::vector<std::size_t> ranks;
         std::unordered_set<std::wstring> keys;
+        // The addon's place among those in the effective order.
+        std::size_t addonRank = 0;
         for (auto const& addon : m_addons->Records())
         {
             if (!InEffectiveOrder(addon))
             {
                 continue;
             }
+            auto const rank = addonRank++;
             for (auto const& catalog : addon.Catalogs)
             {
                 // Only the query is sent, so a catalog that insists on another
                 // extra cannot answer and would only be reported as failing.
-                if (!catalog.SupportsSearch || !::HaloDesktop::Api::SearchNeedsNothingElse(catalog))
+                // Only films and series are searched: TV channels and debrid
+                // file lists answer with entries no title page can open.
+                if (!catalog.SupportsSearch
+                    || !::HaloDesktop::Api::SearchNeedsNothingElse(catalog)
+                    || !IsSearchedCatalogType(std::wstring_view{ catalog.Type }))
                 {
                     continue;
                 }
@@ -213,6 +222,7 @@ namespace HaloDesktop::Services
                     std::wstring{ catalog.Id },
                     std::wstring{ catalog.Name.value_or(addon.Name) },
                 });
+                ranks.push_back(rank);
             }
         }
 
@@ -224,6 +234,7 @@ namespace HaloDesktop::Services
         }
         auto tickets = m_board.Plan(planKeys, HomeShelfRefetch::RefetchAll);
         m_targets = std::move(targets);
+        m_targetRanks = std::move(ranks);
         m_phase = SearchPhase::Asking;
 
         auto const weak = weak_from_this();
@@ -315,6 +326,8 @@ namespace HaloDesktop::Services
     SearchPhase SearchService::Phase() const noexcept { return m_phase; }
     std::wstring const& SearchService::Term() const noexcept { return m_term; }
     std::vector<SearchTarget> const& SearchService::Targets() const noexcept { return m_targets; }
+    std::vector<std::size_t> const& SearchService::TargetAddonRanks() const noexcept { return m_targetRanks; }
+    std::uint64_t SearchService::Serial() const noexcept { return m_serial; }
 
     std::vector<SearchTargetState> SearchService::States() const
     {
@@ -594,6 +607,7 @@ namespace HaloDesktop::Services
         ++m_popularSerial;
         m_board.Reset();
         m_targets.clear();
+        m_targetRanks.clear();
         m_answers.clear();
         m_term.clear();
         m_phase = SearchPhase::Idle;

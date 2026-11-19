@@ -2,9 +2,12 @@
 #include "RecentSearchViewModel.g.h"
 #include "SearchViewModel.g.h"
 #include "Services/AppServices.h"
+#include "Services/SearchResultBoard.h"
 #include "Services/SearchResultsPolicy.h"
 #include "Services/SearchService.h"
 
+#include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <optional>
@@ -26,14 +29,20 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_term;
     };
 
-    // The Search page's state, as the reference's `search/Search.tsx` lays it
-    // out: the box and its suggestions, recent and popular before a search,
-    // and during one the notes, the top match, the library's matches and the
-    // merged results. What is on screen is recomposed from the search
-    // service's answers whenever one lands; the rules are SearchResultsPolicy.
+    // The Search page's state: the box and its suggestions, recent and popular
+    // before a search, and during one the status line, the top match, the
+    // library's matches and the results.
     //
-    // UI-thread only. One debounce timer, stopped on destruction; the service
-    // and the timer reach this only through weak references.
+    // A query's results are revealed once (SearchRevealPolicy decides when),
+    // ranked by SearchRankingPolicy and held by a SearchResultBoard. Until
+    // then the previous query's results stay on screen, dimmed. After it, an
+    // answer that lands late only fills in cards in place or adds cards after
+    // the last one; only the user (a new query, a kind chip, clearing the box)
+    // lays the grid out again.
+    //
+    // UI-thread only. Two timers (the typing pause, and the reveal check while
+    // a query is unrevealed), both stopped on destruction; the service and the
+    // timers reach this only through weak references.
     struct SearchViewModel : SearchViewModelT<SearchViewModel>
     {
         explicit SearchViewModel(::HaloDesktop::Services::AppServices const& services);
@@ -56,9 +65,13 @@ namespace winrt::HaloDesktop::implementation
         auto ResultItemsView() const { return m_results; }
         [[nodiscard]] bool ShowKindBadges() const noexcept;
         [[nodiscard]] winrt::hstring ResultCountText() const;
-        [[nodiscard]] winrt::hstring FailureNote() const;
-        [[nodiscard]] winrt::hstring StillAskingText() const;
+        // What the status line under the chips says: catalogs still out, or
+        // the ones that did not answer.
+        [[nodiscard]] winrt::hstring StatusText() const;
         [[nodiscard]] bool StillAsking() const noexcept;
+        // Whether what is on screen belongs to an earlier query, still shown
+        // while this one's answers are awaited.
+        [[nodiscard]] bool ResultsStale() const noexcept;
         [[nodiscard]] winrt::hstring FilteredEmptyText() const;
 
         [[nodiscard]] winrt::HaloDesktop::MediaSummary TopMatch() const;
@@ -82,14 +95,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularGridVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularSkeletonVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility FailureNoteVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility NoAddonsVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchSkeletonVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility LibraryVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResultsVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResultsSkeletonVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility StillAskingVisibility() const noexcept;
+        // Shown whenever a query is active, so its height never comes and goes.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility StatusVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FilteredEmptyVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility NothingFoundVisibility() const noexcept;
         // Whether any skeleton is drawn, for the page's pulse.
@@ -112,8 +125,6 @@ namespace winrt::HaloDesktop::implementation
         // Home's primary action: a series needs an episode chosen, and the
         // title page is the picker; a film it can play goes to its sources.
         void PlayTopMatch();
-        // A result card whose poster did not load: its title counts as artless.
-        void ReportMissingArt(winrt::Windows::Foundation::IInspectable const& item);
         // Arriving with Home's text: searched at once, not recorded.
         void Arrive(winrt::hstring const& query);
         void Shown();
@@ -127,7 +138,39 @@ namespace winrt::HaloDesktop::implementation
     private:
         void SetQueryText(winrt::hstring const& value);
         void SearchNow();
-        void Recompose();
+        // Brings the page to where the service's answers stand.
+        void Refresh();
+        // Before a query: recent and popular.
+        void ComposeIdle();
+        // A query asked and not yet revealed: what was shown stays, dimmed.
+        void ComposePending(::HaloDesktop::Services::SearchProgressResult const& progress);
+        // Lays this query's results out, once.
+        void RevealNow(
+            std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+            ::HaloDesktop::Services::SearchProgressResult const& progress);
+        // A revealed query: answers that landed since go to the board.
+        void AbsorbLate(std::vector<::HaloDesktop::Services::SearchTargetState> const& states);
+        void ApplyDiff(::HaloDesktop::Services::BoardDiff const& diff);
+        void OnRevealTick();
+        [[nodiscard]] bool RevealIsDue(
+            std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+            ::HaloDesktop::Services::SearchProgressResult const& progress) const;
+        void StartBoard(std::uint64_t serial);
+        // Empties the results, the library row and the top match.
+        void ForgetShown();
+        // The board's titles that the kind chip and the library row leave to
+        // the grid, as one reset of it (a user action).
+        void ShowSubsequence();
+        [[nodiscard]] bool ShownInGrid(::HaloDesktop::Services::SearchTitle const& title) const;
+        // The status line, the empty states and the placeholders of a revealed query.
+        void ComposeRevealed(::HaloDesktop::Services::SearchProgressResult const& progress);
+        void SetTopMatch(std::optional<::HaloDesktop::Services::SearchTitle> title);
+        void FinishCompose();
+        // The answers among `states` with titles; with `onlyNew`, only those
+        // the board has not had yet. Every settled answer is marked as had.
+        [[nodiscard]] std::vector<::HaloDesktop::Services::SearchAnswer> AnswersFrom(
+            std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+            bool onlyNew);
         void RebuildHistoryLists();
         [[nodiscard]] std::optional<std::wstring> FilterType() const;
         void Raise(wchar_t const* name);
@@ -136,6 +179,8 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::SearchService> m_search;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
+        // Runs only while the current query is asked and not yet revealed.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_revealTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         ::HaloDesktop::Services::SearchChangedToken m_searchToken{};
         std::uint64_t m_accountVersion{};
@@ -145,22 +190,36 @@ namespace winrt::HaloDesktop::implementation
         std::wstring m_activeQuery;
         std::int32_t m_filterIndex{};
         bool m_boxFocused{};
-        // Keys (`type:id`) of results whose poster failed to load on screen.
-        std::unordered_set<std::wstring> m_missingArt;
+
+        // The current query's results, from the reveal on.
+        ::HaloDesktop::Services::SearchResultBoard m_board;
+        // The service serial the board belongs to; notifications for another are not its.
+        std::optional<std::uint64_t> m_boardSerial;
+        std::chrono::steady_clock::time_point m_askedAt{};
+        // Targets whose answer the board has had, by key.
+        std::unordered_set<std::wstring> m_absorbed;
+        // The library's matches at the reveal, before the kind chip.
+        std::vector<::HaloDesktop::Services::SearchTitle> m_libraryAll;
+        // Identities of what the library row shows, which the grid leaves out.
+        std::unordered_set<std::wstring> m_libraryIdentities;
+        // Board indices of the grid's cards, ascending.
+        std::vector<std::size_t> m_displayed;
+        // Whether some query's results are on screen, since the box was last idle.
+        bool m_hasShown{};
 
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
             m_suggestions{ nullptr }, m_recent{ nullptr }, m_popular{ nullptr }, m_library{ nullptr }, m_results{ nullptr };
         // What each collection holds, so an answer that changes nothing leaves
         // the realised cards alone.
-        std::vector<::HaloDesktop::Services::SearchTitle> m_popularShown, m_libraryShown, m_resultsShown;
+        std::vector<::HaloDesktop::Services::SearchTitle> m_popularShown, m_libraryShown;
         std::vector<std::wstring> m_recentTerms, m_suggestionTerms;
 
         std::optional<::HaloDesktop::Services::SearchTitle> m_topMatchTitle;
         winrt::HaloDesktop::MediaSummary m_topMatch{ nullptr };
         bool m_topMatchInLibrary{};
-        winrt::hstring m_failureNote;
-        winrt::hstring m_stillAsking;
+        winrt::hstring m_statusText;
         std::size_t m_resultCount{};
+        bool m_resultsStale{};
         bool m_active{};
         bool m_suggestionsShown{};
         bool m_recentShown{};

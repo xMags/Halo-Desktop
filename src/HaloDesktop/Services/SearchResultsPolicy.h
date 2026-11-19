@@ -6,7 +6,6 @@
 #include <span>
 #include <string>
 #include <string_view>
-#include <unordered_set>
 #include <vector>
 
 namespace HaloDesktop::Services
@@ -90,8 +89,6 @@ namespace HaloDesktop::Services
     {
         // Rows so far, in addon order; a catalog's row appears as soon as it answers.
         std::vector<SearchResultGroup> Groups;
-        // The best guess for the query (see SearchProgress). Never swaps once shown.
-        std::optional<SearchTitle> TopMatch;
         // Catalogs still out.
         std::size_t Pending{};
         // Catalogs that failed, for naming the addons that did not answer.
@@ -138,13 +135,23 @@ namespace HaloDesktop::Services
     [[nodiscard]] std::vector<SearchTitle> Interleave(
         std::span<std::vector<SearchTitle> const> lists,
         std::span<SearchTitle const> exclude = {});
-    // The merged results as the screen shows them: what was asked for first,
-    // and without what nobody asked for. `missingArt` holds the keys of titles
-    // whose poster is known not to load beyond what `HasNoPoster` admits.
-    [[nodiscard]] std::vector<SearchTitle> RefineResults(
-        std::span<SearchTitle const> titles,
-        std::wstring_view query,
-        std::unordered_set<std::wstring> const& missingArt = {});
+    // `^tt\d+$`.
+    [[nodiscard]] bool IsImdbId(std::wstring_view id) noexcept;
+    // `^[A-Z]{2,6}-\d{3,5}\b`: how adult video is catalogued.
+    [[nodiscard]] bool IsProductCodeName(std::wstring_view name) noexcept;
+    // "Doctor Strange (2016)", as entries made from file names are named: the
+    // name without the year, and the year as the release line when there was none.
+    [[nodiscard]] SearchTitle WithYearOutOfName(SearchTitle title);
+    // `kept` with what only `other` knew: a poster that loads where `kept`
+    // has none (or only metahub's stand-in), and a rating, release line or
+    // description it lacks. Id, kind and name stay `kept`'s.
+    [[nodiscard]] SearchTitle FillMissingDetails(SearchTitle kept, SearchTitle const& other);
+    // Two addons' copies of one title as one: the better-ranked `kept` leads,
+    // unless only `other` is named by its IMDb id, and gains what the other knew.
+    [[nodiscard]] SearchTitle MergeCopies(SearchTitle kept, SearchTitle const& other);
+    // Whether a catalog of this kind is asked when searching: films and series
+    // only, never TV channels or debrid file lists.
+    [[nodiscard]] bool IsSearchedCatalogType(std::wstring_view type) noexcept;
 
     // Whether an addon's answer already says the title has no poster: none
     // sent, a TMDB link built from a missing image, or a card the addon draws
@@ -154,16 +161,10 @@ namespace HaloDesktop::Services
     // The first four-digit year of a release line, or none.
     [[nodiscard]] std::optional<std::wstring> ReleaseYear(std::optional<std::wstring> const& releaseInfo);
 
-    // What the search screen shows from each catalog's state, as answers
-    // arrive. With a query the top match is the best-named first title of the
-    // answering catalogs, the earlier catalog on a tie; while catalogs are out
-    // only an exact name with no earlier catalog still out is shown. Without a
-    // query it is the first title of the first catalog that answered with any,
-    // undecided while an earlier catalog is still out.
+    // Where a search stands from each catalog's state, as answers arrive.
     [[nodiscard]] SearchProgressResult SearchProgress(
         std::span<SearchTarget const> targets,
-        std::span<SearchTargetState const> states,
-        std::optional<std::wstring_view> query = std::nullopt);
+        std::span<SearchTargetState const> states);
 
     // One library entry, as `libraryMatches` reads it.
     struct SearchLibraryEntry final

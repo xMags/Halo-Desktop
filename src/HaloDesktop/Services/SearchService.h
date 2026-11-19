@@ -7,6 +7,7 @@
 #include "Api/Dto.h"
 
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -78,6 +79,12 @@ namespace HaloDesktop::Services
         // The query the current answers belong to, trimmed.
         [[nodiscard]] std::wstring const& Term() const noexcept;
         [[nodiscard]] std::vector<SearchTarget> const& Targets() const noexcept;
+        // One per target, in target order: its addon's place in the effective
+        // order, lower first, as the ranking breaks ties by it.
+        [[nodiscard]] std::vector<std::size_t> const& TargetAddonRanks() const noexcept;
+        // Advances with every query asked (and every account change), so a
+        // view can tell one query's answers from the next one's.
+        [[nodiscard]] std::uint64_t Serial() const noexcept;
         // One state per target, in target order.
         [[nodiscard]] std::vector<SearchTargetState> States() const;
 
@@ -137,6 +144,7 @@ namespace HaloDesktop::Services
         std::uint64_t m_accountVersion{};
         HomeShelfBoard m_board;
         std::vector<SearchTarget> m_targets;
+        std::vector<std::size_t> m_targetRanks;
         std::unordered_map<std::wstring, std::vector<SearchTitle>> m_answers;
 
         SearchPopular m_popular;

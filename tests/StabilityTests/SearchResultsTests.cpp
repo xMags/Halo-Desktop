@@ -1,18 +1,30 @@
 #include "SearchResultsTests.h"
 
 #include "Services/SearchHistoryPolicy.h"
+#include "Services/SearchRankingPolicy.h"
+#include "Services/SearchResultBoard.h"
 #include "Services/SearchResultsPolicy.h"
+#include "Services/SearchRevealPolicy.h"
 
 #include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <optional>
+#include <random>
+#include <span>
 #include <stdexcept>
 #include <string>
-#include <unordered_set>
+#include <string_view>
 #include <vector>
 
 namespace
 {
+    using HaloDesktop::Services::RankedTitle;
+    using HaloDesktop::Services::SearchAnswer;
+    using HaloDesktop::Services::SearchQueryParts;
+    using HaloDesktop::Services::SearchResultBoard;
     using HaloDesktop::Services::SearchTarget;
     using HaloDesktop::Services::SearchTargetState;
     using HaloDesktop::Services::SearchTargetStatus;
@@ -84,18 +96,54 @@ namespace
         return ids;
     }
 
-    std::optional<std::wstring> TopId(
-        std::vector<SearchTarget> const& targets,
-        std::vector<SearchTargetState> const& states,
-        std::optional<std::wstring_view> query = std::nullopt)
+    std::vector<std::wstring> SortedIds(std::vector<SearchTitle> const& titles)
     {
-        auto const progress = HaloDesktop::Services::SearchProgress(targets, states, query);
-        return progress.TopMatch ? std::optional<std::wstring>{ progress.TopMatch->Id } : std::nullopt;
+        auto ids = IdsOf(titles);
+        std::sort(ids.begin(), ids.end());
+        return ids;
     }
 
     SearchTarget const CinemetaMovies = Target(L"c/movie", L"Cinemeta");
     SearchTarget const CinemetaSeries = Target(L"c/series", L"Cinemeta", L"series");
     SearchTarget const TmdbMovies = Target(L"t/movie", L"TMDB");
+
+    // A fixed year, so the tests do not depend on the clock.
+    SearchQueryParts Parts(std::wstring_view query)
+    {
+        return HaloDesktop::Services::ParseSearchQuery(query, 2026);
+    }
+
+    SearchAnswer Answer(SearchTarget target, std::vector<SearchTitle> titles, std::size_t rank)
+    {
+        return { std::move(target), std::move(titles), rank };
+    }
+
+    std::vector<SearchTitle> Titles(std::vector<RankedTitle> const& ranked)
+    {
+        std::vector<SearchTitle> titles;
+        for (auto const& entry : ranked) titles.push_back(entry.Title);
+        return titles;
+    }
+
+    std::vector<SearchTitle> Ranked(std::vector<SearchAnswer> const& answers, std::wstring_view query)
+    {
+        return Titles(HaloDesktop::Services::RankForReveal(answers, Parts(query)));
+    }
+
+    // One catalog's titles as a reveal would list them: ranked, then judged
+    // by the cutoffs (the top match left in).
+    std::vector<SearchTitle> Refined(std::vector<SearchTitle> const& titles, std::wstring_view query)
+    {
+        std::vector<SearchAnswer> const answers{ Answer(TmdbMovies, titles, 0) };
+        auto const ranked = HaloDesktop::Services::RankForReveal(answers, Parts(query));
+        auto const cutoffs = HaloDesktop::Services::ComputeCutoffs(ranked);
+        std::vector<SearchTitle> kept;
+        for (auto const& entry : ranked)
+        {
+            if (HaloDesktop::Services::PassesCutoffs(entry, cutoffs)) kept.push_back(entry.Title);
+        }
+        return kept;
+    }
 
     void TestRowsInAddonOrder()
     {
@@ -105,16 +153,6 @@ namespace
         Require(progress.Groups.size() == 2 && progress.Groups[0].Key == L"c/series" && progress.Groups[1].Key == L"t/movie",
             "rows did not appear as their catalogs answered, in addon order");
         Require(progress.Pending == 1, "the catalog still out was not counted");
-    }
-
-    void TestTopMatchWaitsForEarlierCatalogs()
-    {
-        std::vector<SearchTarget> const targets{ CinemetaMovies, TmdbMovies };
-        Require(!TopId(targets, { Pending(), Done({ Meta(L"m9") }) }), "the top match did not wait for an earlier catalog");
-        Require(TopId(targets, { Done({ Meta(L"m1") }), Pending() }) == L"m1", "the first catalog's title was not the top match");
-        // An earlier catalog that failed or found nothing passes the choice on.
-        Require(TopId(targets, { Failed(), Done({ Meta(L"m9") }) }) == L"m9", "a failed catalog held the top match back");
-        Require(TopId(targets, { Done({}), Done({ Meta(L"m9") }) }) == L"m9", "an empty catalog held the top match back");
     }
 
     void TestFailedCatalogsReported()
@@ -206,69 +244,6 @@ namespace
         Require(NameRelevance(L"WALL·E", L"wall e") == 0, "a middle dot was not read as a word break");
     }
 
-    void TestTopMatchWithQuery()
-    {
-        std::vector<SearchTarget> const targets{ CinemetaMovies, CinemetaSeries, TmdbMovies };
-        auto const film = Named(L"m1", L"El Camino: A Breaking Bad Movie");
-        auto const show = Named(L"s1", L"Breaking Bad", L"series");
-        auto const other = Named(L"m9", L"Breaking Bad Habits");
-        std::wstring_view const query{ L"breaking bad" };
-        // All answered: the series named exactly what was typed wins over the film asked first.
-        Require(TopId(targets, { Done({ film }), Done({ show }), Done({ other }) }, query) == L"s1",
-            "the exact name did not win once every catalog answered");
-        // Still waiting on a later catalog: a title named exactly what was typed is shown already...
-        Require(TopId(targets, { Done({ film }), Done({ show }), Pending() }, query) == L"s1",
-            "an exact name waited for a later catalog");
-        // ...but one that only begins with it waits...
-        Require(!TopId(targets, { Done({ other }), Pending(), Pending() }, query), "a name that only begins with the query was shown early");
-        Require(TopId(targets, { Done({ other }), Done({ film }), Done({ show }) }, query) == L"s1",
-            "a later exact name did not win once every catalog answered");
-        // ...and nothing is shown while an earlier catalog is out.
-        Require(!TopId(targets, { Pending(), Done({ show }), Done({ other }) }, query), "a top match was shown with an earlier catalog out");
-        Require(!TopId(targets, { Done({ film }), Pending(), Done({ other }) }, query), "a top match was shown with a catalog out");
-        // A name that merely holds the words waits for everyone.
-        Require(!TopId(targets, { Done({ film }), Pending(), Pending() }, query), "a loose name was shown early");
-        // A tie goes to the earlier catalog.
-        Require(TopId(targets, { Done({ other }), Done({ film }), Done({ film }) }, L"nothing alike") == L"m9",
-            "a tie did not go to the earlier catalog");
-    }
-
-    void TestRefineDropsUnrelated()
-    {
-        std::vector<SearchTitle> const results{
-            Full(L"tmdb:1", L"Doctor Strange"), Full(L"tmdb:2", L"Faust and the Devil"), Full(L"tmdb:3", L"Dr. Strange") };
-        Require(IdsOf(HaloDesktop::Services::RefineResults(results, L"doctor strange")) == std::vector<std::wstring>{ L"tmdb:1", L"tmdb:3" },
-            "a result sharing no word with the query stayed");
-        // An addon answering in another language names nothing: all of it stays.
-        std::vector<SearchTitle> const localized{
-            Full(L"tmdb:1", L"डॉक्टर स्ट्रेंज"),
-            Full(L"tmdb:2", L"कुछ और") };
-        Require(HaloDesktop::Services::RefineResults(localized, L"doctor strange").size() == 2,
-            "an answer in another language was emptied");
-    }
-
-    void TestRefineYearAndArtwork()
-    {
-        std::wstring const noPoster = L"https://image.tmdb.org/t/p/w500null";
-        std::vector<SearchTitle> const results{
-            Full(L"tmdb:1", L"Doctor Strange Love", [&noPoster](SearchTitle& t) { t.Poster = noPoster; }),
-            Full(L"tmdb:2", L"Untitled Doctor Strange Movie", [&noPoster](SearchTitle& t) { t.Poster = noPoster; t.ReleaseInfo = L""; }),
-            Full(L"tt3", L"Doctor Strange 3", [](SearchTitle& t) { t.ReleaseInfo.reset(); t.Poster = L"https://images.metahub.space/poster/small/tt3/img"; }),
-            Full(L"tt4", L"Doctor Strange: Multiversal Madness", [](SearchTitle& t) { t.Poster = L"https://images.metahub.space/poster/small/tt4/img"; }),
-            Full(L"tmdb:5", L"Doctor Strange in the Multiverse of Madness"),
-            Full(L"tmdb:6", L"The Strange Case of Doctor Rx"),
-        };
-        // tt3 and tt4 have poster links, and the links are found to be dead.
-        std::unordered_set<std::wstring> const dead{ L"movie:tt3", L"movie:tt4" };
-        Require(IdsOf(HaloDesktop::Services::RefineResults(results, L"doctor strange", dead)) == std::vector<std::wstring>{
-                    L"tmdb:5", L"tmdb:6", L"tmdb:1", L"tt4" },
-            "titles without a year or artwork were not left out or put last");
-        // Before the links are known to be dead, those titles are judged on what the answer says.
-        Require(IdsOf(HaloDesktop::Services::RefineResults(results, L"doctor strange")) == std::vector<std::wstring>{
-                    L"tt4", L"tmdb:5", L"tmdb:6", L"tmdb:1", L"tt3" },
-            "titles were judged artless before their links were known to be dead");
-    }
-
     void TestTmdbMissingImage()
     {
         using HaloDesktop::Services::HasNoPoster;
@@ -292,26 +267,6 @@ namespace
         Require(merged[0].Poster == L"https://image.tmdb.org/t/p/w500/4at.jpg", "the kept copy did not gain the poster that loads");
     }
 
-    void TestScreenfulDropsArtless()
-    {
-        std::vector<SearchTitle> complete;
-        for (int index = 0; index < 8; ++index)
-        {
-            complete.push_back(Full(L"tmdb:" + std::to_wstring(index), L"Doctor Strange " + std::to_wstring(index)));
-        }
-        auto const artless = Full(L"tmdb:99", L"Doctor Strange Love", [](SearchTitle& t) { t.Poster = L"https://image.tmdb.org/t/p/w500null"; });
-        auto all = complete;
-        all.push_back(artless);
-        auto const refined = HaloDesktop::Services::RefineResults(all, L"doctor strange");
-        Require(std::none_of(refined.begin(), refined.end(), [](SearchTitle const& t) { return t.Id == L"tmdb:99"; }),
-            "an artless title stayed beside a screenful of complete ones");
-        // One short of a screenful: the artless one is still worth listing, last.
-        std::vector<SearchTitle> fewer(complete.begin() + 1, complete.end());
-        fewer.push_back(artless);
-        auto const kept = HaloDesktop::Services::RefineResults(fewer, L"doctor strange");
-        Require(!kept.empty() && kept.back().Id == L"tmdb:99", "an artless title was dropped short of a screenful");
-    }
-
     void TestShortForms()
     {
         using HaloDesktop::Services::NameRelevance;
@@ -330,11 +285,11 @@ namespace
         std::vector<SearchTitle> const loose{ Full(L"tmdb:90", L"Doctor Sleep"), Full(L"tmdb:91", L"Strangers") };
         auto all = named;
         all.insert(all.end(), loose.begin(), loose.end());
-        Require(IdsOf(HaloDesktop::Services::RefineResults(all, L"doctor strange")) == IdsOf(named),
+        Require(IdsOf(Refined(all, L"doctor strange")) == IdsOf(named),
             "titles naming only some words stayed beside a screenful naming all");
         std::vector<SearchTitle> fewer(named.begin() + 1, named.end());
         fewer.insert(fewer.end(), loose.begin(), loose.end());
-        Require(HaloDesktop::Services::RefineResults(fewer, L"doctor strange").size() == 9,
+        Require(Refined(fewer, L"doctor strange").size() == 9,
             "loose names were dropped short of a screenful");
     }
 
@@ -381,10 +336,348 @@ namespace
             Full(L"tmdb:3", L"THX 1138"),
             Full(L"tmdb:4", L"WALL-E"),
         };
-        Require(IdsOf(HaloDesktop::Services::RefineResults(results, L"e")) == std::vector<std::wstring>{ L"tmdb:4", L"tmdb:1" },
+        Require(IdsOf(Refined(results, L"e")) == std::vector<std::wstring>{ L"tmdb:4", L"tmdb:1" },
             "a product-code title stayed, or the rest were misordered");
-        Require(IdsOf(HaloDesktop::Services::RefineResults(results, L"strange doctor")) == std::vector<std::wstring>{ L"tmdb:1" },
+        Require(IdsOf(Refined(results, L"strange doctor")) == std::vector<std::wstring>{ L"tmdb:1" },
             "a product-code title matching every word stayed");
+    }
+
+    void TestRevealTopMatchPrefersExactName()
+    {
+        auto const film = Full(L"m1", L"El Camino: A Breaking Bad Movie");
+        auto const show = Full(L"s1", L"Breaking Bad", [](SearchTitle& t) { t.Type = L"series"; });
+        auto const other = Full(L"m9", L"Breaking Bad Habits");
+        // The series named exactly what was typed wins over the film of the catalog asked first.
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, { film }, 0), Answer(CinemetaSeries, { show }, 0), Answer(TmdbMovies, { other }, 1) };
+        SearchResultBoard board;
+        auto const revealed = board.Reveal(answers, Parts(L"breaking bad"));
+        Require(revealed.TopMatch && revealed.TopMatch->Id == L"s1", "the exact name was not the top match");
+        Require(IdsOf(revealed.Titles) == std::vector<std::wstring>{ L"m9", L"m1" },
+            "the top match was listed again, or the rest were not ranked by name");
+        // With a year typed, the title from that year is the top match.
+        std::vector<SearchAnswer> const dunes{
+            Answer(CinemetaMovies, { Full(L"tt0087182", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"1984"; }),
+                                     Full(L"tt1160419", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"2021"; }) }, 0) };
+        SearchResultBoard dated;
+        auto const dune = dated.Reveal(dunes, Parts(L"dune 2021"));
+        Require(dune.TopMatch && dune.TopMatch->Id == L"tt1160419", "the title of the typed year was not the top match");
+    }
+
+    void TestRevealTopMatchIgnoresFailedAndEmpty()
+    {
+        // A failed catalog gives no answer; an empty one gives no titles. Neither holds the choice back.
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, {}, 0), Answer(TmdbMovies, { Full(L"tt1", L"Doctor Strange") }, 1) };
+        SearchResultBoard board;
+        auto const revealed = board.Reveal(answers, Parts(L"doctor strange"));
+        Require(revealed.TopMatch && revealed.TopMatch->Id == L"tt1", "an empty catalog held the top match back");
+        Require(revealed.Titles.empty(), "the top match was also listed");
+        SearchResultBoard none;
+        auto const nothing = none.Reveal({}, Parts(L"doctor strange"));
+        Require(!nothing.TopMatch && nothing.Titles.empty() && none.Revealed(), "a search with no answers showed something");
+    }
+
+    void TestLooseNameIsNoTopMatch()
+    {
+        SearchResultBoard board;
+        std::vector<SearchAnswer> const loose{ Answer(CinemetaMovies, { Full(L"m1", L"El Camino: A Breaking Bad Movie") }, 0) };
+        auto const revealed = board.Reveal(loose, Parts(L"breaking bad"));
+        Require(!revealed.TopMatch, "a name merely holding the words was the top match");
+        Require(IdsOf(revealed.Titles) == std::vector<std::wstring>{ L"m1" }, "the loose name was not listed");
+        // An exact name from another year than the one typed is not the top match either.
+        SearchResultBoard dated;
+        std::vector<SearchAnswer> const old{
+            Answer(CinemetaMovies, { Full(L"tt0087182", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"1984"; }) }, 0) };
+        Require(!dated.Reveal(old, Parts(L"dune 2021")).TopMatch, "a title of another year than the one typed was the top match");
+    }
+
+    void TestCutoffsDropUnrelated()
+    {
+        std::vector<SearchTitle> const results{
+            Full(L"tmdb:1", L"Doctor Strange"), Full(L"tmdb:2", L"Faust and the Devil"), Full(L"tmdb:3", L"Dr. Strange") };
+        Require(IdsOf(Refined(results, L"doctor strange")) == std::vector<std::wstring>{ L"tmdb:1", L"tmdb:3" },
+            "a result sharing no word with the query stayed");
+        // An addon answering in another language names nothing: all of it stays.
+        std::vector<SearchTitle> const localized{
+            Full(L"tmdb:1", L"डॉक्टर स्ट्रेंज"),
+            Full(L"tmdb:2", L"कुछ और") };
+        Require(Refined(localized, L"doctor strange").size() == 2, "an answer in another language was emptied");
+    }
+
+    // The titles of the year-and-artwork case: one without a poster, one with
+    // neither poster nor year, one without a year, and complete ones.
+    std::vector<SearchTitle> YearAndArtworkTitles()
+    {
+        std::wstring const noPoster = L"https://image.tmdb.org/t/p/w500null";
+        return {
+            Full(L"tmdb:1", L"Doctor Strange Love", [&noPoster](SearchTitle& t) { t.Poster = noPoster; }),
+            Full(L"tmdb:2", L"Untitled Doctor Strange Movie", [&noPoster](SearchTitle& t) { t.Poster = noPoster; t.ReleaseInfo = L""; }),
+            Full(L"tt3", L"Doctor Strange 3", [](SearchTitle& t) { t.ReleaseInfo.reset(); t.Poster = L"https://images.metahub.space/poster/small/tt3/img"; }),
+            Full(L"tt4", L"Doctor Strange: Multiversal Madness", [](SearchTitle& t) { t.Poster = L"https://images.metahub.space/poster/small/tt4/img"; }),
+            Full(L"tmdb:5", L"Doctor Strange in the Multiverse of Madness"),
+            Full(L"tmdb:6", L"The Strange Case of Doctor Rx"),
+        };
+    }
+
+    void TestCutoffsYearAndArtwork()
+    {
+        // Without a poster and without a year a title always goes; without
+        // only one of them it stays; an IMDb title's poster is metahub's.
+        Require(SortedIds(Refined(YearAndArtworkTitles(), L"doctor strange")) == std::vector<std::wstring>{
+                    L"tmdb:1", L"tmdb:5", L"tmdb:6", L"tt3", L"tt4" },
+            "a title without a year and artwork stayed, or one with either went");
+    }
+
+    void TestCutoffsArtlessBesideScreenful()
+    {
+        std::vector<SearchTitle> complete;
+        for (int index = 0; index < 8; ++index)
+        {
+            complete.push_back(Full(L"tmdb:" + std::to_wstring(index), L"Doctor Strange " + std::to_wstring(index)));
+        }
+        auto const artless = Full(L"tmdb:99", L"Doctor Strange Love", [](SearchTitle& t) { t.Poster = L"https://image.tmdb.org/t/p/w500null"; });
+        auto all = complete;
+        all.push_back(artless);
+        auto const refined = Refined(all, L"doctor strange");
+        Require(std::none_of(refined.begin(), refined.end(), [](SearchTitle const& t) { return t.Id == L"tmdb:99"; }),
+            "an artless title stayed beside a screenful of complete ones");
+        // One short of a screenful: the artless one is still worth listing, last.
+        std::vector<SearchTitle> fewer(complete.begin() + 1, complete.end());
+        fewer.push_back(artless);
+        auto const kept = Refined(fewer, L"doctor strange");
+        Require(!kept.empty() && kept.back().Id == L"tmdb:99", "an artless title was dropped short of a screenful");
+    }
+
+    void TestRankingRelevanceBeforeCompleteness()
+    {
+        // What was typed ranks first: a complete title that only holds the
+        // words comes after incomplete ones that begin with them.
+        Require(IdsOf(Refined(YearAndArtworkTitles(), L"doctor strange")) == std::vector<std::wstring>{
+                    L"tt4", L"tmdb:5", L"tmdb:1", L"tt3", L"tmdb:6" },
+            "completeness was ranked ahead of how well the name answers the query");
+    }
+
+    void TestParseSearchQueryYear()
+    {
+        using HaloDesktop::Services::ParseSearchQuery;
+        auto const dune = ParseSearchQuery(L"  dune   2021 ", 2026);
+        Require(dune.Full == L"dune   2021" && dune.Name == L"dune" && dune.Year == 2021, "a trailing year was not read apart");
+        auto const film = ParseSearchQuery(L"1917", 2026);
+        Require(film.Name == L"1917" && !film.Year, "a query that is only a year lost its name");
+        auto const blade = ParseSearchQuery(L"blade runner 2049", 2026);
+        Require(blade.Name == L"blade runner 2049" && !blade.Year, "a number past next year was read as a year");
+        auto const wonder = ParseSearchQuery(L"wonder woman 1984", 2026);
+        Require(wonder.Name == L"wonder woman" && wonder.Year == 1984 && wonder.Full == L"wonder woman 1984",
+            "a year that is part of the name was not offered both ways");
+        Require(!ParseSearchQuery(L"dune 1887", 2026).Year, "a year before film was read as a year");
+        Require(ParseSearchQuery(L"dune 2028", 2026).Year == 2028, "a year two ahead was not read as a year");
+        Require(!ParseSearchQuery(L"dune 12021", 2026).Year, "a five-digit number was read as a year");
+        // "Wonder Woman 1984" is still named exactly what was typed.
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, { Full(L"tt7126948", L"Wonder Woman 1984", [](SearchTitle& t) { t.ReleaseInfo = L"2020"; }) }, 0) };
+        auto const ranked = HaloDesktop::Services::RankForReveal(answers, wonder);
+        Require(ranked.size() == 1 && ranked[0].Tier == 0, "a name holding a year did not match the full query");
+    }
+
+    void TestYearMatchBreaksTies()
+    {
+        auto const old = Full(L"tt0087182", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"1984"; });
+        auto const recent = Full(L"tt1160419", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"2021"; });
+        std::vector<SearchAnswer> const answers{ Answer(CinemetaMovies, { old, recent }, 0) };
+        Require(IdsOf(Ranked(answers, L"dune 2021")) == std::vector<std::wstring>{ L"tt1160419", L"tt0087182" },
+            "the typed year did not break a tie");
+        Require(IdsOf(Ranked(answers, L"dune")) == std::vector<std::wstring>{ L"tt0087182", L"tt1160419" },
+            "without a year the addon's own order did not stand");
+    }
+
+    void TestConsensusAndPosition()
+    {
+        auto const covenant = Full(L"tt2316204", L"Alien Covenant");
+        auto const resurrection = Full(L"tt0118583", L"Alien Resurrection");
+        auto const nation = Full(L"tt0094631", L"Alien Nation");
+        auto const romulus = Full(L"tt18412256", L"Alien Romulus");
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, { resurrection, covenant, romulus }, 0),
+            Answer(TmdbMovies, { nation, covenant }, 1) };
+        auto const ranked = HaloDesktop::Services::RankForReveal(answers, Parts(L"alien"));
+        // Listed by two catalogs first; then the better place in a catalog's
+        // own list, then the better addon.
+        Require(IdsOf(Titles(ranked)) == std::vector<std::wstring>{ L"tt2316204", L"tt0118583", L"tt0094631", L"tt18412256" },
+            "copies, then position, then addon rank did not order equal names");
+        Require(ranked[0].Copies == 2 && ranked[0].BestPosition == 1 && ranked[0].AddonRank == 0,
+            "a merged title's copies, position or rank were wrong");
+        // The order the answers arrive in does not change the ranking.
+        std::vector<SearchAnswer> const reversed{ answers[1], answers[0] };
+        Require(IdsOf(Ranked(reversed, L"alien")) == IdsOf(Titles(ranked)), "the arrival order changed the ranking");
+    }
+
+    void TestRevealDecision()
+    {
+        using HaloDesktop::Services::DecideReveal;
+        using HaloDesktop::Services::RevealDecision;
+        using std::chrono::milliseconds;
+        Require(DecideReveal(0, 3, 0, milliseconds{ 10 }) == RevealDecision::Reveal, "every catalog settled did not reveal at once");
+        Require(DecideReveal(0, 0, 0, milliseconds{ 0 }) == RevealDecision::Reveal, "no catalog to ask did not reveal");
+        Require(DecideReveal(2, 3, 1, milliseconds{ 249 }) == RevealDecision::Wait, "an answer revealed before the floor");
+        Require(DecideReveal(1, 3, 2, milliseconds{ 600 }) == RevealDecision::Wait, "a catalog still out was not waited for");
+        Require(DecideReveal(1, 3, 2, milliseconds{ 1200 }) == RevealDecision::Reveal, "the deadline did not reveal");
+        Require(DecideReveal(1, 3, 0, milliseconds{ 5000 }) == RevealDecision::Wait, "the deadline revealed with no titles");
+        Require(DecideReveal(1, 3, 1, milliseconds{ 5000 }) == RevealDecision::Reveal, "the first titles after the deadline did not reveal");
+    }
+
+    void TestLateAnswerOnlyAppends()
+    {
+        SearchResultBoard board;
+        std::vector<SearchAnswer> const first{
+            Answer(TmdbMovies, { Full(L"tt1", L"Doctor Strange"), Full(L"tt2", L"Doctor Strange 2") }, 1) };
+        auto const revealed = board.Reveal(first, Parts(L"doctor strange"));
+        Require(revealed.TopMatch && revealed.TopMatch->Id == L"tt1" && IdsOf(revealed.Titles) == std::vector<std::wstring>{ L"tt2" },
+            "the reveal was not as expected");
+        // A better addon answering late, with a better name, still lands after the last card.
+        auto const diff = board.Absorb(Answer(CinemetaMovies, {
+            Full(L"tt9", L"Doctor Strange", [](SearchTitle& t) { t.ReleaseInfo = L"1978"; }), Full(L"tt3", L"Doctor Strange 3") }, 0));
+        Require(diff.Updates.empty() && !diff.TopMatchUpdate, "a late answer of new titles changed a shown one");
+        Require(IdsOf(diff.Appends) == std::vector<std::wstring>{ L"tt9", L"tt3" }, "late titles were not appended in the addon's order");
+        Require(IdsOf(board.Titles()) == std::vector<std::wstring>{ L"tt2", L"tt9", L"tt3" }, "a late answer moved a shown card");
+        Require(board.TopMatch() && board.TopMatch()->Id == L"tt1", "a late answer replaced the top match");
+        // Before a reveal nothing is absorbed.
+        SearchResultBoard unrevealed;
+        Require(unrevealed.Absorb(first[0]).Empty() && unrevealed.Titles().empty(), "an unrevealed board absorbed an answer");
+    }
+
+    void TestLateCopyFoldsFieldsInPlace()
+    {
+        SearchResultBoard board;
+        auto shown = Full(L"tmdb:5", L"Doctor Strange in the Multiverse of Madness");
+        shown.ImdbId = L"tt9419884";
+        auto const top = Full(L"tt1211837", L"Doctor Strange");
+        std::vector<SearchAnswer> const first{ Answer(TmdbMovies, { top, shown }, 1) };
+        static_cast<void>(board.Reveal(first, Parts(L"doctor strange")));
+
+        // Cinemeta's copy names the title by its IMDb id and knows a rating and a description.
+        auto late = Dated(L"tt9419884", L"Doctor Strange in the Multiverse of Madness", L"2022");
+        late.Rating = L"6.9";
+        late.Description = L"Wanda.";
+        auto topCopy = Dated(L"tt1211837", L"Doctor Strange", L"2016");
+        topCopy.Rating = L"7.5";
+        auto const diff = board.Absorb(Answer(CinemetaMovies, { late, topCopy }, 0));
+        Require(diff.Appends.empty(), "a late copy of a shown title was appended");
+        Require(diff.Updates.size() == 1 && diff.Updates[0].first == 0, "a late copy did not update its card in place");
+        auto const& updated = diff.Updates[0].second;
+        Require(updated.Id == L"tmdb:5" && updated.Type == L"movie" && updated.Name == shown.Name,
+            "a late copy changed the shown card's id, kind or name");
+        Require(updated.Rating == L"6.9" && updated.Description == L"Wanda." && updated.Poster == shown.Poster,
+            "a late copy's details were not folded in, or replaced a poster that loads");
+        Require(board.Titles()[0] == updated, "the board did not keep the updated card");
+        Require(diff.TopMatchUpdate && diff.TopMatchUpdate->Id == L"tt1211837" && diff.TopMatchUpdate->Rating == L"7.5",
+            "a late copy of the top match did not fill it in");
+        // The same answer again changes nothing.
+        Require(board.Absorb(Answer(CinemetaMovies, { late, topCopy }, 0)).Empty(), "an answer already folded in changed something");
+    }
+
+    void TestLateAnswerUsesFrozenCutoffs()
+    {
+        std::vector<SearchTitle> named;
+        for (int index = 0; index < 8; ++index)
+        {
+            named.push_back(Full(L"tmdb:" + std::to_wstring(index), L"Doctor Strange " + std::to_wstring(index)));
+        }
+        auto const sleep = Full(L"tmdb:90", L"Doctor Sleep");
+        auto const faust = Full(L"tmdb:91", L"Faust and the Devil");
+        auto const artless = Full(L"tmdb:92", L"Doctor Strange Love", [](SearchTitle& t) { t.Poster = L"https://image.tmdb.org/t/p/w500null"; });
+
+        SearchResultBoard full;
+        std::vector<SearchAnswer> const screenful{ Answer(TmdbMovies, named, 1) };
+        auto const revealed = full.Reveal(screenful, Parts(L"doctor strange"));
+        Require(revealed.Cutoffs.DropUnrelated && revealed.Cutoffs.DropSomeWords && revealed.Cutoffs.DropArtless,
+            "a screenful of complete, well-named titles did not set every cutoff");
+        Require(full.Absorb(Answer(CinemetaMovies, { sleep, faust, artless }, 0)).Empty(),
+            "a late title the reveal's cutoffs drop was appended");
+
+        // Revealed with few titles, the same late titles pass, and a late
+        // screenful does not tighten the cutoffs afterwards.
+        SearchResultBoard few;
+        std::vector<SearchAnswer> const two{ Answer(TmdbMovies, { named[0], named[1] }, 1) };
+        auto const loose = few.Reveal(two, Parts(L"doctor strange"));
+        Require(loose.Cutoffs.DropUnrelated && !loose.Cutoffs.DropSomeWords && !loose.Cutoffs.DropArtless,
+            "two titles set the wrong cutoffs");
+        std::vector<SearchTitle> late(named.begin() + 2, named.end());
+        late.push_back(sleep);
+        late.push_back(faust);
+        late.push_back(artless);
+        auto const diff = few.Absorb(Answer(CinemetaMovies, late, 0));
+        Require(IdsOf(diff.Appends) == std::vector<std::wstring>{
+                    L"tmdb:2", L"tmdb:3", L"tmdb:4", L"tmdb:5", L"tmdb:6", L"tmdb:7", L"tmdb:90", L"tmdb:92" },
+            "late titles were not judged by the cutoffs frozen at the reveal");
+    }
+
+    void TestVisiblePrefixNeverChanges()
+    {
+        // Five catalogs whose answers overlap: the same titles under other
+        // ids, with and without years, posters and ratings, plus their own.
+        auto withImdb = [](SearchTitle title, std::wstring imdb) { title.ImdbId = std::move(imdb); return title; };
+        auto rated = [](SearchTitle title, std::wstring rating) { title.Rating = std::move(rating); return title; };
+        std::vector<SearchAnswer> const answers{
+            Answer(Target(L"c/movie", L"Cinemeta"), {
+                Full(L"tt1160419", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"2021"; }),
+                Full(L"tt15239678", L"Dune: Part Two"),
+                Full(L"tt0087182", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"1984"; }) }, 0),
+            Answer(Target(L"c/series", L"Cinemeta", L"series"), {
+                Dated(L"tt10466872", L"Dune: Prophecy", L"2024", L"series"),
+                Dated(L"tt0142032", L"Dune", L"2000", L"series") }, 0),
+            Answer(Target(L"t/movie", L"TMDB"), {
+                rated(withImdb(Full(L"tmdb:438631", L"Dune", [](SearchTitle& t) { t.ReleaseInfo = L"2021"; }), L"tt1160419"), L"7.8"),
+                withImdb(Full(L"tmdb:693134", L"Dune: Part Two"), L"tt15239678"),
+                Full(L"tmdb:1", L"Dune Drifter") }, 1),
+            Answer(Target(L"m/movie", L"MediaFusion"), {
+                Named(L"mf1706190", L"Dune (2021)"),
+                Named(L"mf17", L"Dune World"),
+                Full(L"tmdb:2", L"Faust and the Devil") }, 2),
+            Answer(Target(L"o/movie", L"Other"), {
+                rated(Dated(L"tt0087182", L"Dune", L"1984"), L"6.3"),
+                Full(L"o:3", L"Dune Messiah"),
+                Full(L"o:4", L"Children of Dune") }, 3),
+        };
+        for (std::uint32_t seed = 1; seed <= 40; ++seed)
+        {
+            std::vector<SearchAnswer> order = answers;
+            std::mt19937 random{ seed };
+            std::shuffle(order.begin(), order.end(), random);
+            auto const revealedCount = static_cast<std::size_t>(seed % order.size()) + 1;
+            for (auto const& query : { std::wstring{ L"dune" }, std::wstring{ L"dune 2021" } })
+            {
+                SearchResultBoard board;
+                auto const revealed = board.Reveal(
+                    std::span<SearchAnswer const>{ order.data(), revealedCount }, Parts(query));
+                auto shownKeys = Keys(revealed.Titles);
+                auto const topKey = revealed.TopMatch ? HaloDesktop::Services::TitleKey(*revealed.TopMatch) : std::wstring{};
+                for (auto index = revealedCount; index < order.size(); ++index)
+                {
+                    auto const before = board.Titles().size();
+                    auto const diff = board.Absorb(order[index]);
+                    auto const nowKeys = Keys(board.Titles());
+                    Require(nowKeys.size() == before + diff.Appends.size(), "a late answer removed a card or appended out of its diff");
+                    Require(std::equal(shownKeys.begin(), shownKeys.end(), nowKeys.begin()), "a late answer moved or replaced a shown card");
+                    for (auto const& [at, title] : diff.Updates)
+                    {
+                        Require(at < before && HaloDesktop::Services::TitleKey(title) == nowKeys[at], "an update named another card");
+                    }
+                    auto const nowTop = board.TopMatch() ? HaloDesktop::Services::TitleKey(*board.TopMatch()) : std::wstring{};
+                    Require(nowTop == topKey, "a late answer changed the top match");
+                    shownKeys = nowKeys;
+                }
+            }
+        }
+    }
+
+    void TestIsSearchedCatalogType()
+    {
+        using HaloDesktop::Services::IsSearchedCatalogType;
+        Require(IsSearchedCatalogType(L"movie") && IsSearchedCatalogType(L"series"), "films or series were not searched");
+        Require(!IsSearchedCatalogType(L"tv") && !IsSearchedCatalogType(L"channel") && !IsSearchedCatalogType(L"other")
+                && !IsSearchedCatalogType(L"") && !IsSearchedCatalogType(L"Movie"),
+            "a catalog that is not films or series was searched");
     }
 
     void TestLibraryMatches()
@@ -479,7 +772,6 @@ namespace
 void RunSearchResultsTests()
 {
     TestRowsInAddonOrder();
-    TestTopMatchWaitsForEarlierCatalogs();
     TestFailedCatalogsReported();
     TestUniqueTitles();
     TestInterleaveTakesTurns();
@@ -489,17 +781,29 @@ void RunSearchResultsTests()
     TestInterleaveExcludesOtherAddonsCopy();
     TestByRelevance();
     TestRelevanceIgnoresCaseAccentsPunctuation();
-    TestTopMatchWithQuery();
-    TestRefineDropsUnrelated();
-    TestRefineYearAndArtwork();
+    TestRevealTopMatchPrefersExactName();
+    TestRevealTopMatchIgnoresFailedAndEmpty();
+    TestLooseNameIsNoTopMatch();
+    TestCutoffsDropUnrelated();
+    TestCutoffsYearAndArtwork();
+    TestCutoffsArtlessBesideScreenful();
+    TestRankingRelevanceBeforeCompleteness();
     TestTmdbMissingImage();
     TestCopiesEnrichByImdbId();
-    TestScreenfulDropsArtless();
     TestShortForms();
     TestScreenfulDropsLooseNames();
     TestFileNameEntry();
     TestDrawnPosterIsNoPoster();
     TestProductCodes();
+    TestParseSearchQueryYear();
+    TestYearMatchBreaksTies();
+    TestConsensusAndPosition();
+    TestRevealDecision();
+    TestLateAnswerOnlyAppends();
+    TestLateCopyFoldsFieldsInPlace();
+    TestLateAnswerUsesFrozenCutoffs();
+    TestVisiblePrefixNeverChanges();
+    TestIsSearchedCatalogType();
     TestLibraryMatches();
     TestSuggestedSearches();
     TestNotesAndQueryLimits();

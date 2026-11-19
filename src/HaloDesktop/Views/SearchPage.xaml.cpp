@@ -21,6 +21,8 @@ namespace
     // the band above the card it lifts into on hover, as Catalog's grid.
     constexpr double CaptionHeight = 52.0;
     constexpr double LiftBand = 4.0;
+    // What an earlier query's results fade to while the next one's are awaited.
+    constexpr double StaleResultsOpacity = 0.45;
 
     winrt::Microsoft::UI::Xaml::DependencyObject FindNamedDescendant(
         winrt::Microsoft::UI::Xaml::DependencyObject const& root,
@@ -132,6 +134,10 @@ namespace winrt::HaloDesktop::implementation
                 self->ApplyKindBadges(self->LibraryGrid());
                 self->ApplyKindBadges(self->ResultsGrid());
             }
+            if (std::wstring_view{ changed.PropertyName() } == L"ResultsStale")
+            {
+                self->ApplyResultsStale();
+            }
             self->UpdateSkeletonPulse();
             ::HaloDesktop::Controls::PlayEntranceWhenShown(self->PopularGrid(), self->m_popularShown);
             // A query's results settle in when they arrive, which is when its
@@ -142,6 +148,7 @@ namespace winrt::HaloDesktop::implementation
         });
         m_onScreen = true;
         m_viewModel.Shown();
+        ApplyResultsStale();
         UpdateSkeletonPulse();
 
         if (!m_focusQueryOnLoaded)
@@ -253,18 +260,6 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    void SearchPage::OnPosterFailed(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        // The card names the art that failed; its Tag names the title it was last
-        // handed. A recycled card can hold one item's art under another's Tag, so
-        // the title is dropped only when both name the same item.
-        auto const card = sender.try_as<winrt::HaloDesktop::PosterCard>();
-        if (!card) return;
-        auto const media = card.Tag().try_as<winrt::HaloDesktop::MediaSummary>();
-        if (!media || card.MetaId() != media.Id() || card.Poster() != media.Poster()) return;
-        m_viewModel.ReportMissingArt(media);
-    }
-
     void SearchPage::OnGridElementPrepared(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::ItemsRepeater const&,
         Microsoft::UI::Xaml::Controls::ItemsRepeaterElementPreparedEventArgs const& args)
@@ -336,6 +331,11 @@ namespace winrt::HaloDesktop::implementation
         TopMatchSkeletonColumn().Width(posterColumn);
         TopMatchPoster().Height(current.PosterArtHeight());
         TopMatchSkeletonPoster().Height(current.PosterArtHeight());
+    }
+
+    void SearchPage::ApplyResultsStale()
+    {
+        ResultsBlock().Opacity(m_viewModel.ResultsStale() ? StaleResultsOpacity : 1.0);
     }
 
     void SearchPage::EnsureSkeletonPulse()
