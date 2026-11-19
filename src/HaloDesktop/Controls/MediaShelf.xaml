@@ -45,7 +45,10 @@
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
       <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnStripSizeChanged">
-        <ItemsRepeater x:Name="ShelfItems" HorizontalCacheLength="4">
+        <!-- A shelf's cards stay built however far the page scrolls it out of
+             view (a long vertical cache), so coming back costs nothing; its
+             sideways cache stays the default, one strip either side. -->
+        <ItemsRepeater x:Name="ShelfItems" VerticalCacheLength="40">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Horizontal" Spacing="14" />
         </ItemsRepeater.Layout>

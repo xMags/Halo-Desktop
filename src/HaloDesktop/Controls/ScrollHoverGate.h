@@ -11,7 +11,7 @@ namespace HaloDesktop::Controls
     // moved, and lighting each one up in turn reads as flicker. The hover
     // arrives once the scroll settles, if the pointer is still on the card.
     //
-    // Scrolling means a ScrollViewer around the card reported a view change
+    // Scrolling means a ScrollViewer or ScrollView around the card reported a view change
     // within the last ScrollSettle. The first card to ask about a scroller
     // starts watching it, so a scroll already under way when nothing was
     // watching yet goes unnoticed once; every later one is seen.
@@ -46,6 +46,6 @@ namespace HaloDesktop::Controls
         bool m_inside{};
     };
 
-    // Whether a ScrollViewer around `element` is scrolling right now.
+    // Whether a ScrollViewer or ScrollView around `element` is scrolling right now.
     [[nodiscard]] bool IsScrollingUnder(winrt::Microsoft::UI::Xaml::DependencyObject const& element);
 }

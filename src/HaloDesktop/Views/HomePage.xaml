@@ -68,7 +68,13 @@
   <Grid>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}"><TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Text="Home could not be refreshed." /><Button Content="Retry" Click="OnRetryClick" /></StackPanel>
   <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Spacing="12" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}"><TextBlock Text="No titles are available from your visible addon catalogs." /><Button Content="Open Addons" Click="OnOpenSettingsClick" /></StackPanel>
-  <ScrollViewer x:Name="PageScroller" VerticalScrollBarVisibility="Hidden" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+  <!--
+    A ScrollView, not a ScrollViewer: its scrolling runs on the compositor
+    (InteractionTracker), so a wheel notch eases the page along. The
+    ScrollViewer jumped 40 to 80px in a single frame on each notch, and the
+    rows of cards read as shaking.
+  -->
+  <ScrollView x:Name="PageScroller" ContentOrientation="Vertical" HorizontalScrollMode="Disabled" ZoomMode="Disabled" VerticalScrollBarVisibility="Visible" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader ContentPadding="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" Title="Home">
         <local:SectionHeader.RightContent>
@@ -365,7 +371,7 @@
                  cards hit-testable too, so the strip answers everywhere. -->
             <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
               <!-- The last list on this page that realised everything it was given. -->
-              <ItemsRepeater x:Name="ContinueList" HorizontalCacheLength="4">
+              <ItemsRepeater x:Name="ContinueList" VerticalCacheLength="40">
               <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
               <ItemsRepeater.ItemTemplate>
                 <!-- The slot is sized so whole cards fill the strip (WholeCardStrip);
@@ -394,11 +400,17 @@
         plus the history and the library, and an items control realises every
         one of them at page load. Each shelf carries its own scroll viewer and
         repeater, and every one of those recomputes its realisation window on
-        each scroll frame, on screen or not. Virtualising here keeps that work
-        to the shelves actually in view. The shelf hands itself through Tag so
-        its See all knows where it leads.
+        each scroll frame, on screen or not. Virtualising here keeps page load
+        to the shelves actually in view.
+
+        The cache is long enough to hold the whole page, though: the repeater
+        builds the shelves in view first and the rest in idle frames after,
+        then keeps them all. Rebuilding a shelf mid-scroll costs 5 to 15ms of
+        UI thread and resizes it twice, which held back the wheel and made the
+        page lurch and jiggle as it scrolled. The shelf hands itself through
+        Tag so its See all knows where it leads.
       -->
-      <ItemsRepeater x:Name="ShelfList" VerticalCacheLength="4" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
+      <ItemsRepeater x:Name="ShelfList" VerticalCacheLength="40" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Vertical" Spacing="28" />
         </ItemsRepeater.Layout>
@@ -409,6 +421,6 @@
         </ItemsRepeater.ItemTemplate>
       </ItemsRepeater>
     </StackPanel>
-  </ScrollViewer>
+  </ScrollView>
   </Grid>
 </Page>

@@ -48,7 +48,8 @@ namespace
     }
 
     // The scroller's activity, watching it from now on if nothing was yet.
-    ScrollActivity* ActivityOf(Xaml::Controls::ScrollViewer const& scroller)
+    template <typename Scroller>
+    ScrollActivity* ActivityOf(Scroller const& scroller)
     {
         auto const property = ActivityProperty();
         if (!property) return nullptr;
@@ -59,7 +60,7 @@ namespace
         auto const activity = winrt::make_self<ScrollActivity>();
         // The handler holds the activity, not the scroller, so the two never
         // keep each other alive; both go when the scroller does.
-        scroller.ViewChanged([activity](winrt::Windows::Foundation::IInspectable const&, Xaml::Controls::ScrollViewerViewChangedEventArgs const&)
+        scroller.ViewChanged([activity](auto const&, auto const&)
         {
             activity->LastChange = std::chrono::steady_clock::now();
         });
@@ -81,9 +82,10 @@ namespace HaloDesktop::Controls
             for (auto node = Xaml::Media::VisualTreeHelper::GetParent(element); node;
                  node = Xaml::Media::VisualTreeHelper::GetParent(node))
             {
-                auto const scroller = node.try_as<Xaml::Controls::ScrollViewer>();
-                if (!scroller) continue;
-                auto const activity = ActivityOf(scroller);
+                ScrollActivity* activity = nullptr;
+                if (auto const viewer = node.try_as<Xaml::Controls::ScrollViewer>()) activity = ActivityOf(viewer);
+                else if (auto const view = node.try_as<Xaml::Controls::ScrollView>()) activity = ActivityOf(view);
+                else continue;
                 if (activity && now - activity->LastChange < ScrollSettle) scrolling = true;
             }
             return scrolling;
