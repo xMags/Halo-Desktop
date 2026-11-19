@@ -21,6 +21,10 @@
       <Color x:Key="HaloCtrlStrokeColor">#803C4456</Color>
       <Color x:Key="HaloCtrlHoverColor">#99343C4E</Color>
       <Color x:Key="HaloSubtleColor">#80282E3C</Color>
+      <!-- A segmented selector: its tray, and the raised pill on the chosen option. -->
+      <Color x:Key="HaloSegmentTrayColor">#99202533</Color>
+      <Color x:Key="HaloSegmentSelectedColor">#FF3A4256</Color>
+      <Color x:Key="HaloSegmentSelectedStrokeColor">#26FFFFFF</Color>
       <Color x:Key="HaloSubtlePressedColor">#59282E3C</Color>
       <Color x:Key="HaloText1Color">#FFF4F6FB</Color>
       <Color x:Key="HaloText2Color">#FFC7CDD9</Color>
@@ -104,6 +108,9 @@
       <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
       <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
       <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloSegmentTrayBrush" Color="{StaticResource HaloSegmentTrayColor}" />
+      <SolidColorBrush x:Key="HaloSegmentSelectedBrush" Color="{StaticResource HaloSegmentSelectedColor}" />
+      <SolidColorBrush x:Key="HaloSegmentSelectedStrokeBrush" Color="{StaticResource HaloSegmentSelectedStrokeColor}" />
       <SolidColorBrush x:Key="HaloSubtlePressedBrush" Color="{StaticResource HaloSubtlePressedColor}" />
       <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
       <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />
@@ -197,6 +204,10 @@
       <Color x:Key="HaloCtrlStrokeColor">#17101828</Color>
       <Color x:Key="HaloCtrlHoverColor">#0B101828</Color>
       <Color x:Key="HaloSubtleColor">#09101828</Color>
+      <!-- A segmented selector: its tray, and the raised pill on the chosen option. -->
+      <Color x:Key="HaloSegmentTrayColor">#0F101828</Color>
+      <Color x:Key="HaloSegmentSelectedColor">#FFFFFFFF</Color>
+      <Color x:Key="HaloSegmentSelectedStrokeColor">#1F101828</Color>
       <Color x:Key="HaloSubtlePressedColor">#06101828</Color>
       <Color x:Key="HaloText1Color">#FF0E1220</Color>
       <Color x:Key="HaloText2Color">#FF3B4354</Color>
@@ -281,6 +292,9 @@
       <SolidColorBrush x:Key="HaloCtrlStrokeBrush" Color="{StaticResource HaloCtrlStrokeColor}" />
       <SolidColorBrush x:Key="HaloCtrlHoverBrush" Color="{StaticResource HaloCtrlHoverColor}" />
       <SolidColorBrush x:Key="HaloSubtleBrush" Color="{StaticResource HaloSubtleColor}" />
+      <SolidColorBrush x:Key="HaloSegmentTrayBrush" Color="{StaticResource HaloSegmentTrayColor}" />
+      <SolidColorBrush x:Key="HaloSegmentSelectedBrush" Color="{StaticResource HaloSegmentSelectedColor}" />
+      <SolidColorBrush x:Key="HaloSegmentSelectedStrokeBrush" Color="{StaticResource HaloSegmentSelectedStrokeColor}" />
       <SolidColorBrush x:Key="HaloSubtlePressedBrush" Color="{StaticResource HaloSubtlePressedColor}" />
       <SolidColorBrush x:Key="HaloText1Brush" Color="{StaticResource HaloText1Color}" />
       <SolidColorBrush x:Key="HaloText2Brush" Color="{StaticResource HaloText2Color}" />

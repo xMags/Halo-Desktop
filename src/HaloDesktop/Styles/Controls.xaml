@@ -300,10 +300,17 @@
     automation keep working; only the template changes. Hover and selection are
     separate layers so the two visual state groups never fight over one property.
   -->
+  <!--
+    The chosen option is a raised pill (its own fill and a hairline edge) on the
+    tray, so it reads at a glance in both themes; the others use the secondary
+    ink rather than the dimmest, so every label stays easy to read. 24 tall
+    inside the tray's 3px inset and 1px edge makes 32, the height of a text box,
+    so a tray beside a search box lines up with it.
+  -->
   <Style x:Key="HaloSegmentedRadioStyle" TargetType="RadioButton">
     <Setter Property="MinWidth" Value="0" />
-    <Setter Property="MinHeight" Value="0" />
-    <Setter Property="Padding" Value="16,5" />
+    <Setter Property="MinHeight" Value="24" />
+    <Setter Property="Padding" Value="14,0" />
     <Setter Property="FontSize" Value="{StaticResource HaloFontBody}" />
     <Setter Property="Background" Value="Transparent" />
     <!-- Centred by default, but honoured rather than hard-coded: a caller asking for Stretch used to be silently ignored. -->
@@ -312,9 +319,9 @@
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
-          <Grid x:Name="Root" Background="Transparent" CornerRadius="3">
-            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Opacity="0" />
-            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloCtrlHoverBrush}" CornerRadius="3" Opacity="0" />
+          <Grid x:Name="Root" Background="Transparent" CornerRadius="4">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" Opacity="0" />
+            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloSegmentSelectedBrush}" BorderBrush="{ThemeResource HaloSegmentSelectedStrokeBrush}" BorderThickness="1" CornerRadius="4" Opacity="0" />
             <ContentPresenter
               x:Name="Label"
               Padding="{TemplateBinding Padding}"
@@ -326,7 +333,7 @@
               ContentTemplate="{TemplateBinding ContentTemplate}"
               FontSize="{TemplateBinding FontSize}"
               FontWeight="Normal"
-              Foreground="{ThemeResource HaloText3Brush}" />
+              Foreground="{ThemeResource HaloText2Brush}" />
             <VisualStateManager.VisualStateGroups>
               <VisualStateGroup x:Name="CommonStates">
                 <VisualState x:Name="Normal" />
@@ -989,13 +996,14 @@
     <Setter Property="CornerRadius" Value="10" />
   </Style>
 
-  <!-- The 3px inset tray the segmented selectors sit inside. -->
+  <!-- The 3px inset tray the segmented selectors sit inside: a shade under the
+       page, so the chosen option's raised pill stands out from it. -->
   <Style x:Key="HaloSegmentedTrayStyle" TargetType="Border">
     <Setter Property="Padding" Value="3" />
-    <Setter Property="Background" Value="{ThemeResource HaloCtrlBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloSegmentTrayBrush}" />
     <Setter Property="BorderBrush" Value="{ThemeResource HaloCtrlStrokeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="CornerRadius" Value="5" />
+    <Setter Property="CornerRadius" Value="6" />
     <Setter Property="HorizontalAlignment" Value="Left" />
   </Style>
 

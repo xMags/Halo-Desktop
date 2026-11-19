@@ -72,17 +72,23 @@
     <StackPanel Padding="0,0,0,48" Spacing="28">
       <local:SectionHeader ContentPadding="{x:Bind ViewModel.HeaderPadding, Mode=OneWay}" Title="Home">
         <local:SectionHeader.RightContent>
-          <StackPanel Orientation="Horizontal" Spacing="16">
+          <!-- The search box and the filter tray share one height (32), one
+               corner and one hairline edge, so the pair reads as a set. -->
+          <StackPanel Orientation="Horizontal" Spacing="12">
             <AutoSuggestBox
               x:Name="HomeSearchBox"
               Width="300"
               Height="32"
               VerticalAlignment="Center"
+              Background="{ThemeResource HaloCtrlBrush}"
+              BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="6"
               FontSize="{StaticResource HaloFontBody}"
               PlaceholderText="Search movies and series"
               QueryIcon="Find"
               QuerySubmitted="OnSearchSubmitted" />
-            <Border Style="{StaticResource HaloSegmentedTrayStyle}">
+            <Border VerticalAlignment="Center" Style="{StaticResource HaloSegmentedTrayStyle}">
               <StackPanel Orientation="Horizontal">
                 <RadioButton GroupName="HomeFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloSegmentedRadioStyle}" />
                 <RadioButton GroupName="HomeFilter" Click="OnMoviesFilterClick" Content="Movies" Style="{StaticResource HaloSegmentedRadioStyle}" />
