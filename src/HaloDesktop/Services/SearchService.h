@@ -6,7 +6,6 @@
 
 #include "Api/Dto.h"
 
-#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -39,21 +38,11 @@ namespace HaloDesktop::Services
         Asking,
     };
 
-    // What Search shows before a query: the first films catalog and the first
-    // series catalog the addons offer, as each answered.
-    struct SearchPopular final
-    {
-        std::vector<SearchTitle> Movies;
-        std::vector<SearchTitle> Series;
-        bool MoviesLoading{};
-        bool SeriesLoading{};
-    };
-
     using SearchChangedToken = std::uint64_t;
     using SearchChangedHandler = std::function<void()>;
 
     // Search's data: the catalogs a query is asked of, their answers as they
-    // land, the popular titles, and the device's search history.
+    // land, and the device's search history.
     //
     // UI-thread only, like CatalogService. Each query lays out its own board
     // of catalogs (HomeShelfBoard, reset per query), so an answer can only
@@ -88,10 +77,6 @@ namespace HaloDesktop::Services
         // One state per target, in target order.
         [[nodiscard]] std::vector<SearchTargetState> States() const;
 
-        // Starts the popular catalogs' requests when nothing usable is held.
-        void EnsurePopular();
-        [[nodiscard]] SearchPopular const& Popular() const noexcept;
-
         // The library as libraryMatches reads it, and whether a title is in it.
         [[nodiscard]] std::vector<SearchLibraryEntry> LibraryEntries() const;
         [[nodiscard]] bool InLibrary(std::wstring const& type, std::wstring const& id) const;
@@ -110,12 +95,6 @@ namespace HaloDesktop::Services
         void OnAccountChanged();
 
     private:
-        enum class PopularSlot
-        {
-            Movies,
-            Series,
-        };
-
         [[nodiscard]] concurrency::task<void> StartAsync(std::uint64_t serial);
         void AskTargets();
         static concurrency::task<void> RunTargetFetchAsync(
@@ -127,7 +106,6 @@ namespace HaloDesktop::Services
         void ApplyTargetAnswer(
             HomeShelfTicket const& ticket,
             std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> answer);
-        [[nodiscard]] concurrency::task<void> LoadPopularAsync(std::uint64_t accountVersion, std::uint64_t serial);
         void SaveHistory();
         void NotifyChanged();
 
@@ -146,11 +124,6 @@ namespace HaloDesktop::Services
         std::vector<SearchTarget> m_targets;
         std::vector<std::size_t> m_targetRanks;
         std::unordered_map<std::wstring, std::vector<SearchTitle>> m_answers;
-
-        SearchPopular m_popular;
-        std::uint64_t m_popularSerial{};
-        bool m_popularRunning{};
-        std::optional<std::chrono::steady_clock::time_point> m_popularLoadedAt;
 
         std::vector<SearchHistoryEntry> m_history;
         std::unordered_map<SearchChangedToken, SearchChangedHandler> m_handlers;

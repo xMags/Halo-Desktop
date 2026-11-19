@@ -9,7 +9,6 @@
 #include "Controls/ArtworkUrlPolicy.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
-#include "Services/PlayableVideoPolicy.h"
 #include "Services/RatingPolicy.h"
 #include "Services/SearchRankingPolicy.h"
 #include "Services/SearchRevealPolicy.h"
@@ -30,15 +29,23 @@ namespace
 
     // How often an unrevealed query checks whether its reveal is due.
     constexpr std::chrono::milliseconds RevealCheckInterval{ 100 };
-    constexpr wchar_t AddonsUnreachableNote[] = L"Search could not reach your addons. Check your connection and try again.";
+    // The status line while a query's results are not revealed yet.
+    constexpr wchar_t SearchingNote[] = L"Searching…";
 
-    // The action card's sentences, until later stages give these kinds their own cards.
-    constexpr wchar_t LookingUpText[] = L"Looking up…";
+    // The action card's words. Magnets, TVDB numbers and IMDb people get
+    // cards of their own in later stages; until then they say so.
+    constexpr wchar_t LookingUpPrefix[] = L"Looking up ";
+    constexpr wchar_t LookingUpSecondary[] = L"Asking your addons which title this is.";
     constexpr wchar_t NoAddonKnowsTitleText[] = L"No addon knows this title";
-    constexpr wchar_t PlayLinkText[] = L"Play this link";
-    constexpr wchar_t MagnetNotYetText[] = L"Magnet links aren't available yet.";
-    constexpr wchar_t LinkNotYetText[] = L"This kind of link isn't available yet.";
+    constexpr wchar_t NotFoundSuffix[] = L" was not found by any of your addons.";
+    constexpr wchar_t CannotLookUpText[] = L"This link can't be looked up";
     constexpr wchar_t TvdbSlugText[] = L"This TVDB link has no number in it. Paste the IMDb link instead.";
+    constexpr wchar_t LinkNotYetText[] = L"This kind of link isn't available yet";
+    constexpr wchar_t WebLinkSecondary[] = L"Plays straight from this address. Not added to your history.";
+    constexpr wchar_t CannotPlayText[] = L"This link can't be played";
+    constexpr wchar_t MagnetNotYetText[] = L"Magnet links aren't available yet";
+    constexpr wchar_t OpenTitleText[] = L"Open title";
+    constexpr wchar_t PlayLinkText[] = L"Play this link";
 
     winrt::Microsoft::UI::Xaml::Visibility VisibleIf(bool value) noexcept
     {
@@ -152,7 +159,6 @@ namespace winrt::HaloDesktop::implementation
           m_dispatcher(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread()),
           m_suggestions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_recent(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_popular(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_library(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
@@ -217,7 +223,6 @@ namespace winrt::HaloDesktop::implementation
                         again->RaiseAction();
                     }
                     again->m_search->Search(again->m_activeQuery, true);
-                    again->m_search->EnsurePopular();
                     again->Refresh();
                 }
             });
@@ -262,7 +267,7 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        // Too short to search: back to recent and popular at once, not after the pause.
+        // Too short to search: back to the empty page at once, not after the pause.
         if (!::HaloDesktop::Services::IsSearchableQuery(value))
         {
             m_activeQuery = ::HaloDesktop::Services::CappedQuery(value);
@@ -296,7 +301,6 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility SearchViewModel::ClearVisibility() const noexcept { return VisibleIf(!m_query.empty()); }
     winrt::Windows::Foundation::IInspectable SearchViewModel::Suggestions() const { return m_suggestions; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::RecentItems() const { return m_recent; }
-    winrt::Windows::Foundation::IInspectable SearchViewModel::PopularItems() const { return m_popular; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::LibraryItems() const { return m_library; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::ResultItems() const { return m_results; }
     bool SearchViewModel::ShowKindBadges() const noexcept { return m_filterIndex == 0; }
@@ -365,11 +369,6 @@ namespace winrt::HaloDesktop::implementation
         return poster ? winrt::hstring{ ::HaloDesktop::Controls::CardArtworkUrl(*poster) } : winrt::hstring{};
     }
 
-    winrt::hstring SearchViewModel::TopMatchActionLabel() const
-    {
-        return m_topMatchTitle && m_topMatchTitle->Type == L"series" ? L"Choose episode" : L"Play";
-    }
-
     Microsoft::UI::Xaml::Visibility SearchViewModel::TopMatchRatingVisibility() const noexcept
     {
         try { return VisibleIf(!TopMatchRating().empty()); } catch (...) { return Collapsed; }
@@ -386,9 +385,7 @@ namespace winrt::HaloDesktop::implementation
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::SuggestionsVisibility() const noexcept { return VisibleIf(m_suggestionsShown); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::RecentVisibility() const noexcept { return VisibleIf(m_recentShown); }
-    Microsoft::UI::Xaml::Visibility SearchViewModel::PopularVisibility() const noexcept { return VisibleIf(m_popularSection); }
-    Microsoft::UI::Xaml::Visibility SearchViewModel::PopularGridVisibility() const noexcept { return VisibleIf(m_popularSection && !m_popularSkeleton); }
-    Microsoft::UI::Xaml::Visibility SearchViewModel::PopularSkeletonVisibility() const noexcept { return VisibleIf(m_popularSection && m_popularSkeleton); }
+    Microsoft::UI::Xaml::Visibility SearchViewModel::HintsVisibility() const noexcept { return VisibleIf(!m_active && !ActionShown()); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::NoAddonsVisibility() const noexcept { return VisibleIf(m_noAddons); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::TopMatchVisibility() const noexcept { return VisibleIf(m_topMatch != nullptr); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::TopMatchSkeletonVisibility() const noexcept { return VisibleIf(m_topMatchSkeleton); }
@@ -396,12 +393,14 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility SearchViewModel::ResultsVisibility() const noexcept { return VisibleIf(m_active && m_resultCount > 0); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::ResultsSkeletonVisibility() const noexcept { return VisibleIf(m_resultsSkeleton); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::StatusVisibility() const noexcept { return VisibleIf(m_active); }
+    bool SearchViewModel::StatusFailed() const noexcept { return m_statusFailed; }
     Microsoft::UI::Xaml::Visibility SearchViewModel::FilteredEmptyVisibility() const noexcept { return VisibleIf(m_filteredEmpty); }
     Microsoft::UI::Xaml::Visibility SearchViewModel::NothingFoundVisibility() const noexcept { return VisibleIf(m_nothingFound); }
+    Microsoft::UI::Xaml::Visibility SearchViewModel::AddonsUnreachableVisibility() const noexcept { return VisibleIf(m_addonsUnreachable); }
 
     bool SearchViewModel::SkeletonsShown() const noexcept
     {
-        return (m_popularSection && m_popularSkeleton) || m_topMatchSkeleton || m_resultsSkeleton;
+        return m_topMatchSkeleton || m_resultsSkeleton;
     }
 
     void SearchViewModel::SetFilter(std::int32_t index)
@@ -440,7 +439,16 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        m_activeQuery = ::HaloDesktop::Services::CappedQuery(m_query);
+        auto capped = ::HaloDesktop::Services::CappedQuery(m_query);
+        // The top match of exactly what the box holds: Enter opens it, as the
+        // key hint beside its button says. Text not searched yet, or results
+        // still awaited, is searched instead.
+        if (m_topMatch && !m_resultsStale && capped == m_activeQuery)
+        {
+            OpenTopMatch();
+            return;
+        }
+        m_activeQuery = std::move(capped);
         SearchNow();
         RecordIfText(m_activeQuery);
     }
@@ -462,6 +470,22 @@ namespace winrt::HaloDesktop::implementation
         m_activeQuery = std::wstring{ capped };
         SearchNow();
         RecordIfText(capped);
+    }
+
+    void SearchViewModel::RetrySearch()
+    {
+        if (!m_active || ActionShown())
+        {
+            return;
+        }
+        // Forced: the same query, every catalog asked again.
+        m_search->Search(m_activeQuery, true);
+        Refresh();
+    }
+
+    void SearchViewModel::OpenSettings()
+    {
+        m_navigation->GoTo(::HaloDesktop::Services::Page::Settings);
     }
 
     void SearchViewModel::Forget(winrt::hstring const& term) { m_search->RemoveTerm(term); }
@@ -502,33 +526,6 @@ namespace winrt::HaloDesktop::implementation
         OpenDetail(m_topMatch);
     }
 
-    void SearchViewModel::PlayTopMatch()
-    {
-        if (!m_topMatch)
-        {
-            return;
-        }
-        auto const media = m_topMatch;
-        if (media.Kind() == winrt::HaloDesktop::MediaKind::Series
-            || !::HaloDesktop::Services::PlayableFromPreview(media.Id(), media.DefaultVideoId()))
-        {
-            OpenTopMatch();
-            return;
-        }
-        RecordQuery();
-        m_navigation->ShowSheet(
-            ::HaloDesktop::Services::Page::Sources,
-            winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
-                media.Type(),
-                media.Id(),
-                winrt::hstring{ ::HaloDesktop::Services::MovieVideoId(media.Id(), media.DefaultVideoId()) },
-                media.Type() + L":" + media.Id(),
-                media.Title(),
-                media.Title(),
-                L"",
-                media.Poster()));
-    }
-
     void SearchViewModel::Arrive(winrt::hstring const& query)
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(query) };
@@ -544,7 +541,6 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::Shown()
     {
-        m_search->EnsurePopular();
         Refresh();
     }
 
@@ -701,46 +697,33 @@ namespace winrt::HaloDesktop::implementation
         m_hasShown = false;
         ForgetShown();
 
-        // Popular, before a search: the first films and first series catalogs
-        // taking turns, narrowed by the kind filter.
-        auto const type = FilterType();
-        auto const& popular = m_search->Popular();
-        std::vector<std::vector<SearchTitle>> popularLists{
-            type && *type == L"series" ? std::vector<SearchTitle>{} : popular.Movies,
-            type && *type == L"movie" ? std::vector<SearchTitle>{} : popular.Series,
-        };
-        auto popularTitles = Services::Interleave(popularLists);
-        if (popularTitles.size() > Services::SearchPopularShown) popularTitles.resize(Services::SearchPopularShown);
-        auto const popularLoading = (!(type && *type == L"series") && popular.MoviesLoading)
-            || (!(type && *type == L"movie") && popular.SeriesLoading);
-        m_popularSection = popularLoading || !popularTitles.empty();
-        m_popularSkeleton = popularTitles.empty();
-        Sync(m_popular, m_popularShown, std::move(popularTitles));
-
         m_resultsStale = false;
         m_topMatchSkeleton = false;
         m_resultsSkeleton = false;
         m_stillAskingShown = false;
+        m_statusFailed = false;
         m_statusText = {};
         m_noAddons = false;
+        m_addonsUnreachable = false;
         m_filteredEmpty = false;
         m_nothingFound = false;
         FinishCompose();
     }
 
-    void SearchViewModel::ComposePending(::HaloDesktop::Services::SearchProgressResult const& progress)
+    void SearchViewModel::ComposePending([[maybe_unused]] ::HaloDesktop::Services::SearchProgressResult const& progress)
     {
         // The previous query's results stay, dimmed; placeholders only when
-        // nothing has been shown since the box was last idle.
-        m_popularSection = false;
+        // nothing has been shown since the box was last idle. Until the
+        // reveal the line says only that the search is under way; how many
+        // catalogs are still out is said once results are on screen.
         m_resultsStale = m_hasShown;
         m_topMatchSkeleton = !m_hasShown;
         m_resultsSkeleton = !m_hasShown;
         m_stillAskingShown = true;
-        m_statusText = progress.Total > 0
-            ? winrt::hstring{ ::HaloDesktop::Services::SearchStillAskingNote(progress.Pending) }
-            : winrt::hstring{};
+        m_statusFailed = false;
+        m_statusText = SearchingNote;
         m_noAddons = false;
+        m_addonsUnreachable = false;
         m_filteredEmpty = false;
         m_nothingFound = false;
         m_resultCount = m_displayed.size();
@@ -881,24 +864,10 @@ namespace winrt::HaloDesktop::implementation
         namespace Services = ::HaloDesktop::Services;
         auto const phase = m_search->Phase();
         auto const pending = progress.Pending > 0;
-        m_popularSection = false;
         m_resultsStale = false;
         m_topMatchSkeleton = false;
         m_resultsSkeleton = false;
         m_stillAskingShown = pending;
-        if (phase == Services::SearchPhase::AddonsFailed)
-        {
-            // No catalog could be asked at all, which reads as every one failing.
-            m_statusText = AddonsUnreachableNote;
-        }
-        else if (pending)
-        {
-            m_statusText = winrt::hstring{ Services::SearchStillAskingNote(progress.Pending) };
-        }
-        else
-        {
-            m_statusText = winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) };
-        }
         m_noAddons = phase == Services::SearchPhase::Asking && progress.Total == 0;
         m_resultCount = m_displayed.size();
         // Only once every catalog has settled, so an empty state never flashes
@@ -908,6 +877,27 @@ namespace winrt::HaloDesktop::implementation
         m_filteredEmpty = settledEmpty && !progress.Groups.empty() && type.has_value();
         m_nothingFound = settledEmpty && !m_topMatchTitle && !type && progress.Total > 0
             && progress.Failed.size() < progress.Total;
+        // No catalog could be asked at all (the addons could not be listed),
+        // or every one asked failed and nothing is on screen: the body says
+        // so, and the status line stays empty so it is not said twice.
+        auto const everyOneFailed = !pending && progress.Total > 0 && progress.Failed.size() >= progress.Total;
+        m_addonsUnreachable = phase == Services::SearchPhase::AddonsFailed
+            || (everyOneFailed && settledEmpty && !m_topMatchTitle);
+        if (m_addonsUnreachable)
+        {
+            m_statusText = {};
+            m_statusFailed = false;
+        }
+        else if (pending)
+        {
+            m_statusText = winrt::hstring{ Services::SearchStillAskingNote(progress.Pending) };
+            m_statusFailed = false;
+        }
+        else
+        {
+            m_statusText = winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) };
+            m_statusFailed = !m_statusText.empty();
+        }
     }
 
     void SearchViewModel::ForgetShown()
@@ -1006,14 +996,14 @@ namespace winrt::HaloDesktop::implementation
         m_absorbed.clear();
         m_hasShown = false;
         ForgetShown();
-        m_popularSection = false;
-        m_popularSkeleton = false;
         m_resultsStale = false;
         m_topMatchSkeleton = false;
         m_resultsSkeleton = false;
         m_stillAskingShown = false;
+        m_statusFailed = false;
         m_statusText = {};
         m_noAddons = false;
+        m_addonsUnreachable = false;
         m_filteredEmpty = false;
         m_nothingFound = false;
         FinishCompose();
@@ -1021,13 +1011,57 @@ namespace winrt::HaloDesktop::implementation
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionCardVisibility() const noexcept { return VisibleIf(ActionShown()); }
 
+    bool SearchViewModel::LookupFound() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle
+            && m_lookupState == LookupState::Found && m_lookupTitle.has_value();
+    }
+
+    winrt::HaloDesktop::SearchActionTone SearchViewModel::ActionTone() const noexcept
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        switch (m_input.Kind)
+        {
+        case Kind::ImdbTitle: return m_lookupState == LookupState::NotFound ? SearchActionTone::Mute : SearchActionTone::Accent;
+        case Kind::WebLink: return SearchActionTone::Accent;
+        case Kind::ImdbPerson:
+        case Kind::TvdbNumeric:
+        case Kind::TvdbSlug:
+        case Kind::Magnet:
+        case Kind::UnsupportedLink:
+        case Kind::Text: break;
+        }
+        return SearchActionTone::Mute;
+    }
+
+    winrt::HaloDesktop::SearchActionGlyph SearchViewModel::ActionGlyph() const noexcept
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        if (LookupFound())
+        {
+            return SearchActionGlyph::Poster;
+        }
+        switch (m_input.Kind)
+        {
+        case Kind::WebLink:
+        case Kind::UnsupportedLink: return SearchActionGlyph::Link;
+        case Kind::Magnet: return SearchActionGlyph::Magnet;
+        case Kind::ImdbTitle:
+        case Kind::ImdbPerson:
+        case Kind::TvdbNumeric:
+        case Kind::TvdbSlug:
+        case Kind::Text: break;
+        }
+        return SearchActionGlyph::Id;
+    }
+
     winrt::hstring SearchViewModel::ActionKicker() const
     {
         using Kind = ::HaloDesktop::Services::SearchInputKind;
         switch (m_input.Kind)
         {
-        case Kind::ImdbTitle: return L"IMDB TITLE";
-        case Kind::ImdbPerson: return L"IMDB PERSON";
+        case Kind::ImdbTitle:
+        case Kind::ImdbPerson: return L"IMDB LINK";
         case Kind::TvdbNumeric:
         case Kind::TvdbSlug: return L"TVDB LINK";
         case Kind::Magnet: return L"MAGNET LINK";
@@ -1044,77 +1078,114 @@ namespace winrt::HaloDesktop::implementation
         switch (m_input.Kind)
         {
         case Kind::ImdbTitle:
-            if (m_lookupState == LookupState::Found && m_lookupTitle) return winrt::hstring{ m_lookupTitle->Name };
+            if (LookupFound()) return winrt::hstring{ m_lookupTitle->Name };
             if (m_lookupState == LookupState::NotFound) return NoAddonKnowsTitleText;
-            return LookingUpText;
-        case Kind::WebLink: return PlayLinkText;
+            return winrt::hstring{ std::wstring{ LookingUpPrefix } + m_input.ImdbId + L"…" };
+        case Kind::WebLink: return winrt::hstring{ m_input.DisplayName.empty() ? m_input.Host : m_input.DisplayName };
         case Kind::Magnet: return MagnetNotYetText;
         case Kind::TvdbNumeric:
         case Kind::ImdbPerson: return LinkNotYetText;
-        case Kind::TvdbSlug: return TvdbSlugText;
-        case Kind::UnsupportedLink: return winrt::hstring{ m_input.Reason };
+        case Kind::TvdbSlug: return CannotLookUpText;
+        case Kind::UnsupportedLink: return CannotPlayText;
         case Kind::Text: break;
         }
         return {};
     }
 
-    winrt::hstring SearchViewModel::ActionDetail() const
+    winrt::hstring SearchViewModel::ActionRating() const
+    {
+        if (!LookupFound()) return {};
+        return winrt::hstring{ ::HaloDesktop::Services::RatingLabel(View(m_lookupTitle->Rating)).value_or(L"") };
+    }
+
+    winrt::hstring SearchViewModel::ActionMono() const
+    {
+        if (LookupFound()) return m_lookupTitle->Type == L"series" ? L"SERIES" : L"MOVIE";
+        if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return winrt::hstring{ m_input.Host };
+        return {};
+    }
+
+    winrt::hstring SearchViewModel::ActionYear() const
+    {
+        if (!LookupFound()) return {};
+        return winrt::hstring{ m_lookupTitle->ReleaseInfo.value_or(L"") };
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionMetaVisibility() const noexcept
+    {
+        try { return VisibleIf(!ActionRating().empty() || !ActionMono().empty() || !ActionYear().empty()); } catch (...) { return Collapsed; }
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionRatingVisibility() const noexcept
+    {
+        try { return VisibleIf(!ActionRating().empty()); } catch (...) { return Collapsed; }
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionMonoVisibility() const noexcept
+    {
+        try { return VisibleIf(!ActionMono().empty()); } catch (...) { return Collapsed; }
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionYearVisibility() const noexcept
+    {
+        try { return VisibleIf(!ActionYear().empty()); } catch (...) { return Collapsed; }
+    }
+
+    winrt::hstring SearchViewModel::ActionSecondary() const
     {
         using Kind = ::HaloDesktop::Services::SearchInputKind;
-        if (m_input.Kind == Kind::ImdbTitle)
+        switch (m_input.Kind)
         {
-            if (m_lookupState != LookupState::Found || !m_lookupTitle) return winrt::hstring{ m_input.ImdbId };
-            std::wstring line = m_lookupTitle->Type == L"series" ? L"SERIES" : L"MOVIE";
-            if (auto const& year = m_lookupTitle->ReleaseInfo; year && !year->empty()) line.append(L" · ").append(*year);
-            return winrt::hstring{ line };
-        }
-        if (m_input.Kind == Kind::WebLink)
-        {
-            if (m_input.DisplayName.empty() || m_input.DisplayName == m_input.Host) return winrt::hstring{ m_input.Host };
-            return winrt::hstring{ m_input.Host + L" · " + m_input.DisplayName };
+        case Kind::ImdbTitle:
+            if (LookupFound()) return {};
+            if (m_lookupState == LookupState::NotFound) return winrt::hstring{ m_input.ImdbId + NotFoundSuffix };
+            return LookingUpSecondary;
+        case Kind::WebLink: return WebLinkSecondary;
+        case Kind::TvdbSlug: return TvdbSlugText;
+        case Kind::UnsupportedLink: return winrt::hstring{ m_input.Reason };
+        case Kind::ImdbPerson:
+        case Kind::TvdbNumeric:
+        case Kind::Magnet:
+        case Kind::Text: break;
         }
         return {};
     }
 
-    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionDetailVisibility() const noexcept
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionSecondaryVisibility() const noexcept
     {
-        using Kind = ::HaloDesktop::Services::SearchInputKind;
-        return VisibleIf(m_input.Kind == Kind::ImdbTitle || m_input.Kind == Kind::WebLink);
+        try { return VisibleIf(!ActionSecondary().empty()); } catch (...) { return Collapsed; }
     }
 
     winrt::hstring SearchViewModel::ActionPoster() const
     {
-        if (m_lookupState != LookupState::Found || !m_lookupTitle || ::HaloDesktop::Services::HasNoPoster(*m_lookupTitle)) return {};
+        if (!LookupFound() || ::HaloDesktop::Services::HasNoPoster(*m_lookupTitle)) return {};
         return winrt::hstring{ *m_lookupTitle->Poster };
     }
 
     winrt::hstring SearchViewModel::ActionMetaId() const
     {
-        return m_lookupState == LookupState::Found && m_lookupTitle ? winrt::hstring{ m_lookupTitle->Id } : winrt::hstring{};
+        return LookupFound() ? winrt::hstring{ m_lookupTitle->Id } : winrt::hstring{};
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionPosterVisibility() const noexcept
     {
-        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle
-            && m_lookupState == LookupState::Found && m_lookupTitle.has_value());
+        return VisibleIf(LookupFound());
     }
 
     winrt::hstring SearchViewModel::ActionButtonLabel() const
     {
-        if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return L"Play";
-        return L"Open title";
+        if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return PlayLinkText;
+        return OpenTitleText;
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonVisibility() const noexcept
     {
-        using Kind = ::HaloDesktop::Services::SearchInputKind;
-        return VisibleIf(m_input.Kind == Kind::WebLink
-            || (m_input.Kind == Kind::ImdbTitle && m_lookupState == LookupState::Found && m_lookupTitle.has_value()));
+        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink || LookupFound());
     }
 
-    bool SearchViewModel::ActionBusy() const noexcept
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonGlyphVisibility() const noexcept
     {
-        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle && m_lookupState == LookupState::Looking;
+        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink);
     }
 
     void SearchViewModel::ActivateAction()
@@ -1182,9 +1253,11 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::RaiseAction()
     {
         for (auto const name : {
-                 L"ActionCardVisibility", L"ActionKicker", L"ActionTitle", L"ActionDetail", L"ActionDetailVisibility",
+                 L"ActionCardVisibility", L"ActionTone", L"ActionGlyph", L"ActionKicker", L"ActionTitle",
+                 L"ActionRating", L"ActionMono", L"ActionYear", L"ActionMetaVisibility", L"ActionRatingVisibility",
+                 L"ActionMonoVisibility", L"ActionYearVisibility", L"ActionSecondary", L"ActionSecondaryVisibility",
                  L"ActionPoster", L"ActionMetaId", L"ActionPosterVisibility", L"ActionButtonLabel",
-                 L"ActionButtonVisibility", L"ActionBusy" })
+                 L"ActionButtonVisibility", L"ActionButtonGlyphVisibility" })
         {
             Raise(name);
         }
@@ -1217,12 +1290,11 @@ namespace winrt::HaloDesktop::implementation
         for (auto const name : {
                  L"ResultCountText", L"StatusText", L"StillAsking", L"ResultsStale", L"FilteredEmptyText",
                  L"TopMatch", L"TopMatchTitle", L"TopMatchRating", L"TopMatchKind", L"TopMatchYear", L"TopMatchBlurb",
-                 L"TopMatchPoster", L"TopMatchMetaId", L"TopMatchBackdrop", L"TopMatchSoftBackdrop", L"TopMatchActionLabel",
+                 L"TopMatchPoster", L"TopMatchMetaId", L"TopMatchBackdrop", L"TopMatchSoftBackdrop",
                  L"TopMatchRatingVisibility", L"TopMatchYearVisibility", L"TopMatchInLibraryVisibility", L"TopMatchBlurbVisibility",
-                 L"RecentVisibility", L"PopularVisibility", L"PopularGridVisibility", L"PopularSkeletonVisibility",
-                 L"StatusVisibility", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
+                 L"RecentVisibility", L"HintsVisibility", L"StatusVisibility", L"StatusFailed", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
                  L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
-                 L"FilteredEmptyVisibility", L"NothingFoundVisibility" })
+                 L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility" })
         {
             Raise(name);
         }

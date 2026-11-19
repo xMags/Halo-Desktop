@@ -6,19 +6,16 @@
 #include "Api/CatalogExtrasPolicy.h"
 #include "Services/AddonService.h"
 #include "Services/DevicePreferencesStore.h"
-#include "Services/HomeRowsPolicy.h"
 #include "Services/LibraryService.h"
 
 #include <algorithm>
+#include <chrono>
 #include <stdexcept>
 #include <unordered_set>
 #include <utility>
 
 namespace
 {
-    // The reference keeps the popular rows ten minutes before asking again.
-    constexpr std::chrono::minutes PopularFreshFor{ 10 };
-
     std::optional<std::wstring> Text(std::optional<winrt::hstring> const& value)
     {
         return value ? std::optional<std::wstring>{ std::wstring{ *value } } : std::nullopt;
@@ -361,128 +358,6 @@ namespace HaloDesktop::Services
         return states;
     }
 
-    void SearchService::EnsurePopular()
-    {
-        if (m_popularRunning)
-        {
-            return;
-        }
-        if (m_popularLoadedAt && std::chrono::steady_clock::now() - *m_popularLoadedAt < PopularFreshFor)
-        {
-            return;
-        }
-        m_popularRunning = true;
-        ObserveDetached(LoadPopularAsync(m_accountVersion, ++m_popularSerial));
-    }
-
-    concurrency::task<void> SearchService::LoadPopularAsync(std::uint64_t accountVersion, std::uint64_t serial)
-    {
-        auto const weak = weak_from_this();
-        auto const uiContext = winrt::apartment_context{};
-        auto const addons = m_addons;
-        auto const backends = m_backends;
-        auto const current = [weak, accountVersion, serial]() -> std::shared_ptr<SearchService>
-        {
-            auto self = weak.lock();
-            return self && self->m_accountVersion == accountVersion && self->m_popularSerial == serial ? self : nullptr;
-        };
-
-        auto addonsFailed = false;
-        try
-        {
-            co_await addons->LoadAsync();
-        }
-        catch (...)
-        {
-            addonsFailed = true;
-        }
-        co_await uiContext;
-        auto self = current();
-        if (!self)
-        {
-            co_return;
-        }
-        if (addonsFailed)
-        {
-            self->m_popularRunning = false;
-            co_return;
-        }
-
-        // The first films catalog and the first series catalog Home could
-        // show (no required extra), each asked bare as Home's own row is.
-        std::optional<std::pair<winrt::hstring, ::HaloDesktop::Api::Dto::AddonRecord::Catalog>> movies;
-        std::optional<std::pair<winrt::hstring, ::HaloDesktop::Api::Dto::AddonRecord::Catalog>> series;
-        for (auto const& addon : addons->Records())
-        {
-            if (!InEffectiveOrder(addon))
-            {
-                continue;
-            }
-            for (auto const& catalog : addon.Catalogs)
-            {
-                if (catalog.HasRequiredExtra || !IsHomeCatalogType(std::wstring_view{ catalog.Type }))
-                {
-                    continue;
-                }
-                if (!movies && catalog.Type == L"movie") movies.emplace(addon.Id, catalog);
-                if (!series && catalog.Type == L"series") series.emplace(addon.Id, catalog);
-            }
-        }
-        self->m_popular.MoviesLoading = movies.has_value() && self->m_popular.Movies.empty();
-        self->m_popular.SeriesLoading = series.has_value() && self->m_popular.Series.empty();
-        if (!movies) self->m_popular.Movies.clear();
-        if (!series) self->m_popular.Series.clear();
-        self->NotifyChanged();
-        self.reset();
-
-        auto const ask = [backends](auto const& choice)
-            -> std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>>
-        {
-            if (!choice) return std::nullopt;
-            try
-            {
-                return backends->Current()->GetCatalogAsync(choice->first, choice->second.Type, choice->second.Id, {});
-            }
-            catch (...)
-            {
-                return std::nullopt;
-            }
-        };
-        auto movieRequest = ask(movies);
-        auto seriesRequest = ask(series);
-        std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> movieAnswer;
-        std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> seriesAnswer;
-        // Both are awaited whatever happens, so neither can end unobserved.
-        if (movieRequest)
-        {
-            try { movieAnswer = co_await *movieRequest; } catch (...) {}
-        }
-        if (seriesRequest)
-        {
-            try { seriesAnswer = co_await *seriesRequest; } catch (...) {}
-        }
-        co_await uiContext;
-        self = current();
-        if (!self)
-        {
-            co_return;
-        }
-        // A catalog that failed keeps whatever it last showed.
-        if (movieAnswer) self->m_popular.Movies = Titles(*movieAnswer);
-        if (seriesAnswer) self->m_popular.Series = Titles(*seriesAnswer);
-        self->m_popular.MoviesLoading = false;
-        self->m_popular.SeriesLoading = false;
-        self->m_popularRunning = false;
-        auto const answered = (!movies || movieAnswer) && (!series || seriesAnswer);
-        if (answered)
-        {
-            self->m_popularLoadedAt = std::chrono::steady_clock::now();
-        }
-        self->NotifyChanged();
-    }
-
-    SearchPopular const& SearchService::Popular() const noexcept { return m_popular; }
-
     std::vector<SearchLibraryEntry> SearchService::LibraryEntries() const
     {
         std::vector<SearchLibraryEntry> entries;
@@ -604,16 +479,12 @@ namespace HaloDesktop::Services
     {
         ++m_accountVersion;
         ++m_serial;
-        ++m_popularSerial;
         m_board.Reset();
         m_targets.clear();
         m_targetRanks.clear();
         m_answers.clear();
         m_term.clear();
         m_phase = SearchPhase::Idle;
-        m_popular = {};
-        m_popularRunning = false;
-        m_popularLoadedAt.reset();
         // The history is the device's, not the account's, and stays.
         NotifyChanged();
     }

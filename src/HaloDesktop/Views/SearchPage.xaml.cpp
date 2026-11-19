@@ -24,6 +24,24 @@ namespace
     // What an earlier query's results fade to while the next one's are awaited.
     constexpr double StaleResultsOpacity = 0.45;
 
+    // The slot (top match or action card): its poster, 76 wide on a narrow
+    // window, and the text beside it, which goes under the poster or glyph
+    // when it would be narrower than 280.
+    constexpr double SlotPosterWidth = 100.0;
+    constexpr double SlotNarrowPosterWidth = 76.0;
+    constexpr double SlotPosterAspect = 1.5;
+    constexpr double SlotGap = 22.0;
+    constexpr double SlotTextMinWidth = 280.0;
+    // A slot narrower than this is on a window under about 640 wide.
+    constexpr double SlotNarrowWidth = 592.0;
+    // The box keeps at least this much beside the chips, or the chips go under it.
+    constexpr double HeadBoxMinWidth = 420.0;
+    constexpr double HeadGap = 16.0;
+    constexpr double HeadWrappedGap = 12.0;
+    // The empty page's hints: three to a row while each gets 170, else two.
+    constexpr double HintMinWidth = 170.0;
+    constexpr double HintGap = 16.0;
+
     winrt::Microsoft::UI::Xaml::DependencyObject FindNamedDescendant(
         winrt::Microsoft::UI::Xaml::DependencyObject const& root,
         std::wstring_view name)
@@ -118,7 +136,6 @@ namespace winrt::HaloDesktop::implementation
             auto const viewModel = winrt::get_self<SearchViewModel>(m_viewModel);
             SuggestionList().ItemsSource(viewModel->SuggestionsView());
             RecentList().ItemsSource(viewModel->RecentItemsView());
-            PopularGrid().ItemsSource(viewModel->PopularItemsView());
             LibraryGrid().ItemsSource(viewModel->LibraryItemsView());
             ResultsGrid().ItemsSource(viewModel->ResultItemsView());
         }
@@ -128,18 +145,21 @@ namespace winrt::HaloDesktop::implementation
         {
             auto const self = weak.get();
             if (!self) return;
-            if (std::wstring_view{ changed.PropertyName() } == L"ShowKindBadges")
+            auto const name = std::wstring_view{ changed.PropertyName() };
+            if (name == L"ShowKindBadges")
             {
-                self->ApplyKindBadges(self->PopularGrid());
                 self->ApplyKindBadges(self->LibraryGrid());
                 self->ApplyKindBadges(self->ResultsGrid());
             }
-            if (std::wstring_view{ changed.PropertyName() } == L"ResultsStale")
+            if (name == L"ResultsStale")
             {
                 self->ApplyResultsStale();
             }
+            if (name == L"ActionTone" || name == L"ActionGlyph" || name == L"StatusFailed")
+            {
+                self->ApplyVisualStates();
+            }
             self->UpdateSkeletonPulse();
-            ::HaloDesktop::Controls::PlayEntranceWhenShown(self->PopularGrid(), self->m_popularShown);
             // A query's results settle in when they arrive, which is when its
             // placeholders go, never on each keystroke.
             auto const loading = self->ResultsSkeleton().Visibility() == Microsoft::UI::Xaml::Visibility::Visible;
@@ -149,6 +169,7 @@ namespace winrt::HaloDesktop::implementation
         m_onScreen = true;
         m_viewModel.Shown();
         ApplyResultsStale();
+        ApplyVisualStates();
         UpdateSkeletonPulse();
 
         if (!m_focusQueryOnLoaded)
@@ -308,10 +329,17 @@ namespace winrt::HaloDesktop::implementation
     {
         // The content decides the card's height; the art fills exactly that.
         TopMatchArt().Height(args.NewSize().Height);
+        auto const width = args.NewSize().Width;
+        auto const posterWidth = width < SlotNarrowWidth ? SlotNarrowPosterWidth : SlotPosterWidth;
+        if (TopMatchPosterColumn().Width().Value != posterWidth)
+        {
+            TopMatchPosterColumn().Width(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(posterWidth));
+            TopMatchPoster().Height(posterWidth * SlotPosterAspect);
+        }
+        ArrangeSlot(TopMatchContent(), TopMatchPoster(), TopMatchText(), posterWidth, width);
     }
 
-    void SearchPage::OnTopMatchPlayClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.PlayTopMatch(); }
-    void SearchPage::OnTopMatchDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenTopMatch(); }
+    void SearchPage::OnTopMatchOpenClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenTopMatch(); }
 
     // The action card acts as its one button does; its button acts for itself.
     void SearchPage::OnActionCardTapped(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const& args)
@@ -323,7 +351,131 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.ActivateAction();
     }
 
+    void SearchPage::OnActionCardSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        m_actionCardWidth = args.NewSize().Width;
+        ArrangeActionCard();
+    }
+
+    void SearchPage::ArrangeActionCard()
+    {
+        auto const card = ActionCard();
+        auto const border = card.BorderThickness();
+        auto const width = m_actionCardWidth - border.Left - border.Right;
+        if (width <= 0.0) return;
+        auto const posterWidth = width < SlotNarrowWidth ? SlotNarrowPosterWidth : SlotPosterWidth;
+        auto const frame = ActionPosterFrame();
+        if (frame.Width() != posterWidth)
+        {
+            frame.Width(posterWidth);
+            frame.Height(posterWidth * SlotPosterAspect);
+        }
+        // The visual is the poster or the glyph tile, whichever the card leads with.
+        auto const visualWidth = m_viewModel.ActionGlyph() == winrt::HaloDesktop::SearchActionGlyph::Poster ? posterWidth : ActionTile().Width();
+        ArrangeSlot(card, ActionVisual(), ActionText(), visualWidth, width);
+    }
+
     void SearchPage::OnActionButtonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ActivateAction(); }
+    void SearchPage::OnTryAgainClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RetrySearch(); }
+    void SearchPage::OnOpenSettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenSettings(); }
+
+    void SearchPage::ArrangeSlot(
+        Microsoft::UI::Xaml::Controls::Grid const& content,
+        Microsoft::UI::Xaml::FrameworkElement const& visual,
+        Microsoft::UI::Xaml::FrameworkElement const& text,
+        double visualWidth,
+        double contentWidth)
+    {
+        using Microsoft::UI::Xaml::Controls::Grid;
+        auto const padding = content.Padding();
+        auto const inner = contentWidth - padding.Left - padding.Right;
+        auto const stacked = inner < visualWidth + SlotGap + SlotTextMinWidth;
+        // Only what changed is set, as this runs on every size change.
+        auto const row = stacked ? 1 : 0;
+        auto const column = stacked ? 0 : 1;
+        auto const span = stacked ? 2 : 1;
+        if (Grid::GetRow(text) != row) Grid::SetRow(text, row);
+        if (Grid::GetColumn(text) != column) Grid::SetColumn(text, column);
+        if (Grid::GetColumnSpan(text) != span) Grid::SetColumnSpan(text, span);
+        auto const columnSpacing = stacked ? 0.0 : SlotGap;
+        auto const rowSpacing = stacked ? SlotGap : 0.0;
+        if (content.ColumnSpacing() != columnSpacing) content.ColumnSpacing(columnSpacing);
+        if (content.RowSpacing() != rowSpacing) content.RowSpacing(rowSpacing);
+        visual.HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Left);
+    }
+
+    void SearchPage::OnSearchHeadSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        using Microsoft::UI::Xaml::Controls::Grid;
+        auto const chips = FilterChips();
+        auto const stacked = args.NewSize().Width < HeadBoxMinWidth + HeadGap + chips.DesiredSize().Width;
+        auto const row = stacked ? 1 : 0;
+        auto const column = stacked ? 0 : 1;
+        if (Grid::GetRow(chips) != row) Grid::SetRow(chips, row);
+        if (Grid::GetColumn(chips) != column) Grid::SetColumn(chips, column);
+        auto const head = SearchHead();
+        auto const columnSpacing = stacked ? 0.0 : HeadGap;
+        auto const rowSpacing = stacked ? HeadWrappedGap : 0.0;
+        if (head.ColumnSpacing() != columnSpacing) head.ColumnSpacing(columnSpacing);
+        if (head.RowSpacing() != rowSpacing) head.RowSpacing(rowSpacing);
+    }
+
+    // The suggestions hang from the box at its own width.
+    void SearchPage::OnQueryFieldSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        SuggestionPanel().Width(args.NewSize().Width);
+    }
+
+    void SearchPage::OnHintsGridSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        using Microsoft::UI::Xaml::Controls::Grid;
+        auto const grid = HintsGrid();
+        auto const columns = grid.ColumnDefinitions();
+        auto const three = args.NewSize().Width >= 3.0 * HintMinWidth + 2.0 * HintGap;
+        // The third column is removed rather than emptied, so its spacing does
+        // not push the two left off centre.
+        if (three && columns.Size() == 2)
+        {
+            Microsoft::UI::Xaml::Controls::ColumnDefinition third;
+            third.Width(Microsoft::UI::Xaml::GridLengthHelper::FromValueAndType(1.0, Microsoft::UI::Xaml::GridUnitType::Star));
+            columns.Append(third);
+        }
+        else if (!three && columns.Size() == 3)
+        {
+            columns.RemoveAtEnd();
+        }
+        auto const last = HintIds();
+        auto const row = three ? 0 : 1;
+        auto const column = three ? 2 : 0;
+        if (Grid::GetRow(last) != row) Grid::SetRow(last, row);
+        if (Grid::GetColumn(last) != column) Grid::SetColumn(last, column);
+    }
+
+    void SearchPage::ApplyVisualStates()
+    {
+        using Microsoft::UI::Xaml::VisualStateManager;
+        wchar_t const* tone = L"ToneAccent";
+        switch (m_viewModel.ActionTone())
+        {
+        case winrt::HaloDesktop::SearchActionTone::Accent: tone = L"ToneAccent"; break;
+        case winrt::HaloDesktop::SearchActionTone::Warn: tone = L"ToneWarn"; break;
+        case winrt::HaloDesktop::SearchActionTone::Bad: tone = L"ToneBad"; break;
+        case winrt::HaloDesktop::SearchActionTone::Mute: tone = L"ToneMute"; break;
+        }
+        wchar_t const* glyph = L"GlyphId";
+        switch (m_viewModel.ActionGlyph())
+        {
+        case winrt::HaloDesktop::SearchActionGlyph::Poster: glyph = L"GlyphPoster"; break;
+        case winrt::HaloDesktop::SearchActionGlyph::Id: glyph = L"GlyphId"; break;
+        case winrt::HaloDesktop::SearchActionGlyph::Link: glyph = L"GlyphLink"; break;
+        case winrt::HaloDesktop::SearchActionGlyph::Magnet: glyph = L"GlyphMagnet"; break;
+        }
+        VisualStateManager::GoToState(*this, tone, false);
+        VisualStateManager::GoToState(*this, glyph, false);
+        VisualStateManager::GoToState(*this, m_viewModel.StatusFailed() ? L"StatusFailure" : L"StatusNormal", false);
+        // A poster and a glyph tile differ in width, so whether the text fits beside it can change.
+        ArrangeActionCard();
+    }
 
     void SearchPage::ApplyLayoutMetrics()
     {
@@ -332,19 +484,12 @@ namespace winrt::HaloDesktop::implementation
         auto const current = metrics->Current();
         PageBody().Padding({ current.Gutter, 0.0, current.Gutter, 40.0 });
         PageTitle().Margin({ current.Gutter, 28.0, current.Gutter, 10.0 });
-        for (auto const& layout : { PopularLayout(), LibraryLayout(), ResultsLayout() })
+        for (auto const& layout : { LibraryLayout(), ResultsLayout() })
         {
             if (!layout) continue;
             layout.MinItemWidth(current.PosterWidth);
             layout.MinItemHeight(current.PosterArtHeight() + CaptionHeight + LiftBand);
         }
-        auto const posterColumn = Microsoft::UI::Xaml::GridLengthHelper::FromPixels(current.PosterWidth);
-        TopMatchPosterColumn().Width(posterColumn);
-        TopMatchSkeletonColumn().Width(posterColumn);
-        TopMatchPoster().Height(current.PosterArtHeight());
-        TopMatchSkeletonPoster().Height(current.PosterArtHeight());
-        ActionPosterFrame().Width(current.PosterWidth);
-        ActionPosterFrame().Height(current.PosterArtHeight());
     }
 
     void SearchPage::ApplyResultsStale()
@@ -355,12 +500,10 @@ namespace winrt::HaloDesktop::implementation
     void SearchPage::EnsureSkeletonPulse()
     {
         if (m_skeletonPulse) return;
-        auto const compositor = Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(PopularSkeleton()).Compositor();
+        auto const compositor = Microsoft::UI::Xaml::Hosting::ElementCompositionPreview::GetElementVisual(ResultsSkeletonGrid()).Compositor();
         m_skeletonPulse = std::make_unique<::HaloDesktop::Controls::SkeletonPulse>(compositor);
-        m_skeletonPulse->Attach(PopularSkeleton());
-        m_skeletonPulse->Attach(TopMatchSkeletonPoster());
-        m_skeletonPulse->Attach(TopMatchSkeletonBody());
-        m_skeletonPulse->Attach(ResultsSkeleton());
+        m_skeletonPulse->Attach(TopMatchSkeleton());
+        m_skeletonPulse->Attach(ResultsSkeletonGrid());
     }
 
     void SearchPage::UpdateSkeletonPulse()

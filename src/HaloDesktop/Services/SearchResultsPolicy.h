@@ -23,8 +23,6 @@ namespace HaloDesktop::Services
     inline constexpr std::size_t SearchMaximumQuery = 120;
     // At most this many recent searches, and only as many as fit on one line.
     inline constexpr std::size_t SearchRecentShown = 6;
-    // Enough popular titles to browse without a search, short of a whole catalog.
-    inline constexpr std::size_t SearchPopularShown = 24;
     inline constexpr std::size_t SearchSuggestionLimit = 5;
 
     // One catalog entry as the search rules read it: the addon's fields as the

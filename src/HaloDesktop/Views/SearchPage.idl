@@ -3,6 +3,25 @@ import "Models/Models.idl";
 
 namespace HaloDesktop
 {
+    // How the action card's glyph tile reads: working or ready, can't go on
+    // through no fault of the viewer's, refused or failed, or simply not possible.
+    enum SearchActionTone
+    {
+        Accent,
+        Warn,
+        Bad,
+        Mute,
+    };
+
+    // What the action card leads with: the found title's poster, or a glyph tile.
+    enum SearchActionGlyph
+    {
+        Poster,
+        Id,
+        Link,
+        Magnet,
+    };
+
     // A past search, as a recent pill or a suggestion under the box.
     [default_interface]
     runtimeclass RecentSearchViewModel
@@ -17,7 +36,6 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility ClearVisibility { get; };
         Object Suggestions { get; };
         Object RecentItems { get; };
-        Object PopularItems { get; };
         Object LibraryItems { get; };
         Object ResultItems { get; };
         Boolean ShowKindBadges { get; };
@@ -37,7 +55,6 @@ namespace HaloDesktop
         String TopMatchMetaId { get; };
         String TopMatchBackdrop { get; };
         String TopMatchSoftBackdrop { get; };
-        String TopMatchActionLabel { get; };
         Microsoft.UI.Xaml.Visibility TopMatchRatingVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchYearVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchInLibraryVisibility { get; };
@@ -45,9 +62,7 @@ namespace HaloDesktop
 
         Microsoft.UI.Xaml.Visibility SuggestionsVisibility { get; };
         Microsoft.UI.Xaml.Visibility RecentVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PopularVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PopularGridVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PopularSkeletonVisibility { get; };
+        Microsoft.UI.Xaml.Visibility HintsVisibility { get; };
         Microsoft.UI.Xaml.Visibility NoAddonsVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchVisibility { get; };
         Microsoft.UI.Xaml.Visibility TopMatchSkeletonVisibility { get; };
@@ -55,21 +70,32 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility ResultsVisibility { get; };
         Microsoft.UI.Xaml.Visibility ResultsSkeletonVisibility { get; };
         Microsoft.UI.Xaml.Visibility StatusVisibility { get; };
+        Boolean StatusFailed { get; };
         Microsoft.UI.Xaml.Visibility FilteredEmptyVisibility { get; };
         Microsoft.UI.Xaml.Visibility NothingFoundVisibility { get; };
+        Microsoft.UI.Xaml.Visibility AddonsUnreachableVisibility { get; };
 
         // The card in the top match's place for a pasted link or id.
         Microsoft.UI.Xaml.Visibility ActionCardVisibility { get; };
+        SearchActionTone ActionTone { get; };
+        SearchActionGlyph ActionGlyph { get; };
         String ActionKicker { get; };
         String ActionTitle { get; };
-        String ActionDetail { get; };
-        Microsoft.UI.Xaml.Visibility ActionDetailVisibility { get; };
+        String ActionRating { get; };
+        String ActionMono { get; };
+        String ActionYear { get; };
+        Microsoft.UI.Xaml.Visibility ActionMetaVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ActionRatingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ActionMonoVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ActionYearVisibility { get; };
+        String ActionSecondary { get; };
+        Microsoft.UI.Xaml.Visibility ActionSecondaryVisibility { get; };
         String ActionPoster { get; };
         String ActionMetaId { get; };
         Microsoft.UI.Xaml.Visibility ActionPosterVisibility { get; };
         String ActionButtonLabel { get; };
         Microsoft.UI.Xaml.Visibility ActionButtonVisibility { get; };
-        Boolean ActionBusy { get; };
+        Microsoft.UI.Xaml.Visibility ActionButtonGlyphVisibility { get; };
         void ActivateAction();
 
         void SetFilter(Int32 index);
@@ -80,9 +106,11 @@ namespace HaloDesktop
         void Forget(String term);
         void ForgetAll();
         void ShowAllResults();
+        // The empty states' buttons: the same query asked again, and Settings.
+        void RetrySearch();
+        void OpenSettings();
         void OpenDetail(Object item);
         void OpenTopMatch();
-        void PlayTopMatch();
         void Arrive(String query);
         void Shown();
     }

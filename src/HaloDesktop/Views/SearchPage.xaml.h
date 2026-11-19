@@ -42,10 +42,15 @@ namespace winrt::HaloDesktop::implementation
         void OnTopMatchPointerEntered(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnTopMatchPointerExited(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnTopMatchContentSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
-        void OnTopMatchPlayClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnTopMatchDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnTopMatchOpenClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnActionCardTapped(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
+        void OnActionCardSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         void OnActionButtonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnTryAgainClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnOpenSettingsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSearchHeadSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
+        void OnQueryFieldSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
+        void OnHintsGridSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         // One handler for the page: every poster on it, and the top match,
         // answers a right-click from here.
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
@@ -57,6 +62,17 @@ namespace winrt::HaloDesktop::implementation
         void EnsureSkeletonPulse();
         void UpdateSkeletonPulse();
         void ApplyKindBadges(Microsoft::UI::Xaml::Controls::ItemsRepeater const& grid);
+        // The action card's tone and glyph, and the status line's colour.
+        void ApplyVisualStates();
+        // Sizes the action card's poster and places its text, at the card's last width.
+        void ArrangeActionCard();
+        // The slot's text goes under its leading visual when the two do not fit side by side.
+        void ArrangeSlot(
+            Microsoft::UI::Xaml::Controls::Grid const& content,
+            Microsoft::UI::Xaml::FrameworkElement const& visual,
+            Microsoft::UI::Xaml::FrameworkElement const& text,
+            double visualWidth,
+            double contentWidth);
         void FocusQueryBox();
 
         winrt::HaloDesktop::SearchViewModel m_viewModel{ nullptr };
@@ -64,10 +80,10 @@ namespace winrt::HaloDesktop::implementation
         std::unique_ptr<::HaloDesktop::Controls::SkeletonPulse> m_skeletonPulse;
         Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
         std::uint64_t m_metricsToken{};
+        double m_actionCardWidth{};
         bool m_listsBound{};
         bool m_onScreen{};
         // What was last seen, so content fades in as it takes over from its placeholders.
-        bool m_popularShown{};
         bool m_resultsLoading{};
         bool m_focusQueryOnLoaded{ true };
     };

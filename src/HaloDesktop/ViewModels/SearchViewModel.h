@@ -31,8 +31,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_term;
     };
 
-    // The Search page's state: the box and its suggestions, recent and popular
-    // before a search, and during one the status line, the top match, the
+    // The Search page's state: the box and its suggestions, recent searches
+    // and what the box accepts before a search, and during one the status line, the top match, the
     // library's matches and the results.
     //
     // A query's results are revealed once (SearchRevealPolicy decides when),
@@ -57,12 +57,10 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ClearVisibility() const noexcept;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable Suggestions() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable RecentItems() const;
-        [[nodiscard]] winrt::Windows::Foundation::IInspectable PopularItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable LibraryItems() const;
         [[nodiscard]] winrt::Windows::Foundation::IInspectable ResultItems() const;
         auto SuggestionsView() const { return m_suggestions; }
         auto RecentItemsView() const { return m_recent; }
-        auto PopularItemsView() const { return m_popular; }
         auto LibraryItemsView() const { return m_library; }
         auto ResultItemsView() const { return m_results; }
         [[nodiscard]] bool ShowKindBadges() const noexcept;
@@ -86,7 +84,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring TopMatchMetaId() const;
         [[nodiscard]] winrt::hstring TopMatchBackdrop() const;
         [[nodiscard]] winrt::hstring TopMatchSoftBackdrop() const;
-        [[nodiscard]] winrt::hstring TopMatchActionLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchRatingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchYearVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchInLibraryVisibility() const noexcept;
@@ -94,9 +91,8 @@ namespace winrt::HaloDesktop::implementation
 
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SuggestionsVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility RecentVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularGridVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PopularSkeletonVisibility() const noexcept;
+        // The legend of what the box accepts, while nothing is typed.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility HintsVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility NoAddonsVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility TopMatchSkeletonVisibility() const noexcept;
@@ -105,8 +101,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ResultsSkeletonVisibility() const noexcept;
         // Shown whenever a query is active, so its height never comes and goes.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility StatusVisibility() const noexcept;
+        // Whether the status line names catalogs that did not answer, which
+        // it says in the warning colour and without the ring.
+        [[nodiscard]] bool StatusFailed() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility FilteredEmptyVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility NothingFoundVisibility() const noexcept;
+        // No catalog could be asked, or every one asked failed, and nothing is shown.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility AddonsUnreachableVisibility() const noexcept;
         // Whether any skeleton is drawn, for the page's pulse.
         [[nodiscard]] bool SkeletonsShown() const noexcept;
 
@@ -114,16 +115,29 @@ namespace winrt::HaloDesktop::implementation
         // link or an id instead of words: what it is, and what Enter or a
         // click on it does.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionCardVisibility() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SearchActionTone ActionTone() const noexcept;
+        [[nodiscard]] winrt::HaloDesktop::SearchActionGlyph ActionGlyph() const noexcept;
         [[nodiscard]] winrt::hstring ActionKicker() const;
         [[nodiscard]] winrt::hstring ActionTitle() const;
-        [[nodiscard]] winrt::hstring ActionDetail() const;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionDetailVisibility() const noexcept;
+        // The meta row under the title: a rating, a value in mono (the kind,
+        // or the link's host) and a year, each shown only when it has text.
+        [[nodiscard]] winrt::hstring ActionRating() const;
+        [[nodiscard]] winrt::hstring ActionMono() const;
+        [[nodiscard]] winrt::hstring ActionYear() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionMetaVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionRatingVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionMonoVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionYearVisibility() const noexcept;
+        // The quieter sentence under the title.
+        [[nodiscard]] winrt::hstring ActionSecondary() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionSecondaryVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ActionPoster() const;
         [[nodiscard]] winrt::hstring ActionMetaId() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionPosterVisibility() const noexcept;
         [[nodiscard]] winrt::hstring ActionButtonLabel() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionButtonVisibility() const noexcept;
-        [[nodiscard]] bool ActionBusy() const noexcept;
+        // The play glyph, on the one button that plays.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionButtonGlyphVisibility() const noexcept;
         // Opens the IMDb title's page or plays the pasted link; nothing for a
         // card that only says something.
         void ActivateAction();
@@ -139,12 +153,13 @@ namespace winrt::HaloDesktop::implementation
         void Forget(winrt::hstring const& term);
         void ForgetAll();
         void ShowAllResults();
+        // "Try again" under "Search could not reach your addons".
+        void RetrySearch();
+        // "Open Settings" under "None of your addons can search".
+        void OpenSettings();
         // Opening a result keeps the query among the recent terms.
         void OpenDetail(winrt::Windows::Foundation::IInspectable const& item);
         void OpenTopMatch();
-        // Home's primary action: a series needs an episode chosen, and the
-        // title page is the picker; a film it can play goes to its sources.
-        void PlayTopMatch();
         // Arriving with Home's text: searched at once, not recorded.
         void Arrive(winrt::hstring const& query);
         void Shown();
@@ -171,8 +186,10 @@ namespace winrt::HaloDesktop::implementation
         // nothing more with the text.
         [[nodiscard]] bool ApplyInput();
         [[nodiscard]] bool ActionShown() const noexcept;
+        // The IMDb card's title was found, so the card leads with its poster.
+        [[nodiscard]] bool LookupFound() const noexcept;
         void StartTitleLookup();
-        // While the action card is up: no results, no popular, no status line.
+        // While the action card is up: no results, no status line.
         void ComposeAction();
         void RaiseAction();
         // Keeps `term` among the recent searches only when it is words.
@@ -182,7 +199,7 @@ namespace winrt::HaloDesktop::implementation
         void SearchNow();
         // Brings the page to where the service's answers stand.
         void Refresh();
-        // Before a query: recent and popular.
+        // Before a query: recent searches and the hints.
         void ComposeIdle();
         // A query asked and not yet revealed: what was shown stays, dimmed.
         void ComposePending(::HaloDesktop::Services::SearchProgressResult const& progress);
@@ -255,10 +272,10 @@ namespace winrt::HaloDesktop::implementation
         bool m_hasShown{};
 
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
-            m_suggestions{ nullptr }, m_recent{ nullptr }, m_popular{ nullptr }, m_library{ nullptr }, m_results{ nullptr };
+            m_suggestions{ nullptr }, m_recent{ nullptr }, m_library{ nullptr }, m_results{ nullptr };
         // What each collection holds, so an answer that changes nothing leaves
         // the realised cards alone.
-        std::vector<::HaloDesktop::Services::SearchTitle> m_popularShown, m_libraryShown;
+        std::vector<::HaloDesktop::Services::SearchTitle> m_libraryShown;
         std::vector<std::wstring> m_recentTerms, m_suggestionTerms;
 
         std::optional<::HaloDesktop::Services::SearchTitle> m_topMatchTitle;
@@ -270,12 +287,12 @@ namespace winrt::HaloDesktop::implementation
         bool m_active{};
         bool m_suggestionsShown{};
         bool m_recentShown{};
-        bool m_popularSection{};
-        bool m_popularSkeleton{};
         bool m_noAddons{};
         bool m_topMatchSkeleton{};
         bool m_resultsSkeleton{};
         bool m_stillAskingShown{};
+        bool m_statusFailed{};
+        bool m_addonsUnreachable{};
         bool m_filteredEmpty{};
         bool m_nothingFound{};
         winrt::event<Microsoft::UI::Xaml::Data::PropertyChangedEventHandler> m_propertyChanged;
