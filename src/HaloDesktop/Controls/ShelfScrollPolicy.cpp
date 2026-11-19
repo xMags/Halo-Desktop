@@ -49,6 +49,12 @@ namespace HaloDesktop::Controls
         return std::clamp(offset + sign * step, 0.0, end);
     }
 
+    bool ShelfArrowsShown(bool loading, double viewport, double extent) noexcept
+    {
+        if (loading || !(extent > 0.0)) return true;
+        return ShelfOverflows(viewport, extent);
+    }
+
     bool IsSidewaysWheel(bool horizontalWheel, bool shiftHeld) noexcept
     {
         return horizontalWheel || shiftHeld;

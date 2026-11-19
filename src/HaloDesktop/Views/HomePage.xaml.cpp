@@ -384,10 +384,16 @@ namespace winrt::HaloDesktop::implementation
         UpdateContinueEdges();
     }
 
-    // The chevron toward an end already in view is drawn but plainly inert.
+    // The chevron toward an end already in view is drawn but plainly inert; a
+    // row whose cards all fit draws none (ShelfArrowsShown).
     void HomePage::UpdateContinueEdges()
     {
         auto const scroller = ContinueScroller();
+        auto const arrows = ::HaloDesktop::Controls::ShelfArrowsShown(false, scroller.ViewportWidth(), scroller.ExtentWidth())
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed;
+        ContinueScrollLeftButton().Visibility(arrows);
+        ContinueScrollRightButton().Visibility(arrows);
         auto const edges = ::HaloDesktop::Controls::MeasureShelfEdges(
             scroller.HorizontalOffset(),
             scroller.ViewportWidth(),

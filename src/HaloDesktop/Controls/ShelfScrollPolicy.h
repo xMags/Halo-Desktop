@@ -43,6 +43,13 @@ namespace HaloDesktop::Controls
     // Whether the strip is wider than its viewport by more than the slack.
     [[nodiscard]] bool ShelfOverflows(double viewport, double extent) noexcept;
 
+    // Whether a Home row draws its arrows. Drawn while it loads, and while its
+    // strip has not been measured yet (an extent of zero), so a row that will
+    // overflow never flashes them away and back; gone once a loaded row's
+    // cards all fit, since there is nothing to page. A row that overflows
+    // keeps them, dimmed at an end, as the reference's shelf does.
+    [[nodiscard]] bool ShelfArrowsShown(bool loading, double viewport, double extent) noexcept;
+
     // Where an arrow click lands on a title page row: `max(viewport - 160, 160)`
     // further in `direction`, held inside the strip's range.
     [[nodiscard]] double ScrollRowPageTarget(double offset, double viewport, double extent, int direction) noexcept;

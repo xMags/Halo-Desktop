@@ -186,13 +186,21 @@ namespace winrt::HaloDesktop::implementation
         UpdateEdges();
     }
 
-    // The chevrons are always drawn rather than appearing on demand: a control
-    // that comes and goes as a catalog resolves makes the row jitter. The one
-    // pointing at an end already in view is drawn but plainly inert instead.
+    // The chevrons stay drawn while the catalog resolves, so the row does not
+    // jitter, and the one pointing at an end already in view is drawn but
+    // plainly inert. Only a loaded row whose cards all fit drops them
+    // (ShelfArrowsShown).
     void MediaShelf::UpdateEdges()
     {
         auto const scroller = ShelfScroller();
         if (!scroller) return;
+        auto const arrows = ::HaloDesktop::Controls::ShelfArrowsShown(m_loading, scroller.ViewportWidth(), scroller.ExtentWidth())
+            ? Microsoft::UI::Xaml::Visibility::Visible
+            : Microsoft::UI::Xaml::Visibility::Collapsed;
+        for (auto const& button : { ScrollLeftButton(), ScrollRightButton() })
+        {
+            if (button) button.Visibility(arrows);
+        }
         auto const edges = m_loading
             ? ::HaloDesktop::Controls::ShelfEdges{}
             : ::HaloDesktop::Controls::MeasureShelfEdges(

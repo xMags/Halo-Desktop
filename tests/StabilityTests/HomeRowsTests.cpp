@@ -246,6 +246,13 @@ namespace
         Require(MeasureShelfEdges(499.5, 500.0, 1000.0) == ShelfEdges{ false, true }, "the end ignored its slack");
         Require(MeasureShelfEdges(200.0, 500.0, 1000.0) == ShelfEdges{ false, false }, "a mid strip claimed an end");
 
+        using HaloDesktop::Controls::ShelfArrowsShown;
+        Require(ShelfArrowsShown(true, 500.0, 300.0), "a loading row hid its arrows");
+        Require(ShelfArrowsShown(false, 500.0, 0.0), "a row not yet measured hid its arrows");
+        Require(!ShelfArrowsShown(false, 500.0, 300.0), "a loaded row whose cards fit kept its arrows");
+        Require(!ShelfArrowsShown(false, 500.0, 501.0), "a row within the slack kept its arrows");
+        Require(ShelfArrowsShown(false, 500.0, 1000.0), "a row that overflows hid its arrows");
+
         // Cards 132 wide with a 14 gap: a 146 step, and 700 + 14 fits four.
         Require(ShelfPageTarget(0.0, 700.0, 132.0, 14.0, 1) == 584.0, "a page right did not move by the whole cards that fit");
         Require(ShelfPageTarget(584.0, 700.0, 132.0, 14.0, -1) == 0.0, "a page left did not return to the start");
