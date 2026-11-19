@@ -136,12 +136,12 @@ namespace winrt::HaloDesktop::implementation
         }
         ApplyLayoutMetrics();
         auto const viewModel = winrt::get_self<HistoryViewModel>(m_viewModel);
-        // Bound once for the life of the page: handing a repeater the same
+        // Bound once for the life of the page: handing the list the same
         // collection again resets it, and this runs on every return.
         if (!m_listBound)
         {
             m_listBound = true;
-            GroupsRepeater().ItemsSource(viewModel->GroupsView());
+            GroupsList().ItemsSource(viewModel->GroupsView());
         }
         viewModel->Shown();
     }

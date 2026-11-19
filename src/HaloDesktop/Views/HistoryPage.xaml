@@ -138,11 +138,22 @@
           Text="{x:Bind ViewModel.Note, Mode=OneWay}"
           TextWrapping="Wrap"
           Visibility="{x:Bind ViewModel.NoteVisibility, Mode=OneWay}" />
-        <ItemsRepeater x:Name="GroupsRepeater">
-          <ItemsRepeater.Layout>
-            <StackLayout Spacing="24" />
-          </ItemsRepeater.Layout>
-          <ItemsRepeater.ItemTemplate>
+        <!--
+          The groups are a plain items control, every one built: there are only a
+          few dozen (today, yesterday, this week, then one per month). A
+          virtualising repeater here guessed the height of the groups it had not
+          built, and dragging the scrollbar into them met their real heights, so
+          the page's length changed under the thumb and pushed it back. The cards
+          inside each group still virtualise; they are one size, so each grid's
+          height is exact.
+        -->
+        <ItemsControl x:Name="GroupsList" IsTabStop="False">
+          <ItemsControl.ItemsPanel>
+            <ItemsPanelTemplate>
+              <StackPanel Spacing="24" />
+            </ItemsPanelTemplate>
+          </ItemsControl.ItemsPanel>
+          <ItemsControl.ItemTemplate>
             <DataTemplate x:DataType="local:HistoryGroupViewModel">
               <StackPanel>
                 <!-- `.history-label`: mono 700 12px, .06em, capitals. The day in the
@@ -287,8 +298,8 @@
                 </ItemsRepeater>
               </StackPanel>
             </DataTemplate>
-          </ItemsRepeater.ItemTemplate>
-        </ItemsRepeater>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
       </StackPanel>
     </ScrollViewer>
   </Grid>
