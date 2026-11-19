@@ -381,9 +381,12 @@
           <TextBlock Margin="0,0,0,4" FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}">
             <Run Text="Ready to watch" /><Run Text="  " /><Run FontWeight="Normal" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.ReadyHeadline, Mode=OneWay}" />
           </TextBlock>
+          <!-- 320 at the least, so cards stay 320 to about 360 wide at every
+               window size: a smaller minimum let a full-screen window fit so
+               many columns that a short shelf shrank to small cards. -->
           <ItemsRepeater x:Name="ReadyGrid">
             <ItemsRepeater.Layout>
-              <UniformGridLayout ItemsStretch="Uniform" MinColumnSpacing="16" MinItemWidth="220" MinRowSpacing="16" Orientation="Horizontal" />
+              <UniformGridLayout ItemsStretch="Uniform" MinColumnSpacing="16" MinItemWidth="320" MinRowSpacing="16" Orientation="Horizontal" />
             </ItemsRepeater.Layout>
             <ItemsRepeater.ItemTemplate>
               <DataTemplate x:DataType="local:DownloadRowViewModel">
