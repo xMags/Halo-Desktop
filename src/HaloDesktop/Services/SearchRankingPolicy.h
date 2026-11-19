@@ -88,6 +88,8 @@ namespace HaloDesktop::Services
     // A person's name counts as one only while no title is named exactly
     // that. Then the person's work stays (KeepCredited) and titles holding
     // only some of the name's words go, however few hold all of them.
+    // Whether the title's name is exactly the query (the best name tier).
+    [[nodiscard]] bool NamesQueryExactly(RankedTitle const& title) noexcept;
     [[nodiscard]] RevealCutoffs ComputeCutoffs(
         std::span<RankedTitle const> ranked,
         SearchQueryMeaning meaning = SearchQueryMeaning::Title);

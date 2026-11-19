@@ -404,6 +404,24 @@ namespace
         auto const dune = exact.Reveal(film, Parts(L"dune"), SearchQueryMeaning::Person);
         Require(!dune.Cutoffs.KeepCredited && dune.Titles.empty() && dune.TopMatch && dune.TopMatch->Id == L"tt8",
             "a title named exactly the query was treated as a person's name");
+        Require(!exact.AdmitPersonWork(), "a title named exactly the query let a person's work in after the reveal");
+
+        // Known to be a person only after the reveal (the people answer was
+        // slower than the reveal's deadline): nothing shown moves, and their
+        // work is added after the last card, as answers come in again.
+        SearchResultBoard late;
+        Require(!late.AdmitPersonWork(), "a board let a person's work in before its reveal");
+        auto const shown = late.Reveal(answers, Parts(L"christopher nolan"));
+        Require(IdsOf(shown.Titles) == std::vector<std::wstring>{ L"tt1", L"tt3" }, "the title-judged reveal changed");
+        Require(late.AdmitPersonWork() && late.Cutoffs().KeepCredited, "a person's name known late did not keep their work");
+        Require(!late.AdmitPersonWork(), "admitting a person's work twice reported a change");
+        auto const again = late.Absorb(answers[0]);
+        Require(IdsOf(again.Appends) == std::vector<std::wstring>{ L"tt2", L"tt5" } && again.Updates.empty() && !again.TopMatchUpdate,
+            "the answers offered again did not add only the person's films the reveal left out");
+        auto const films = late.Absorb(Answer(TmdbMovies, { Full(L"tt6", L"Tenet"), Full(L"tt5", L"Inception") }, 1));
+        Require(IdsOf(films.Appends) == std::vector<std::wstring>{ L"tt6" }, "the person's late films were not added once each");
+        Require(IdsOf(late.Titles()) == std::vector<std::wstring>{ L"tt1", L"tt3", L"tt2", L"tt5", L"tt6" },
+            "what was shown moved when the person's work came in");
     }
 
     void TestMissingPosterLinks()

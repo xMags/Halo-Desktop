@@ -964,16 +964,7 @@ namespace winrt::HaloDesktop::implementation
         namespace Services = ::HaloDesktop::Services;
         auto const query = Services::TrimmedText(m_activeQuery);
         auto answers = AnswersFrom(states, false);
-        // A poster link its host has no image for: the title is ranked as one
-        // without artwork, for good. A link not answered yet is taken as fine.
-        for (auto& answer : answers)
-        {
-            for (auto& title : answer.Titles)
-            {
-                title.PosterMissing = title.Poster
-                    && m_posterChecks->StateOf(*title.Poster) == Services::PosterLinkState::Missing;
-            }
-        }
+        MarkMissingPosters(answers);
         // A person's exact name keeps the films and series the addons found
         // for them; an answer still out reads as not a person, for good.
         m_board.Reveal(answers, Services::ParseSearchQuery(query), QueryMeaning(query));
@@ -1422,16 +1413,76 @@ namespace winrt::HaloDesktop::implementation
         m_peopleAnswer = found
             ? std::move(answer.People)
             : std::vector<::HaloDesktop::Api::Dto::PersonSummary>{};
-        if (auto const named = ::HaloDesktop::Services::ExactNamePerson(*m_peopleAnswer, m_peopleName))
+        auto const named = ::HaloDesktop::Services::ExactNamePerson(*m_peopleAnswer, m_peopleName);
+        if (named)
         {
             AskCredits(query, (*m_peopleAnswer)[*named].TmdbId);
         }
-        // Before the reveal the answer waits for it (RevealNow). After it,
-        // the row goes under the results: nothing already shown moves.
-        if (m_board.Revealed() && m_revealedQuery == query && !m_peopleDecided)
+        // Before the reveal the answer waits for it (RevealNow).
+        if (!m_board.Revealed() || m_revealedQuery != query)
+        {
+            return;
+        }
+        // After it, nothing already shown moves. A person's name the reveal
+        // could not wait for still keeps their work: the titles the addons
+        // found for them that the reveal left out are added after the last
+        // card, and so are the films asked for above when they land. Without
+        // this they would be judged as sharing no word with the query, so a
+        // first search (with the server's answers not cached yet) showed
+        // fewer results than the same search a moment later.
+        auto changed = named.has_value() && m_board.AdmitPersonWork();
+        if (changed)
+        {
+            ReofferAnswers();
+        }
+        // The row goes under the results.
+        if (!m_peopleDecided)
         {
             PlacePeople(PeoplePlace::Below);
+            changed = true;
+        }
+        if (changed)
+        {
             Refresh();
+        }
+    }
+
+    void SearchViewModel::ReofferAnswers()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        if (!m_active
+            || m_boardSerial != m_search->Serial()
+            || m_search->Phase() != Services::SearchPhase::Asking
+            || m_search->Term() != Services::TrimmedText(m_activeQuery))
+        {
+            return;
+        }
+        // Every answer so far, absorbed ones too: a title already shown only
+        // matches its own card (Absorb changes nothing there), and one the
+        // reveal left out is judged again by the board's rules as they now are.
+        auto answers = AnswersFrom(m_search->States(), false);
+        MarkMissingPosters(answers);
+        for (auto const& answer : answers)
+        {
+            auto const diff = m_board.Absorb(answer);
+            if (!diff.Empty())
+            {
+                ApplyDiff(diff);
+            }
+        }
+    }
+
+    void SearchViewModel::MarkMissingPosters(std::vector<::HaloDesktop::Services::SearchAnswer>& answers) const
+    {
+        // A poster link its host has no image for: the title is ranked as one
+        // without artwork, for good. A link not answered yet is taken as fine.
+        for (auto& answer : answers)
+        {
+            for (auto& title : answer.Titles)
+            {
+                title.PosterMissing = title.Poster
+                    && m_posterChecks->StateOf(*title.Poster) == ::HaloDesktop::Services::PosterLinkState::Missing;
+            }
         }
     }
 

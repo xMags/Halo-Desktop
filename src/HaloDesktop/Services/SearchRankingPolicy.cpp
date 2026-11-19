@@ -119,11 +119,16 @@ namespace HaloDesktop::Services
         return ranked;
     }
 
+    bool NamesQueryExactly(RankedTitle const& title) noexcept
+    {
+        return title.Tier == ExactNameTier;
+    }
+
     RevealCutoffs ComputeCutoffs(std::span<RankedTitle const> ranked, SearchQueryMeaning meaning)
     {
         RevealCutoffs cutoffs;
         auto const person = meaning == SearchQueryMeaning::Person
-            && std::none_of(ranked.begin(), ranked.end(), [](RankedTitle const& title) { return title.Tier == ExactNameTier; });
+            && std::none_of(ranked.begin(), ranked.end(), [](RankedTitle const& title) { return NamesQueryExactly(title); });
         cutoffs.DropUnrelated = std::any_of(ranked.begin(), ranked.end(), [](RankedTitle const& title)
         {
             return title.Tier < UnrelatedTier;

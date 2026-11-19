@@ -88,6 +88,24 @@ namespace HaloDesktop::Services
         return diff;
     }
 
+    bool SearchResultBoard::AdmitPersonWork()
+    {
+        if (!m_revealed || m_cutoffs.KeepCredited)
+        {
+            return false;
+        }
+        auto const namedExactly = [this](SearchTitle const& title)
+        {
+            return NamesQueryExactly(RankOne(title, m_query, 0, 0));
+        };
+        if ((m_topMatch && namedExactly(*m_topMatch)) || std::any_of(m_titles.begin(), m_titles.end(), namedExactly))
+        {
+            return false;
+        }
+        m_cutoffs.KeepCredited = true;
+        return true;
+    }
+
     bool SearchResultBoard::Revealed() const noexcept { return m_revealed; }
     std::vector<SearchTitle> const& SearchResultBoard::Titles() const noexcept { return m_titles; }
     std::optional<SearchTitle> const& SearchResultBoard::TopMatch() const noexcept { return m_topMatch; }

@@ -53,6 +53,14 @@ namespace HaloDesktop::Services
             SearchQueryMeaning meaning = SearchQueryMeaning::Title);
         // A catalog that answered after the reveal. Ignored before one.
         BoardDiff Absorb(SearchAnswer const& late);
+        // The query turned out to be a person's name only after the reveal:
+        // from now on their complete titles pass although their names share
+        // no word with it (KeepCredited), as a reveal judged as a person's
+        // name would have kept them. Only ever lets more in; nothing shown
+        // moves or goes. False, changing nothing, before a reveal, when the
+        // rule is already on, or when a title shown is named exactly the
+        // query (then a title is what was meant, as in ComputeCutoffs).
+        bool AdmitPersonWork();
 
         [[nodiscard]] bool Revealed() const noexcept;
         [[nodiscard]] std::vector<SearchTitle> const& Titles() const noexcept;

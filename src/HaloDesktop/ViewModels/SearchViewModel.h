@@ -329,6 +329,10 @@ namespace winrt::HaloDesktop::implementation
             ::HaloDesktop::Services::SearchProgressResult const& progress);
         // A revealed query: answers that landed since go to the board.
         void AbsorbLate(std::vector<::HaloDesktop::Services::SearchTargetState> const& states);
+        // Every catalog answer offered to the board again, after its rules
+        // let more in (a person's name known only after the reveal).
+        void ReofferAnswers();
+        void MarkMissingPosters(std::vector<::HaloDesktop::Services::SearchAnswer>& answers) const;
         void ApplyDiff(::HaloDesktop::Services::BoardDiff const& diff);
         void OnRevealTick();
         [[nodiscard]] bool RevealIsDue(
