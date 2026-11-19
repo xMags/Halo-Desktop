@@ -45,7 +45,7 @@
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
       <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnStripSizeChanged">
-        <ItemsRepeater x:Name="ShelfItems">
+        <ItemsRepeater x:Name="ShelfItems" HorizontalCacheLength="4">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Horizontal" Spacing="14" />
         </ItemsRepeater.Layout>

@@ -365,7 +365,7 @@
                  cards hit-testable too, so the strip answers everywhere. -->
             <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
               <!-- The last list on this page that realised everything it was given. -->
-              <ItemsRepeater x:Name="ContinueList">
+              <ItemsRepeater x:Name="ContinueList" HorizontalCacheLength="4">
               <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
               <ItemsRepeater.ItemTemplate>
                 <!-- The slot is sized so whole cards fill the strip (WholeCardStrip);
@@ -398,7 +398,7 @@
         to the shelves actually in view. The shelf hands itself through Tag so
         its See all knows where it leads.
       -->
-      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
+      <ItemsRepeater x:Name="ShelfList" VerticalCacheLength="4" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Vertical" Spacing="28" />
         </ItemsRepeater.Layout>

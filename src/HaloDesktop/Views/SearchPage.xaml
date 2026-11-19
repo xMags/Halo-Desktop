@@ -395,7 +395,7 @@
 
         <StackPanel Margin="0,26,0,0" Spacing="12" Visibility="{x:Bind ViewModel.LibraryVisibility, Mode=OneWay}">
           <TextBlock Style="{StaticResource HaloMonoKicker}" Text="IN YOUR LIBRARY" />
-          <ItemsRepeater x:Name="LibraryGrid" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
+          <ItemsRepeater x:Name="LibraryGrid" VerticalCacheLength="4" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
             <ItemsRepeater.Layout>
               <UniformGridLayout x:Name="LibraryLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
             </ItemsRepeater.Layout>
@@ -407,7 +407,7 @@
             <TextBlock Style="{StaticResource HaloMonoKicker}" Text="RESULTS" />
             <TextBlock Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.ResultCountText, Mode=OneWay}" />
           </StackPanel>
-          <ItemsRepeater x:Name="ResultsGrid" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
+          <ItemsRepeater x:Name="ResultsGrid" VerticalCacheLength="4" ElementPrepared="OnGridElementPrepared" ItemTemplate="{StaticResource SearchPosterTemplate}">
             <ItemsRepeater.Layout>
               <UniformGridLayout x:Name="ResultsLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
             </ItemsRepeater.Layout>

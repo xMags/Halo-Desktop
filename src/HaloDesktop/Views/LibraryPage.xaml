@@ -92,7 +92,7 @@
           share the row, 4 apart; each card keeps the 4px band above its art it
           lifts into on hover.
         -->
-        <ItemsRepeater x:Name="LibraryGrid" Margin="24,16,24,32" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
+        <ItemsRepeater x:Name="LibraryGrid" VerticalCacheLength="4" Margin="24,16,24,32" Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
           <ItemsRepeater.Layout>
             <UniformGridLayout x:Name="LibraryLayout" ItemsStretch="Uniform" MinColumnSpacing="4" MinRowSpacing="4" Orientation="Horizontal" />
           </ItemsRepeater.Layout>

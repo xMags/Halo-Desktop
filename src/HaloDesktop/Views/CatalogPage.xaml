@@ -43,7 +43,7 @@
       ViewChanged="OnScrollerViewChanged"
       Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
       <StackPanel>
-        <ItemsRepeater x:Name="CatalogGrid" Margin="24,20,24,32" SizeChanged="OnGridSizeChanged">
+        <ItemsRepeater x:Name="CatalogGrid" VerticalCacheLength="4" Margin="24,20,24,32" SizeChanged="OnGridSizeChanged">
           <ItemsRepeater.Layout>
             <UniformGridLayout
               x:Name="CatalogLayout"
