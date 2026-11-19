@@ -1,7 +1,6 @@
 #include "pch.h"
 #include "Views/HomeHeroPresenter.h"
 
-#include "Controls/ThemeColorLookup.h"
 
 #include <cstdint>
 #include <stdexcept>
@@ -23,10 +22,6 @@ namespace
     // `.pip` and `.pip-active`, as HeroPipStyle and HeroActivePipStyle set them.
     constexpr double PipWidth = 8.0;
     constexpr double ActivePipWidth = 28.0;
-
-    // The reference's scrim tokens, used only if the theme lookup fails.
-    constexpr winrt::Windows::UI::Color FallbackScrim1{ 0xF5, 0x0A, 0x0C, 0x11 };
-    constexpr winrt::Windows::UI::Color FallbackScrim2{ 0x9E, 0x0A, 0x0C, 0x11 };
 
     winrt::Windows::UI::Color Transparent(winrt::Windows::UI::Color color) noexcept
     {
@@ -141,10 +136,9 @@ namespace HaloDesktop::Views
         m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(0.5F, opaque));
         m_fadeMask.ColorStops().Append(m_compositor.CreateColorGradientStop(1.0F, Transparent(opaque)));
 
-        m_sideMask = m_compositor.CreateLinearGradientBrush();
-        m_sideMask.StartPoint({ 0.0F, 0.0F });
-        m_sideMask.EndPoint({ 1.0F, 0.0F });
-        ApplySideFade();
+        m_artMask = m_compositor.CreateSurfaceBrush();
+        m_artMask.Stretch(winrt::Microsoft::UI::Composition::CompositionStretch::Fill);
+        LoadFadeMask();
         ElementCompositionPreview::SetElementChildVisual(m_parts.ArtHost, m_artRoot);
 
         // CSS `ease`, the reference's timing for both the crossfade and the body.
@@ -262,14 +256,15 @@ namespace HaloDesktop::Views
                     art.Stretch(winrt::Microsoft::UI::Composition::CompositionStretch::UniformToFill);
                     art.HorizontalAlignmentRatio(0.5F);
                     art.VerticalAlignmentRatio(0.5F);
-                    // Faded out over its lower half and toward the text side:
-                    // two masks, one inside the other.
-                    auto const faded = m_compositor.CreateMaskBrush();
-                    faded.Source(art);
-                    faded.Mask(m_fadeMask);
+                    // Faded out over its lower half and toward the text side
+                    // by one mask: a mask brush cannot take another as its
+                    // source, so the two fades are one image (LoadFadeMask).
                     auto const masked = m_compositor.CreateMaskBrush();
-                    masked.Source(faded);
-                    masked.Mask(m_sideMask);
+                    masked.Source(art);
+                    masked.Mask(m_maskFailed
+                        ? m_fadeMask.as<winrt::Microsoft::UI::Composition::CompositionBrush>()
+                        : m_artMask.as<winrt::Microsoft::UI::Composition::CompositionBrush>());
+                    layer.Masked = masked;
                     layer.Visual.Brush(masked);
                     layer.Loaded = layer.Surface.LoadCompleted(winrt::auto_revoke, [this](
                         winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
@@ -494,7 +489,9 @@ namespace HaloDesktop::Views
     // drawn under it, full width, for as long as the hero is on screen.
     void HomeHeroPresenter::UpdatePlaceholder()
     {
-        auto const ready = m_active >= 0
+        // The art draws nothing until its fade mask has decoded, so both count.
+        auto const ready = m_maskReady
+            && m_active >= 0
             && static_cast<std::size_t>(m_active) < m_layers.size()
             && m_layers[static_cast<std::size_t>(m_active)].Ready;
         m_parts.Placeholder.Visibility(ready
@@ -605,7 +602,7 @@ namespace HaloDesktop::Views
 
     void HomeHeroPresenter::OnThemeChanged()
     {
-        ApplySideFade();
+        LoadFadeMask();
         UpdateTitleTreatment();
     }
 
@@ -613,38 +610,76 @@ namespace HaloDesktop::Views
     // Over an opaque page that is the same as fading the art out toward that
     // side, but over the translucent window the scrim's near-solid page colour
     // showed as a pale (or dark) block in the hero's corner. So the art itself
-    // fades instead, as the bottom does, keeping the reference's stops and
-    // strengths: where the scrim covered a share of the art, that share of the
-    // art is let through to whatever is really behind the hero.
-    void HomeHeroPresenter::ApplySideFade()
+    // fades instead, toward its text side and over its lower half: where the
+    // scrim covered a share of the art, that share is let through to whatever
+    // is really behind the hero. A mask brush takes one mask and cannot nest,
+    // so both fades are baked into one image per theme, drawn from the
+    // reference's scrim stops (`--hs1`/`--hs2`: F5 then 9E alpha at 52%, clear by
+    // 92%; light: F5 to 24%, 80 at 46%, clear by 68%) and its bottom fade
+    // (opaque to 50%, clear at the bottom). Stretched over the hero.
+    void HomeHeroPresenter::LoadFadeMask()
     {
-        if (!m_sideMask)
+        if (!m_artMask || m_maskFailed)
         {
             return;
         }
-        auto const first = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim1Color").value_or(FallbackScrim1);
-        auto const second = ::HaloDesktop::Controls::ThemeColor(m_parts.Root, L"HaloHeroScrim2Color").value_or(FallbackScrim2);
-        // The art's own alpha where the scrim had `scrim`'s.
-        auto const shown = [](winrt::Windows::UI::Color scrim) noexcept
+        auto const light = m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light;
+        if (m_maskRequested && light == m_maskLight)
         {
-            return winrt::Windows::UI::Color{ static_cast<std::uint8_t>(0xFF - scrim.A), 0x00, 0x00, 0x00 };
-        };
-        winrt::Windows::UI::Color const whole{ 0xFF, 0x00, 0x00, 0x00 };
-        auto stops = m_sideMask.ColorStops();
-        stops.Clear();
-        if (m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light)
-        {
-            // Light keeps the art: the haze stays behind the text and is gone by
-            // the middle, rather than whitening the whole picture.
-            stops.Append(m_compositor.CreateColorGradientStop(0.0F, shown(first)));
-            stops.Append(m_compositor.CreateColorGradientStop(0.24F, shown(first)));
-            stops.Append(m_compositor.CreateColorGradientStop(0.46F, shown(second)));
-            stops.Append(m_compositor.CreateColorGradientStop(0.68F, whole));
             return;
         }
-        stops.Append(m_compositor.CreateColorGradientStop(0.0F, shown(first)));
-        stops.Append(m_compositor.CreateColorGradientStop(0.52F, shown(second)));
-        stops.Append(m_compositor.CreateColorGradientStop(0.92F, whole));
+        m_maskRequested = true;
+        m_maskLight = light;
+        try
+        {
+            m_maskLoaded.revoke();
+            m_maskSurface = winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface::StartLoadFromUri(
+                winrt::Windows::Foundation::Uri{ light ? L"ms-appx:///Assets/hero-fade-light.png" : L"ms-appx:///Assets/hero-fade-dark.png" });
+            m_maskLoaded = m_maskSurface.LoadCompleted(winrt::auto_revoke, [this](
+                winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
+                winrt::Microsoft::UI::Xaml::Media::LoadedImageSourceLoadCompletedEventArgs const& args)
+            {
+                OnFadeMaskLoaded(
+                    surface,
+                    args.Status() == winrt::Microsoft::UI::Xaml::Media::LoadedImageSourceLoadStatus::Success);
+            });
+        }
+        catch (...)
+        {
+            OnFadeMaskLoaded(nullptr, false);
+        }
+    }
+
+    void HomeHeroPresenter::OnFadeMaskLoaded(
+        winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface,
+        bool succeeded)
+    {
+        if (succeeded && surface && surface == m_maskSurface)
+        {
+            // Swapped only once decoded, so a theme change never blanks the art.
+            m_artMask.Surface(surface);
+            m_maskReady = true;
+            UpdatePlaceholder();
+            return;
+        }
+        if (succeeded)
+        {
+            return; // A load the theme has since replaced.
+        }
+        // Without the image the art keeps the bottom fade alone, as before the
+        // side fade existed, rather than not drawing at all.
+        OutputDebugStringW(L"Halo could not load the hero's fade mask; the hero fades at the bottom only.\n");
+        m_maskFailed = true;
+        m_maskLoaded.revoke();
+        for (auto const& layer : m_layers)
+        {
+            if (layer.Masked)
+            {
+                layer.Masked.Mask(m_fadeMask);
+            }
+        }
+        m_maskReady = true;
+        UpdatePlaceholder();
     }
 
     void HomeHeroPresenter::ResizeArt()

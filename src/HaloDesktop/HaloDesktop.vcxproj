@@ -925,6 +925,8 @@
     <Image Include="Assets\StoreLogo.png" />
     <Image Include="Assets\stripe-dark.png" />
     <Image Include="Assets\stripe-light.png" />
+    <Image Include="Assets\hero-fade-dark.png" />
+    <Image Include="Assets\hero-fade-light.png" />
     <Image Include="Assets\user-avatar.png" />
     <Image Include="Assets\Wide310x150Logo.scale-200.png" />
   </ItemGroup>

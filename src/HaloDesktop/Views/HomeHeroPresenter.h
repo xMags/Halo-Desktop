@@ -95,6 +95,9 @@ namespace HaloDesktop::Views
             std::wstring Url;
             winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface Surface{ nullptr };
             winrt::Microsoft::UI::Composition::SpriteVisual Visual{ nullptr };
+            // The art under the hero's fade mask; its mask is swapped for the
+            // plain bottom fade if the mask image cannot be loaded.
+            winrt::Microsoft::UI::Composition::CompositionMaskBrush Masked{ nullptr };
             winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface::LoadCompleted_revoker Loaded;
             bool Ready{};
         };
@@ -112,7 +115,8 @@ namespace HaloDesktop::Views
         void UpdatePlaceholder();
         void RestartClock();
         void StopClock();
-        void ApplySideFade();
+        void LoadFadeMask();
+        void OnFadeMaskLoaded(winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface, bool succeeded);
         void ResizeArt();
         void ResizeLogoShadow();
         void OnLayerLoaded(winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface, bool succeeded);
@@ -127,8 +131,16 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Composition::ContainerVisual m_artRoot{ nullptr };
         winrt::Microsoft::UI::Composition::CompositionRoundedRectangleGeometry m_artClip{ nullptr };
         winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_fadeMask{ nullptr };
-        // The scrim as an alpha mask on the art: see ApplySideFade.
-        winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_sideMask{ nullptr };
+        // The art's fade toward its text side and its bottom, one image per
+        // theme (see LoadFadeMask); every layer is masked by this one brush.
+        winrt::Microsoft::UI::Composition::CompositionSurfaceBrush m_artMask{ nullptr };
+        winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface m_maskSurface{ nullptr };
+        winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface::LoadCompleted_revoker m_maskLoaded;
+        bool m_maskLight{};
+        bool m_maskRequested{};
+        // A mask is drawn (the theme's, or the bottom fade after a failure).
+        bool m_maskReady{};
+        bool m_maskFailed{};
         winrt::Microsoft::UI::Composition::ImplicitAnimationCollection m_crossfade{ nullptr };
         winrt::Microsoft::UI::Composition::Visual m_bodyVisual{ nullptr };
         winrt::Microsoft::UI::Composition::ScalarKeyFrameAnimation m_bodyFade{ nullptr };
