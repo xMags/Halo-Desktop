@@ -3,16 +3,23 @@
 #if __has_include("RecentSearchViewModel.g.cpp")
 #include "RecentSearchViewModel.g.cpp"
 #endif
+#if __has_include("SearchPersonViewModel.g.cpp")
+#include "SearchPersonViewModel.g.cpp"
+#endif
 #if __has_include("SearchViewModel.g.cpp")
 #include "SearchViewModel.g.cpp"
 #endif
 #include "Controls/ArtworkUrlPolicy.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
+#include "Services/PeopleRowPolicy.h"
+#include "Services/PeopleService.h"
 #include "Services/RatingPolicy.h"
 #include "Services/SearchRankingPolicy.h"
 #include "Services/SearchRevealPolicy.h"
+#include "Services/ServerFeaturesService.h"
 #include "Services/TitleLookupService.h"
+#include "ViewModels/DetailFactsPolicy.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <algorithm>
@@ -32,20 +39,31 @@ namespace
     // The status line while a query's results are not revealed yet.
     constexpr wchar_t SearchingNote[] = L"Searching…";
 
-    // The action card's words. Magnets, TVDB numbers and IMDb people get
-    // cards of their own in later stages; until then they say so.
+    // The action card's words. Magnets get a card of their own in a later
+    // stage; until then it says so.
     constexpr wchar_t LookingUpPrefix[] = L"Looking up ";
     constexpr wchar_t LookingUpSecondary[] = L"Asking your addons which title this is.";
     constexpr wchar_t NoAddonKnowsTitleText[] = L"No addon knows this title";
     constexpr wchar_t NotFoundSuffix[] = L" was not found by any of your addons.";
     constexpr wchar_t CannotLookUpText[] = L"This link can't be looked up";
     constexpr wchar_t TvdbSlugText[] = L"This TVDB link has no number in it. Paste the IMDb link instead.";
-    constexpr wchar_t LinkNotYetText[] = L"This kind of link isn't available yet";
+    // TVDB numbers and IMDb people, which the server looks up.
+    constexpr wchar_t NeedsServerText[] = L"This kind of link needs a Halo server that supports it.";
+    constexpr wchar_t AskingServerTitleText[] = L"Asking the server which title this is.";
+    constexpr wchar_t AskingServerPersonText[] = L"Asking the server who this is.";
+    constexpr wchar_t ServerUnknownTitleText[] = L"The server doesn't know this title";
+    constexpr wchar_t ServerUnknownPersonText[] = L"The server doesn't know this person";
+    constexpr wchar_t ServerNotFoundSuffix[] = L" was not found.";
+    constexpr wchar_t ServerNoAnswerText[] = L"The server did not answer. Try again in a moment.";
+    constexpr wchar_t OpenPersonText[] = L"Open person page";
     constexpr wchar_t WebLinkSecondary[] = L"Plays straight from this address. Not added to your history.";
     constexpr wchar_t CannotPlayText[] = L"This link can't be played";
     constexpr wchar_t MagnetNotYetText[] = L"Magnet links aren't available yet";
     constexpr wchar_t OpenTitleText[] = L"Open title";
     constexpr wchar_t PlayLinkText[] = L"Play this link";
+    // The box's placeholder, with people search and without.
+    constexpr wchar_t PlaceholderWithPeople[] = L"Search films, series and people, or paste a link";
+    constexpr wchar_t PlaceholderTitlesOnly[] = L"Search films and series, or paste a link";
 
     winrt::Microsoft::UI::Xaml::Visibility VisibleIf(bool value) noexcept
     {
@@ -148,6 +166,17 @@ namespace
 
 namespace winrt::HaloDesktop::implementation
 {
+    SearchPersonViewModel::SearchPersonViewModel(::HaloDesktop::Api::Dto::PersonSummary const& person)
+        : m_tmdbId(person.TmdbId),
+          m_name(person.Name),
+          m_line(::HaloDesktop::Services::PersonRowLine(person)),
+          m_photo(person.Photo.value_or(winrt::hstring{})),
+          m_initials(::HaloDesktop::ViewModels::Initials(person.Name))
+    {
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchPersonViewModel::LineVisibility() const noexcept { return VisibleIf(!m_line.empty()); }
+
     RecentSearchViewModel::RecentSearchViewModel(winrt::hstring term) : m_term(std::move(term)) {}
     winrt::hstring RecentSearchViewModel::Term() const { return m_term; }
     winrt::hstring RecentSearchViewModel::RemoveLabel() const { return L"Remove " + m_term + L" from recent searches"; }
@@ -156,16 +185,27 @@ namespace winrt::HaloDesktop::implementation
         : m_search(services.Search),
           m_navigation(services.Navigation),
           m_titleLookup(services.TitleLookup),
+          m_features(services.ServerFeatures),
+          m_peopleService(services.People),
           m_dispatcher(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread()),
           m_suggestions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_recent(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_library(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
-          m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
+          m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
+          m_people(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_search || !m_navigation || !m_titleLookup || !m_dispatcher)
+        if (!m_search || !m_navigation || !m_titleLookup || !m_features || !m_peopleService || !m_dispatcher)
         {
             throw winrt::hresult_invalid_argument{ L"Search needs its services, navigation and a dispatcher." };
         }
+        // Asked on arrival (Shown); this only hears the answer.
+        m_featuresToken = m_features->AddChangedHandler([weak = get_weak()]()
+        {
+            if (auto const self = weak.get())
+            {
+                self->OnFeaturesChanged();
+            }
+        });
         m_accountVersion = m_search->AccountVersion();
         m_debounceTimer = m_dispatcher.CreateTimer();
         m_debounceTimer.Interval(std::chrono::milliseconds{ ::HaloDesktop::Services::SearchDebounceMilliseconds });
@@ -209,6 +249,11 @@ namespace winrt::HaloDesktop::implementation
             self->m_boardSerial.reset();
             self->m_hasShown = false;
             self->ForgetShown();
+            // Who matched belongs to the old account's server too.
+            self->m_peopleQuery.clear();
+            self->m_peopleAsked = false;
+            self->m_peopleAnswer.reset();
+            self->m_idLookup.reset();
             self->Refresh();
             self->m_dispatcher.TryEnqueue([weak = self->get_weak()]()
             {
@@ -222,7 +267,15 @@ namespace winrt::HaloDesktop::implementation
                         again->StartTitleLookup();
                         again->RaiseAction();
                     }
+                    // So is the server's lookup, once the new account's
+                    // server says what it offers.
+                    if (again->IsServerLookup())
+                    {
+                        again->StartServerLookup();
+                        again->RaiseAction();
+                    }
                     again->m_search->Search(again->m_activeQuery, true);
+                    again->AskPeople(false);
                     again->Refresh();
                 }
             });
@@ -248,6 +301,15 @@ namespace winrt::HaloDesktop::implementation
         if (m_titleLookup && m_lookupState == LookupState::Looking)
         {
             m_titleLookup->Cancel();
+        }
+        if (m_features && m_featuresToken != 0)
+        {
+            m_features->RemoveChangedHandler(m_featuresToken);
+        }
+        if (m_peopleService)
+        {
+            m_peopleService->CancelSearch();
+            m_peopleService->CancelLookup();
         }
     }
 
@@ -295,6 +357,7 @@ namespace winrt::HaloDesktop::implementation
         // A search the addons could not even be listed for is asked again.
         auto const retry = m_search->Phase() == ::HaloDesktop::Services::SearchPhase::AddonsFailed;
         m_search->Search(m_activeQuery, retry);
+        AskPeople(false);
         Refresh();
     }
 
@@ -303,6 +366,30 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable SearchViewModel::RecentItems() const { return m_recent; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::LibraryItems() const { return m_library; }
     winrt::Windows::Foundation::IInspectable SearchViewModel::ResultItems() const { return m_results; }
+    winrt::Windows::Foundation::IInspectable SearchViewModel::PeopleItems() const { return m_people; }
+
+    // People are not films or series, so a kind chip leaves them out.
+    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleAboveVisibility() const noexcept
+    {
+        return VisibleIf(m_peoplePlace == PeoplePlace::Above && m_filterIndex == 0);
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleBelowVisibility() const noexcept
+    {
+        return VisibleIf(m_peoplePlace == PeoplePlace::Below && m_filterIndex == 0);
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleHintVisibility() const noexcept { return VisibleIf(PeopleAvailable()); }
+
+    winrt::hstring SearchViewModel::Placeholder() const
+    {
+        return PeopleAvailable() ? PlaceholderWithPeople : PlaceholderTitlesOnly;
+    }
+
+    bool SearchViewModel::PeopleAvailable() const noexcept
+    {
+        return m_features->People();
+    }
     bool SearchViewModel::ShowKindBadges() const noexcept { return m_filterIndex == 0; }
     winrt::hstring SearchViewModel::ResultCountText() const { return winrt::to_hstring(static_cast<std::uint64_t>(m_resultCount)); }
     winrt::hstring SearchViewModel::StatusText() const { return m_statusText; }
@@ -478,8 +565,10 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        // Forced: the same query, every catalog asked again.
+        // Forced: the same query, every catalog asked again, and the people
+        // when they could not be had.
         m_search->Search(m_activeQuery, true);
+        AskPeople(true);
         Refresh();
     }
 
@@ -526,6 +615,24 @@ namespace winrt::HaloDesktop::implementation
         OpenDetail(m_topMatch);
     }
 
+    void SearchViewModel::OpenPerson(winrt::Windows::Foundation::IInspectable const& item)
+    {
+        auto const person = item.try_as<winrt::HaloDesktop::SearchPersonViewModel>();
+        if (!person || !PeopleAvailable())
+        {
+            return;
+        }
+        auto const self = winrt::get_self<SearchPersonViewModel>(person);
+        if (self->TmdbId() <= 0)
+        {
+            return;
+        }
+        RecordQuery();
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Person,
+            winrt::make<winrt::HaloDesktop::implementation::PersonNavParams>(self->TmdbId(), self->Name(), self->Photo()));
+    }
+
     void SearchViewModel::Arrive(winrt::hstring const& query)
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(query) };
@@ -541,6 +648,8 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::Shown()
     {
+        // People search and server lookups follow what the server offers.
+        m_features->EnsureLoaded();
         Refresh();
     }
 
@@ -691,6 +800,13 @@ namespace winrt::HaloDesktop::implementation
     {
         namespace Services = ::HaloDesktop::Services;
         m_revealTimer.Stop();
+        if (m_peopleAsked)
+        {
+            m_peopleService->CancelSearch();
+        }
+        m_peopleQuery.clear();
+        m_peopleAsked = false;
+        m_peopleAnswer.reset();
         m_board = {};
         m_boardSerial.reset();
         m_absorbed.clear();
@@ -744,6 +860,17 @@ namespace winrt::HaloDesktop::implementation
         // Chosen before the kind filter, so the filter does not move it.
         SetTopMatch(m_board.TopMatch());
         ShowSubsequence();
+        // The people row belongs to this reveal: in place now when its answer
+        // is already in, else below the results whenever it lands.
+        ForgetPeople();
+        m_revealedQuery = query;
+        auto titles = m_board.Titles();
+        if (m_board.TopMatch()) titles.push_back(*m_board.TopMatch());
+        m_bestTitleTier = Services::BestTitleTier(titles, query);
+        if (m_peopleAnswer && m_peopleQuery == query)
+        {
+            PlacePeople(PeoplePlace::Above);
+        }
         ComposeRevealed(progress);
         FinishCompose();
     }
@@ -876,7 +1003,7 @@ namespace winrt::HaloDesktop::implementation
         auto const settledEmpty = !pending && m_libraryShown.empty() && m_resultCount == 0;
         m_filteredEmpty = settledEmpty && !progress.Groups.empty() && type.has_value();
         m_nothingFound = settledEmpty && !m_topMatchTitle && !type && progress.Total > 0
-            && progress.Failed.size() < progress.Total;
+            && progress.Failed.size() < progress.Total && m_peoplePlace == PeoplePlace::None;
         // No catalog could be asked at all (the addons could not be listed),
         // or every one asked failed and nothing is on screen: the body says
         // so, and the status line stays empty so it is not said twice.
@@ -902,6 +1029,9 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::ForgetShown()
     {
+        ForgetPeople();
+        m_revealedQuery.clear();
+        m_bestTitleTier.reset();
         m_displayed.clear();
         if (m_results.Size() > 0)
         {
@@ -941,9 +1071,12 @@ namespace winrt::HaloDesktop::implementation
             }
             // Back to words: the card goes, and the words are searched as usual.
             m_titleLookup->Cancel();
+            m_peopleService->CancelLookup();
             m_input = {};
             m_lookupState = LookupState::None;
             m_lookupTitle.reset();
+            m_idLookup.reset();
+            m_serverLookupAsked = false;
             Refresh();
             return false;
         }
@@ -954,6 +1087,8 @@ namespace winrt::HaloDesktop::implementation
         m_input = std::move(input);
         m_lookupState = LookupState::None;
         m_lookupTitle.reset();
+        m_idLookup.reset();
+        m_serverLookupAsked = false;
         if (m_input.Kind == Services::SearchInputKind::ImdbTitle)
         {
             StartTitleLookup();
@@ -961,6 +1096,14 @@ namespace winrt::HaloDesktop::implementation
         else
         {
             m_titleLookup->Cancel();
+        }
+        if (IsServerLookup())
+        {
+            StartServerLookup();
+        }
+        else
+        {
+            m_peopleService->CancelLookup();
         }
         // No catalog is asked about a link; what an earlier query asked is dropped.
         m_activeQuery.clear();
@@ -988,9 +1131,210 @@ namespace winrt::HaloDesktop::implementation
         });
     }
 
+    bool SearchViewModel::IsServerLookup() const noexcept
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        return m_input.Kind == Kind::TvdbNumeric || m_input.Kind == Kind::ImdbPerson;
+    }
+
+    void SearchViewModel::StartServerLookup()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        m_idLookup.reset();
+        m_serverLookupAsked = false;
+        m_features->EnsureLoaded();
+        // Until the server says what it offers, the card reads as looking up;
+        // its answer (OnFeaturesChanged) asks or says it cannot.
+        if (!m_features->Settled())
+        {
+            m_lookupState = LookupState::Looking;
+            return;
+        }
+        if (!m_features->Lookup())
+        {
+            m_peopleService->CancelLookup();
+            m_lookupState = LookupState::Unsupported;
+            return;
+        }
+        m_lookupState = LookupState::Looking;
+        m_serverLookupAsked = true;
+        auto const kind = m_input.Kind;
+        auto const id = kind == Services::SearchInputKind::TvdbNumeric ? m_input.TvdbId : m_input.PersonId;
+        std::wstring source = kind == Services::SearchInputKind::TvdbNumeric ? L"tvdb" : L"imdb";
+        m_peopleService->Lookup(std::move(source), id, [weak = get_weak(), kind, id](
+            Services::PeopleOutcome outcome,
+            std::optional<::HaloDesktop::Api::Dto::IdLookup> found)
+        {
+            auto const self = weak.get();
+            if (!self || self->m_input.Kind != kind
+                || (kind == Services::SearchInputKind::TvdbNumeric ? self->m_input.TvdbId : self->m_input.PersonId) != id)
+            {
+                return;
+            }
+            // A TVDB number names a title and an IMDb person id a person;
+            // any other answer is no answer for this card.
+            auto const expected = kind == Services::SearchInputKind::TvdbNumeric
+                ? ::HaloDesktop::Api::Dto::IdLookupKind::Title
+                : ::HaloDesktop::Api::Dto::IdLookupKind::Person;
+            if (outcome == Services::PeopleOutcome::Found && found && found->Kind == expected)
+            {
+                self->m_lookupState = LookupState::Found;
+                self->m_idLookup = std::move(found);
+            }
+            else
+            {
+                self->m_lookupState = outcome == Services::PeopleOutcome::Failed ? LookupState::Failed : LookupState::NotFound;
+                self->m_idLookup.reset();
+            }
+            self->RaiseAction();
+        });
+    }
+
+    bool SearchViewModel::ServerTitleFound() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::TvdbNumeric
+            && m_lookupState == LookupState::Found && m_idLookup
+            && m_idLookup->Kind == ::HaloDesktop::Api::Dto::IdLookupKind::Title;
+    }
+
+    bool SearchViewModel::ServerPersonFound() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbPerson
+            && m_lookupState == LookupState::Found && m_idLookup
+            && m_idLookup->Kind == ::HaloDesktop::Api::Dto::IdLookupKind::Person;
+    }
+
+    void SearchViewModel::OpenServerLookup()
+    {
+        if (ServerTitleFound())
+        {
+            m_navigation->GoTo(
+                ::HaloDesktop::Services::Page::Detail,
+                winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(
+                    m_idLookup->Type, m_idLookup->Id, m_idLookup->Name, m_idLookup->Poster.value_or(winrt::hstring{})));
+            return;
+        }
+        if (ServerPersonFound() && PeopleAvailable())
+        {
+            m_navigation->GoTo(
+                ::HaloDesktop::Services::Page::Person,
+                winrt::make<winrt::HaloDesktop::implementation::PersonNavParams>(
+                    m_idLookup->TmdbId, m_idLookup->Name, m_idLookup->Photo.value_or(winrt::hstring{})));
+        }
+    }
+
+    void SearchViewModel::AskPeople(bool retry)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto query = Services::TrimmedText(m_activeQuery);
+        if (ActionShown() || !Services::IsSearchableQuery(query) || !PeopleAvailable())
+        {
+            return;
+        }
+        // Asked once per query, beside its catalogs; again only when a retry
+        // follows an answer that could not be had.
+        if (m_peopleAsked && query == m_peopleQuery && !(retry && m_peopleFailed))
+        {
+            return;
+        }
+        m_peopleQuery = query;
+        m_peopleAsked = true;
+        m_peopleAnswer.reset();
+        m_peopleFailed = false;
+        m_peopleService->SearchPeople(std::move(query), [weak = get_weak(), asked = m_peopleQuery](
+            Services::PeopleOutcome outcome,
+            std::vector<::HaloDesktop::Api::Dto::PersonSummary> people)
+        {
+            if (auto const self = weak.get())
+            {
+                self->OnPeopleAnswer(asked, outcome, std::move(people));
+            }
+        });
+    }
+
+    void SearchViewModel::OnPeopleAnswer(
+        std::wstring const& query,
+        ::HaloDesktop::Services::PeopleOutcome outcome,
+        std::vector<::HaloDesktop::Api::Dto::PersonSummary> people)
+    {
+        if (!m_peopleAsked || query != m_peopleQuery)
+        {
+            return;
+        }
+        m_peopleFailed = outcome == ::HaloDesktop::Services::PeopleOutcome::Failed;
+        m_peopleAnswer = outcome == ::HaloDesktop::Services::PeopleOutcome::Found
+            ? std::move(people)
+            : std::vector<::HaloDesktop::Api::Dto::PersonSummary>{};
+        // Before the reveal the answer waits for it (RevealNow). After it,
+        // the row goes under the results: nothing already shown moves.
+        if (m_board.Revealed() && m_revealedQuery == query && !m_peopleDecided)
+        {
+            PlacePeople(PeoplePlace::Below);
+            Refresh();
+        }
+    }
+
+    void SearchViewModel::PlacePeople(PeoplePlace place)
+    {
+        m_peopleDecided = true;
+        m_peoplePlace = PeoplePlace::None;
+        if (!m_peopleAnswer)
+        {
+            return;
+        }
+        auto const row = ::HaloDesktop::Services::ChoosePeopleRow(*m_peopleAnswer, m_revealedQuery, m_bestTitleTier);
+        if (row.empty())
+        {
+            return;
+        }
+        std::vector<winrt::Windows::Foundation::IInspectable> items;
+        items.reserve(row.size());
+        for (auto const& person : row)
+        {
+            items.push_back(winrt::make<SearchPersonViewModel>(person));
+        }
+        m_people.ReplaceAll(items);
+        m_peoplePlace = place;
+    }
+
+    void SearchViewModel::ForgetPeople()
+    {
+        if (m_people.Size() > 0)
+        {
+            m_people.Clear();
+        }
+        m_peoplePlace = PeoplePlace::None;
+        m_peopleDecided = false;
+    }
+
+    void SearchViewModel::OnFeaturesChanged()
+    {
+        Raise(L"Placeholder");
+        Raise(L"PeopleHintVisibility");
+        // A TVDB or IMDb person card that waited for the server's answer.
+        if (IsServerLookup() && !m_serverLookupAsked)
+        {
+            StartServerLookup();
+            RaiseAction();
+        }
+        // A query already under way gets its people now; they land below
+        // the results if those are already shown.
+        if (m_active && !ActionShown())
+        {
+            AskPeople(false);
+        }
+    }
+
     void SearchViewModel::ComposeAction()
     {
         m_revealTimer.Stop();
+        if (m_peopleAsked)
+        {
+            m_peopleService->CancelSearch();
+        }
+        m_peopleQuery.clear();
+        m_peopleAsked = false;
+        m_peopleAnswer.reset();
         m_board = {};
         m_boardSerial.reset();
         m_absorbed.clear();
@@ -1017,6 +1361,16 @@ namespace winrt::HaloDesktop::implementation
             && m_lookupState == LookupState::Found && m_lookupTitle.has_value();
     }
 
+    bool SearchViewModel::ShowsPoster() const noexcept
+    {
+        return LookupFound() || ServerTitleFound() || ServerPersonFound();
+    }
+
+    std::wstring const& SearchViewModel::ServerLookupId() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::TvdbNumeric ? m_input.TvdbId : m_input.PersonId;
+    }
+
     winrt::HaloDesktop::SearchActionTone SearchViewModel::ActionTone() const noexcept
     {
         using Kind = ::HaloDesktop::Services::SearchInputKind;
@@ -1026,6 +1380,9 @@ namespace winrt::HaloDesktop::implementation
         case Kind::WebLink: return SearchActionTone::Accent;
         case Kind::ImdbPerson:
         case Kind::TvdbNumeric:
+            if (m_lookupState == LookupState::Looking || m_lookupState == LookupState::Found) return SearchActionTone::Accent;
+            if (m_lookupState == LookupState::Failed) return SearchActionTone::Warn;
+            return SearchActionTone::Mute;
         case Kind::TvdbSlug:
         case Kind::Magnet:
         case Kind::UnsupportedLink:
@@ -1037,7 +1394,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::HaloDesktop::SearchActionGlyph SearchViewModel::ActionGlyph() const noexcept
     {
         using Kind = ::HaloDesktop::Services::SearchInputKind;
-        if (LookupFound())
+        if (ShowsPoster())
         {
             return SearchActionGlyph::Poster;
         }
@@ -1084,7 +1441,14 @@ namespace winrt::HaloDesktop::implementation
         case Kind::WebLink: return winrt::hstring{ m_input.DisplayName.empty() ? m_input.Host : m_input.DisplayName };
         case Kind::Magnet: return MagnetNotYetText;
         case Kind::TvdbNumeric:
-        case Kind::ImdbPerson: return LinkNotYetText;
+        case Kind::ImdbPerson:
+            if (ServerTitleFound() || ServerPersonFound()) return m_idLookup->Name;
+            if (m_lookupState == LookupState::NotFound)
+            {
+                return m_input.Kind == Kind::TvdbNumeric ? ServerUnknownTitleText : ServerUnknownPersonText;
+            }
+            if (m_lookupState == LookupState::Unsupported || m_lookupState == LookupState::Failed) return CannotLookUpText;
+            return winrt::hstring{ std::wstring{ LookingUpPrefix } + ServerLookupId() + L"…" };
         case Kind::TvdbSlug: return CannotLookUpText;
         case Kind::UnsupportedLink: return CannotPlayText;
         case Kind::Text: break;
@@ -1101,12 +1465,14 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring SearchViewModel::ActionMono() const
     {
         if (LookupFound()) return m_lookupTitle->Type == L"series" ? L"SERIES" : L"MOVIE";
+        if (ServerTitleFound()) return m_idLookup->Type == L"series" ? L"SERIES" : L"MOVIE";
         if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return winrt::hstring{ m_input.Host };
         return {};
     }
 
     winrt::hstring SearchViewModel::ActionYear() const
     {
+        if (ServerTitleFound()) return m_idLookup->Year.value_or(winrt::hstring{});
         if (!LookupFound()) return {};
         return winrt::hstring{ m_lookupTitle->ReleaseInfo.value_or(L"") };
     }
@@ -1145,6 +1511,16 @@ namespace winrt::HaloDesktop::implementation
         case Kind::UnsupportedLink: return winrt::hstring{ m_input.Reason };
         case Kind::ImdbPerson:
         case Kind::TvdbNumeric:
+            switch (m_lookupState)
+            {
+            case LookupState::Unsupported: return NeedsServerText;
+            case LookupState::Failed: return ServerNoAnswerText;
+            case LookupState::NotFound: return winrt::hstring{ ServerLookupId() + ServerNotFoundSuffix };
+            case LookupState::None:
+            case LookupState::Looking: return m_input.Kind == Kind::TvdbNumeric ? AskingServerTitleText : AskingServerPersonText;
+            case LookupState::Found: break;
+            }
+            return {};
         case Kind::Magnet:
         case Kind::Text: break;
         }
@@ -1156,31 +1532,39 @@ namespace winrt::HaloDesktop::implementation
         try { return VisibleIf(!ActionSecondary().empty()); } catch (...) { return Collapsed; }
     }
 
+    // A found person leads with their photo in the poster's frame.
     winrt::hstring SearchViewModel::ActionPoster() const
     {
+        if (ServerTitleFound()) return m_idLookup->Poster.value_or(winrt::hstring{});
+        if (ServerPersonFound()) return m_idLookup->Photo.value_or(winrt::hstring{});
         if (!LookupFound() || ::HaloDesktop::Services::HasNoPoster(*m_lookupTitle)) return {};
         return winrt::hstring{ *m_lookupTitle->Poster };
     }
 
     winrt::hstring SearchViewModel::ActionMetaId() const
     {
+        if (ServerTitleFound()) return m_idLookup->Id;
         return LookupFound() ? winrt::hstring{ m_lookupTitle->Id } : winrt::hstring{};
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionPosterVisibility() const noexcept
     {
-        return VisibleIf(LookupFound());
+        return VisibleIf(ShowsPoster());
     }
 
     winrt::hstring SearchViewModel::ActionButtonLabel() const
     {
         if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return PlayLinkText;
+        if (ServerPersonFound()) return OpenPersonText;
         return OpenTitleText;
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonVisibility() const noexcept
     {
-        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink || LookupFound());
+        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink
+            || LookupFound()
+            || ServerTitleFound()
+            || (ServerPersonFound() && PeopleAvailable()));
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonGlyphVisibility() const noexcept
@@ -1198,6 +1582,10 @@ namespace winrt::HaloDesktop::implementation
         else if (m_input.Kind == Kind::WebLink)
         {
             PlayPastedLink();
+        }
+        else if (IsServerLookup())
+        {
+            OpenServerLookup();
         }
     }
 
@@ -1294,7 +1682,8 @@ namespace winrt::HaloDesktop::implementation
                  L"TopMatchRatingVisibility", L"TopMatchYearVisibility", L"TopMatchInLibraryVisibility", L"TopMatchBlurbVisibility",
                  L"RecentVisibility", L"HintsVisibility", L"StatusVisibility", L"StatusFailed", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
                  L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
-                 L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility" })
+                 L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility",
+                 L"PeopleAboveVisibility", L"PeopleBelowVisibility", L"PeopleHintVisibility", L"Placeholder" })
         {
             Raise(name);
         }

@@ -133,6 +133,8 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring Tooltip() const { return m_tooltip; }
         // The IMDb people search for this name, built from the name alone.
         [[nodiscard]] std::wstring const& SearchUrl() const noexcept { return m_searchUrl; }
+        // The person's TMDB id, when the cast entry carried one.
+        [[nodiscard]] std::optional<std::int64_t> TmdbId() const noexcept { return m_tmdbId; }
 
     private:
         winrt::hstring m_name;
@@ -141,6 +143,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_initials;
         winrt::hstring m_tooltip;
         std::wstring m_searchUrl;
+        std::optional<std::int64_t> m_tmdbId;
     };
 
     struct DetailAboutRowViewModel : DetailAboutRowViewModelT<DetailAboutRowViewModel>
@@ -296,6 +299,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::IDownloadService> m_downloads;
         std::shared_ptr<::HaloDesktop::Services::WatchStateService> m_watch;
         std::shared_ptr<::HaloDesktop::Services::ISourceService> m_sources;
+        std::shared_ptr<::HaloDesktop::Services::ServerFeaturesService> m_features;
 
         winrt::HaloDesktop::DetailNavParams m_params{ nullptr };
         std::optional<::HaloDesktop::Api::Dto::MetaDetail> m_meta;

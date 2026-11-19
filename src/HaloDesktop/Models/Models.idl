@@ -198,6 +198,16 @@ namespace HaloDesktop
         String Poster { get; };
     };
 
+    // A person page: by TMDB id, or (TmdbId 0) by name, which the page looks up.
+    [default_interface]
+    runtimeclass PersonNavParams
+    {
+        PersonNavParams();
+        Int64 TmdbId { get; };
+        String Name { get; };
+        String Photo { get; };
+    };
+
     [default_interface]
     runtimeclass SourcesNavParams
     {

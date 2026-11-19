@@ -58,6 +58,8 @@ namespace HaloDesktop::ViewModels
         std::wstring Name;
         std::optional<std::wstring> Role;
         std::optional<std::wstring> Photo;
+        // The person's TMDB id, when the addon's pictured cast gave one.
+        std::optional<std::int64_t> TmdbId;
 
         bool operator==(Credit const&) const = default;
     };

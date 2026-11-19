@@ -9,6 +9,7 @@
 #include "Views/HomePage.xaml.h"
 #include "Views/LibraryPage.xaml.h"
 #include "Views/LoginPage.xaml.h"
+#include "Views/PersonPage.xaml.h"
 #include "Views/PlayerPage.xaml.h"
 #include "Views/SearchPage.xaml.h"
 #include "Views/SettingsPage.xaml.h"
@@ -39,6 +40,8 @@ namespace
             return winrt::xaml_typename<winrt::HaloDesktop::CatalogPage>();
         case Page::Detail:
             return winrt::xaml_typename<winrt::HaloDesktop::DetailPage>();
+        case Page::Person:
+            return winrt::xaml_typename<winrt::HaloDesktop::PersonPage>();
         case Page::Sources:
             return winrt::xaml_typename<winrt::HaloDesktop::SourcesPage>();
         case Page::Downloads:
@@ -90,6 +93,10 @@ namespace
         if (type.Name == PageType(Page::Detail).Name)
         {
             return Page::Detail;
+        }
+        if (type.Name == PageType(Page::Person).Name)
+        {
+            return Page::Person;
         }
         if (type.Name == PageType(Page::Sources).Name)
         {
@@ -184,11 +191,11 @@ namespace HaloDesktop::Services
             return false;
         }
 
-        // A title page is a step into what was clicked, so it drills in (and
-        // Back, which replays the step in reverse, drills out), as Windows'
-        // own apps open an item. Pages picked from the side menu slide in.
-        // Both are theme transitions, so they follow Windows' animation setting.
-        if (page == Page::Detail)
+        // A title or person page is a step into what was clicked, so it drills
+        // in (and Back, which replays the step in reverse, drills out), as
+        // Windows' own apps open an item. Pages picked from the side menu slide
+        // in. Both are theme transitions, so they follow Windows' animation setting.
+        if (page == Page::Detail || page == Page::Person)
         {
             return m_shellFrame.Navigate(
                 targetType,
@@ -359,7 +366,7 @@ namespace HaloDesktop::Services
         for (auto index = backStack.Size(); index > 0; --index)
         {
             auto const page = PageFromType(backStack.GetAt(index - 1).SourcePageType());
-            if (page != Page::Detail && page != Page::Catalog)
+            if (page != Page::Detail && page != Page::Person && page != Page::Catalog)
             {
                 return page;
             }

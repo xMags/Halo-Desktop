@@ -45,6 +45,8 @@
 #include "Services/WatchStateService.h"
 #include "Services/ThemeService.h"
 #include "Services/TitleLookupService.h"
+#include "Services/ServerFeaturesService.h"
+#include "Services/PeopleService.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
@@ -198,6 +200,17 @@ namespace winrt::HaloDesktop::implementation
             m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.TitleLookup = titleLookupService;
+        // Account-only: these live on the account's server, never on this PC's backend.
+        auto serverFeaturesService = std::make_shared<::HaloDesktop::Services::ServerFeaturesService>(
+            m_apiClient,
+            m_backends,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        m_services.ServerFeatures = serverFeaturesService;
+        auto peopleService = std::make_shared<::HaloDesktop::Services::PeopleService>(
+            m_apiClient,
+            m_backends,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        m_services.People = peopleService;
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState(),
             [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });
@@ -228,6 +241,8 @@ namespace winrt::HaloDesktop::implementation
         std::weak_ptr<::HaloDesktop::Services::CatalogService> weakCatalog = catalogService;
         std::weak_ptr<::HaloDesktop::Services::SearchService> weakSearch = searchService;
         std::weak_ptr<::HaloDesktop::Services::TitleLookupService> weakTitleLookup = titleLookupService;
+        std::weak_ptr<::HaloDesktop::Services::ServerFeaturesService> weakServerFeatures = serverFeaturesService;
+        std::weak_ptr<::HaloDesktop::Services::PeopleService> weakPeople = peopleService;
         std::weak_ptr<::HaloDesktop::Services::MetadataService> weakMetadata = metadataService;
         std::weak_ptr<::HaloDesktop::Services::SettingsSyncService> weakSettings = settingsSyncService;
         std::weak_ptr<::HaloDesktop::Services::SourceService> weakSources = sourceService;
@@ -243,6 +258,8 @@ namespace winrt::HaloDesktop::implementation
              weakCatalog,
              weakSearch,
              weakTitleLookup,
+             weakServerFeatures,
+             weakPeople,
              weakMetadata,
              weakSettings,
              weakSources,
@@ -297,6 +314,8 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const catalog = weakCatalog.lock()) catalog->OnAccountChanged();
                 if (auto const search = weakSearch.lock()) search->OnAccountChanged();
                 if (auto const titleLookup = weakTitleLookup.lock()) titleLookup->OnAccountChanged();
+                if (auto const people = weakPeople.lock()) people->OnAccountChanged();
+                if (auto const features = weakServerFeatures.lock()) features->OnAccountChanged();
                 if (auto const metadata = weakMetadata.lock()) metadata->OnAccountChanged();
                 if (auto const sources = weakSources.lock()) sources->OnAccountChanged();
                 if (auto const settings = weakSettings.lock())

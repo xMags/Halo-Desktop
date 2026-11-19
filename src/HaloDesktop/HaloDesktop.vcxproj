@@ -435,6 +435,14 @@
     <ClInclude Include="Services\SearchResultBoard.h" />
     <ClInclude Include="Services\SearchInputPolicy.h" />
     <ClInclude Include="Services\TitleLookupService.h" />
+    <ClInclude Include="Services\ServerFeaturesService.h" />
+    <ClInclude Include="Services\PeopleService.h" />
+    <ClInclude Include="Services\PeopleRowPolicy.h" />
+    <ClInclude Include="Services\FilmographyPolicy.h" />
+    <ClInclude Include="ViewModels\PersonViewModel.h" />
+    <ClInclude Include="Views\PersonPage.xaml.h">
+      <DependentUpon>PersonPage.xaml</DependentUpon>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -485,6 +493,7 @@
     <Page Include="Views\SignInBackdrop.xaml" />
     <Page Include="Views\SignInPosterFan.xaml" />
     <Page Include="Views\SignInSpinner.xaml" />
+    <Page Include="Views\PersonPage.xaml" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.cpp">
@@ -884,6 +893,19 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\TitleLookupService.cpp" />
+    <ClCompile Include="Api\PeopleMappers.cpp" />
+    <ClCompile Include="Services\ServerFeaturesService.cpp" />
+    <ClCompile Include="Services\PeopleService.cpp" />
+    <ClCompile Include="Services\PeopleRowPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\FilmographyPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="ViewModels\PersonViewModel.cpp" />
+    <ClCompile Include="Views\PersonPage.xaml.cpp">
+      <DependentUpon>PersonPage.xaml</DependentUpon>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
@@ -960,6 +982,7 @@
     <Midl Include="Controls\QualityMedal.idl"><SubType>Code</SubType><DependentUpon>QualityMedal.xaml</DependentUpon></Midl>
     <Midl Include="Views\HistoryPage.idl"><SubType>Code</SubType><DependentUpon>HistoryPage.xaml</DependentUpon></Midl>
     <Midl Include="Controls\PosterSkeleton.idl"><SubType>Code</SubType><DependentUpon>PosterSkeleton.xaml</DependentUpon></Midl>
+    <Midl Include="Views\PersonPage.idl"><SubType>Code</SubType><DependentUpon>PersonPage.xaml</DependentUpon></Midl>
   </ItemGroup>
   <ItemGroup>
     <Image Include="Assets\halo-mark.png" />

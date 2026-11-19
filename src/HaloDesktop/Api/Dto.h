@@ -1,7 +1,9 @@
 #pragma once
 
 #include <chrono>
+#include <cstdint>
 #include <optional>
+#include <string_view>
 #include <vector>
 #include <winrt/Windows.Data.Json.h>
 #include <winrt/base.h>
@@ -150,6 +152,8 @@ namespace HaloDesktop::Api::Dto
         winrt::hstring Name;
         std::optional<winrt::hstring> Character;
         std::optional<winrt::hstring> Photo;
+        // The person's TMDB id, when the cast entry carries a valid one.
+        std::optional<std::int64_t> TmdbId;
     };
 
     struct MetaTrailer final
@@ -234,6 +238,108 @@ namespace HaloDesktop::Api::Dto
     struct SubtitleRecord final{winrt::hstring Id,Url,Lang;};
     struct SubtitleGroup final{winrt::hstring AddonId,AddonName;std::vector<SubtitleRecord>Subtitles;};
     struct SubtitlesPayload final{std::vector<SubtitleGroup>Results;std::vector<AddonFailure>Errors;bool HashMatched{};};
+
+    // What a server can do beyond the shared Halo contract
+    // (`GET /capabilities`). All false for a server that does not answer it.
+    struct Capabilities final
+    {
+        // People search and person pages.
+        bool People{};
+        // Pasted TVDB numbers and IMDb ids looked up through the server.
+        bool Lookup{};
+
+        bool operator==(Capabilities const&) const = default;
+    };
+
+    // The department a person is best known for, as the server names it.
+    enum class PersonDepartment
+    {
+        Unknown,
+        Acting,
+        Directing,
+        Writing,
+    };
+
+    // What a person did on one title.
+    enum class CreditRole
+    {
+        Cast,
+        Director,
+        Writer,
+    };
+
+    // One answer of the people search.
+    struct PersonSummary final
+    {
+        std::int64_t TmdbId{};
+        winrt::hstring Name;
+        PersonDepartment KnownFor{ PersonDepartment::Unknown };
+        // Only on https image.tmdb.org.
+        std::optional<winrt::hstring> Photo;
+        double Popularity{};
+        // At most three, most popular first.
+        std::vector<winrt::hstring> KnownForTitles;
+
+        bool operator==(PersonSummary const&) const = default;
+    };
+
+    // One title of a person's filmography, already mapped to its IMDb id.
+    struct PersonCredit final
+    {
+        // `movie` or `series`.
+        winrt::hstring Type;
+        winrt::hstring ImdbId;
+        std::int64_t TmdbId{};
+        winrt::hstring Name;
+        // Four digits.
+        std::optional<winrt::hstring> Year;
+        // Only on https image.tmdb.org.
+        std::optional<winrt::hstring> Poster;
+        // Each role at most once, never empty.
+        std::vector<CreditRole> Roles;
+        std::optional<winrt::hstring> Character;
+        double Popularity{};
+
+        bool operator==(PersonCredit const&) const = default;
+    };
+
+    struct PersonProfile final
+    {
+        std::int64_t TmdbId{};
+        winrt::hstring Name;
+        std::optional<winrt::hstring> Photo;
+        PersonDepartment KnownFor{ PersonDepartment::Unknown };
+        std::optional<winrt::hstring> Biography;
+    };
+
+    struct PersonDetail final
+    {
+        PersonProfile Person;
+        std::vector<PersonCredit> Credits;
+        // The server ran out of time mapping credits, so some may be missing.
+        bool Partial{};
+    };
+
+    enum class IdLookupKind
+    {
+        Title,
+        Person,
+    };
+
+    // What a pasted TVDB number or IMDb id names (`GET /lookup`).
+    struct IdLookup final
+    {
+        IdLookupKind Kind{ IdLookupKind::Title };
+        winrt::hstring Name;
+        // A title: `movie` or `series`, and its IMDb id.
+        winrt::hstring Type;
+        winrt::hstring Id;
+        std::optional<winrt::hstring> Year;
+        std::optional<winrt::hstring> Poster;
+        // A person: their TMDB id and photo.
+        std::int64_t TmdbId{};
+        std::optional<winrt::hstring> Photo;
+    };
 }
 
 namespace HaloDesktop::Api::Mappers
@@ -251,6 +357,17 @@ namespace HaloDesktop::Api::Mappers
     [[nodiscard]] Dto::StreamsPayload ParseStreams(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::NextEpisodePayload ParseNextEpisode(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::SubtitlesPayload ParseSubtitles(winrt::Windows::Data::Json::IJsonValue const& value);
+
+    // Api/PeopleMappers.cpp. A field of the wrong type, out of bounds or of
+    // the wrong shape is dropped, and so is an entry missing a required
+    // field; only a body that is not the expected object throws.
+    [[nodiscard]] Dto::Capabilities ParseCapabilities(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] std::vector<Dto::PersonSummary> ParsePeopleSearch(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::PersonDetail ParsePerson(winrt::Windows::Data::Json::IJsonValue const& value);
+    [[nodiscard]] Dto::IdLookup ParseIdLookup(winrt::Windows::Data::Json::IJsonValue const& value);
+    // An image URL the people answers may carry: https on image.tmdb.org,
+    // under /t/p/, in plain path characters only.
+    [[nodiscard]] bool IsTmdbImageUrl(std::wstring_view url) noexcept;
 
     // The server's sentence when an account's plan refuses something
     // (`{ code: "plan_required" | "plan_limit_reached", error }`), sanitised

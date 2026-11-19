@@ -12,6 +12,7 @@
 #include "SourcesNavParams.g.h"
 #include "StreamSource.g.h"
 #include "PlaybackRequest.g.h"
+#include "PersonNavParams.g.h"
 
 #include "Services/CatalogPagingPolicy.h"
 
@@ -422,6 +423,19 @@ namespace winrt::HaloDesktop::implementation
         hstring Type()const;hstring MetaId()const;hstring Title()const;hstring Poster()const;
     private:hstring m_type,m_metaId,m_title,m_poster;
     };
+    struct PersonNavParams : PersonNavParamsT<PersonNavParams>
+    {
+        PersonNavParams() = default;
+        PersonNavParams(std::int64_t tmdbId, hstring name, hstring photo);
+        [[nodiscard]] std::int64_t TmdbId() const noexcept;
+        [[nodiscard]] hstring Name() const;
+        [[nodiscard]] hstring Photo() const;
+
+    private:
+        std::int64_t m_tmdbId{};
+        hstring m_name;
+        hstring m_photo;
+    };
     struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams>
     {
         SourcesNavParams()=default; SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster);
@@ -452,6 +466,7 @@ namespace winrt::HaloDesktop::factory_implementation
     struct FeaturedItem : FeaturedItemT<FeaturedItem, implementation::FeaturedItem> {};
     struct Shelf : ShelfT<Shelf, implementation::Shelf> {};
     struct DetailNavParams : DetailNavParamsT<DetailNavParams, implementation::DetailNavParams> {};
+    struct PersonNavParams : PersonNavParamsT<PersonNavParams, implementation::PersonNavParams> {};
     struct SourcesNavParams : SourcesNavParamsT<SourcesNavParams, implementation::SourcesNavParams> {};
     struct PlaybackRequest : PlaybackRequestT<PlaybackRequest, implementation::PlaybackRequest> {};
 }

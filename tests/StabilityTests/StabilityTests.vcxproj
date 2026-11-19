@@ -196,6 +196,16 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchInputPolicy.cpp">
       <Link>SearchInputPolicy.cpp</Link>
     </ClCompile>
+    <ClCompile Include="PeopleTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Api\PeopleMappers.cpp">
+      <Link>PeopleMappers.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\PeopleRowPolicy.cpp">
+      <Link>PeopleRowPolicy.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\FilmographyPolicy.cpp">
+      <Link>FilmographyPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchHistoryPolicy.cpp">
       <Link>SearchHistoryPolicy.cpp</Link>
     </ClCompile>
@@ -361,6 +371,7 @@
     <ClInclude Include="HomeShelfLoadTests.h" />
     <ClInclude Include="SearchResultsTests.h" />
     <ClInclude Include="SearchInputTests.h" />
+    <ClInclude Include="PeopleTests.h" />
     <ClInclude Include="HistoryRowsTests.h" />
     <ClInclude Include="DetailPageTests.h" />
     <ClInclude Include="SourcesSheetTests.h" />

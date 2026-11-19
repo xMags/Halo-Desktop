@@ -314,6 +314,7 @@ namespace HaloDesktop::ViewModels
                 Credit credit{ std::wstring{ person.Name }, std::nullopt, std::nullopt };
                 if (person.Character && !person.Character->empty()) credit.Role = std::wstring{ *person.Character };
                 if (person.Photo && !person.Photo->empty()) credit.Photo = std::wstring{ *person.Photo };
+                credit.TmdbId = person.TmdbId;
                 credits.push_back(std::move(credit));
             }
         }

@@ -23,6 +23,7 @@
 #include "Services/HistoryRowsPolicy.h"
 #include "Services/LibraryService.h"
 #include "Services/NavigationService.h"
+#include "Services/ServerFeaturesService.h"
 #include "Services/PlayableVideoPolicy.h"
 #include "Services/RatingPolicy.h"
 #include "Services/SourceService.h"
@@ -157,7 +158,8 @@ namespace winrt::HaloDesktop::implementation
           m_photo(credit.Photo.value_or(std::wstring{})),
           m_initials(::HaloDesktop::ViewModels::Initials(credit.Name)),
           m_tooltip(L"Look up " + credit.Name + L" on IMDb"),
-          m_searchUrl(::HaloDesktop::ViewModels::PersonSearchUrl(credit.Name))
+          m_searchUrl(::HaloDesktop::ViewModels::PersonSearchUrl(credit.Name)),
+          m_tmdbId(credit.TmdbId)
     {
     }
     Microsoft::UI::Xaml::Visibility DetailCreditViewModel::RoleVisibility() const { return VisibleWhen(!m_role.empty()); }
@@ -176,6 +178,7 @@ namespace winrt::HaloDesktop::implementation
           m_downloads(services.Downloads),
           m_watch(services.WatchState),
           m_sources(services.Sources),
+          m_features(services.ServerFeatures),
           m_facts(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_availabilityRows(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_availabilityFailures(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -186,7 +189,7 @@ namespace winrt::HaloDesktop::implementation
           m_aboutRows(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_similar(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_metadata || !m_library || !m_catalog || !m_navigation || !m_downloads || !m_watch || !m_sources)
+        if (!m_metadata || !m_library || !m_catalog || !m_navigation || !m_downloads || !m_watch || !m_sources || !m_features)
         {
             throw std::invalid_argument{ "DetailViewModel requires its dependencies." };
         }
@@ -369,6 +372,8 @@ namespace winrt::HaloDesktop::implementation
 
     void DetailViewModel::Load(winrt::Windows::Foundation::IInspectable const& parameter)
     {
+        // A cast click opens a person page only on a server that has them.
+        m_features->EnsureLoaded();
         if (auto const direct = parameter.try_as<winrt::HaloDesktop::DetailNavParams>())
         {
             m_params = direct;
@@ -426,7 +431,18 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const model = credit.try_as<winrt::HaloDesktop::DetailCreditViewModel>();
         if (!model) return;
-        auto const& url = winrt::get_self<DetailCreditViewModel>(model)->SearchUrl();
+        auto const self = winrt::get_self<DetailCreditViewModel>(model);
+        // A server with people search has a page for them: by their TMDB id
+        // when the cast entry gave one, else by name (the page finds them, or
+        // falls back to the IMDb search below itself).
+        if (m_features->People())
+        {
+            m_navigation->GoTo(
+                ::HaloDesktop::Services::Page::Person,
+                winrt::make<implementation::PersonNavParams>(self->TmdbId().value_or(0), self->Name(), self->Photo()));
+            return;
+        }
+        auto const& url = self->SearchUrl();
         if (!url.empty()) OpenInBrowser(url);
     }
 

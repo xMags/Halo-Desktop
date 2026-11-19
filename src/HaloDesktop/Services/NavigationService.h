@@ -16,6 +16,8 @@ namespace HaloDesktop::Services
         History,
         Catalog,
         Detail,
+        // A person's films and series, opened from a title or from Search.
+        Person,
         Sources,
         Downloads,
         Settings,
@@ -59,8 +61,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] bool CanGoBack() const noexcept;
         [[nodiscard]] Page CurrentPage() const noexcept;
         [[nodiscard]] Page CurrentOverlayPage() const noexcept;
-        // The section a title page or a See all page was reached from: the newest
-        // page behind the current one on the shell's back stack that is neither,
+        // The section a title page, a person page or a See all page was reached
+        // from: the newest page behind the current one on the shell's back stack
+        // that is none of these,
         // or Home when there is none. The reference keeps the rail on the root of
         // its screen stack, which is that section.
         [[nodiscard]] Page SectionBehindCurrentPage() const;

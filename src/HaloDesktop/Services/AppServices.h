@@ -41,6 +41,8 @@ namespace HaloDesktop::Services
     class NavigationService;
     class SearchService;
     class TitleLookupService;
+    class ServerFeaturesService;
+    class PeopleService;
     class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
@@ -53,6 +55,10 @@ namespace HaloDesktop::Services
         std::shared_ptr<SearchService> Search;
         // The title a pasted IMDb id names, for Search's action card.
         std::shared_ptr<TitleLookupService> TitleLookup;
+        // What the account's server offers beyond the shared contract.
+        std::shared_ptr<ServerFeaturesService> ServerFeatures;
+        // People search, person pages and id lookups on the account's server.
+        std::shared_ptr<PeopleService> People;
         std::shared_ptr<IMetadataService> Metadata;
         std::shared_ptr<ISourceService> Sources;
         std::shared_ptr<IDownloadService> Downloads;

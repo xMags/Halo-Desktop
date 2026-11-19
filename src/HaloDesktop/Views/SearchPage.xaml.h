@@ -37,6 +37,7 @@ namespace winrt::HaloDesktop::implementation
         void OnClearRecentClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShowAllResultsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnPersonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnGridElementPrepared(Microsoft::UI::Xaml::Controls::ItemsRepeater const&, Microsoft::UI::Xaml::Controls::ItemsRepeaterElementPreparedEventArgs const&);
         void OnTopMatchTapped(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);
         void OnTopMatchPointerEntered(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
@@ -74,6 +75,8 @@ namespace winrt::HaloDesktop::implementation
             double visualWidth,
             double contentWidth);
         void FocusQueryBox();
+        // Places the legend's shown items at the grid's last width.
+        void ArrangeHints();
 
         winrt::HaloDesktop::SearchViewModel m_viewModel{ nullptr };
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
@@ -81,6 +84,7 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
         std::uint64_t m_metricsToken{};
         double m_actionCardWidth{};
+        double m_hintsWidth{};
         bool m_listsBound{};
         bool m_onScreen{};
         // What was last seen, so content fades in as it takes over from its placeholders.

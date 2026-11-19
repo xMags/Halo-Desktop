@@ -10,6 +10,9 @@
 #if __has_include("DetailNavParams.g.cpp")
 #include "DetailNavParams.g.cpp"
 #endif
+#if __has_include("PersonNavParams.g.cpp")
+#include "PersonNavParams.g.cpp"
+#endif
 #if __has_include("Episode.g.cpp")
 #include "Episode.g.cpp"
 #endif
@@ -560,6 +563,13 @@ namespace winrt::HaloDesktop::implementation
 
     DetailNavParams::DetailNavParams(hstring type,hstring metaId,hstring title,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_title(std::move(title)),m_poster(std::move(poster)){}
     hstring DetailNavParams::Type()const{return m_type;}hstring DetailNavParams::MetaId()const{return m_metaId;}hstring DetailNavParams::Title()const{return m_title;}hstring DetailNavParams::Poster()const{return m_poster;}
+    PersonNavParams::PersonNavParams(std::int64_t tmdbId, hstring name, hstring photo)
+        : m_tmdbId(tmdbId), m_name(std::move(name)), m_photo(std::move(photo))
+    {
+    }
+    std::int64_t PersonNavParams::TmdbId() const noexcept { return m_tmdbId; }
+    hstring PersonNavParams::Name() const { return m_name; }
+    hstring PersonNavParams::Photo() const { return m_photo; }
     SourcesNavParams::SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster):m_type(std::move(type)),m_metaId(std::move(metaId)),m_videoId(std::move(videoId)),m_itemId(std::move(itemId)),m_title(std::move(title)),m_showName(std::move(showName)),m_episodeLabel(std::move(episodeLabel)),m_poster(std::move(poster)){}
     hstring SourcesNavParams::Type()const{return m_type;}hstring SourcesNavParams::MetaId()const{return m_metaId;}hstring SourcesNavParams::VideoId()const{return m_videoId;}hstring SourcesNavParams::ItemId()const{return m_itemId;}hstring SourcesNavParams::Title()const{return m_title;}hstring SourcesNavParams::ShowName()const{return m_showName;}hstring SourcesNavParams::EpisodeLabel()const{return m_episodeLabel;}hstring SourcesNavParams::Poster()const{return m_poster;}
 

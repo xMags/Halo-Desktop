@@ -326,6 +326,21 @@ namespace
         return std::nullopt;
     }
 
+    // A whole number from 1 to 2^53 - 1 (JavaScript's safe integers, which is
+    // all a JSON id can carry exactly); anything else is no value.
+    std::optional<std::int64_t> OptionalSafePositiveInteger(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key)
+    {
+        constexpr std::int64_t MaximumSafeInteger = 9007199254740991;
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::Number) return std::nullopt;
+        auto const number = ::HaloDesktop::Api::CheckedPositiveInt64(value.GetNumber());
+        if (!number || *number > MaximumSafeInteger) return std::nullopt;
+        return number;
+    }
+
     // `tt` and digits: the bare IMDb id shape.
     bool IsImdbId(winrt::hstring const& value)
     {
@@ -941,10 +956,15 @@ namespace HaloDesktop::Api::Mappers
                     auto const person = item.GetObject();
                     auto const name = OptionalBoundedText(person, L"name", 200);
                     if (!name) continue;
+                    // The server sends a person's TMDB id as `tmdbId`; an
+                    // addon's own cast entry names it `id`.
+                    auto tmdbId = OptionalSafePositiveInteger(person, L"tmdbId");
+                    if (!tmdbId) tmdbId = OptionalSafePositiveInteger(person, L"id");
                     result.PicturedCast.push_back({
                         *name,
                         OptionalBoundedText(person, L"character", 200),
                         OptionalHttpsUrl(person, L"photo", 1000),
+                        tmdbId,
                     });
                 }
             }

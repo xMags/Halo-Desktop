@@ -30,6 +30,18 @@ namespace HaloDesktop
         String RemoveLabel { get; };
     }
 
+    // One person in the people row: their photo (initials until it loads),
+    // name and what they are known for.
+    [default_interface]
+    runtimeclass SearchPersonViewModel
+    {
+        String Name { get; };
+        String Line { get; };
+        Microsoft.UI.Xaml.Visibility LineVisibility { get; };
+        String Photo { get; };
+        String Initials { get; };
+    }
+
     runtimeclass SearchViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
     {
         String Query;
@@ -38,6 +50,14 @@ namespace HaloDesktop
         Object RecentItems { get; };
         Object LibraryItems { get; };
         Object ResultItems { get; };
+        // The people row: between the top match and the results when it came
+        // with them, under the results when it came later.
+        Object PeopleItems { get; };
+        Microsoft.UI.Xaml.Visibility PeopleAboveVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PeopleBelowVisibility { get; };
+        // People search, when the server has it: the legend's item and the box's words.
+        Microsoft.UI.Xaml.Visibility PeopleHintVisibility { get; };
+        String Placeholder { get; };
         Boolean ShowKindBadges { get; };
         String ResultCountText { get; };
         String StatusText { get; };
@@ -111,6 +131,7 @@ namespace HaloDesktop
         void OpenSettings();
         void OpenDetail(Object item);
         void OpenTopMatch();
+        void OpenPerson(Object item);
         void Arrive(String query);
         void Shown();
     }

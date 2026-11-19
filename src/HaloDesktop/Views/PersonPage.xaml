@@ -1,0 +1,194 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+  x:Class="HaloDesktop.PersonPage"
+  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+  xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+  xmlns:local="using:HaloDesktop"
+  NavigationCacheMode="Disabled"
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded"
+  ContextRequested="OnContextRequested">
+  <ScrollView ContentOrientation="Vertical"
+    x:Name="PersonScroller"
+    HorizontalScrollMode="Disabled"
+    VerticalScrollBarVisibility="Hidden">
+    <!-- `.page`: 28 above, the layout step's gutter at the sides, 40 below. -->
+    <StackPanel x:Name="PageBody" Padding="24,28,24,40">
+
+      <!-- `.back`: words and an arrow, no plate; it names where it goes back to. -->
+      <Button
+        x:Name="BackButton"
+        Margin="0,0,0,12"
+        Padding="0,4,6,4"
+        MinWidth="0"
+        MinHeight="0"
+        Background="Transparent"
+        BorderThickness="0"
+        Click="OnBackClick">
+        <StackPanel Orientation="Horizontal" Spacing="8">
+          <FontIcon VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE72B;" />
+          <TextBlock x:Name="BackLabel" VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Back" />
+        </StackPanel>
+      </Button>
+
+      <!-- `.phead`: the 112 round photo (initials until it loads), then who they are. -->
+      <Grid x:Name="PersonHead" ColumnSpacing="22" SizeChanged="OnPersonHeadSizeChanged">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+          <RowDefinition Height="Auto" />
+          <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid
+          x:Name="PersonPhoto"
+          Width="112"
+          Height="112"
+          VerticalAlignment="Top"
+          Background="{ThemeResource HaloAccentTintBrush}"
+          CornerRadius="56">
+          <TextBlock
+            x:Name="PersonInitials"
+            HorizontalAlignment="Center"
+            VerticalAlignment="Center"
+            FontFamily="Segoe UI Variable Display"
+            FontSize="36"
+            FontWeight="SemiBold"
+            Foreground="{ThemeResource HaloAccentBrush}"
+            Text="{x:Bind ViewModel.Initials, Mode=OneWay}" />
+          <local:ArtworkImage DecodeWidth="224" Placeholder="{x:Bind PersonInitials}" SourceUrl="{x:Bind ViewModel.Photo, Mode=OneWay}" />
+        </Grid>
+        <StackPanel x:Name="PersonText" Grid.Column="1" VerticalAlignment="Center" Spacing="8">
+          <TextBlock
+            Foreground="{ThemeResource HaloAccentBrush}"
+            Style="{StaticResource HaloMonoKicker}"
+            Text="{x:Bind ViewModel.Kicker, Mode=OneWay}"
+            Visibility="{x:Bind ViewModel.KickerVisibility, Mode=OneWay}" />
+          <TextBlock
+            FontFamily="Segoe UI Variable Display"
+            FontSize="28"
+            FontWeight="SemiBold"
+            Foreground="{ThemeResource HaloText1Brush}"
+            Text="{x:Bind ViewModel.Name, Mode=OneWay}"
+            TextWrapping="Wrap" />
+          <!-- About 68 characters to a line. -->
+          <TextBlock
+            MaxWidth="560"
+            HorizontalAlignment="Left"
+            FontSize="{StaticResource HaloFontLabel}"
+            Foreground="{ThemeResource HaloText2Brush}"
+            LineHeight="21"
+            Text="{x:Bind ViewModel.Biography, Mode=OneWay}"
+            TextWrapping="Wrap"
+            Visibility="{x:Bind ViewModel.BiographyVisibility, Mode=OneWay}" />
+        </StackPanel>
+      </Grid>
+
+      <!-- `.body`: sections 26 apart, 24 under the header. -->
+      <StackPanel Margin="0,24,0,0" Spacing="26">
+        <ProgressRing
+          Width="28"
+          Height="28"
+          Margin="0,44"
+          HorizontalAlignment="Center"
+          IsActive="{x:Bind ViewModel.Loading, Mode=OneWay}"
+          Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}" />
+
+        <!-- `.inf`: the server ran out of time mapping some credits. -->
+        <Border
+          Padding="12,8"
+          Background="{ThemeResource HaloCautionTintBrush}"
+          BorderBrush="{ThemeResource HaloCautionStrokeBrush}"
+          BorderThickness="1"
+          CornerRadius="6"
+          Visibility="{x:Bind ViewModel.PartialVisibility, Mode=OneWay}">
+          <TextBlock
+            FontSize="{StaticResource HaloFontSmall}"
+            Foreground="{ThemeResource HaloText2Brush}"
+            Text="Still gathering this filmography. Some titles may be missing; open the page again in a moment."
+            TextWrapping="Wrap" />
+        </Border>
+
+        <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.FilmographyVisibility, Mode=OneWay}">
+          <Grid ColumnSpacing="8">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+              <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock VerticalAlignment="Center" Style="{StaticResource HaloMonoKicker}" Text="FILMS AND SERIES" />
+            <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{ThemeResource HaloText4Brush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.CountText, Mode=OneWay}" />
+            <StackPanel
+              x:Name="RoleChips"
+              Grid.Column="3"
+              Orientation="Horizontal"
+              Spacing="8"
+              Visibility="{x:Bind ViewModel.ChipsVisibility, Mode=OneWay}">
+              <RadioButton x:Name="AllRolesChip" GroupName="PersonRoles" IsChecked="True" Click="OnAllRolesClick" Content="All" Style="{StaticResource HaloChipRadioStyle}" />
+              <RadioButton x:Name="ActingChip" GroupName="PersonRoles" Click="OnActingClick" Content="Acting" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.ActingChipVisibility, Mode=OneWay}" />
+              <RadioButton x:Name="DirectingChip" GroupName="PersonRoles" Click="OnDirectingClick" Content="Directing" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.DirectingChipVisibility, Mode=OneWay}" />
+              <RadioButton x:Name="WritingChip" GroupName="PersonRoles" Click="OnWritingClick" Content="Writing" Style="{StaticResource HaloChipRadioStyle}" Visibility="{x:Bind ViewModel.WritingChipVisibility, Mode=OneWay}" />
+            </StackPanel>
+          </Grid>
+          <!-- The app's poster grid; no kind badges, the line under each title is its year and role. -->
+          <ItemsRepeater x:Name="CreditsGrid" VerticalCacheLength="4">
+            <ItemsRepeater.Layout>
+              <UniformGridLayout x:Name="CreditsLayout" ItemsStretch="Uniform" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
+            </ItemsRepeater.Layout>
+            <ItemsRepeater.ItemTemplate>
+              <DataTemplate x:DataType="local:MediaSummary">
+                <local:PosterCard
+                  Title="{x:Bind Title}"
+                  Meta="{x:Bind Meta}"
+                  Poster="{x:Bind Poster}" MetaId="{x:Bind Id}"
+                  KindLabel="{x:Bind KindLabel}"
+                  ShowKindBadge="False"
+                  FillsColumn="True"
+                  Tag="{x:Bind}"
+                  Click="OnPosterClick" />
+              </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+          </ItemsRepeater>
+        </StackPanel>
+
+        <StackPanel Padding="0,44" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.EmptyVisibility, Mode=OneWay}">
+          <TextBlock
+            HorizontalAlignment="Center"
+            FontSize="{StaticResource HaloFontLabel}"
+            Foreground="{ThemeResource HaloText3Brush}"
+            Text="No films or series to show for this person."
+            TextAlignment="Center"
+            TextWrapping="Wrap" />
+        </StackPanel>
+
+        <StackPanel Padding="0,44" HorizontalAlignment="Center" Spacing="10" Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}">
+          <TextBlock
+            HorizontalAlignment="Center"
+            FontFamily="Segoe UI Variable Display"
+            FontSize="{StaticResource HaloFontSubtitle}"
+            FontWeight="SemiBold"
+            Foreground="{ThemeResource HaloText1Brush}"
+            Text="{x:Bind ViewModel.ErrorTitle, Mode=OneWay}"
+            TextAlignment="Center"
+            TextWrapping="Wrap" />
+          <TextBlock
+            HorizontalAlignment="Center"
+            FontSize="{StaticResource HaloFontLabel}"
+            Foreground="{ThemeResource HaloText3Brush}"
+            Text="{x:Bind ViewModel.ErrorText, Mode=OneWay}"
+            TextAlignment="Center"
+            TextWrapping="Wrap" />
+          <Button
+            Height="34"
+            Padding="16,0"
+            HorizontalAlignment="Center"
+            Click="OnRetryClick"
+            Content="Try again"
+            Visibility="{x:Bind ViewModel.RetryVisibility, Mode=OneWay}" />
+        </StackPanel>
+      </StackPanel>
+    </StackPanel>
+  </ScrollView>
+</Page>

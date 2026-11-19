@@ -117,6 +117,57 @@
         Tag="{x:Bind}"
         Click="OnPosterClick" />
     </DataTemplate>
+    <!--
+      `.person`: one card of the people row. Its photo sits over its initials,
+      so the initials show until (unless) the photo loads. Under the pointer
+      only the stroke changes, to the faintest ink.
+    -->
+    <DataTemplate x:Key="SearchPersonTemplate" x:DataType="local:SearchPersonViewModel">
+      <Button
+        Padding="12,10"
+        HorizontalAlignment="Stretch"
+        HorizontalContentAlignment="Stretch"
+        AutomationProperties.Name="{x:Bind Name}"
+        Background="{ThemeResource HaloCardBrush}"
+        BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+        BorderThickness="1"
+        Click="OnPersonClick"
+        CornerRadius="8"
+        Tag="{x:Bind}">
+        <Button.Resources>
+          <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource HaloCardColor}" />
+          <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource HaloCardColor}" />
+          <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="{ThemeResource HaloText4Color}" />
+          <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="{ThemeResource HaloText4Color}" />
+        </Button.Resources>
+        <Grid ColumnSpacing="12">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="48" />
+            <ColumnDefinition Width="*" />
+          </Grid.ColumnDefinitions>
+          <Grid Width="48" Height="48" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="24">
+            <TextBlock
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              FontFamily="Segoe UI Variable Display"
+              FontSize="{StaticResource HaloFontEmphasis}"
+              FontWeight="SemiBold"
+              Foreground="{ThemeResource HaloAccentBrush}"
+              Text="{x:Bind Initials}" />
+            <local:ArtworkImage DecodeWidth="96" SourceUrl="{x:Bind Photo}" />
+          </Grid>
+          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+            <TextBlock FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
+            <TextBlock
+              FontSize="{StaticResource HaloFontCaption}"
+              Foreground="{ThemeResource HaloText3Brush}"
+              Text="{x:Bind Line}"
+              TextTrimming="CharacterEllipsis"
+              Visibility="{x:Bind LineVisibility}" />
+          </StackPanel>
+        </Grid>
+      </Button>
+    </DataTemplate>
   </Page.Resources>
   <Grid>
     <!--
@@ -223,7 +274,7 @@
               FontSize="{StaticResource HaloFontBody}"
               IsSpellCheckEnabled="False"
               MaxLength="2048"
-              PlaceholderText="Search films and series, or paste a link"
+              PlaceholderText="{x:Bind ViewModel.Placeholder, Mode=OneWay}"
               Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
               GotFocus="OnQueryGotFocus"
               KeyDown="OnQueryKeyDown"
@@ -388,7 +439,9 @@
 
           <!--
             `.hero`: what the box accepts, as a legend (the items do nothing
-            when clicked). People and magnets join it when the app can do them.
+            when clicked). People show only when the server can search them;
+            magnets join it when the app can do them. The code-behind places
+            the shown items in the grid.
           -->
           <StackPanel Padding="0,72,0,40" Spacing="44" Visibility="{x:Bind ViewModel.HintsVisibility, Mode=OneWay}">
             <TextBlock
@@ -413,6 +466,10 @@
               <StackPanel x:Name="HintTitles" Style="{StaticResource SearchHintStyle}">
                 <FontIcon Glyph="&#xE8B2;" Style="{StaticResource SearchHintGlyphStyle}" />
                 <TextBlock Style="{StaticResource SearchHintLabelStyle}" Text="Movies &amp; Series" />
+              </StackPanel>
+              <StackPanel x:Name="HintPeople" Grid.Column="1" Style="{StaticResource SearchHintStyle}" Visibility="{x:Bind ViewModel.PeopleHintVisibility, Mode=OneWay}">
+                <FontIcon Glyph="&#xE77B;" Style="{StaticResource SearchHintGlyphStyle}" />
+                <TextBlock Style="{StaticResource SearchHintLabelStyle}" Text="Actors, Directors &amp; Writers" />
               </StackPanel>
               <StackPanel x:Name="HintLinks" Grid.Column="1" Style="{StaticResource SearchHintStyle}">
                 <FontIcon Glyph="&#xE71B;" Style="{StaticResource SearchHintGlyphStyle}" />
@@ -653,6 +710,16 @@
               </ItemsRepeater>
             </StackPanel>
 
+            <!-- PEOPLE, when its answer came with the results: before them. -->
+            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.PeopleAboveVisibility, Mode=OneWay}">
+              <TextBlock Style="{StaticResource HaloMonoKicker}" Text="PEOPLE" />
+              <ItemsRepeater x:Name="PeopleAboveGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
+                <ItemsRepeater.Layout>
+                  <UniformGridLayout ItemsStretch="Fill" MinColumnSpacing="10" MinItemWidth="250" MinRowSpacing="10" Orientation="Horizontal" />
+                </ItemsRepeater.Layout>
+              </ItemsRepeater>
+            </StackPanel>
+
             <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.ResultsVisibility, Mode=OneWay}">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Style="{StaticResource HaloMonoKicker}" Text="RESULTS" />
@@ -687,6 +754,16 @@
                 <local:PosterSkeleton />
                 <local:PosterSkeleton />
               </local:WrapPanel>
+            </StackPanel>
+
+            <!-- PEOPLE, when its answer came after the results: under them, so nothing shown moves. -->
+            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.PeopleBelowVisibility, Mode=OneWay}">
+              <TextBlock Style="{StaticResource HaloMonoKicker}" Text="PEOPLE" />
+              <ItemsRepeater x:Name="PeopleBelowGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
+                <ItemsRepeater.Layout>
+                  <UniformGridLayout ItemsStretch="Fill" MinColumnSpacing="10" MinItemWidth="250" MinRowSpacing="10" Orientation="Horizontal" />
+                </ItemsRepeater.Layout>
+              </ItemsRepeater>
             </StackPanel>
           </StackPanel>
 

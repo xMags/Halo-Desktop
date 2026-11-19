@@ -935,7 +935,7 @@ namespace winrt::HaloDesktop::implementation
         // showing, so that page's section stays lit too (the reference lights the
         // stack's root, which a sheet never changes).
         auto section = page == Page::Sources ? App::Services().Navigation->CurrentPage() : page;
-        if (section == Page::Detail || section == Page::Sources)
+        if (section == Page::Detail || section == Page::Person || section == Page::Sources)
         {
             section = App::Services().Navigation->SectionBehindCurrentPage();
         }
@@ -944,6 +944,7 @@ namespace winrt::HaloDesktop::implementation
         {
         case Page::Home:
         case Page::Detail:
+        case Page::Person:
             selectedItem = NavigationItem(L"HomeItem");
             break;
         case Page::Search:

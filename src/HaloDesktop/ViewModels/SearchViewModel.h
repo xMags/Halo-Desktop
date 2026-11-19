@@ -1,11 +1,15 @@
 #pragma once
 #include "RecentSearchViewModel.g.h"
+#include "SearchPersonViewModel.g.h"
 #include "SearchViewModel.g.h"
+#include "Api/Dto.h"
 #include "Services/AppServices.h"
 #include "Services/SearchInputPolicy.h"
 #include "Services/SearchResultBoard.h"
 #include "Services/SearchResultsPolicy.h"
+#include "Services/PeopleService.h"
 #include "Services/SearchService.h"
+#include "Services/ServerFeaturesService.h"
 
 #include <chrono>
 #include <cstddef>
@@ -31,6 +35,25 @@ namespace winrt::HaloDesktop::implementation
         winrt::hstring m_term;
     };
 
+    // One person in Search's people row.
+    struct SearchPersonViewModel : SearchPersonViewModelT<SearchPersonViewModel>
+    {
+        explicit SearchPersonViewModel(::HaloDesktop::Api::Dto::PersonSummary const& person);
+        [[nodiscard]] winrt::hstring Name() const { return m_name; }
+        [[nodiscard]] winrt::hstring Line() const { return m_line; }
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility LineVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring Photo() const { return m_photo; }
+        [[nodiscard]] winrt::hstring Initials() const { return m_initials; }
+        [[nodiscard]] std::int64_t TmdbId() const noexcept { return m_tmdbId; }
+
+    private:
+        std::int64_t m_tmdbId{};
+        winrt::hstring m_name;
+        winrt::hstring m_line;
+        winrt::hstring m_photo;
+        winrt::hstring m_initials;
+    };
+
     // The Search page's state: the box and its suggestions, recent searches
     // and what the box accepts before a search, and during one the status line, the top match, the
     // library's matches and the results.
@@ -41,6 +64,12 @@ namespace winrt::HaloDesktop::implementation
     // answer that lands late only fills in cards in place or adds cards after
     // the last one; only the user (a new query, a kind chip, clearing the box)
     // lays the grid out again.
+    //
+    // On a server with people search, a query also asks who matches it. The
+    // people row sits between the top match and the results when its answer
+    // was in by the reveal; one that lands later goes below the results, so
+    // nothing already shown moves. Without the feature (or an account) no
+    // people call is made and nothing about people is shown.
     //
     // UI-thread only. Two timers (the typing pause, and the reveal check while
     // a query is unrevealed), both stopped on destruction; the service and the
@@ -63,6 +92,14 @@ namespace winrt::HaloDesktop::implementation
         auto RecentItemsView() const { return m_recent; }
         auto LibraryItemsView() const { return m_library; }
         auto ResultItemsView() const { return m_results; }
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable PeopleItems() const;
+        auto PeopleItemsView() const { return m_people; }
+        // The people row, in one of its two places (see the class comment).
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleAboveVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleBelowVisibility() const noexcept;
+        // The legend's people item, and the box's words, follow the server.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleHintVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring Placeholder() const;
         [[nodiscard]] bool ShowKindBadges() const noexcept;
         [[nodiscard]] winrt::hstring ResultCountText() const;
         // What the status line under the chips says: catalogs still out, or
@@ -160,6 +197,8 @@ namespace winrt::HaloDesktop::implementation
         // Opening a result keeps the query among the recent terms.
         void OpenDetail(winrt::Windows::Foundation::IInspectable const& item);
         void OpenTopMatch();
+        // A card of the people row: that person's page.
+        void OpenPerson(winrt::Windows::Foundation::IInspectable const& item);
         // Arriving with Home's text: searched at once, not recorded.
         void Arrive(winrt::hstring const& query);
         void Shown();
@@ -171,13 +210,29 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
-        // Where the IMDb card's lookup stands.
+        // Where the action card's lookup stands: the IMDb title card's, asked
+        // of the addons, or the TVDB and IMDb person cards', asked of the server.
         enum class LookupState
         {
             None,
             Looking,
             Found,
             NotFound,
+            // The server could not answer (server lookups only).
+            Failed,
+            // The server cannot look these up (server lookups only).
+            Unsupported,
+        };
+
+        // Where the people row went for the revealed query.
+        enum class PeoplePlace
+        {
+            // Not decided yet, or nobody to show.
+            None,
+            // Between the top match and the results: its answer beat the reveal.
+            Above,
+            // Under the results: its answer landed after the reveal.
+            Below,
         };
 
         void SetQueryText(winrt::hstring const& value);
@@ -188,7 +243,26 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool ActionShown() const noexcept;
         // The IMDb card's title was found, so the card leads with its poster.
         [[nodiscard]] bool LookupFound() const noexcept;
+        // The card leads with a picture: a found title's poster or a found person's photo.
+        [[nodiscard]] bool ShowsPoster() const noexcept;
+        // The TVDB number or IMDb person id a server lookup card is about.
+        [[nodiscard]] std::wstring const& ServerLookupId() const noexcept;
         void StartTitleLookup();
+        // A TVDB number or an IMDb person: asked of the server once its
+        // features are known; the card says so when it cannot.
+        [[nodiscard]] bool IsServerLookup() const noexcept;
+        void StartServerLookup();
+        [[nodiscard]] bool ServerTitleFound() const noexcept;
+        [[nodiscard]] bool ServerPersonFound() const noexcept;
+        void OpenServerLookup();
+        // People search for this query, beside the catalogs, when the server has it.
+        [[nodiscard]] bool PeopleAvailable() const noexcept;
+        void AskPeople(bool retry);
+        void OnPeopleAnswer(std::wstring const& query, ::HaloDesktop::Services::PeopleOutcome outcome, std::vector<::HaloDesktop::Api::Dto::PersonSummary> people);
+        // Places the people row for the revealed query, once.
+        void PlacePeople(PeoplePlace place);
+        void ForgetPeople();
+        void OnFeaturesChanged();
         // While the action card is up: no results, no status line.
         void ComposeAction();
         void RaiseAction();
@@ -238,6 +312,9 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::SearchService> m_search;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Services::TitleLookupService> m_titleLookup;
+        std::shared_ptr<::HaloDesktop::Services::ServerFeaturesService> m_features;
+        std::shared_ptr<::HaloDesktop::Services::PeopleService> m_peopleService;
+        ::HaloDesktop::Services::ServerFeaturesChangedToken m_featuresToken{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
         // Runs only while the current query is asked and not yet revealed.
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_revealTimer{ nullptr };
@@ -254,6 +331,24 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::SearchInput m_input;
         LookupState m_lookupState{ LookupState::None };
         std::optional<::HaloDesktop::Services::SearchTitle> m_lookupTitle;
+        // The server's answer for a TVDB number or an IMDb person.
+        std::optional<::HaloDesktop::Api::Dto::IdLookup> m_idLookup;
+        // Whether that lookup was asked of the server (not only waiting for
+        // the server's features).
+        bool m_serverLookupAsked{};
+
+        // The people asked for the query `m_peopleQuery` (trimmed): asked,
+        // and the answer once it is in (an empty list when nobody, or failed).
+        std::wstring m_peopleQuery;
+        bool m_peopleAsked{};
+        std::optional<std::vector<::HaloDesktop::Api::Dto::PersonSummary>> m_peopleAnswer;
+        bool m_peopleFailed{};
+        // The query the board revealed (trimmed), and its best title tier,
+        // frozen at the reveal so a late people answer is judged the same way.
+        std::wstring m_revealedQuery;
+        std::optional<int> m_bestTitleTier;
+        bool m_peopleDecided{};
+        PeoplePlace m_peoplePlace{ PeoplePlace::None };
 
         // The current query's results, from the reveal on.
         ::HaloDesktop::Services::SearchResultBoard m_board;
@@ -272,7 +367,7 @@ namespace winrt::HaloDesktop::implementation
         bool m_hasShown{};
 
         winrt::Windows::Foundation::Collections::IObservableVector<winrt::Windows::Foundation::IInspectable>
-            m_suggestions{ nullptr }, m_recent{ nullptr }, m_library{ nullptr }, m_results{ nullptr };
+            m_suggestions{ nullptr }, m_recent{ nullptr }, m_library{ nullptr }, m_results{ nullptr }, m_people{ nullptr };
         // What each collection holds, so an answer that changes nothing leaves
         // the realised cards alone.
         std::vector<::HaloDesktop::Services::SearchTitle> m_libraryShown;

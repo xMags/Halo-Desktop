@@ -6,9 +6,12 @@
 #include "Api/HttpExecutor.h"
 #include "Services/Auth/ITokenProvider.h"
 
+#include <algorithm>
 #include <chrono>
+#include <cwctype>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <winrt/Windows.Web.Http.h>
 
@@ -59,6 +62,33 @@ namespace
             }
         }
         return winrt::to_hstring(result);
+    }
+
+    winrt::hstring TrimmedText(winrt::hstring const& input)
+    {
+        std::wstring_view text{ input };
+        auto const isSpace = [](wchar_t character) { return std::iswspace(character) != 0; };
+        while (!text.empty() && isSpace(text.front())) text.remove_prefix(1);
+        while (!text.empty() && isSpace(text.back())) text.remove_suffix(1);
+        return winrt::hstring{ text };
+    }
+
+    bool AllDigits(std::wstring_view text) noexcept
+    {
+        return !text.empty() && std::all_of(text.begin(), text.end(), [](wchar_t character)
+        {
+            return character >= L'0' && character <= L'9';
+        });
+    }
+
+    // The ids the lookup endpoint takes, in the shapes it checks: a TVDB
+    // number, or an IMDb title or person id. Nothing else is ever put in its URL.
+    bool IsLookupId(winrt::hstring const& source, winrt::hstring const& id)
+    {
+        std::wstring_view const text{ id };
+        if (source == L"tvdb") return text.size() <= 10 && AllDigits(text);
+        if (source != L"imdb" || text.size() < 3 || text.size() > 12) return false;
+        return (text.starts_with(L"tt") || text.starts_with(L"nm")) && AllDigits(text.substr(2));
     }
 }
 
@@ -356,6 +386,50 @@ namespace HaloDesktop::Api
             std::move(streamUrl),
             std::move(headers),
             m_executor);
+    }
+
+    concurrency::task<Dto::Capabilities> ApiClient::GetCapabilitiesAsync()
+    {
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), L"/capabilities");
+        co_return Mappers::ParseCapabilities(response);
+    }
+
+    concurrency::task<std::vector<Dto::PersonSummary>> ApiClient::SearchPeopleAsync(winrt::hstring query)
+    {
+        auto const trimmed = TrimmedText(query);
+        if (trimmed.size() < 2 || trimmed.size() > 120)
+        {
+            throw std::invalid_argument{ "A people search needs 2 to 120 characters." };
+        }
+        auto const path = winrt::hstring{ L"/people/search?q=" } + EncodeUriComponent(trimmed);
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
+        co_return Mappers::ParsePeopleSearch(response);
+    }
+
+    concurrency::task<Dto::PersonDetail> ApiClient::GetPersonAsync(std::int64_t tmdbId)
+    {
+        if (tmdbId <= 0)
+        {
+            throw std::invalid_argument{ "A person's TMDB id must be positive." };
+        }
+        auto const path = winrt::hstring{ L"/people/" } + winrt::to_hstring(tmdbId);
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
+        co_return Mappers::ParsePerson(response);
+    }
+
+    concurrency::task<Dto::IdLookup> ApiClient::LookupAsync(winrt::hstring source, winrt::hstring id)
+    {
+        if (!IsLookupId(source, id))
+        {
+            throw std::invalid_argument{ "A lookup needs a TVDB number or an IMDb id." };
+        }
+        auto const path = winrt::hstring{ L"/lookup?source=" } + source + L"&id=" + id;
+        auto const response = co_await SendAuthenticatedJsonAsync(
+            winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
+        co_return Mappers::ParseIdLookup(response);
     }
 
     concurrency::task<winrt::Windows::Data::Json::IJsonValue> ApiClient::SendAuthenticatedJsonAsync(

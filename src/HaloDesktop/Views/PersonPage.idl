@@ -1,0 +1,52 @@
+// The grid's cards are the shared MediaSummary model.
+import "Models/Models.idl";
+
+namespace HaloDesktop
+{
+    // A person's page: who they are, then their films and series, newest
+    // first, narrowed by the role chips.
+    runtimeclass PersonViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String Name { get; };
+        String Photo { get; };
+        String Initials { get; };
+        // What they are best known for, as the kicker over the name.
+        String Kicker { get; };
+        Microsoft.UI.Xaml.Visibility KickerVisibility { get; };
+        String Biography { get; };
+        Microsoft.UI.Xaml.Visibility BiographyVisibility { get; };
+
+        Object Items { get; };
+        String CountText { get; };
+        Boolean Loading { get; };
+        Microsoft.UI.Xaml.Visibility LoadingVisibility { get; };
+        Microsoft.UI.Xaml.Visibility FilmographyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PartialVisibility { get; };
+        // The role chips, shown only when the person has more than one role;
+        // each chip only for a role they have.
+        Microsoft.UI.Xaml.Visibility ChipsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ActingChipVisibility { get; };
+        Microsoft.UI.Xaml.Visibility DirectingChipVisibility { get; };
+        Microsoft.UI.Xaml.Visibility WritingChipVisibility { get; };
+        // 0 All, 1 Acting, 2 Directing, 3 Writing.
+        Int32 FilterIndex { get; };
+        Microsoft.UI.Xaml.Visibility EmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility ErrorVisibility { get; };
+        String ErrorTitle { get; };
+        String ErrorText { get; };
+        Microsoft.UI.Xaml.Visibility RetryVisibility { get; };
+
+        void Load(Object parameter);
+        void SetFilter(Int32 index);
+        void Retry();
+        void OpenDetail(Object item);
+        void GoBack();
+    }
+
+    [default_interface]
+    runtimeclass PersonPage : Microsoft.UI.Xaml.Controls.Page
+    {
+        PersonPage();
+        PersonViewModel ViewModel { get; };
+    }
+}

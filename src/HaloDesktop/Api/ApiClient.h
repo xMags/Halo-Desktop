@@ -104,6 +104,19 @@ namespace HaloDesktop::Api
             winrt::hstring streamUrl,
             Security::ProtectedHttpHeaders headers = {});
 
+        // What this server can do beyond the shared contract. A server without
+        // the endpoint answers 404, which throws like any other failure.
+        [[nodiscard]] concurrency::task<Dto::Capabilities> GetCapabilitiesAsync();
+        // People whose name matches `query` (trimmed here; 2 to 120 characters,
+        // else std::invalid_argument before anything is sent).
+        [[nodiscard]] concurrency::task<std::vector<Dto::PersonSummary>> SearchPeopleAsync(winrt::hstring query);
+        // A person and their films and series. 404: no such person.
+        [[nodiscard]] concurrency::task<Dto::PersonDetail> GetPersonAsync(std::int64_t tmdbId);
+        // What a pasted id names. `source` is `tvdb` (digits) or `imdb`
+        // (`tt` or `nm` and digits); anything else is refused before sending.
+        // 404: nothing known by that id.
+        [[nodiscard]] concurrency::task<Dto::IdLookup> LookupAsync(winrt::hstring source, winrt::hstring id);
+
     private:
         [[nodiscard]] static winrt::Windows::Foundation::Uri Endpoint(winrt::hstring const& server, wchar_t const* path);
         [[nodiscard]] winrt::hstring ServerFor(::HaloDesktop::Services::Auth::SessionTarget const& target) const;

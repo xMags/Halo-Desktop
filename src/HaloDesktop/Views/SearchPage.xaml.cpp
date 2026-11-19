@@ -10,7 +10,10 @@
 #include "Shell/LayoutMetricsService.h"
 #include "ViewModels/SearchViewModel.h"
 
+#include <algorithm>
+#include <cstddef>
 #include <string_view>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
 #include <winrt/Windows.System.h>
@@ -38,7 +41,7 @@ namespace
     constexpr double HeadBoxMinWidth = 420.0;
     constexpr double HeadGap = 16.0;
     constexpr double HeadWrappedGap = 12.0;
-    // The empty page's hints: three to a row while each gets 170, else two.
+    // The empty page's hints: all in one row while each gets 170, else two to a row.
     constexpr double HintMinWidth = 170.0;
     constexpr double HintGap = 16.0;
 
@@ -138,6 +141,9 @@ namespace winrt::HaloDesktop::implementation
             RecentList().ItemsSource(viewModel->RecentItemsView());
             LibraryGrid().ItemsSource(viewModel->LibraryItemsView());
             ResultsGrid().ItemsSource(viewModel->ResultItemsView());
+            // One row of people, shown in one of its two places at a time.
+            PeopleAboveGrid().ItemsSource(viewModel->PeopleItemsView());
+            PeopleBelowGrid().ItemsSource(viewModel->PeopleItemsView());
         }
         m_viewModelChanged = m_viewModel.PropertyChanged(winrt::auto_revoke, [weak = get_weak()](
             winrt::Windows::Foundation::IInspectable const&,
@@ -158,6 +164,10 @@ namespace winrt::HaloDesktop::implementation
             if (name == L"ActionTone" || name == L"ActionGlyph" || name == L"StatusFailed")
             {
                 self->ApplyVisualStates();
+            }
+            if (name == L"PeopleHintVisibility")
+            {
+                self->ArrangeHints();
             }
             self->UpdateSkeletonPulse();
             // A query's results settle in when they arrive, which is when its
@@ -278,6 +288,14 @@ namespace winrt::HaloDesktop::implementation
         if (auto const card = sender.try_as<winrt::HaloDesktop::PosterCard>())
         {
             m_viewModel.OpenDetail(card.Tag());
+        }
+    }
+
+    void SearchPage::OnPersonClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (auto const button = sender.try_as<Microsoft::UI::Xaml::FrameworkElement>())
+        {
+            m_viewModel.OpenPerson(button.Tag());
         }
     }
 
@@ -428,27 +446,43 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchPage::OnHintsGridSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
     {
+        m_hintsWidth = args.NewSize().Width;
+        ArrangeHints();
+    }
+
+    // The shown hints in legend order, all in one row when each gets its
+    // minimum width, else two to a row. Columns are removed rather than left
+    // empty, so their spacing does not push the row off centre.
+    void SearchPage::ArrangeHints()
+    {
         using Microsoft::UI::Xaml::Controls::Grid;
-        auto const grid = HintsGrid();
-        auto const columns = grid.ColumnDefinitions();
-        auto const three = args.NewSize().Width >= 3.0 * HintMinWidth + 2.0 * HintGap;
-        // The third column is removed rather than emptied, so its spacing does
-        // not push the two left off centre.
-        if (three && columns.Size() == 2)
+        std::vector<Microsoft::UI::Xaml::FrameworkElement> shown;
+        for (auto const& hint : { HintTitles(), HintPeople(), HintLinks(), HintIds() })
         {
-            Microsoft::UI::Xaml::Controls::ColumnDefinition third;
-            third.Width(Microsoft::UI::Xaml::GridLengthHelper::FromValueAndType(1.0, Microsoft::UI::Xaml::GridUnitType::Star));
-            columns.Append(third);
+            if (hint.Visibility() == Microsoft::UI::Xaml::Visibility::Visible) shown.push_back(hint);
         }
-        else if (!three && columns.Size() == 3)
+        if (shown.empty()) return;
+        auto const count = static_cast<double>(shown.size());
+        auto const oneRow = m_hintsWidth >= count * HintMinWidth + (count - 1.0) * HintGap;
+        auto const columnCount = static_cast<std::uint32_t>(oneRow ? shown.size() : (std::min)(shown.size(), std::size_t{ 2 }));
+        auto const columns = HintsGrid().ColumnDefinitions();
+        while (columns.Size() < columnCount)
+        {
+            Microsoft::UI::Xaml::Controls::ColumnDefinition column;
+            column.Width(Microsoft::UI::Xaml::GridLengthHelper::FromValueAndType(1.0, Microsoft::UI::Xaml::GridUnitType::Star));
+            columns.Append(column);
+        }
+        while (columns.Size() > columnCount)
         {
             columns.RemoveAtEnd();
         }
-        auto const last = HintIds();
-        auto const row = three ? 0 : 1;
-        auto const column = three ? 2 : 0;
-        if (Grid::GetRow(last) != row) Grid::SetRow(last, row);
-        if (Grid::GetColumn(last) != column) Grid::SetColumn(last, column);
+        for (std::uint32_t index = 0; index < shown.size(); ++index)
+        {
+            auto const row = static_cast<std::int32_t>(index / columnCount);
+            auto const column = static_cast<std::int32_t>(index % columnCount);
+            if (Grid::GetRow(shown[index]) != row) Grid::SetRow(shown[index], row);
+            if (Grid::GetColumn(shown[index]) != column) Grid::SetColumn(shown[index], column);
+        }
     }
 
     void SearchPage::ApplyVisualStates()
