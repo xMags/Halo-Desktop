@@ -315,6 +315,12 @@ namespace winrt::HaloDesktop::implementation
         auto const rest = ::HaloDesktop::Controls::ThemeColor(theme, L"HaloText2Color").value_or(fallback);
         auto const hover = ::HaloDesktop::Controls::ThemeColor(theme, L"HaloText1Color").value_or(fallback);
 
+        // The hover and pressed fills are the system's own, and it picks them for
+        // the Windows app mode unless told the theme. Left alone, a dark app on a
+        // light-mode Windows gets a pale hover fill under a pale glyph.
+        titleBar.PreferredTheme(theme == Microsoft::UI::Xaml::ElementTheme::Dark
+            ? Microsoft::UI::Windowing::TitleBarTheme::Dark
+            : Microsoft::UI::Windowing::TitleBarTheme::Light);
         titleBar.ButtonBackgroundColor(transparent);
         titleBar.ButtonInactiveBackgroundColor(transparent);
         titleBar.ButtonForegroundColor(rest);
