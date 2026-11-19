@@ -184,6 +184,17 @@ namespace HaloDesktop::Services
             return false;
         }
 
+        // A title page is a step into what was clicked, so it drills in (and
+        // Back, which replays the step in reverse, drills out), as Windows'
+        // own apps open an item. Pages picked from the side menu slide in.
+        // Both are theme transitions, so they follow Windows' animation setting.
+        if (page == Page::Detail)
+        {
+            return m_shellFrame.Navigate(
+                targetType,
+                parameter,
+                winrt::Microsoft::UI::Xaml::Media::Animation::DrillInNavigationTransitionInfo{});
+        }
         auto const transition = winrt::Microsoft::UI::Xaml::Media::Animation::EntranceNavigationTransitionInfo{};
         return m_shellFrame.Navigate(targetType, parameter, transition);
     }
