@@ -8,12 +8,13 @@ namespace HaloDesktop::Controls
     // velocity to the view's own inertia on the compositor, so turning the
     // wheel keeps the page gliding at an even speed instead of restarting an
     // animation per notch, and the distance follows Windows' "lines per
-    // notch" setting (WheelScrollDistance per line).
+    // notch" setting (WheelLineDistance per line).
     //
     // The view stops handling the wheel itself (IgnoredInputKinds); touch,
     // touchpad panning, keys and the scrollbar are left to it. A sideways
     // wheel and Ctrl with the wheel are left alone. The handler holds the view
-    // weakly. UI thread only.
+    // weakly. Attaching a view again does nothing, so a page can call this on
+    // every Loaded. UI thread only.
     void AttachSmoothWheelScroll(winrt::Microsoft::UI::Xaml::Controls::ScrollView const& view);
 
     // How far one notch travels for each of Windows' wheel lines, in view

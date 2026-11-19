@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/LibraryPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #include "Controls/ContentEntrance.h"
 #if __has_include("LibraryPage.g.cpp")
 #include "LibraryPage.g.cpp"
@@ -32,6 +33,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::HaloDesktop::LibraryViewModel LibraryPage::ViewModel() const { return m_viewModel; }
     void LibraryPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(LibraryScroller());
         if (m_metricsToken == 0)
         {
             if (auto const metrics = App::Services().LayoutMetrics)

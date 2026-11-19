@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/SearchPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #include "Controls/ContentEntrance.h"
 #if __has_include("SearchPage.g.cpp")
 #include "SearchPage.g.cpp"
@@ -92,6 +93,7 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(SearchScroller());
         if (m_metricsToken == 0)
         {
             if (auto const metrics = App::Services().LayoutMetrics)

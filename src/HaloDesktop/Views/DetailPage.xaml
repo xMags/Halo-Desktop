@@ -32,7 +32,7 @@
       <Border x:Name="ArtHost" VerticalAlignment="Top" />
     </Grid>
 
-    <ScrollViewer
+    <ScrollView ContentOrientation="Vertical"
       x:Name="PageScroller"
       HorizontalScrollMode="Disabled"
       VerticalScrollBarVisibility="Auto"
@@ -46,7 +46,7 @@
           <local:DetailSimilarPanel x:Name="SimilarPanel" />
         </StackPanel>
       </StackPanel>
-    </ScrollViewer>
+    </ScrollView>
 
     <!-- `DetailSkeleton`: the hero's blocks, pulsing, where they will land. -->
     <Grid

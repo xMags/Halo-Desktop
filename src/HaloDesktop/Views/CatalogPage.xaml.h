@@ -27,7 +27,7 @@ namespace winrt::HaloDesktop::implementation
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnRetryMoreClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnScrollerViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        void OnScrollerViewChanged(winrt::Windows::Foundation::IInspectable const&, winrt::Windows::Foundation::IInspectable const&);
         void OnGridSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         // One handler for the page: every poster on it answers a right-click from here.
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);

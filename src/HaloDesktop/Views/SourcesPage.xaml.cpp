@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/SourcesPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("SourcesPage.g.cpp")
 #include "SourcesPage.g.cpp"
 #endif
@@ -70,6 +71,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(ListScroller());
         m_downloadOperation.Loaded();
         auto const viewModel = winrt::get_self<SourcesViewModel>(m_viewModel);
         viewModel->Activate();
@@ -202,7 +204,7 @@ namespace winrt::HaloDesktop::implementation
         auto const index = m_viewModel.SelectedIndex();
         if (index < 0)
         {
-            scroller.ChangeView(nullptr, 0.0, nullptr);
+            scroller.ScrollTo(0.0, 0.0);
             return;
         }
 
@@ -216,7 +218,7 @@ namespace winrt::HaloDesktop::implementation
         if (top >= SelectionMargin && bottom <= viewport - SelectionMargin) return;
 
         auto const offset = (std::max)(0.0, scroller.VerticalOffset() + top - SelectionLead);
-        scroller.ChangeView(nullptr, winrt::box_value(offset).as<winrt::Windows::Foundation::IReference<double>>(), nullptr);
+        scroller.ScrollTo(scroller.HorizontalOffset(), offset);
     }
 
     void SourcesPage::OnScrollerSizeChanged(

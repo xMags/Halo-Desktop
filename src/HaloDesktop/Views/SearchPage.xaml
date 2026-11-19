@@ -44,9 +44,8 @@
       FontWeight="SemiBold"
       Foreground="{ThemeResource HaloText1Brush}"
       Text="Search" />
-    <ScrollViewer
+    <ScrollView x:Name="SearchScroller" ContentOrientation="Vertical"
       Grid.Row="1"
-      HorizontalScrollBarVisibility="Disabled"
       HorizontalScrollMode="Disabled"
       VerticalScrollBarVisibility="Hidden">
       <!-- The bottom 40 is `.search-foot`; the sides are the layout step's gutter. -->
@@ -458,6 +457,6 @@
           Text="No matching titles."
           Visibility="{x:Bind ViewModel.NothingFoundVisibility, Mode=OneWay}" />
       </StackPanel>
-    </ScrollViewer>
+    </ScrollView>
   </Grid>
 </Page>

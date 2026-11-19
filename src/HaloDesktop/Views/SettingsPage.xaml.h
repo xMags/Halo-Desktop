@@ -47,7 +47,7 @@ namespace winrt::HaloDesktop::implementation
         void OnSignOutClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnSignInToSyncClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCheckForUpdatesClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnFormViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        void OnFormViewChanged(winrt::Windows::Foundation::IInspectable const&, winrt::Windows::Foundation::IInspectable const&);
         void OnFormSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
 
     private:

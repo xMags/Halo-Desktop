@@ -133,8 +133,9 @@
           <!-- Everything below the header scrolls as one column, the saved copy and
                the filters included. The end-of-list room is a margin on the content,
                not scroller padding, which would be a band the list cannot reach. -->
-          <ScrollViewer
+          <ScrollView
             x:Name="ListScroller"
+            ContentOrientation="Vertical"
             Grid.Row="1"
             SizeChanged="OnScrollerSizeChanged"
             VerticalScrollBarVisibility="Auto">
@@ -568,7 +569,7 @@
                 </ItemsControl>
               </StackPanel>
             </Grid>
-          </ScrollViewer>
+          </ScrollView>
 
           <local:SourcesSheetFooter Grid.Row="2" ViewModel="{x:Bind ViewModel}" />
         </Grid>

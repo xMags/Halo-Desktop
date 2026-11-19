@@ -39,9 +39,8 @@
       </Button>
       </Grid>
     </Grid>
-    <ScrollViewer
+    <ScrollView x:Name="LibraryScroller" ContentOrientation="Vertical"
       Grid.Row="1"
-      HorizontalScrollBarVisibility="Disabled"
       HorizontalScrollMode="Disabled"
       VerticalScrollBarVisibility="Hidden">
       <StackPanel>
@@ -103,6 +102,6 @@
           </ItemsRepeater.ItemTemplate>
         </ItemsRepeater>
       </StackPanel>
-    </ScrollViewer>
+    </ScrollView>
   </Grid>
 </Page>

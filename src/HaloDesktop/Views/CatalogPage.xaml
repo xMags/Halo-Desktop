@@ -34,11 +34,10 @@
       as tall as the stretched art and its caption. The end area below the grid
       is where the next page's spinner, or why it could not load, appears.
     -->
-    <ScrollViewer
+    <ScrollView ContentOrientation="Vertical"
       x:Name="CatalogScroller"
       Grid.Row="1"
       HorizontalScrollMode="Disabled"
-      HorizontalScrollBarVisibility="Disabled"
       VerticalScrollBarVisibility="Hidden"
       ViewChanged="OnScrollerViewChanged"
       Visibility="{x:Bind ViewModel.ContentVisibility, Mode=OneWay}">
@@ -92,7 +91,7 @@
             Visibility="{x:Bind ViewModel.MoreFailedVisibility, Mode=OneWay}" />
         </StackPanel>
       </StackPanel>
-    </ScrollViewer>
+    </ScrollView>
     <StackPanel
       Grid.Row="1"
       HorizontalAlignment="Center"

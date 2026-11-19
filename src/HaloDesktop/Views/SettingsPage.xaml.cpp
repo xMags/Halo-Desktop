@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/SettingsPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("SettingsPage.g.cpp")
 #include "SettingsPage.g.cpp"
 #endif
@@ -61,6 +62,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::HaloDesktop::SettingsViewModel SettingsPage::ViewModel() const { return m_viewModel; }
     void SettingsPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(SettingsScroller());
         if (!m_stockAccountPicture)
         {
             m_stockAccountPicture = AccountPicture().Source();
@@ -303,13 +305,12 @@ namespace winrt::HaloDesktop::implementation
         auto const section = FindName(elementName).as<Microsoft::UI::Xaml::FrameworkElement>();
         auto const top = section.TransformToVisual(scroller).TransformPoint({ 0.0f, 0.0f }).Y;
         auto const targetOffset = scroller.VerticalOffset() + top;
-        scroller.ChangeView(
-            nullptr,
-            winrt::box_value(targetOffset).as<winrt::Windows::Foundation::IReference<double>>(),
-            nullptr,
-            true);
+        scroller.ScrollTo(
+            scroller.HorizontalOffset(),
+            targetOffset,
+            Microsoft::UI::Xaml::Controls::ScrollingScrollOptions{ Microsoft::UI::Xaml::Controls::ScrollingAnimationMode::Disabled });
     }
-    void SettingsPage::OnFormViewChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&)
+    void SettingsPage::OnFormViewChanged([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&)
     {
         UpdateRailSelection();
     }

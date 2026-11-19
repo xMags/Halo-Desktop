@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/DownloadsPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("DownloadsPage.g.cpp")
 #include "DownloadsPage.g.cpp"
 #endif
@@ -46,6 +47,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::HaloDesktop::DownloadsViewModel DownloadsPage::ViewModel() const { return m_viewModel; }
     void DownloadsPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(DownloadsScroller());
         auto const viewModel = winrt::get_self<DownloadsViewModel>(m_viewModel);
         viewModel->Activate();
         RunningList().ItemsSource(viewModel->RunningView());

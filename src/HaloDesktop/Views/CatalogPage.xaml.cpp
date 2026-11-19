@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/CatalogPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("CatalogPage.g.cpp")
 #include "CatalogPage.g.cpp"
 #endif
@@ -50,6 +51,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(CatalogScroller());
         if (m_metricsToken == 0)
         {
             if (auto const metrics = App::Services().LayoutMetrics)
@@ -112,7 +114,7 @@ namespace winrt::HaloDesktop::implementation
 
     void CatalogPage::OnScrollerViewChanged(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const& args)
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
     {
         CheckNearEnd();
     }

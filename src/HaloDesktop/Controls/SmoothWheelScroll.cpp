@@ -39,7 +39,9 @@ namespace HaloDesktop::Controls
     void AttachSmoothWheelScroll(winrt::Microsoft::UI::Xaml::Controls::ScrollView const& view)
     {
         if (!view) return;
-        view.IgnoredInputKinds(Xaml::Controls::ScrollingInputKinds::MouseWheel);
+        // Already attached: the view gave the wheel over the first time.
+        if ((view.IgnoredInputKinds() & Xaml::Controls::ScrollingInputKinds::MouseWheel) == Xaml::Controls::ScrollingInputKinds::MouseWheel) return;
+        view.IgnoredInputKinds(view.IgnoredInputKinds() | Xaml::Controls::ScrollingInputKinds::MouseWheel);
         auto const handler = Xaml::Input::PointerEventHandler(
             [weak = winrt::make_weak(view)](winrt::Windows::Foundation::IInspectable const&, Xaml::Input::PointerRoutedEventArgs const& args)
             {

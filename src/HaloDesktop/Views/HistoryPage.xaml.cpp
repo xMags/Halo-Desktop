@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/HistoryPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("HistoryPage.g.cpp")
 #include "HistoryPage.g.cpp"
 #endif
@@ -134,6 +135,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(HistoryScroller());
         auto const viewModel = winrt::get_self<HistoryViewModel>(m_viewModel);
         // Bound once for the life of the page: handing the list the same
         // collection again resets it, and this runs on every return.

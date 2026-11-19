@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/DetailPage.xaml.h"
+#include "Controls/SmoothWheelScroll.h"
 #if __has_include("DetailPage.g.cpp")
 #include "DetailPage.g.cpp"
 #endif
@@ -77,6 +78,7 @@ namespace winrt::HaloDesktop::implementation
 
     void DetailPage::OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
+        ::HaloDesktop::Controls::AttachSmoothWheelScroll(PageScroller());
         m_onScreen = true;
         winrt::get_self<DetailViewModel>(m_viewModel)->Activate();
         if (!m_backdrop)
@@ -116,7 +118,7 @@ namespace winrt::HaloDesktop::implementation
         ApplyLayout();
     }
 
-    void DetailPage::OnPageScrolled(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&)
+    void DetailPage::OnPageScrolled(winrt::Windows::Foundation::IInspectable const&, winrt::Windows::Foundation::IInspectable const&)
     {
         UpdateCompactBar();
     }

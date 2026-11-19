@@ -128,10 +128,9 @@
 
     <!-- A long history needs to show where it is and to be dragged through, so
          the standard bar shows: a thin line at rest, full width under the pointer. -->
-    <ScrollViewer
+    <ScrollView ContentOrientation="Vertical"
       x:Name="HistoryScroller"
       Grid.Row="1"
-      HorizontalScrollBarVisibility="Disabled"
       HorizontalScrollMode="Disabled"
       VerticalScrollBarVisibility="Auto">
       <StackPanel x:Name="HistoryBody" Padding="32,16,32,40" Spacing="28">
@@ -387,6 +386,6 @@
           </ItemsControl.ItemTemplate>
         </ItemsControl>
       </StackPanel>
-    </ScrollViewer>
+    </ScrollView>
   </Grid>
 </Page>
