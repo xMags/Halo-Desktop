@@ -326,8 +326,9 @@
           </StackPanel>
         </StackPanel>
       </StackPanel>
-      <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
-        <Grid Margin="0,0,0,12">
+      <!-- Runs to the window's right edge; see HomeViewModel::StripRowPadding. -->
+      <StackPanel Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
+        <Grid Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
@@ -356,7 +357,7 @@
                  cards hit-testable too, so the strip answers everywhere. -->
             <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
               <!-- The last list on this page that realised everything it was given. -->
-              <ItemsRepeater x:Name="ContinueList">
+              <ItemsRepeater x:Name="ContinueList" Margin="{x:Bind ViewModel.StripEndInset, Mode=OneWay}">
               <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
               <ItemsRepeater.ItemTemplate>
                 <DataTemplate x:DataType="local:ContinueItem">
@@ -387,7 +388,9 @@
         to the shelves actually in view. The shelf hands itself through Tag so
         its See all knows where it leads.
       -->
-      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
+      <!-- Runs to the window's right edge; each shelf keeps the right gutter for
+           its header and strip end itself (MediaShelf::ApplyEndInset). -->
+      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Vertical" Spacing="28" />
         </ItemsRepeater.Layout>

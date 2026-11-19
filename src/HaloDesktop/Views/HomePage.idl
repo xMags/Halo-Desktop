@@ -42,6 +42,9 @@ namespace HaloDesktop
         Double HeroLogoMaxHeight { get; };
         Microsoft.UI.Xaml.Thickness ContentPadding { get; };
         Microsoft.UI.Xaml.Thickness HeaderPadding { get; };
+        Microsoft.UI.Xaml.Thickness StripRowPadding { get; };
+        Microsoft.UI.Xaml.Thickness StripHeaderMargin { get; };
+        Microsoft.UI.Xaml.Thickness StripEndInset { get; };
     }
 
     [default_interface]

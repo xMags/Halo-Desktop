@@ -99,6 +99,62 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Controls::GuardSidewaysWheel(args);
     }
 
+    void MediaShelf::OnLoaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        auto const metrics = App::Services().LayoutMetrics;
+        if (metrics && m_metricsToken == 0)
+        {
+            m_metricsToken = metrics->AddChangedHandler([weak = get_weak()]()
+            {
+                if (auto const self = weak.get())
+                {
+                    self->ApplyEndInset();
+                }
+            });
+        }
+        ApplyEndInset();
+    }
+
+    void MediaShelf::OnUnloaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        // A shelf moved within the tree can be loaded again before the old
+        // place's Unloaded arrives: it is still listening then.
+        if (IsLoaded() || m_metricsToken == 0)
+        {
+            return;
+        }
+        if (auto const metrics = App::Services().LayoutMetrics)
+        {
+            metrics->RemoveChangedHandler(m_metricsToken);
+        }
+        m_metricsToken = 0;
+    }
+
+    void MediaShelf::ApplyEndInset() noexcept
+    {
+        try
+        {
+            auto const metrics = App::Services().LayoutMetrics;
+            auto const inset = metrics ? metrics->Current().Gutter : 24.0;
+            if (inset == m_endInset)
+            {
+                return;
+            }
+            m_endInset = inset;
+            HeaderRow().Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, inset, 12.0 });
+            ShelfItems().Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, inset, 0.0 });
+            UpdateEdges();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // A shelf leaving the tree: the next load sets it again.
+        }
+    }
+
     // Pages by the whole cards that fit, landing on a card boundary, so a click
     // never leaves a half card at either edge. Every card on a shelf is a
     // poster, as wide as the layout step makes posters.

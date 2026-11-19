@@ -2,6 +2,8 @@
 
 #include "MediaShelf.g.h"
 
+#include "Shell/LayoutMetricsService.h"
+
 #include <winrt/Windows.Foundation.h>
 
 namespace HaloDesktop::Controls
@@ -46,10 +48,16 @@ namespace winrt::HaloDesktop::implementation
         // catalog arriving) and its offset, so all three re-measure them.
         void OnStripSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         void OnStripViewChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Controls::ScrollViewerViewChangedEventArgs const&);
+        // Follows the layout step while in the tree, for the right-edge gutter.
+        void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
         void ScrollBy(int direction);
         void UpdateEdges();
+        // The header and the strip's end keep the page gutter at the window's
+        // right edge, which the shelf itself runs to.
+        void ApplyEndInset() noexcept;
 
         winrt::hstring m_title;
         winrt::hstring m_sourceLabel;
@@ -58,6 +66,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable m_selectedItem{ nullptr };
         bool m_loading{};
         bool m_pulseAttached{};
+        ::HaloDesktop::Shell::LayoutMetricsChangedToken m_metricsToken{};
+        double m_endInset{ 24.0 };
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_itemClick;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_seeAllClick;
     };

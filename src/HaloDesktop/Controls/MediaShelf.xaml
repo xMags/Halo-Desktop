@@ -3,13 +3,18 @@
   x:Class="HaloDesktop.MediaShelf"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:local="using:HaloDesktop">
+  xmlns:local="using:HaloDesktop"
+  Loaded="OnLoaded"
+  Unloaded="OnUnloaded">
   <Grid>
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto" />
       <RowDefinition Height="Auto" />
     </Grid.RowDefinitions>
-    <Grid Margin="0,0,0,12">
+    <!-- The shelf runs to the window's right edge. Its header and the end of its
+         strip keep the page gutter there (set from code, it follows the layout
+         step), so cards slide out under the edge instead of being cut. -->
+    <Grid x:Name="HeaderRow" Margin="0,0,24,12">
       <Grid.ColumnDefinitions>
         <ColumnDefinition Width="Auto" />
         <ColumnDefinition Width="Auto" />
@@ -44,7 +49,7 @@
                never called. The transparent background makes the gaps between
                cards hit-testable too, so the strip answers everywhere. -->
       <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnStripSizeChanged">
-        <ItemsRepeater x:Name="ShelfItems">
+        <ItemsRepeater x:Name="ShelfItems" Margin="0,0,24,0">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Horizontal" Spacing="14" />
         </ItemsRepeater.Layout>
