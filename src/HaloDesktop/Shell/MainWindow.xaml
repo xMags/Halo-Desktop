@@ -16,12 +16,14 @@
         </Grid.RowDefinitions>
 
         <!--
-            The window ground is painted, not left to the system backdrop: Mica tints
-            toward the desktop wallpaper, so the ground was never the palette's own
-            colour. A child rather than RootGrid.Background so it resolves under the
-            RequestedTheme the theme service sets on the root.
+            The window ground. Mica is never used: it tints toward the desktop
+            wallpaper, so the ground was never the palette's own colour. With the
+            translucent window setting on, WindowBackdropService draws desktop
+            acrylic tinted with this same colour and hides this ground while it
+            does; otherwise this paints it. A child rather than RootGrid.Background
+            so it resolves under the RequestedTheme the theme service sets on the root.
         -->
-        <Border Grid.RowSpan="2" Background="{ThemeResource HaloMicaBrush}" IsHitTestVisible="False" />
+        <Border x:Name="WindowGround" Grid.RowSpan="2" Background="{ThemeResource HaloMicaBrush}" IsHitTestVisible="False" />
 
         <!--
             Two ambient glows behind the shell, placed as the reference places them: the

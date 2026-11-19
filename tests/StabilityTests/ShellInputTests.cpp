@@ -2,6 +2,7 @@
 
 #include "Controls/ShelfScrollPolicy.h"
 #include "Shell/PointerFocusPolicy.h"
+#include "Shell/WindowBackdropPolicy.h"
 
 #include <Windows.h>
 
@@ -107,6 +108,43 @@ namespace
         Require(IsSidewaysWheel(true, false), "a tilt wheel was left to pan a strip");
         Require(IsSidewaysWheel(false, true), "Shift with the wheel was left to pan a strip");
         Require(IsSidewaysWheel(true, true), "a shifted tilt wheel was left to pan a strip");
+    }
+
+    void TestWindowBackdrop()
+    {
+        using HaloDesktop::Shell::ResolveWindowBackdrop;
+        using HaloDesktop::Shell::WindowBackdropInput;
+
+        WindowBackdropInput const usual{ .PreferenceOn = true, .AcrylicSupported = true, .WindowActive = true, .PlayerShowing = false };
+        auto const live = ResolveWindowBackdrop(usual);
+        Require(live.UseAcrylic && !live.PaintGround && live.BlurLive, "an active translucent window did not draw its blur over a see-through ground");
+
+        auto inactive = usual;
+        inactive.WindowActive = false;
+        auto const resting = ResolveWindowBackdrop(inactive);
+        Require(resting.UseAcrylic && !resting.PaintGround && !resting.BlurLive, "an inactive window kept its blur live, or dropped the backdrop it rests on");
+
+        auto player = usual;
+        player.PlayerShowing = true;
+        auto const playing = ResolveWindowBackdrop(player);
+        Require(playing.UseAcrylic && !playing.BlurLive, "the blur stayed live under the player");
+
+        auto off = usual;
+        off.PreferenceOn = false;
+        auto const opaque = ResolveWindowBackdrop(off);
+        Require(!opaque.UseAcrylic && opaque.PaintGround && !opaque.BlurLive, "turning translucency off did not give the opaque ground back");
+
+        auto unsupported = usual;
+        unsupported.AcrylicSupported = false;
+        auto const plain = ResolveWindowBackdrop(unsupported);
+        Require(!plain.UseAcrylic && plain.PaintGround, "a window Windows cannot blur was left without its ground");
+
+        for (auto const light : { false, true })
+        {
+            auto const strength = HaloDesktop::Shell::AcrylicStrengthFor(light);
+            Require(strength.TintOpacity >= 0.7f && strength.TintOpacity <= 1.0f, "the palette tint was too weak to keep the window's colour");
+            Require(strength.LuminosityOpacity >= 0.7f && strength.LuminosityOpacity <= 1.0f, "the backdrop's luminosity was too weak to keep text readable");
+        }
     }
 
     // ---- XAML scan -------------------------------------------------------
@@ -381,5 +419,6 @@ void RunShellInputTests()
     TestContentPressPlan();
     TestPointerFocusRefusal();
     TestSidewaysWheelRule();
+    TestWindowBackdrop();
     TestSidewaysStripsCarryTheWheelGuard();
 }

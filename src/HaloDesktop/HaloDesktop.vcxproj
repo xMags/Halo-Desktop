@@ -413,6 +413,8 @@
     <ClInclude Include="Services\Downloads\DownloadAdoptionPolicy.h" />
     <ClInclude Include="Shell\PointerFocusPolicy.h" />
     <ClInclude Include="Controls\SidewaysWheelGuard.h" />
+    <ClInclude Include="Shell\WindowBackdropPolicy.h" />
+    <ClInclude Include="Shell\WindowBackdropService.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -829,6 +831,10 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Controls\SidewaysWheelGuard.cpp" />
+    <ClCompile Include="Shell\WindowBackdropPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Shell\WindowBackdropService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

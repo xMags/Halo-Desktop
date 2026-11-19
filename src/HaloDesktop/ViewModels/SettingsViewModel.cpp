@@ -15,6 +15,7 @@
 #include "Services/NavigationService.h"
 #include "Services/PlaybackPreferences.h"
 #include "Services/SettingsSyncService.h"
+#include "Shell/WindowBackdropService.h"
 #include "ViewModels/ObservableHelper.h"
 #include "ViewModels/SubtitlePreviewMetrics.h"
 
@@ -191,6 +192,7 @@ namespace winrt::HaloDesktop::implementation
         : m_session(services.Session),
           m_navigation(services.Navigation),
           m_theme(services.Theme),
+          m_windowBackdrop(services.WindowBackdrop),
           m_addonService(services.Addons),
           m_catalog(services.Catalog),
           m_settings(services.SettingsSync),
@@ -441,6 +443,20 @@ namespace winrt::HaloDesktop::implementation
         m_discordPresenceService->SetEnabled(value);
         if (value) m_discordPresenceService->Update(m_playback->State());
         Raise(L"DiscordPresence");
+    }
+    bool SettingsViewModel::TranslucentWindow() const noexcept
+    {
+        return m_windowBackdrop && m_windowBackdrop->Enabled();
+    }
+    void SettingsViewModel::TranslucentWindow(bool value)
+    {
+        if (!m_windowBackdrop || m_windowBackdrop->Enabled() == value) return;
+        m_windowBackdrop->SetEnabled(value);
+        Raise(L"TranslucentWindow");
+    }
+    bool SettingsViewModel::TranslucentWindowSupported() const noexcept
+    {
+        return m_windowBackdrop && ::HaloDesktop::Shell::WindowBackdropService::IsSupported();
     }
     void SettingsViewModel::Refresh()
     {

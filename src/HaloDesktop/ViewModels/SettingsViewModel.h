@@ -162,6 +162,11 @@ namespace winrt::HaloDesktop::implementation
         void HardwareDecoding(bool value);
         [[nodiscard]] bool DiscordPresence() const noexcept;
         void DiscordPresence(bool value);
+        // The window's translucent (acrylic) ground on this PC; applied at once.
+        [[nodiscard]] bool TranslucentWindow() const noexcept;
+        void TranslucentWindow(bool value);
+        // Windows can draw it here; the switch is unavailable otherwise.
+        [[nodiscard]] bool TranslucentWindowSupported() const noexcept;
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();
@@ -240,6 +245,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::ISessionService> m_session;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
         std::shared_ptr<::HaloDesktop::Services::ThemeService> m_theme;
+        std::shared_ptr<::HaloDesktop::Shell::WindowBackdropService> m_windowBackdrop;
         std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addonService;
         std::shared_ptr<::HaloDesktop::Services::ICatalogService> m_catalog;
         std::shared_ptr<::HaloDesktop::Services::SettingsSyncService> m_settings;

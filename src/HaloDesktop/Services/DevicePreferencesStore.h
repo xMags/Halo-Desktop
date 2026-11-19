@@ -29,6 +29,8 @@ namespace HaloDesktop::Services
         // The player crops the picture to fill the window (mpv panscan) rather than
         // fitting it. Kept across files and sessions, fit until first chosen.
         bool FillPicture{};
+        // The window lets a tinted blur of the desktop show through (acrylic).
+        bool TranslucentWindow{ true };
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
@@ -72,6 +74,8 @@ namespace HaloDesktop::Services
         void NavPaneOpen(bool value);
         [[nodiscard]] bool FillPicture() const noexcept;
         void FillPicture(bool value);
+        [[nodiscard]] bool TranslucentWindow() const noexcept;
+        void TranslucentWindow(bool value);
         // Zero until a transfer has been observed. Cached in memory after the
         // first read, because callers ask per rendered row.
         [[nodiscard]] double MeasuredLineMbps() const noexcept;

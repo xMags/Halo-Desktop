@@ -231,6 +231,9 @@
                 </StackPanel>
               </RadioButton>
             </StackPanel>
+            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+              <local:SettingRow Label="Translucent window" Hint="A soft blur of your desktop shows through. Windows turns it off with transparency effects or battery saver."><local:SettingRow.SettingContent><ToggleSwitch AutomationProperties.Name="Translucent window" IsEnabled="{x:Bind ViewModel.TranslucentWindowSupported}" IsOn="{x:Bind ViewModel.TranslucentWindow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
           </StackPanel>
 
           <StackPanel x:Name="AddonsSection" Spacing="14">

@@ -12,6 +12,7 @@
 #include "Services/ServiceInterfaces.h"
 #include "Services/ThemeService.h"
 #include "Shell/ShellChromePolicy.h"
+#include "Shell/WindowBackdropService.h"
 #include "Shell/WindowPresentationService.h"
 
 #include <winrt/Windows.UI.h>
@@ -24,8 +25,6 @@ namespace winrt::HaloDesktop::implementation
     {
         MainWindowT::InitializeComponent();
 
-        // No system backdrop: RootGrid paints the palette's own ground edge to edge, so
-        // a Mica layer underneath would only cost composition without ever showing.
         ExtendsContentIntoTitleBar(true);
         SetTitleBar(AppTitleBarControl());
 
@@ -38,6 +37,8 @@ namespace winrt::HaloDesktop::implementation
             DispatcherQueue());
         // Applied before the first paint so a stored preference never flashes the other theme.
         App::Services().Theme->Attach(RootGridControl());
+        // After the theme, so the first tint is the stored theme's ground colour.
+        App::Services().WindowBackdrop->Attach(*this, RootGridControl(), WindowGround());
         UpdateCaptionButtonColors();
         App::Services().Downloads->Start();
         App::Services().Navigation->AttachOverlayFrame(OverlayFrameControl());
@@ -65,6 +66,7 @@ namespace winrt::HaloDesktop::implementation
                 App::Services().WindowPresentation->SetWindowActivation(
                     deactivated ? ::HaloDesktop::Shell::WindowActivation::Inactive
                                 : ::HaloDesktop::Shell::WindowActivation::Active);
+                App::Services().WindowBackdrop->SetWindowActive(!deactivated);
                 if (deactivated)
                 {
                     return;
@@ -114,6 +116,7 @@ namespace winrt::HaloDesktop::implementation
                 if (auto const self = weak.get())
                 {
                     self->UpdateCaptionButtonColors();
+                    App::Services().WindowBackdrop->RefreshTheme();
                 }
             });
 
@@ -179,6 +182,8 @@ namespace winrt::HaloDesktop::implementation
             }
             App::Services().WindowPresentation->Detach();
             m_themeChangedRevoker.revoke();
+            // The backdrop lets go of the window while it is still whole.
+            App::Services().WindowBackdrop->Detach();
             // The service holds the root it themes and does not own it; it lets
             // go here, before the content below is torn down.
             App::Services().Theme->Detach();
@@ -192,6 +197,7 @@ namespace winrt::HaloDesktop::implementation
             SheetFrame(nullptr);
             ShellLayer(nullptr);
             PlayerTitleBarGround(nullptr);
+            WindowGround(nullptr);
             AppTitleBar(nullptr);
             TitleBarRow(nullptr);
             RootGrid(nullptr);
@@ -239,6 +245,7 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Controls::Grid::SetRow(overlay, chrome.OverlayCoversTitleBar ? 0 : 1);
         Microsoft::UI::Xaml::Controls::Grid::SetRowSpan(overlay, chrome.OverlayCoversTitleBar ? 2 : 1);
         App::Services().Theme->SetForcedDarkScope(chrome.ForceDarkPalette);
+        App::Services().WindowBackdrop->SetPlayerShowing(overlayOpen && navigation.CurrentOverlayPage() == Page::Player);
         UpdateCaptionButtonColors();
     }
 

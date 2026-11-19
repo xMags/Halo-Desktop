@@ -13,6 +13,7 @@ namespace HaloDesktop::Playback
 namespace HaloDesktop::Shell
 {
     class LayoutMetricsService;
+    class WindowBackdropService;
     class WindowPresentationService;
 }
 
@@ -72,5 +73,6 @@ namespace HaloDesktop::Services
         std::shared_ptr<::HaloDesktop::Playback::UpNextResolver> UpNext;
         std::shared_ptr<::HaloDesktop::Shell::WindowPresentationService> WindowPresentation;
         std::shared_ptr<::HaloDesktop::Shell::LayoutMetricsService> LayoutMetrics;
+        std::shared_ptr<::HaloDesktop::Shell::WindowBackdropService> WindowBackdrop;
     };
 }

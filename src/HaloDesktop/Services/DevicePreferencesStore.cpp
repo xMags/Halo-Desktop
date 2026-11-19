@@ -102,6 +102,7 @@ namespace
         result.DiscordPresence = root.GetNamedBoolean(L"discordPresence", true);
         result.NavPaneOpen = root.GetNamedBoolean(L"navPaneOpen", false);
         result.FillPicture = root.GetNamedBoolean(L"fillPicture", false);
+        result.TranslucentWindow = root.GetNamedBoolean(L"translucentWindow", true);
         result.LastServerAddress = BoundedString(root, L"lastServerAddress", MaximumServerAddressLength);
         result.SessionServerUrl = BoundedString(root, L"sessionServerUrl", MaximumServerUrlLength);
         return result;
@@ -151,6 +152,7 @@ namespace
         root.Insert(L"discordPresence", JsonValue::CreateBooleanValue(value.DiscordPresence));
         root.Insert(L"navPaneOpen", JsonValue::CreateBooleanValue(value.NavPaneOpen));
         root.Insert(L"fillPicture", JsonValue::CreateBooleanValue(value.FillPicture));
+        root.Insert(L"translucentWindow", JsonValue::CreateBooleanValue(value.TranslucentWindow));
         if (!value.LastServerAddress.empty() && value.LastServerAddress.size() <= MaximumServerAddressLength)
         {
             root.Insert(L"lastServerAddress", JsonValue::CreateStringValue(value.LastServerAddress));
@@ -371,6 +373,20 @@ namespace HaloDesktop::Services
         Mutate(m_path, m_mutex, [value](DevicePreferences& current)
         {
             current.FillPicture = value;
+        });
+    }
+
+    // An unreadable file keeps the window as it ships: translucent.
+    bool DevicePreferencesStore::TranslucentWindow() const noexcept
+    {
+        try { return Read().TranslucentWindow; } catch (...) { return true; }
+    }
+
+    void DevicePreferencesStore::TranslucentWindow(bool value)
+    {
+        Mutate(m_path, m_mutex, [value](DevicePreferences& current)
+        {
+            current.TranslucentWindow = value;
         });
     }
 

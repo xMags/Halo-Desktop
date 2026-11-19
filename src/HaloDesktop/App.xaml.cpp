@@ -47,6 +47,7 @@
 #include "Services/Downloads/DownloadTypes.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
+#include "Shell/WindowBackdropService.h"
 #include "Shell/WindowPresentationService.h"
 #include "Storage/AppStoragePaths.h"
 #include "Storage/LegacyPackageDataSource.h"
@@ -317,6 +318,7 @@ namespace winrt::HaloDesktop::implementation
         m_services.UpNext=std::make_shared<::HaloDesktop::Playback::UpNextResolver>(m_backends,m_services.SettingsSync,m_services.Downloads);
         m_services.WindowPresentation = std::make_shared<::HaloDesktop::Shell::WindowPresentationService>();
         m_services.LayoutMetrics = std::make_shared<::HaloDesktop::Shell::LayoutMetricsService>();
+        m_services.WindowBackdrop = std::make_shared<::HaloDesktop::Shell::WindowBackdropService>(m_devicePreferences);
 
         // Only the error code is written: an exception's message can carry a
         // server sentence, a path or a URL, none of which belong in the log.

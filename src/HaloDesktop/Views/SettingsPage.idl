@@ -92,6 +92,8 @@ namespace HaloDesktop
         Boolean ResumePlayback;
         Boolean HardwareDecoding;
         Boolean DiscordPresence;
+        Boolean TranslucentWindow;
+        Boolean TranslucentWindowSupported { get; };
         void Refresh();
         void ProbeHealth();
         void CancelHealthProbe();

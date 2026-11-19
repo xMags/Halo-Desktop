@@ -188,6 +188,14 @@ namespace
         verify.FillPicture(false);
         Require(!DevicePreferencesStore{ path }.FillPicture(), "the fit choice did not round-trip");
 
+        // The window is translucent until the viewer turns it off on this PC.
+        Require(verify.TranslucentWindow(), "the window was not translucent by default");
+        verify.TranslucentWindow(false);
+        Require(!DevicePreferencesStore{ path }.TranslucentWindow(), "turning translucency off did not round-trip");
+        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing the translucency choice lost other keys");
+        verify.TranslucentWindow(true);
+        Require(DevicePreferencesStore{ path }.TranslucentWindow(), "turning translucency on did not round-trip");
+
         // A value of the wrong kind falls back to closed rather than opening it.
         auto const wrongPath = temporary.Path() / L"wrong-pane.json";
         HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");
