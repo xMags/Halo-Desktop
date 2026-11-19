@@ -222,6 +222,8 @@ namespace winrt::HaloDesktop::implementation
                 }
             });
         UpdatePaneToggleOffset();
+        HookPaneToggle();
+        RestoreStoredPaneState();
         UpdateDownloadBadge();
         RefreshAccountIdentity();
         RefreshJumpBackIn();
@@ -347,6 +349,7 @@ namespace winrt::HaloDesktop::implementation
         }
         DetachPointerHandlers();
         m_frameNavigatedRevoker.revoke();
+        m_paneToggleClick.revoke();
         m_attached = false;
     }
 
@@ -660,15 +663,96 @@ namespace winrt::HaloDesktop::implementation
         RefreshAccountIdentity();
         RefreshJumpBackIn();
         ApplyPaneState(true);
-        RememberPaneState(true);
     }
 
+    // Not remembered here: the NavigationView also opens and closes the pane on
+    // its own (as it sets itself up), and storing those moves overwrote the
+    // viewer's choice. Only the toggle button stores it (HookPaneToggle).
     void ShellPage::OnPaneClosing(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args)
     {
         ApplyPaneState(false);
-        RememberPaneState(false);
+    }
+
+    // The viewer's own toggle is the one source of the stored pane state. The
+    // NavigationView flips the pane in its own handler for the same click, so
+    // the new state is read a turn later, once that has run.
+    void ShellPage::HookPaneToggle()
+    {
+        if (m_paneToggleClick || !m_paneToggle)
+        {
+            return;
+        }
+        auto const button = m_paneToggle.try_as<Microsoft::UI::Xaml::Controls::Primitives::ButtonBase>();
+        if (!button)
+        {
+            return;
+        }
+        m_paneToggleClick = button.Click(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
+        {
+            auto const self = weak.get();
+            if (!self)
+            {
+                return;
+            }
+            try
+            {
+                static_cast<void>(self->DispatcherQueue().TryEnqueue(
+                    Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+                    [weak = self->get_weak()]()
+                    {
+                        if (auto const shell = weak.get())
+                        {
+                            try
+                            {
+                                shell->RememberPaneState(shell->NavigationControl().IsPaneOpen());
+                            }
+                            catch (winrt::hresult_error const&)
+                            {
+                            }
+                        }
+                    }));
+            }
+            catch (winrt::hresult_error const&)
+            {
+                // The shell is going away: nothing to remember it for.
+            }
+        });
+    }
+
+    // The NavigationView settles its pane as it first lays out, after the value
+    // read at start was applied, so the stored choice is put back once that has
+    // happened.
+    void ShellPage::RestoreStoredPaneState()
+    {
+        try
+        {
+            static_cast<void>(DispatcherQueue().TryEnqueue(
+                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+                [weak = get_weak()]()
+                {
+                    auto const self = weak.get();
+                    if (!self || !self->m_attached)
+                    {
+                        return;
+                    }
+                    try
+                    {
+                        auto const navigation = self->NavigationControl();
+                        if (navigation.IsPaneOpen() != self->m_storedPaneOpen)
+                        {
+                            navigation.IsPaneOpen(self->m_storedPaneOpen);
+                        }
+                    }
+                    catch (winrt::hresult_error const&)
+                    {
+                    }
+                }));
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
     }
 
     void ShellPage::ApplyPaneState(bool open)

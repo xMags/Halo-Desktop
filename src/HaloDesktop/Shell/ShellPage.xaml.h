@@ -101,6 +101,8 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget ShowSkippedAddons(std::vector<std::wstring> names);
         void ApplyPaneState(bool open);
         void UpdatePaneToggleOffset();
+        void HookPaneToggle();
+        void RestoreStoredPaneState();
         void RememberPaneState(bool open);
         winrt::fire_and_forget WritePaneStateAsync();
 
@@ -118,6 +120,7 @@ namespace winrt::HaloDesktop::implementation
         Microsoft::UI::Xaml::Media::ImageSource m_stockAvatar{ nullptr };
         // Part of the NavigationView's template, found once it has loaded.
         Microsoft::UI::Xaml::FrameworkElement m_paneToggle{ nullptr };
+        Microsoft::UI::Xaml::Controls::Primitives::ButtonBase::Click_revoker m_paneToggleClick{};
         std::optional<std::uint32_t> m_nonTextPointerId;
         winrt::Windows::Foundation::IInspectable m_pointerPressedHandler{ nullptr };
         winrt::Windows::Foundation::IInspectable m_pointerEndedHandler{ nullptr };
