@@ -301,6 +301,14 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool MagnetShowsPoster() const noexcept;
         void OpenMagnetTitle();
         void PlayUnidentifiedMagnet();
+        // What the active query stands for: a person's exact name once the
+        // people answer says so, else a title's.
+        [[nodiscard]] ::HaloDesktop::Services::SearchQueryMeaning QueryMeaning(std::wstring const& query) const;
+        // Asks about the first titles' poster links and says whether every
+        // answer is in (or the wait for them is over).
+        [[nodiscard]] bool PostersSettled(
+            std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+            std::chrono::milliseconds sinceAsked);
         void SearchNow();
         // Brings the page to where the service's answers stand.
         void Refresh();
@@ -318,7 +326,7 @@ namespace winrt::HaloDesktop::implementation
         void OnRevealTick();
         [[nodiscard]] bool RevealIsDue(
             std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
-            ::HaloDesktop::Services::SearchProgressResult const& progress) const;
+            ::HaloDesktop::Services::SearchProgressResult const& progress);
         void StartBoard(std::uint64_t serial);
         // Empties the results, the library row and the top match.
         void ForgetShown();
@@ -345,6 +353,7 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::TitleLookupService> m_titleLookup;
         std::shared_ptr<::HaloDesktop::Services::ServerFeaturesService> m_features;
         std::shared_ptr<::HaloDesktop::Services::PeopleService> m_peopleService;
+        std::shared_ptr<::HaloDesktop::Services::PosterCheckService> m_posterChecks;
         std::shared_ptr<::HaloDesktop::Services::MagnetService> m_magnets;
         ::HaloDesktop::Services::ServerFeaturesChangedToken m_featuresToken{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };

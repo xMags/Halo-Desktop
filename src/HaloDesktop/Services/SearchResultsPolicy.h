@@ -42,6 +42,8 @@ namespace HaloDesktop::Services
         std::optional<std::wstring> DefaultVideoId;
         // `imdb_id`, sent beside an addon's own id.
         std::optional<std::wstring> ImdbId;
+        // The poster link was tried and its host has no such image.
+        bool PosterMissing{};
 
         bool operator==(SearchTitle const&) const = default;
     };

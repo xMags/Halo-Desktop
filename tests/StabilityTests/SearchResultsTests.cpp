@@ -406,6 +406,51 @@ namespace
             "a title named exactly the query was treated as a person's name");
     }
 
+    void TestMissingPosterLinks()
+    {
+        using HaloDesktop::Services::RevealPosterLinks;
+        using HaloDesktop::Services::SearchQueryMeaning;
+        std::wstring const noPoster = L"https://image.tmdb.org/t/p/w500null";
+        auto const poster = [](std::wstring const& id) { return L"https://images.metahub.space/poster/small/" + id + L"/img"; };
+        auto const withPoster = [&poster](std::wstring const& id, std::wstring const& name)
+        {
+            return Full(id, name, [&poster, &id](SearchTitle& t) { t.Poster = poster(id); });
+        };
+        std::vector<SearchTitle> const results{
+            withPoster(L"tt1", L"Inside Christopher Nolan's Oppenheimer"),
+            withPoster(L"tt2", L"IMDb Asks"),
+            withPoster(L"tt3", L"Interstellar"),
+            Full(L"tmdb:4", L"Some Short", [&noPoster](SearchTitle& t) { t.Poster = noPoster; }),
+            withPoster(L"tt5", L"Inception"),
+        };
+        std::vector<SearchAnswer> const answers{ Answer(CinemetaMovies, results, 0) };
+        // The links worth checking: those of the titles a reveal would show, in order, up to the limit.
+        Require(RevealPosterLinks(answers, Parts(L"christopher nolan"), SearchQueryMeaning::Person, 24)
+                    == std::vector<std::wstring>{ poster(L"tt1"), poster(L"tt2"), poster(L"tt3"), poster(L"tt5") },
+            "the poster links to check were not those of the titles shown");
+        Require(RevealPosterLinks(answers, Parts(L"christopher nolan"), SearchQueryMeaning::Person, 2).size() <= 2,
+            "more poster links than the limit were checked");
+
+        // A link known to lead nowhere: the title found by cast or crew goes,
+        // and one named like the query stays but after those with artwork.
+        auto marked = results;
+        marked[0].PosterMissing = true;
+        marked[1].PosterMissing = true;
+        std::vector<SearchAnswer> const checked{ Answer(CinemetaMovies, marked, 0) };
+        SearchResultBoard board;
+        auto const revealed = board.Reveal(checked, Parts(L"christopher nolan"), SearchQueryMeaning::Person);
+        Require(IdsOf(revealed.Titles) == std::vector<std::wstring>{ L"tt1", L"tt3", L"tt5" },
+            "a title whose poster link leads nowhere was laid out among the person's films");
+
+        // Another catalog's copy with a poster that draws clears the mark.
+        auto const merged = HaloDesktop::Services::MergeCopies(
+            marked[1], Full(L"tt2", L"IMDb Asks", [](SearchTitle& t) { t.Poster = L"https://image.tmdb.org/t/p/w500/asks.jpg"; }));
+        Require(!merged.PosterMissing && merged.Poster == L"https://image.tmdb.org/t/p/w500/asks.jpg",
+            "a copy with a poster that draws did not replace the missing one");
+        auto const still = HaloDesktop::Services::MergeCopies(marked[1], marked[1]);
+        Require(still.PosterMissing, "a title lost its missing-poster mark without a better poster");
+    }
+
     void TestCutoffsDropUnrelated()
     {
         std::vector<SearchTitle> const results{
@@ -797,6 +842,7 @@ void RunSearchResultsTests()
     TestLooseNameIsNoTopMatch();
     TestCutoffsDropUnrelated();
     TestPersonQueryKeepsTheirWork();
+    TestMissingPosterLinks();
     TestCutoffsYearAndArtwork();
     TestCutoffsArtlessBesideScreenful();
     TestRankingRelevanceBeforeCompleteness();

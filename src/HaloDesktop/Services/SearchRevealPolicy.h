@@ -15,6 +15,11 @@ namespace HaloDesktop::Services
     // No later, once any catalog has answered with titles: a slow addon does
     // not hold the rest back.
     inline constexpr std::chrono::milliseconds SearchRevealDeadline{ 1200 };
+    // The first titles' poster links are checked before the reveal, so one
+    // leading nowhere is not laid out among them: this many titles, and no
+    // longer than this after the query was asked.
+    inline constexpr std::size_t SearchPosterCheckLimit = 24;
+    inline constexpr std::chrono::milliseconds SearchPosterCheckDeadline{ 2000 };
 
     enum class RevealDecision
     {

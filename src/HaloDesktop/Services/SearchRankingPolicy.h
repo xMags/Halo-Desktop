@@ -95,8 +95,17 @@ namespace HaloDesktop::Services
     [[nodiscard]] bool PassesCutoffs(RankedTitle const& title, RevealCutoffs const& cutoffs);
 
     // Whether a title has no poster worth drawing: none, or a stand-in, unless
-    // it is named by its IMDb id (whose poster metahub draws).
+    // it is named by its IMDb id (whose poster metahub draws); or a poster
+    // link that was tried and leads to no image (PosterMissing).
     [[nodiscard]] bool IsArtless(SearchTitle const& title);
+    // The poster links of the first `limit` titles a reveal of these answers
+    // would show, in screen order: the ones worth knowing to be missing
+    // before the results are laid out.
+    [[nodiscard]] std::vector<std::wstring> RevealPosterLinks(
+        std::span<SearchAnswer const> answers,
+        SearchQueryParts const& query,
+        SearchQueryMeaning meaning,
+        std::size_t limit);
     // A single title ranked against the query, as one copy at `position` of
     // an addon at `addonRank`.
     [[nodiscard]] RankedTitle RankOne(

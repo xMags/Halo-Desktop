@@ -437,6 +437,7 @@
     <ClInclude Include="Services\TitleLookupService.h" />
     <ClInclude Include="Services\ServerFeaturesService.h" />
     <ClInclude Include="Services\PeopleService.h" />
+    <ClInclude Include="Services\PosterCheckService.h" />
     <ClInclude Include="Services\PeopleRowPolicy.h" />
     <ClInclude Include="Services\FilmographyPolicy.h" />
     <ClInclude Include="ViewModels\PersonViewModel.h" />
@@ -899,6 +900,7 @@
     <ClCompile Include="Api\PeopleMappers.cpp" />
     <ClCompile Include="Services\ServerFeaturesService.cpp" />
     <ClCompile Include="Services\PeopleService.cpp" />
+    <ClCompile Include="Services\PosterCheckService.cpp" />
     <ClCompile Include="Services\PeopleRowPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

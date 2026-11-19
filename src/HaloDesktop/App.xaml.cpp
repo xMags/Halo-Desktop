@@ -48,6 +48,7 @@
 #include "Services/ServerFeaturesService.h"
 #include "Services/PeopleService.h"
 #include "Services/MagnetService.h"
+#include "Services/PosterCheckService.h"
 #include "Services/Downloads/DownloadTypes.h"
 #include "Shell/MainWindow.xaml.h"
 #include "Shell/LayoutMetricsService.h"
@@ -217,6 +218,9 @@ namespace winrt::HaloDesktop::implementation
             m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.Magnets = magnetService;
+        m_services.PosterChecks = std::make_shared<::HaloDesktop::Services::PosterCheckService>(
+            m_addonFetcher,
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_downloadEngine = std::make_shared<::HaloDesktop::Services::Downloads::TransferEngine>(
             m_storagePaths->LocalState(),
             [crashLog = m_crashLog](std::wstring_view line) { crashLog->Record(line); });

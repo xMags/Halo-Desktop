@@ -80,7 +80,27 @@ namespace HaloDesktop::Services
 
     bool IsArtless(SearchTitle const& title)
     {
-        return HasNoPoster(title) && !IsImdbId(title.Id);
+        return title.PosterMissing || (HasNoPoster(title) && !IsImdbId(title.Id));
+    }
+
+    std::vector<std::wstring> RevealPosterLinks(
+        std::span<SearchAnswer const> answers,
+        SearchQueryParts const& query,
+        SearchQueryMeaning meaning,
+        std::size_t limit)
+    {
+        auto const ranked = RankForReveal(answers, query);
+        auto const cutoffs = ComputeCutoffs(ranked, meaning);
+        std::vector<std::wstring> links;
+        std::size_t shown = 0;
+        for (auto const& entry : ranked)
+        {
+            if (shown == limit) break;
+            if (!PassesCutoffs(entry, cutoffs)) continue;
+            ++shown;
+            if (!HasNoPoster(entry.Title)) links.push_back(*entry.Title.Poster);
+        }
+        return links;
     }
 
     RankedTitle RankOne(

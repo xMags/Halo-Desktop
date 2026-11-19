@@ -44,6 +44,7 @@ namespace HaloDesktop::Services
     class ServerFeaturesService;
     class PeopleService;
     class MagnetService;
+    class PosterCheckService;
     class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
@@ -63,6 +64,8 @@ namespace HaloDesktop::Services
         // Pasted magnets on the account's server, and the last one that came
         // back ready, offered in the Sources sheet.
         std::shared_ptr<MagnetService> Magnets;
+        // Whether a poster link leads to an image, asked before Search shows results.
+        std::shared_ptr<PosterCheckService> PosterChecks;
         std::shared_ptr<IMetadataService> Metadata;
         std::shared_ptr<ISourceService> Sources;
         std::shared_ptr<IDownloadService> Downloads;

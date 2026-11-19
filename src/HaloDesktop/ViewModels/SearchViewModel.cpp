@@ -13,6 +13,7 @@
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "Services/PeopleRowPolicy.h"
+#include "Services/PosterCheckService.h"
 #include "Services/PeopleService.h"
 #include "Services/RatingPolicy.h"
 #include "Services/SearchRankingPolicy.h"
@@ -189,6 +190,7 @@ namespace winrt::HaloDesktop::implementation
           m_features(services.ServerFeatures),
           m_peopleService(services.People),
           m_magnets(services.Magnets),
+          m_posterChecks(services.PosterChecks),
           m_dispatcher(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread()),
           m_suggestions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_recent(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -196,7 +198,7 @@ namespace winrt::HaloDesktop::implementation
           m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_people(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_search || !m_navigation || !m_titleLookup || !m_features || !m_peopleService || !m_magnets || !m_dispatcher)
+        if (!m_search || !m_navigation || !m_titleLookup || !m_features || !m_peopleService || !m_magnets || !m_posterChecks || !m_dispatcher)
         {
             throw winrt::hresult_invalid_argument{ L"Search needs its services, navigation and a dispatcher." };
         }
@@ -786,7 +788,7 @@ namespace winrt::HaloDesktop::implementation
 
     bool SearchViewModel::RevealIsDue(
         std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
-        ::HaloDesktop::Services::SearchProgressResult const& progress) const
+        ::HaloDesktop::Services::SearchProgressResult const& progress)
     {
         namespace Services = ::HaloDesktop::Services;
         auto const answeredWithItems = static_cast<std::size_t>(std::count_if(states.begin(), states.end(), [](Services::SearchTargetState const& state)
@@ -794,6 +796,8 @@ namespace winrt::HaloDesktop::implementation
             return state.Status == Services::SearchTargetStatus::Done && !state.Titles.empty();
         }));
         auto const sinceAsked = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_askedAt);
+        // Asked about as answers come in, so the links are known by the reveal.
+        auto const postersSettled = PostersSettled(states, sinceAsked);
         // Whether the words are a person's name decides which titles stay, so
         // the people answer is waited for like a catalog, up to the deadline.
         if (m_peopleAsked && !m_peopleAnswer && sinceAsked < Services::SearchRevealDeadline
@@ -801,7 +805,37 @@ namespace winrt::HaloDesktop::implementation
         {
             return false;
         }
-        return Services::DecideReveal(progress.Pending, progress.Total, answeredWithItems, sinceAsked) == Services::RevealDecision::Reveal;
+        return Services::DecideReveal(progress.Pending, progress.Total, answeredWithItems, sinceAsked) == Services::RevealDecision::Reveal
+            && postersSettled;
+    }
+
+    ::HaloDesktop::Services::SearchQueryMeaning SearchViewModel::QueryMeaning(std::wstring const& query) const
+    {
+        namespace Services = ::HaloDesktop::Services;
+        // An answer still out reads as not a person.
+        auto const namesPerson = m_peopleAnswer && m_peopleQuery == query
+            && Services::ExactNamePerson(*m_peopleAnswer, query).has_value();
+        return namesPerson ? Services::SearchQueryMeaning::Person : Services::SearchQueryMeaning::Title;
+    }
+
+    bool SearchViewModel::PostersSettled(
+        std::vector<::HaloDesktop::Services::SearchTargetState> const& states,
+        std::chrono::milliseconds sinceAsked)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const query = Services::TrimmedText(m_activeQuery);
+        auto const answers = AnswersFrom(states, false);
+        auto const links = Services::RevealPosterLinks(
+            answers, Services::ParseSearchQuery(query), QueryMeaning(query), Services::SearchPosterCheckLimit);
+        m_posterChecks->Check(links);
+        if (sinceAsked >= Services::SearchPosterCheckDeadline)
+        {
+            return true;
+        }
+        return std::none_of(links.begin(), links.end(), [this](std::wstring const& link)
+        {
+            return m_posterChecks->StateOf(link) == Services::PosterLinkState::Unknown;
+        });
     }
 
     void SearchViewModel::OnRevealTick()
@@ -885,15 +919,20 @@ namespace winrt::HaloDesktop::implementation
     {
         namespace Services = ::HaloDesktop::Services;
         auto const query = Services::TrimmedText(m_activeQuery);
-        auto const answers = AnswersFrom(states, false);
+        auto answers = AnswersFrom(states, false);
+        // A poster link its host has no image for: the title is ranked as one
+        // without artwork, for good. A link not answered yet is taken as fine.
+        for (auto& answer : answers)
+        {
+            for (auto& title : answer.Titles)
+            {
+                title.PosterMissing = title.Poster
+                    && m_posterChecks->StateOf(*title.Poster) == Services::PosterLinkState::Missing;
+            }
+        }
         // A person's exact name keeps the films and series the addons found
         // for them; an answer still out reads as not a person, for good.
-        auto const namesPerson = m_peopleAnswer && m_peopleQuery == query
-            && Services::ExactNamePerson(*m_peopleAnswer, query).has_value();
-        m_board.Reveal(
-            answers,
-            Services::ParseSearchQuery(query),
-            namesPerson ? Services::SearchQueryMeaning::Person : Services::SearchQueryMeaning::Title);
+        m_board.Reveal(answers, Services::ParseSearchQuery(query), QueryMeaning(query));
         m_revealTimer.Stop();
         m_libraryAll = Services::LibraryMatches(m_search->LibraryEntries(), query);
         m_hasShown = true;

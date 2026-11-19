@@ -501,10 +501,13 @@ namespace HaloDesktop::Services
 
     SearchTitle FillMissingDetails(SearchTitle kept, SearchTitle const& other)
     {
-        auto const poster = HasNoPoster(kept) || IsMetahubPoster(kept.Poster)
-            ? (HasNoPoster(other) ? kept.Poster : other.Poster)
+        // A copy's poster known to be missing is no poster at all.
+        auto const otherHasNone = HasNoPoster(other) || other.PosterMissing;
+        auto const poster = HasNoPoster(kept) || IsMetahubPoster(kept.Poster) || kept.PosterMissing
+            ? (otherHasNone ? kept.Poster : other.Poster)
             : kept.Poster;
         if (Truthy(poster)) kept.Poster = poster;
+        if (!otherHasNone) kept.PosterMissing = false;
         if (!Truthy(kept.Rating) && Truthy(other.Rating)) kept.Rating = other.Rating;
         if (!Truthy(kept.ReleaseInfo) && Truthy(other.ReleaseInfo)) kept.ReleaseInfo = other.ReleaseInfo;
         if (!Truthy(kept.Description) && Truthy(other.Description)) kept.Description = other.Description;
