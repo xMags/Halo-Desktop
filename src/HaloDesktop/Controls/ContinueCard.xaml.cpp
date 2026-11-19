@@ -27,6 +27,7 @@ namespace winrt::HaloDesktop::implementation
         TranslationTransition(lift);
         // A press sinks the whole card, lift and all, and springs it back.
         ::HaloDesktop::Controls::AttachPressFeedback(*this, CardButton());
+        m_hoverGate.Attach(*this, [this](bool hovered) { SetHovered(hovered); });
         ApplyLayoutMetrics();
     }
 
@@ -164,17 +165,17 @@ namespace winrt::HaloDesktop::implementation
     // where only half the cards answer the pointer reads as the other half being
     // disabled.
     void ContinueCard::OnCardPointerEntered(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(true);
+        m_hoverGate.PointerEntered(sender.as<Microsoft::UI::Xaml::FrameworkElement>());
     }
 
     void ContinueCard::OnCardPointerExited(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(false);
+        m_hoverGate.PointerExited();
     }
 
     // Every part fades on its own transition, so this only sets where each ends up.

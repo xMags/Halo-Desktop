@@ -41,6 +41,7 @@ namespace winrt::HaloDesktop::implementation
         TranslationTransition(lift);
         // A press sinks the whole card, lift and all, and springs it back.
         ::HaloDesktop::Controls::AttachPressFeedback(*this, CardButton());
+        m_hoverGate.Attach(*this, [this](bool hovered) { SetHovered(hovered); });
         ApplyLayoutMetrics();
     }
 
@@ -263,13 +264,13 @@ namespace winrt::HaloDesktop::implementation
         // No queue to defer to: the card is going away and the notice with it.
     }
     void PosterCard::OnCardClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_click(*this, args); }
-    void PosterCard::OnCardPointerEntered([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    void PosterCard::OnCardPointerEntered(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        SetHovered(true);
+        m_hoverGate.PointerEntered(sender.as<Microsoft::UI::Xaml::FrameworkElement>());
     }
     void PosterCard::OnCardPointerExited([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        SetHovered(false);
+        m_hoverGate.PointerExited();
     }
 
     // Every part fades on its own transition, so this only sets where each

@@ -2,6 +2,8 @@
 
 #include "DetailSimilarCard.g.h"
 
+#include "Controls/ScrollHoverGate.h"
+
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -9,7 +11,7 @@ namespace winrt::HaloDesktop::implementation
     // A title on the "More like this" row. View behaviour only.
     struct DetailSimilarCard : DetailSimilarCardT<DetailSimilarCard>
     {
-        DetailSimilarCard() = default;
+        DetailSimilarCard();
 
         [[nodiscard]] winrt::HaloDesktop::MediaSummary Media() const { return m_media; }
         void Media(winrt::HaloDesktop::MediaSummary const& value);
@@ -26,6 +28,8 @@ namespace winrt::HaloDesktop::implementation
 
         winrt::HaloDesktop::MediaSummary m_media{ nullptr };
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
+        // Holds the hover back while the list under the card scrolls.
+        ::HaloDesktop::Controls::ScrollHoverGate m_hoverGate;
     };
 }
 

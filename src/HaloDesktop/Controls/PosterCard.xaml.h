@@ -3,6 +3,7 @@
 #include "PosterCard.g.h"
 
 #include "Controls/CardHoverShadow.h"
+#include "Controls/ScrollHoverGate.h"
 
 #include <cstdint>
 #include <string>
@@ -71,6 +72,8 @@ namespace winrt::HaloDesktop::implementation
         bool m_fillsColumn{};
         double m_cardWidth{ 132.0 };
         ::HaloDesktop::Controls::CardHoverShadow m_hoverShadow;
+        // Holds the hover back while the list under the card scrolls.
+        ::HaloDesktop::Controls::ScrollHoverGate m_hoverGate;
         std::uint64_t m_metricsToken{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_click;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_posterFailed;

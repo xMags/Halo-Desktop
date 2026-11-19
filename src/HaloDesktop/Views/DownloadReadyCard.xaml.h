@@ -2,6 +2,8 @@
 
 #include "DownloadReadyCard.g.h"
 
+#include "Controls/ScrollHoverGate.h"
+
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
@@ -40,6 +42,8 @@ namespace winrt::HaloDesktop::implementation
         bool m_playFocused{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_selectedEvent;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_playEvent;
+        // Holds the hover back while the list under the card scrolls.
+        ::HaloDesktop::Controls::ScrollHoverGate m_hoverGate;
     };
 }
 

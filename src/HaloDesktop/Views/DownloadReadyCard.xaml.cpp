@@ -26,6 +26,7 @@ namespace winrt::HaloDesktop::implementation
         InitializeComponent();
         // A press sinks the whole card, art and caption, and springs it back.
         ::HaloDesktop::Controls::AttachPressFeedback(*this, CardButton());
+        m_hoverGate.Attach(*this, [this](bool hovered) { SetHovered(hovered); });
         // A double click on the card plays. The card's button handles the pointer
         // itself, so the gesture is listened for even when already marked
         // handled; the play button is a sibling, so its own clicks stay its own.
@@ -90,14 +91,14 @@ namespace winrt::HaloDesktop::implementation
         UpdatePlayButton();
     }
 
-    void DownloadReadyCard::OnHoverStarted(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
+    void DownloadReadyCard::OnHoverStarted(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(true);
+        m_hoverGate.PointerEntered(sender.as<Microsoft::UI::Xaml::FrameworkElement>());
     }
 
     void DownloadReadyCard::OnHoverEnded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(false);
+        m_hoverGate.PointerExited();
     }
 
     // The art keeps 16:9 at whatever width the stretching column gives the

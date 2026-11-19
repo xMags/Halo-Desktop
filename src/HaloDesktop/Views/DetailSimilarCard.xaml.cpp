@@ -6,6 +6,11 @@
 
 namespace winrt::HaloDesktop::implementation
 {
+    DetailSimilarCard::DetailSimilarCard()
+    {
+        m_hoverGate.Attach(*this, [this](bool hovered) { SetHovered(hovered); });
+    }
+
     void DetailSimilarCard::Media(winrt::HaloDesktop::MediaSummary const& value)
     {
         if (m_media == value) return;
@@ -24,14 +29,14 @@ namespace winrt::HaloDesktop::implementation
         m_click(*this, args);
     }
 
-    void DetailSimilarCard::OnHoverStarted(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
+    void DetailSimilarCard::OnHoverStarted(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(true);
+        m_hoverGate.PointerEntered(sender.as<Microsoft::UI::Xaml::FrameworkElement>());
     }
 
     void DetailSimilarCard::OnHoverEnded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&)
     {
-        SetHovered(false);
+        m_hoverGate.PointerExited();
     }
 
     void DetailSimilarCard::SetHovered(bool hovered)
