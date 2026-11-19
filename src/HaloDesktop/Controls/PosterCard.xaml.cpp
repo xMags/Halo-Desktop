@@ -8,6 +8,7 @@
 #include "Controls/ArtworkUrlPolicy.h"
 #include "Shell/LayoutMetricsService.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <algorithm>
 #include <chrono>
 #include <cmath>
@@ -41,7 +42,17 @@ namespace winrt::HaloDesktop::implementation
     }
 
     winrt::hstring PosterCard::Title() const { return m_title; }
-    void PosterCard::Title(winrt::hstring const& value) { m_title = value; if (auto text = FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
+    // The card's text is set from here, so its button has no name of its own
+    // for a screen reader: it takes the title.
+    void PosterCard::Title(winrt::hstring const& value)
+    {
+        m_title = value;
+        if (auto text = FindName(L"TitleText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value);
+        if (auto button = FindName(L"CardButton").try_as<Microsoft::UI::Xaml::Controls::Button>())
+        {
+            Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(button, value);
+        }
+    }
     winrt::hstring PosterCard::Meta() const { return m_meta; }
     void PosterCard::Meta(winrt::hstring const& value) { m_meta = value; if (auto text = FindName(L"MetaText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value); }
     winrt::hstring PosterCard::Poster() const { return m_poster; }

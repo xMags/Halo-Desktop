@@ -16,6 +16,7 @@
 #include "Views/AccountPictureDecoder.h"
 #include "Views/PageDialog.h"
 
+#include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <algorithm>
 #include <array>
 #include <chrono>
@@ -1074,13 +1075,17 @@ namespace winrt::HaloDesktop::implementation
     }
 
     // Open, the row says what it opens; compact, where only the avatar shows, it
-    // names the account.
+    // names the account. A screen reader hears both either way: the row's text
+    // is set from here, so the button has no name of its own to offer.
     void ShellPage::UpdateAccountToolTip()
     {
         auto const name = AccountName().Text();
         Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(
             AccountButton(),
             winrt::box_value(m_paneOpen || name.empty() ? winrt::hstring{ AccountToolTip } : name));
+        Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
+            AccountButton(),
+            name.empty() ? winrt::hstring{ AccountToolTip } : name + L", " + AccountToolTip);
     }
 
     void ShellPage::ShowStockAvatar()
