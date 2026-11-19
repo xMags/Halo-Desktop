@@ -289,16 +289,17 @@
       <!--
         `ShelfSkeleton` twice, while the shelf list itself loads: a title bar
         150 and then 180 wide, a 48px bar at the far end, and six skeleton
-        cards. Each pulses as a whole.
+        cards. Each pulses as a whole. Laid out as the real rows are: running
+        to the window's right edge, the header keeping the gutter there.
       -->
       <StackPanel
-        Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}"
+        Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}"
         AutomationProperties.AccessibilityView="Raw"
         IsHitTestVisible="False"
         Spacing="28"
         Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}">
         <StackPanel x:Name="ShelfSkeleton0">
-          <Grid Height="28" Margin="0,0,0,12">
+          <Grid Height="28" Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
             <Border Width="150" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
             <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
           </Grid>
@@ -312,7 +313,7 @@
           </StackPanel>
         </StackPanel>
         <StackPanel x:Name="ShelfSkeleton1">
-          <Grid Height="28" Margin="0,0,0,12">
+          <Grid Height="28" Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
             <Border Width="180" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
             <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
           </Grid>
