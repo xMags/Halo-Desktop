@@ -13,6 +13,8 @@ namespace
     // NameRelevance's levels these rules read: some words of the query, none.
     constexpr int SomeWordsTier = 5;
     constexpr int UnrelatedTier = 6;
+    // A name that is exactly the query.
+    constexpr int ExactNameTier = 0;
     // Titles holding every word of the query that make the ones holding only some not worth showing.
     constexpr std::size_t EnoughNamed = 8;
     // Titles with a year and artwork that make the ones without artwork not worth showing.
@@ -97,9 +99,11 @@ namespace HaloDesktop::Services
         return ranked;
     }
 
-    RevealCutoffs ComputeCutoffs(std::span<RankedTitle const> ranked)
+    RevealCutoffs ComputeCutoffs(std::span<RankedTitle const> ranked, SearchQueryMeaning meaning)
     {
         RevealCutoffs cutoffs;
+        auto const person = meaning == SearchQueryMeaning::Person
+            && std::none_of(ranked.begin(), ranked.end(), [](RankedTitle const& title) { return title.Tier == ExactNameTier; });
         cutoffs.DropUnrelated = std::any_of(ranked.begin(), ranked.end(), [](RankedTitle const& title)
         {
             return title.Tier < UnrelatedTier;
@@ -107,9 +111,10 @@ namespace HaloDesktop::Services
         cutoffs.DropSomeWords = static_cast<std::size_t>(std::count_if(ranked.begin(), ranked.end(), [](RankedTitle const& title)
         {
             return title.Tier < SomeWordsTier;
-        })) >= EnoughNamed;
+        })) >= EnoughNamed || person;
+        cutoffs.KeepCredited = person;
         // Counted among what the name rules keep, as the screen would list it.
-        RevealCutoffs const byName{ cutoffs.DropUnrelated, cutoffs.DropSomeWords, false };
+        RevealCutoffs const byName{ cutoffs.DropUnrelated, cutoffs.DropSomeWords, false, cutoffs.KeepCredited };
         cutoffs.DropArtless = static_cast<std::size_t>(std::count_if(ranked.begin(), ranked.end(), [&byName](RankedTitle const& title)
         {
             return title.Complete && PassesCutoffs(title, byName);
@@ -119,7 +124,7 @@ namespace HaloDesktop::Services
 
     bool PassesCutoffs(RankedTitle const& title, RevealCutoffs const& cutoffs)
     {
-        if (cutoffs.DropUnrelated && title.Tier >= UnrelatedTier) return false;
+        if (cutoffs.DropUnrelated && title.Tier >= UnrelatedTier && !(cutoffs.KeepCredited && title.Complete)) return false;
         if (cutoffs.DropSomeWords && title.Tier == SomeWordsTier) return false;
         if (!IsArtless(title.Title)) return true;
         auto const undated = !ReleaseYear(title.Title.ReleaseInfo).has_value();

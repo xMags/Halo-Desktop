@@ -71,9 +71,26 @@ namespace HaloDesktop::Services
         bool DropSomeWords{};
         // Enough complete titles, so those without a poster go.
         bool DropArtless{};
+        // The query is a person's name: the complete titles an addon found
+        // for it by cast or crew stay although their names share no word.
+        bool KeepCredited{};
     };
 
-    [[nodiscard]] RevealCutoffs ComputeCutoffs(std::span<RankedTitle const> ranked);
+    // What the words typed stand for, as far as the search could tell.
+    enum class SearchQueryMeaning
+    {
+        // A title's name, or nothing known.
+        Title,
+        // Exactly some person's name.
+        Person,
+    };
+
+    // A person's name counts as one only while no title is named exactly
+    // that. Then the person's work stays (KeepCredited) and titles holding
+    // only some of the name's words go, however few hold all of them.
+    [[nodiscard]] RevealCutoffs ComputeCutoffs(
+        std::span<RankedTitle const> ranked,
+        SearchQueryMeaning meaning = SearchQueryMeaning::Title);
     // A title without a poster and without a year never passes.
     [[nodiscard]] bool PassesCutoffs(RankedTitle const& title, RevealCutoffs const& cutoffs);
 

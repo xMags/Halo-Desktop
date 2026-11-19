@@ -371,6 +371,41 @@ namespace
         Require(!dated.Reveal(old, Parts(L"dune 2021")).TopMatch, "a title of another year than the one typed was the top match");
     }
 
+    void TestPersonQueryKeepsTheirWork()
+    {
+        using HaloDesktop::Services::SearchQueryMeaning;
+        std::wstring const noPoster = L"https://image.tmdb.org/t/p/w500null";
+        std::vector<SearchTitle> const results{
+            Full(L"tt1", L"Inside Christopher Nolan's Oppenheimer"),
+            Full(L"tt2", L"Interstellar"),
+            Full(L"tt3", L"Christopher Columbus"),
+            Full(L"tmdb:4", L"Some Short", [&noPoster](SearchTitle& t) { t.Poster = noPoster; }),
+            Full(L"tt5", L"Inception"),
+        };
+        std::vector<SearchAnswer> const answers{ Answer(CinemetaMovies, results, 0) };
+        // As a title's name: only what is named like the query.
+        SearchResultBoard plain;
+        Require(IdsOf(plain.Reveal(answers, Parts(L"christopher nolan")).Titles) == std::vector<std::wstring>{ L"tt1", L"tt3" },
+            "a name nobody is known by kept titles sharing no word with it");
+        // As a person's name: their films stay after the titles named like
+        // the query, in the addon's order; a name holding one word of it and
+        // a film without artwork go.
+        SearchResultBoard person;
+        auto const revealed = person.Reveal(answers, Parts(L"christopher nolan"), SearchQueryMeaning::Person);
+        Require(IdsOf(revealed.Titles) == std::vector<std::wstring>{ L"tt1", L"tt2", L"tt5" },
+            "a person's films were not kept after the titles named like the query");
+        Require(revealed.Cutoffs.KeepCredited && revealed.Cutoffs.DropSomeWords, "a person's name set the wrong cutoffs");
+        // A late answer is judged the same way.
+        auto const diff = person.Absorb(Answer(TmdbMovies, { Full(L"tt6", L"Tenet"), Full(L"tt7", L"Christopher Robin") }, 1));
+        Require(IdsOf(diff.Appends) == std::vector<std::wstring>{ L"tt6" }, "a late answer was not judged as the person's work");
+        // A title named exactly that is what was meant, person or not.
+        std::vector<SearchAnswer> const film{ Answer(CinemetaMovies, { Full(L"tt8", L"Dune"), Full(L"tt9", L"Arrival") }, 0) };
+        SearchResultBoard exact;
+        auto const dune = exact.Reveal(film, Parts(L"dune"), SearchQueryMeaning::Person);
+        Require(!dune.Cutoffs.KeepCredited && dune.Titles.empty() && dune.TopMatch && dune.TopMatch->Id == L"tt8",
+            "a title named exactly the query was treated as a person's name");
+    }
+
     void TestCutoffsDropUnrelated()
     {
         std::vector<SearchTitle> const results{
@@ -761,6 +796,7 @@ void RunSearchResultsTests()
     TestRevealTopMatchIgnoresFailedAndEmpty();
     TestLooseNameIsNoTopMatch();
     TestCutoffsDropUnrelated();
+    TestPersonQueryKeepsTheirWork();
     TestCutoffsYearAndArtwork();
     TestCutoffsArtlessBesideScreenful();
     TestRankingRelevanceBeforeCompleteness();

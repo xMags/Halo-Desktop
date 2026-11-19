@@ -47,7 +47,10 @@ namespace HaloDesktop::Services
     public:
         // Ranks every answer so far and keeps the result. Any earlier reveal
         // on this board is replaced.
-        RevealedSet Reveal(std::span<SearchAnswer const> answers, SearchQueryParts const& query);
+        RevealedSet Reveal(
+            std::span<SearchAnswer const> answers,
+            SearchQueryParts const& query,
+            SearchQueryMeaning meaning = SearchQueryMeaning::Title);
         // A catalog that answered after the reveal. Ignored before one.
         BoardDiff Absorb(SearchAnswer const& late);
 

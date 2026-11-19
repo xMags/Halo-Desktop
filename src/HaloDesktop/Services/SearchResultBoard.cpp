@@ -4,11 +4,14 @@
 
 namespace HaloDesktop::Services
 {
-    RevealedSet SearchResultBoard::Reveal(std::span<SearchAnswer const> answers, SearchQueryParts const& query)
+    RevealedSet SearchResultBoard::Reveal(
+        std::span<SearchAnswer const> answers,
+        SearchQueryParts const& query,
+        SearchQueryMeaning meaning)
     {
         m_query = query;
         auto ranked = RankForReveal(answers, query);
-        m_cutoffs = ComputeCutoffs(ranked);
+        m_cutoffs = ComputeCutoffs(ranked, meaning);
         std::erase_if(ranked, [this](RankedTitle const& title) { return !PassesCutoffs(title, m_cutoffs); });
         auto const top = ChooseRevealTopMatch(ranked, query);
 

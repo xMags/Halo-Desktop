@@ -794,6 +794,13 @@ namespace winrt::HaloDesktop::implementation
             return state.Status == Services::SearchTargetStatus::Done && !state.Titles.empty();
         }));
         auto const sinceAsked = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_askedAt);
+        // Whether the words are a person's name decides which titles stay, so
+        // the people answer is waited for like a catalog, up to the deadline.
+        if (m_peopleAsked && !m_peopleAnswer && sinceAsked < Services::SearchRevealDeadline
+            && m_peopleQuery == Services::TrimmedText(m_activeQuery))
+        {
+            return false;
+        }
         return Services::DecideReveal(progress.Pending, progress.Total, answeredWithItems, sinceAsked) == Services::RevealDecision::Reveal;
     }
 
@@ -879,7 +886,14 @@ namespace winrt::HaloDesktop::implementation
         namespace Services = ::HaloDesktop::Services;
         auto const query = Services::TrimmedText(m_activeQuery);
         auto const answers = AnswersFrom(states, false);
-        m_board.Reveal(answers, Services::ParseSearchQuery(query));
+        // A person's exact name keeps the films and series the addons found
+        // for them; an answer still out reads as not a person, for good.
+        auto const namesPerson = m_peopleAnswer && m_peopleQuery == query
+            && Services::ExactNamePerson(*m_peopleAnswer, query).has_value();
+        m_board.Reveal(
+            answers,
+            Services::ParseSearchQuery(query),
+            namesPerson ? Services::SearchQueryMeaning::Person : Services::SearchQueryMeaning::Title);
         m_revealTimer.Stop();
         m_libraryAll = Services::LibraryMatches(m_search->LibraryEntries(), query);
         m_hasShown = true;
