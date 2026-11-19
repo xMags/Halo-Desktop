@@ -153,7 +153,7 @@ namespace HaloDesktop::Services
             }
         };
 
-        // In turns, as Interleave merges: the copy at the better position,
+        // In turns: the copy at the better position,
         // then of the better addon, leads.
         for (std::size_t position = 0; position < longest; ++position)
         {

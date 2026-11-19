@@ -169,55 +169,34 @@ namespace
         Require(Keys(unique) == std::vector<std::wstring>{ L"movie:a", L"series:a" }, "a title listed twice was shown twice");
     }
 
-    void TestInterleaveTakesTurns()
+    std::vector<std::wstring> SortedKeys(std::vector<SearchTitle> const& titles)
     {
-        std::vector<std::vector<SearchTitle>> const lists{
-            { Meta(L"tt1"), Meta(L"tt2"), Meta(L"tt3"), Meta(L"tt4") },
-            { Meta(L"tt2"), Meta(L"tt9") },
-            { Meta(L"tt5", L"series") },
-        };
-        Require(Keys(HaloDesktop::Services::Interleave(lists)) == std::vector<std::wstring>{
-                    L"movie:tt1", L"movie:tt2", L"series:tt5", L"movie:tt9", L"movie:tt3", L"movie:tt4" },
-            "interleave did not take turns or keep each title once");
+        auto keys = Keys(titles);
+        std::sort(keys.begin(), keys.end());
+        return keys;
     }
 
-    void TestInterleaveExcludes()
+    void TestCopiesMergeAcrossIds()
     {
-        std::vector<std::vector<SearchTitle>> const lists{ { Meta(L"tt1"), Meta(L"tt2") } };
-        std::vector<SearchTitle> const exclude{ Meta(L"tt1") };
-        Require(Keys(HaloDesktop::Services::Interleave(lists, exclude)) == std::vector<std::wstring>{ L"movie:tt2" },
-            "interleave kept a title shown elsewhere");
-    }
-
-    void TestInterleaveMergesDifferentIds()
-    {
-        std::vector<std::vector<SearchTitle>> const lists{
-            { Dated(L"tt1160419", L"Dune", L"2021"), Dated(L"tt15239678", L"Dune: Part Two", L"2024") },
-            { Dated(L"tmdb:438631", L"Dune", L"2021"), Dated(L"tmdb:693134", L"Dune Part Two", L"2024") },
-            { Dated(L"tt10466872", L"Dune: Prophecy", L"2024–", L"series"), Dated(L"tmdb:90228", L"Dune: Prophecy", L"2024-2025", L"series") },
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, { Dated(L"tt1160419", L"Dune", L"2021"), Dated(L"tt15239678", L"Dune: Part Two", L"2024") }, 0),
+            Answer(TmdbMovies, { Dated(L"tmdb:438631", L"Dune", L"2021"), Dated(L"tmdb:693134", L"Dune Part Two", L"2024") }, 1),
+            Answer(CinemetaSeries, { Dated(L"tt10466872", L"Dune: Prophecy", L"2024–", L"series"), Dated(L"tmdb:90228", L"Dune: Prophecy", L"2024-2025", L"series") }, 2),
         };
-        Require(Keys(HaloDesktop::Services::Interleave(lists)) == std::vector<std::wstring>{
-                    L"movie:tt1160419", L"series:tt10466872", L"movie:tt15239678" },
+        Require(SortedKeys(Ranked(answers, L"dune")) == std::vector<std::wstring>{
+                    L"movie:tt1160419", L"movie:tt15239678", L"series:tt10466872" },
             "two addons' ids for one title were not merged into the better-ranked copy");
     }
 
-    void TestInterleaveKeepsDifferentYearsKinds()
+    void TestCopiesKeepDifferentYearsKinds()
     {
-        std::vector<std::vector<SearchTitle>> const lists{
-            { Dated(L"tt1160419", L"Dune", L"2021"), Dated(L"tt0087182", L"Dune", L"1984") },
-            { Dated(L"tt0142032", L"Dune", L"2000", L"series"), Dated(L"tmdb:1", L"Dune"), Dated(L"tmdb:2", L"Dune") },
+        std::vector<SearchAnswer> const answers{
+            Answer(CinemetaMovies, { Dated(L"tt1160419", L"Dune", L"2021"), Dated(L"tt0087182", L"Dune", L"1984") }, 0),
+            Answer(TmdbMovies, { Dated(L"tt0142032", L"Dune", L"2000", L"series"), Dated(L"tmdb:1", L"Dune"), Dated(L"tmdb:2", L"Dune") }, 1),
         };
-        Require(Keys(HaloDesktop::Services::Interleave(lists)) == std::vector<std::wstring>{
-                    L"movie:tt1160419", L"series:tt0142032", L"movie:tt0087182", L"movie:tmdb:1", L"movie:tmdb:2" },
+        Require(SortedKeys(Ranked(answers, L"dune")) == std::vector<std::wstring>{
+                    L"movie:tmdb:1", L"movie:tmdb:2", L"movie:tt0087182", L"movie:tt1160419", L"series:tt0142032" },
             "same-named titles of other years, kinds or without a year were merged");
-    }
-
-    void TestInterleaveExcludesOtherAddonsCopy()
-    {
-        std::vector<std::vector<SearchTitle>> const lists{ { Dated(L"tmdb:438631", L"Dune", L"2021"), Meta(L"tt9") } };
-        std::vector<SearchTitle> const exclude{ Dated(L"tt1160419", L"Dune", L"2021") };
-        Require(Keys(HaloDesktop::Services::Interleave(lists, exclude)) == std::vector<std::wstring>{ L"movie:tt9" },
-            "another addon's copy of what is shown above was kept");
     }
 
     void TestByRelevance()
@@ -260,8 +239,8 @@ namespace
         tmdb.Rating = L"6.3";
         tmdb.Poster = L"https://image.tmdb.org/t/p/w500/4at.jpg";
         tmdb.ImdbId = L"tt0035767";
-        std::vector<std::vector<SearchTitle>> const lists{ { cinemeta }, { tmdb } };
-        auto const merged = HaloDesktop::Services::Interleave(lists);
+        std::vector<SearchAnswer> const answers{ Answer(CinemetaMovies, { cinemeta }, 0), Answer(TmdbMovies, { tmdb }, 1) };
+        auto const merged = Ranked(answers, L"crime doctor");
         Require(merged.size() == 1 && merged[0].Id == L"tt0035767", "two addons' copies were not one, by IMDb id");
         Require(merged[0].Rating == L"6.3", "the kept copy did not gain the other's rating");
         Require(merged[0].Poster == L"https://image.tmdb.org/t/p/w500/4at.jpg", "the kept copy did not gain the poster that loads");
@@ -300,17 +279,17 @@ namespace
         SearchTitle real = Dated(L"tt1211837", L"Doctor Strange", L"2016");
         real.Poster = L"https://live.metahub.space/poster/medium/tt1211837/img";
         // Whichever is ranked first, one card remains, under the IMDb id and without the drawn poster.
-        for (auto const& lists : { std::vector<std::vector<SearchTitle>>{ { fromFile }, { real } },
-                                   std::vector<std::vector<SearchTitle>>{ { real }, { fromFile } } })
+        for (auto const& answers : { std::vector<SearchAnswer>{ Answer(CinemetaMovies, { fromFile }, 0), Answer(TmdbMovies, { real }, 1) },
+                                     std::vector<SearchAnswer>{ Answer(CinemetaMovies, { real }, 0), Answer(TmdbMovies, { fromFile }, 1) } })
         {
-            auto const merged = HaloDesktop::Services::Interleave(lists);
+            auto const merged = Ranked(answers, L"doctor strange");
             Require(merged.size() == 1, "a file-name entry was not folded into the title it names");
             Require(merged[0].Id == L"tt1211837" && merged[0].Name == L"Doctor Strange", "the IMDb copy did not lead");
             Require(merged[0].Poster == real.Poster, "the drawn poster replaced the real one");
         }
         // With no real copy to fold into, it keeps its place with the year out of its name.
-        std::vector<std::vector<SearchTitle>> const alone{ { fromFile } };
-        auto const single = HaloDesktop::Services::Interleave(alone);
+        std::vector<SearchAnswer> const alone{ Answer(CinemetaMovies, { fromFile }, 0) };
+        auto const single = Ranked(alone, L"doctor strange");
         Require(single.size() == 1 && single[0].Name == L"Doctor Strange" && single[0].ReleaseInfo == L"2016",
             "a file-name entry kept its year in its name");
     }
@@ -774,11 +753,8 @@ void RunSearchResultsTests()
     TestRowsInAddonOrder();
     TestFailedCatalogsReported();
     TestUniqueTitles();
-    TestInterleaveTakesTurns();
-    TestInterleaveExcludes();
-    TestInterleaveMergesDifferentIds();
-    TestInterleaveKeepsDifferentYearsKinds();
-    TestInterleaveExcludesOtherAddonsCopy();
+    TestCopiesMergeAcrossIds();
+    TestCopiesKeepDifferentYearsKinds();
     TestByRelevance();
     TestRelevanceIgnoresCaseAccentsPunctuation();
     TestRevealTopMatchPrefersExactName();

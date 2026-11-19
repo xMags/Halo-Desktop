@@ -127,12 +127,6 @@ namespace HaloDesktop::Services
     // Every identity a title can be recognised by: `type:id`, its IMDb id
     // (its own or `imdb_id`), and its kind, folded name and year together.
     [[nodiscard]] std::vector<std::wstring> TitleIdentities(SearchTitle const& title);
-    // Several ranked lists as one, taking turns, each title once even when two
-    // addons name it by different ids; the better-ranked copy stays and gains
-    // what the other knew. Titles shown elsewhere are passed in `exclude`.
-    [[nodiscard]] std::vector<SearchTitle> Interleave(
-        std::span<std::vector<SearchTitle> const> lists,
-        std::span<SearchTitle const> exclude = {});
     // `^tt\d+$`.
     [[nodiscard]] bool IsImdbId(std::wstring_view id) noexcept;
     // `^[A-Z]{2,6}-\d{3,5}\b`: how adult video is catalogued.

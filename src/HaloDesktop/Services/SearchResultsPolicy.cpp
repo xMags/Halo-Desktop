@@ -4,7 +4,6 @@
 
 #include <algorithm>
 #include <climits>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 #include <winrt/Windows.Data.Text.h>
@@ -447,57 +446,6 @@ namespace HaloDesktop::Services
         // Without a year a name alone is not trusted, since remakes share names.
         if (year && !name.empty()) identities.push_back(title.Type + L'|' + name + L'|' + *year);
         return identities;
-    }
-
-    std::vector<SearchTitle> Interleave(
-        std::span<std::vector<SearchTitle> const> lists,
-        std::span<SearchTitle const> exclude)
-    {
-        std::unordered_set<std::wstring> excluded;
-        for (auto const& title : exclude)
-        {
-            for (auto& identity : TitleIdentities(title)) excluded.insert(std::move(identity));
-        }
-        // Where in `merged` each identity's title sits.
-        std::unordered_map<std::wstring, std::size_t> placed;
-        std::vector<SearchTitle> merged;
-        std::size_t longest = 0;
-        for (auto const& list : lists) longest = (std::max)(longest, list.size());
-        for (std::size_t rank = 0; rank < longest; ++rank)
-        {
-            for (auto const& list : lists)
-            {
-                if (rank >= list.size()) continue;
-                auto title = WithYearOutOfName(list[rank]);
-                auto const identities = TitleIdentities(title);
-                if (std::any_of(identities.begin(), identities.end(), [&excluded](std::wstring const& identity)
-                    {
-                        return excluded.contains(identity);
-                    }))
-                {
-                    continue;
-                }
-                std::optional<std::size_t> kept;
-                for (auto const& identity : identities)
-                {
-                    if (auto const found = placed.find(identity); found != placed.end())
-                    {
-                        kept = found->second;
-                        break;
-                    }
-                }
-                if (kept)
-                {
-                    merged[*kept] = MergeCopies(merged[*kept], title);
-                    // Whatever else the second copy is known by now finds the same card.
-                    for (auto const& identity : identities) placed.insert_or_assign(identity, *kept);
-                    continue;
-                }
-                for (auto const& identity : identities) placed.insert_or_assign(identity, merged.size());
-                merged.push_back(std::move(title));
-            }
-        }
-        return merged;
     }
 
     bool HasNoPoster(std::optional<std::wstring> const& poster, std::optional<std::wstring_view> id)
