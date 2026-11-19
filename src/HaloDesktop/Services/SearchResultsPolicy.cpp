@@ -613,6 +613,28 @@ namespace HaloDesktop::Services
         return suggestions;
     }
 
+    std::vector<std::wstring> SearchSuggestions(
+        std::span<std::wstring const> history,
+        std::wstring_view typed,
+        std::span<std::wstring const> found,
+        std::size_t limit)
+    {
+        auto suggestions = SuggestedSearches(history, typed, limit);
+        auto const needle = FoldedText(TrimmedText(typed));
+        if (needle.empty()) return suggestions;
+        std::vector<std::wstring> offered;
+        for (auto const& suggestion : suggestions) offered.push_back(FoldedText(suggestion));
+        for (auto const& name : found)
+        {
+            if (suggestions.size() >= limit) break;
+            auto key = FoldedText(TrimmedText(name));
+            if (key.empty() || key == needle || std::find(offered.begin(), offered.end(), key) != offered.end()) continue;
+            offered.push_back(std::move(key));
+            suggestions.push_back(TrimmedText(name));
+        }
+        return suggestions;
+    }
+
     std::wstring SearchFailureNote(std::span<SearchTarget const> failed, std::size_t total)
     {
         if (failed.empty()) return {};

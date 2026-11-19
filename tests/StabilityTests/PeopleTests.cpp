@@ -112,6 +112,16 @@ namespace
         Require(people[3].KnownForTitles.size() == 1 && people[3].KnownForTitles[0] == L"Real",
             "a known-for title that is not text was kept");
 
+        // A corrected name counts only when it names someone in the answer.
+        auto const corrected = Json(LR"({"people":[{"tmdbId":525,"name":"Christopher Nolan"}],"corrected":" Christopher Nolan "})");
+        auto const correctedPeople = Mappers::ParsePeopleSearch(corrected);
+        Require(Mappers::ParsePeopleCorrection(corrected, correctedPeople) == std::optional<winrt::hstring>{ L"Christopher Nolan" },
+            "a corrected name was not read");
+        Require(!Mappers::ParsePeopleCorrection(Json(LR"({"people":[{"tmdbId":525,"name":"Christopher Nolan"}],"corrected":"Somebody Else"})"), correctedPeople)
+                    && !Mappers::ParsePeopleCorrection(Json(LR"({"people":[],"corrected":7})"), {})
+                    && !Mappers::ParsePeopleCorrection(Json(LR"({"people":[]})"), {}),
+            "a corrected name naming nobody in the answer was kept");
+
         std::wstring many = LR"({"people":[)";
         for (int index = 1; index <= 12; ++index)
         {

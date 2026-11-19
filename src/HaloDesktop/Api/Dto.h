@@ -350,6 +350,16 @@ namespace HaloDesktop::Api::Dto
         bool operator==(PersonSummary const&) const = default;
     };
 
+    // The people search's answer.
+    struct PeopleSearch final
+    {
+        std::vector<PersonSummary> People;
+        // Set when nobody has the name as typed and the server answered with
+        // the people it most likely means: the nearest one's name, always
+        // the name of someone in People.
+        std::optional<winrt::hstring> Corrected;
+    };
+
     // One title of a person's filmography, already mapped to its IMDb id.
     struct PersonCredit final
     {
@@ -430,6 +440,10 @@ namespace HaloDesktop::Api::Mappers
     // field; only a body that is not the expected object throws.
     [[nodiscard]] Dto::Capabilities ParseCapabilities(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] std::vector<Dto::PersonSummary> ParsePeopleSearch(winrt::Windows::Data::Json::IJsonValue const& value);
+    // The answer's `corrected` name, kept only when it names one of `people`.
+    [[nodiscard]] std::optional<winrt::hstring> ParsePeopleCorrection(
+        winrt::Windows::Data::Json::IJsonValue const& value,
+        std::vector<Dto::PersonSummary> const& people);
     [[nodiscard]] Dto::PersonDetail ParsePerson(winrt::Windows::Data::Json::IJsonValue const& value);
     [[nodiscard]] Dto::IdLookup ParseIdLookup(winrt::Windows::Data::Json::IJsonValue const& value);
     // An image URL the people answers may carry: https on image.tmdb.org,

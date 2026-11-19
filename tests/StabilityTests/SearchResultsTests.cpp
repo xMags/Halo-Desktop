@@ -772,6 +772,18 @@ namespace
         Require(SuggestedSearches(history, L"").empty(), "an empty box offered suggestions");
         std::vector<std::wstring> const many{ L"a1x", L"a2x", L"a3x", L"a4x", L"a5x", L"a6x" };
         Require(SuggestedSearches(many, L"x").size() == 5, "more than five suggestions were offered");
+
+        // Under the box: those past searches, then the names found, each once.
+        using HaloDesktop::Services::SearchSuggestions;
+        std::vector<std::wstring> const found{ L"Christopher Nolan", L"dune", L"  ", L"Dune Part Two", L"Arrival" };
+        Require(SearchSuggestions(history, L"dun", found)
+                    == std::vector<std::wstring>{ L"dune part two", L"Dune", L"Christopher Nolan", L"Arrival" },
+            "the names found were not offered after the past searches, each once");
+        Require(SearchSuggestions({}, L"crystophar nolan", found).front() == L"Christopher Nolan",
+            "a corrected name was not offered first");
+        Require(SearchSuggestions({}, L"arrival", found).size() == 3 && SearchSuggestions({}, L"", found).empty(),
+            "the typed text was offered back, or an empty box offered names");
+        Require(SearchSuggestions(many, L"x", found).size() == 5, "names found pushed the suggestions past five");
     }
 
     void TestNotesAndQueryLimits()

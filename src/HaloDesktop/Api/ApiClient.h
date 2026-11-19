@@ -109,7 +109,7 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::Capabilities> GetCapabilitiesAsync();
         // People whose name matches `query` (trimmed here; 2 to 120 characters,
         // else std::invalid_argument before anything is sent).
-        [[nodiscard]] concurrency::task<std::vector<Dto::PersonSummary>> SearchPeopleAsync(winrt::hstring query);
+        [[nodiscard]] concurrency::task<Dto::PeopleSearch> SearchPeopleAsync(winrt::hstring query);
         // A person and their films and series. 404: no such person.
         [[nodiscard]] concurrency::task<Dto::PersonDetail> GetPersonAsync(std::int64_t tmdbId);
         // What a pasted id names. `source` is `tvdb` (digits) or `imdb`

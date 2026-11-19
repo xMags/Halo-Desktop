@@ -118,12 +118,12 @@ namespace HaloDesktop::Services
             handler(PeopleOutcome::NotFound, {});
             return;
         }
-        Start<std::vector<::HaloDesktop::Api::Dto::PersonSummary>>(
+        Start<::HaloDesktop::Api::Dto::PeopleSearch>(
             Channel::Search,
             [api = m_api, query = std::move(query)]() { return api->SearchPeopleAsync(winrt::hstring{ query }); },
-            [handler = std::move(handler)](PeopleOutcome outcome, std::optional<std::vector<::HaloDesktop::Api::Dto::PersonSummary>> people)
+            [handler = std::move(handler)](PeopleOutcome outcome, std::optional<::HaloDesktop::Api::Dto::PeopleSearch> people)
             {
-                handler(outcome, people ? std::move(*people) : std::vector<::HaloDesktop::Api::Dto::PersonSummary>{});
+                handler(outcome, people ? std::move(*people) : ::HaloDesktop::Api::Dto::PeopleSearch{});
             });
     }
 
@@ -146,23 +146,25 @@ namespace HaloDesktop::Services
             handler(PeopleOutcome::NotFound, 0);
             return;
         }
-        Start<std::vector<::HaloDesktop::Api::Dto::PersonSummary>>(
+        Start<::HaloDesktop::Api::Dto::PeopleSearch>(
             Channel::Person,
             [api = m_api, name]() { return api->SearchPeopleAsync(winrt::hstring{ name }); },
-            [handler = std::move(handler), name](PeopleOutcome outcome, std::optional<std::vector<::HaloDesktop::Api::Dto::PersonSummary>> people)
+            [handler = std::move(handler), name](PeopleOutcome outcome, std::optional<::HaloDesktop::Api::Dto::PeopleSearch> answer)
             {
-                if (outcome != PeopleOutcome::Found || !people)
+                if (outcome != PeopleOutcome::Found || !answer)
                 {
                     handler(outcome, 0);
                     return;
                 }
-                auto const index = ExactNamePerson(*people, name);
+                // A credit's name is spelled as its addon spells it: only the
+                // person of exactly that name, never a nearest guess.
+                auto const index = ExactNamePerson(answer->People, name);
                 if (!index)
                 {
                     handler(PeopleOutcome::NotFound, 0);
                     return;
                 }
-                handler(PeopleOutcome::Found, (*people)[*index].TmdbId);
+                handler(PeopleOutcome::Found, answer->People[*index].TmdbId);
             });
     }
 

@@ -312,7 +312,7 @@
               BorderThickness="1"
               CornerRadius="8"
               Visibility="{x:Bind ViewModel.SuggestionsVisibility, Mode=OneWay}">
-              <ItemsControl x:Name="SuggestionList" AutomationProperties.Name="Past searches" IsTabStop="False">
+              <ItemsControl x:Name="SuggestionList" AutomationProperties.Name="Search suggestions" IsTabStop="False">
                 <ItemsControl.ItemTemplate>
                   <DataTemplate x:DataType="local:RecentSearchViewModel">
                     <!-- Taken without moving the caret, so the box never loses focus to the list. -->
@@ -325,7 +325,7 @@
                       Style="{StaticResource SearchRowButtonStyle}"
                       Tag="{x:Bind Term}">
                       <StackPanel Orientation="Horizontal" Spacing="10">
-                        <FontIcon VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE823;" />
+                        <FontIcon VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE721;" />
                         <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Term}" TextTrimming="CharacterEllipsis" />
                       </StackPanel>
                     </Button>

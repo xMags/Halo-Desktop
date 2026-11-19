@@ -277,7 +277,9 @@ namespace winrt::HaloDesktop::implementation
         // People search for this query, beside the catalogs, when the server has it.
         [[nodiscard]] bool PeopleAvailable() const noexcept;
         void AskPeople(bool retry);
-        void OnPeopleAnswer(std::wstring const& query, ::HaloDesktop::Services::PeopleOutcome outcome, std::vector<::HaloDesktop::Api::Dto::PersonSummary> people);
+        void OnPeopleAnswer(std::wstring const& query, ::HaloDesktop::Services::PeopleOutcome outcome, ::HaloDesktop::Api::Dto::PeopleSearch answer);
+        // The names found for what the box holds, for the suggestions under it.
+        [[nodiscard]] std::vector<std::wstring> FoundNames() const;
         // The films of the person a query names exactly, as one more answer
         // beside the catalogs'.
         void AskCredits(std::wstring const& query, std::int64_t tmdbId);
@@ -400,6 +402,10 @@ namespace winrt::HaloDesktop::implementation
         bool m_peopleAsked{};
         std::optional<std::vector<::HaloDesktop::Api::Dto::PersonSummary>> m_peopleAnswer;
         bool m_peopleFailed{};
+        // The name the people answer is read by: the query, or the name the
+        // server corrected a misspelling to (m_peopleCorrected).
+        std::wstring m_peopleName;
+        bool m_peopleCorrected{};
         // The films of the person `m_creditsQuery` (trimmed) names exactly:
         // asked, and the titles once the answer is in (none when it failed).
         std::wstring m_creditsQuery;
@@ -443,6 +449,8 @@ namespace winrt::HaloDesktop::implementation
         bool m_resultsStale{};
         bool m_active{};
         bool m_suggestionsShown{};
+        // Enter or a picked suggestion puts the list away until the next keystroke.
+        bool m_suggestionsDismissed{};
         bool m_recentShown{};
         bool m_noAddons{};
         bool m_topMatchSkeleton{};

@@ -184,6 +184,14 @@ namespace HaloDesktop::Services
         std::span<std::wstring const> history,
         std::wstring_view typed,
         std::size_t limit = SearchSuggestionLimit);
+    // What the box offers under itself: those past searches, then the names
+    // `found` for what is typed (people and titles, best first), each once
+    // and never the typed text itself.
+    [[nodiscard]] std::vector<std::wstring> SearchSuggestions(
+        std::span<std::wstring const> history,
+        std::wstring_view typed,
+        std::span<std::wstring const> found,
+        std::size_t limit = SearchSuggestionLimit);
 
     // The note over a search some catalogs did not answer: every one failed,
     // or the addons that did not, named once each in order.

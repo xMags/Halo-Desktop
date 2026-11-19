@@ -306,6 +306,18 @@ namespace HaloDesktop::Api::Mappers
         return people;
     }
 
+    std::optional<winrt::hstring> ParsePeopleCorrection(IJsonValue const& value, std::vector<Dto::PersonSummary> const& people)
+    {
+        auto const object = RequireObject(value, "The people search response must be an object.");
+        auto const corrected = BoundedText(object, L"corrected", MaximumName);
+        if (!corrected) return std::nullopt;
+        auto const named = std::any_of(people.begin(), people.end(), [&corrected](Dto::PersonSummary const& person)
+        {
+            return person.Name == *corrected;
+        });
+        return named ? corrected : std::nullopt;
+    }
+
     Dto::PersonDetail ParsePerson(IJsonValue const& value)
     {
         auto const root = RequireObject(value, "The person response must be an object.");

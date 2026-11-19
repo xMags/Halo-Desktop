@@ -341,6 +341,7 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
+        m_suggestionsDismissed = false;
         SetQueryText(value);
         m_debounceTimer.Stop();
         if (ApplyInput())
@@ -549,6 +550,8 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
+        m_suggestionsDismissed = true;
+        RebuildHistoryLists();
         auto capped = ::HaloDesktop::Services::CappedQuery(m_query);
         // The top match of exactly what the box holds: Enter opens it, as the
         // key hint beside its button says. Text not searched yet, or results
@@ -571,7 +574,9 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::SearchAgain(winrt::hstring const& term)
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(term) };
+        m_suggestionsDismissed = true;
         SetQueryText(capped);
+        RebuildHistoryLists();
         m_debounceTimer.Stop();
         if (ApplyInput())
         {
@@ -711,8 +716,8 @@ namespace winrt::HaloDesktop::implementation
             terms.begin(),
             terms.begin() + static_cast<std::ptrdiff_t>((std::min)(terms.size(), ::HaloDesktop::Services::SearchRecentShown)));
         fill(m_recent, m_recentTerms, std::move(recent));
-        fill(m_suggestions, m_suggestionTerms, m_boxFocused
-            ? ::HaloDesktop::Services::SuggestedSearches(terms, ::HaloDesktop::Services::CappedQuery(m_query))
+        fill(m_suggestions, m_suggestionTerms, m_boxFocused && !m_suggestionsDismissed && !ActionShown()
+            ? ::HaloDesktop::Services::SearchSuggestions(terms, ::HaloDesktop::Services::CappedQuery(m_query), FoundNames())
             : std::vector<std::wstring>{});
         auto const suggestionsShown = !m_suggestionTerms.empty();
         auto const recentShown = !m_active && !ActionShown() && !m_recentTerms.empty();
@@ -726,6 +731,34 @@ namespace winrt::HaloDesktop::implementation
             m_recentShown = recentShown;
             Raise(L"RecentVisibility");
         }
+    }
+
+    std::vector<std::wstring> SearchViewModel::FoundNames() const
+    {
+        namespace Services = ::HaloDesktop::Services;
+        // Only what was found for the text in the box, or for its beginning
+        // while more of it is being typed.
+        auto const typed = Services::FoldedText(Services::TrimmedText(Services::CappedQuery(m_query)));
+        auto const revealed = Services::FoldedText(m_revealedQuery);
+        if (!m_board.Revealed() || revealed.empty() || !typed.starts_with(revealed))
+        {
+            return {};
+        }
+        std::vector<std::wstring> names;
+        if (m_peopleAnswer && m_peopleQuery == m_revealedQuery)
+        {
+            for (auto const& person : Services::ChoosePeopleRow(*m_peopleAnswer, m_peopleName, m_bestTitleTier))
+            {
+                names.emplace_back(person.Name);
+            }
+        }
+        if (m_board.TopMatch()) names.push_back(m_board.TopMatch()->Name);
+        for (auto const& title : m_board.Titles())
+        {
+            if (names.size() >= Services::SearchSuggestionLimit * 2) break;
+            names.push_back(title.Name);
+        }
+        return names;
     }
 
     void SearchViewModel::Refresh()
@@ -824,7 +857,7 @@ namespace winrt::HaloDesktop::implementation
         namespace Services = ::HaloDesktop::Services;
         // An answer still out reads as not a person.
         auto const namesPerson = m_peopleAnswer && m_peopleQuery == query
-            && Services::ExactNamePerson(*m_peopleAnswer, query).has_value();
+            && Services::ExactNamePerson(*m_peopleAnswer, m_peopleName).has_value();
         return namesPerson ? Services::SearchQueryMeaning::Person : Services::SearchQueryMeaning::Title;
     }
 
@@ -1126,6 +1159,11 @@ namespace winrt::HaloDesktop::implementation
         {
             m_statusText = winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) };
             m_statusFailed = !m_statusText.empty();
+            // A misspelled name read as the person it most likely means.
+            if (m_statusText.empty() && m_peopleCorrected && m_peopleQuery == m_revealedQuery && m_peoplePlace != PeoplePlace::None)
+            {
+                m_statusText = winrt::hstring{ L"Showing results for " + m_peopleName };
+            }
         }
     }
 
@@ -1353,13 +1391,15 @@ namespace winrt::HaloDesktop::implementation
         m_peopleAnswer.reset();
         ForgetCredits();
         m_peopleFailed = false;
+        m_peopleName = m_peopleQuery;
+        m_peopleCorrected = false;
         m_peopleService->SearchPeople(std::move(query), [weak = get_weak(), asked = m_peopleQuery](
             Services::PeopleOutcome outcome,
-            std::vector<::HaloDesktop::Api::Dto::PersonSummary> people)
+            ::HaloDesktop::Api::Dto::PeopleSearch answer)
         {
             if (auto const self = weak.get())
             {
-                self->OnPeopleAnswer(asked, outcome, std::move(people));
+                self->OnPeopleAnswer(asked, outcome, std::move(answer));
             }
         });
     }
@@ -1367,17 +1407,22 @@ namespace winrt::HaloDesktop::implementation
     void SearchViewModel::OnPeopleAnswer(
         std::wstring const& query,
         ::HaloDesktop::Services::PeopleOutcome outcome,
-        std::vector<::HaloDesktop::Api::Dto::PersonSummary> people)
+        ::HaloDesktop::Api::Dto::PeopleSearch answer)
     {
         if (!m_peopleAsked || query != m_peopleQuery)
         {
             return;
         }
+        auto const found = outcome == ::HaloDesktop::Services::PeopleOutcome::Found;
         m_peopleFailed = outcome == ::HaloDesktop::Services::PeopleOutcome::Failed;
-        m_peopleAnswer = outcome == ::HaloDesktop::Services::PeopleOutcome::Found
-            ? std::move(people)
+        // A misspelled name: from here on the answer is read by the name the
+        // server corrected it to, as if that had been typed.
+        m_peopleCorrected = found && answer.Corrected.has_value();
+        m_peopleName = m_peopleCorrected ? std::wstring{ *answer.Corrected } : query;
+        m_peopleAnswer = found
+            ? std::move(answer.People)
             : std::vector<::HaloDesktop::Api::Dto::PersonSummary>{};
-        if (auto const named = ::HaloDesktop::Services::ExactNamePerson(*m_peopleAnswer, query))
+        if (auto const named = ::HaloDesktop::Services::ExactNamePerson(*m_peopleAnswer, m_peopleName))
         {
             AskCredits(query, (*m_peopleAnswer)[*named].TmdbId);
         }
@@ -1443,7 +1488,8 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        auto const row = ::HaloDesktop::Services::ChoosePeopleRow(*m_peopleAnswer, m_revealedQuery, m_bestTitleTier);
+        auto const row = ::HaloDesktop::Services::ChoosePeopleRow(
+            *m_peopleAnswer, m_peopleQuery == m_revealedQuery ? m_peopleName : m_revealedQuery, m_bestTitleTier);
         if (row.empty())
         {
             return;
@@ -2071,6 +2117,8 @@ namespace winrt::HaloDesktop::implementation
     {
         m_topMatchInLibrary = m_topMatchTitle && m_search->InLibrary(m_topMatchTitle->Type, m_topMatchTitle->Id);
         m_recentShown = !m_active && !ActionShown() && m_recent.Size() > 0;
+        // What was found may be offered under the box.
+        RebuildHistoryLists();
         RaiseAll();
     }
 

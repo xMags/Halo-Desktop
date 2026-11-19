@@ -44,7 +44,7 @@ namespace HaloDesktop::Services
     class PeopleService final : public std::enable_shared_from_this<PeopleService>
     {
     public:
-        using SearchHandler = std::function<void(PeopleOutcome, std::vector<::HaloDesktop::Api::Dto::PersonSummary>)>;
+        using SearchHandler = std::function<void(PeopleOutcome, ::HaloDesktop::Api::Dto::PeopleSearch)>;
         // The TMDB id of the person a name stands for (ExactNamePerson).
         using FindHandler = std::function<void(PeopleOutcome, std::int64_t)>;
         using PersonHandler = std::function<void(PeopleOutcome, std::optional<::HaloDesktop::Api::Dto::PersonDetail>)>;

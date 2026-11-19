@@ -416,7 +416,7 @@ namespace HaloDesktop::Api
         co_return Mappers::ParseCapabilities(response);
     }
 
-    concurrency::task<std::vector<Dto::PersonSummary>> ApiClient::SearchPeopleAsync(winrt::hstring query)
+    concurrency::task<Dto::PeopleSearch> ApiClient::SearchPeopleAsync(winrt::hstring query)
     {
         auto const trimmed = TrimmedText(query);
         if (trimmed.size() < 2 || trimmed.size() > 120)
@@ -426,7 +426,10 @@ namespace HaloDesktop::Api
         auto const path = winrt::hstring{ L"/people/search?q=" } + EncodeUriComponent(trimmed);
         auto const response = co_await SendAuthenticatedJsonAsync(
             winrt::Windows::Web::Http::HttpMethod::Get(), path.c_str());
-        co_return Mappers::ParsePeopleSearch(response);
+        Dto::PeopleSearch answer;
+        answer.People = Mappers::ParsePeopleSearch(response);
+        answer.Corrected = Mappers::ParsePeopleCorrection(response, answer.People);
+        co_return answer;
     }
 
     concurrency::task<Dto::PersonDetail> ApiClient::GetPersonAsync(std::int64_t tmdbId)
