@@ -78,6 +78,8 @@ namespace HaloDesktop
         String SummaryLine { get; };
         Microsoft.UI.Xaml.Visibility SummaryVisibility { get; };
         String FilterAllCount { get; };
+        // Whether there is anything for Delete all to remove.
+        Boolean CanDeleteAll { get; };
         String FilterActiveCount { get; };
         String FilterReadyCount { get; };
         String FilterFailedCount { get; };
@@ -140,6 +142,7 @@ namespace HaloDesktop
         void ResumeSelected();
         void CancelSelected();
         void DeleteSelected();
+        void DeleteAll();
         void OpenPlayer();
         void ChooseSource();
         void BrowseLibrary();

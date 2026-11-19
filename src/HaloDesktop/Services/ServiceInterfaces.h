@@ -308,6 +308,9 @@ namespace HaloDesktop::Services
         virtual bool CancelTransfer(winrt::hstring const& id) = 0;
         virtual bool DeleteReady(winrt::hstring const& id) = 0;
         virtual void RetryFailedTransfers() = 0;
+        // Removes every download of the account signed in, finished or not,
+        // with its files. Returns how many it asked the engine to remove.
+        virtual std::size_t DeleteAllDownloads() = 0;
         virtual bool OpenDownloadDirectory() = 0;
         // Opens Explorer on a finished download's folder with its file selected.
         // A failure is returned rather than left in ActionError, because the caller

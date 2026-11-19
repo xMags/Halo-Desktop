@@ -123,6 +123,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring SummaryLine() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SummaryVisibility() const noexcept;
         [[nodiscard]] winrt::hstring FilterAllCount() const;
+        [[nodiscard]] bool CanDeleteAll() const;
         [[nodiscard]] winrt::hstring FilterActiveCount() const;
         [[nodiscard]] winrt::hstring FilterReadyCount() const;
         [[nodiscard]] winrt::hstring FilterFailedCount() const;
@@ -188,6 +189,7 @@ namespace winrt::HaloDesktop::implementation
         void ResumeSelected();
         void CancelSelected();
         void DeleteSelected();
+        void DeleteAll();
         void OpenPlayer();
         void ChooseSource();
         void BrowseLibrary();

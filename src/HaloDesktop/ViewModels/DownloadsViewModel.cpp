@@ -311,6 +311,7 @@ namespace winrt::HaloDesktop::implementation
     }
     Microsoft::UI::Xaml::Visibility DownloadsViewModel::SummaryVisibility() const noexcept { return VisibleWhen(!m_transferRows.empty() || !m_readyRows.empty()); }
     winrt::hstring DownloadsViewModel::FilterAllCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).All); }
+    bool DownloadsViewModel::CanDeleteAll() const { return Presentation::CountFilters(m_transferRows, m_readyRows).All > 0; }
     winrt::hstring DownloadsViewModel::FilterActiveCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Active); }
     winrt::hstring DownloadsViewModel::FilterReadyCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Ready); }
     winrt::hstring DownloadsViewModel::FilterFailedCount() const { return winrt::to_hstring(Presentation::CountFilters(m_transferRows, m_readyRows).Failed); }
@@ -447,6 +448,7 @@ namespace winrt::HaloDesktop::implementation
     {
         if (m_selected) static_cast<void>(m_downloads->DeleteReady(winrt::hstring{ m_selectedId }));
     }
+    void DownloadsViewModel::DeleteAll() { static_cast<void>(m_downloads->DeleteAllDownloads()); }
     void DownloadsViewModel::OpenPlayer()
     {
         if (m_selected) Play(winrt::hstring{ m_selectedId });
@@ -640,7 +642,7 @@ namespace winrt::HaloDesktop::implementation
     {
         for (auto const property : {
                  L"ActionErrorText", L"ActionErrorVisibility", L"SummaryLine", L"SummaryVisibility",
-                 L"FilterAllCount", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex",
+                 L"FilterAllCount", L"CanDeleteAll", L"FilterActiveCount", L"FilterReadyCount", L"FilterFailedCount", L"FilterIndex",
                  L"PauseAllLabel", L"PauseAllGlyph", L"PauseAllVisibility", L"IsPausedAll",
                  L"RateValue", L"RateUnit", L"RateUnitVisibility", L"RateNormalVisibility", L"RateIdleVisibility",
                  L"RatePausedVisibility", L"ConnectionsText", L"ConnectionsVisibility", L"RateNoteText",

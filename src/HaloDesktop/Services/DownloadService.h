@@ -49,6 +49,7 @@ namespace HaloDesktop::Services
         bool CancelTransfer(winrt::hstring const& id) override;
         bool DeleteReady(winrt::hstring const& id) override;
         void RetryFailedTransfers() override;
+        std::size_t DeleteAllDownloads() override;
         bool OpenDownloadDirectory() override;
         [[nodiscard]] bool RevealInExplorer(winrt::hstring const& id) override;
         [[nodiscard]] concurrency::task<DownloadStartResult> StartDownloadAsync(

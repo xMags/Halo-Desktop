@@ -302,6 +302,37 @@ namespace HaloDesktop::Services
         return true;
     }
 
+    std::size_t DownloadService::DeleteAllDownloads()
+    {
+        std::vector<std::pair<std::wstring, bool>> jobs;
+        for (auto const& record : m_records)
+        {
+            jobs.emplace_back(record.JobId, record.Status == DownloadStatus::Done);
+        }
+        if (jobs.empty()) return 0;
+        auto const count = jobs.size();
+        RunEngineAction([engine = m_engine, jobs = std::move(jobs)]()
+        {
+            std::exception_ptr failure;
+            for (auto const& [id, done] : jobs)
+            {
+                try
+                {
+                    // This copy can be stale. An unfinished one is cancelled
+                    // under the engine's own check; if it finished first, the
+                    // viewer still asked for everything to go, so it goes too.
+                    if (done || !engine->Cancel(id)) engine->Remove(id);
+                }
+                catch (...)
+                {
+                    if (!failure) failure = std::current_exception();
+                }
+            }
+            if (failure) std::rethrow_exception(failure);
+        });
+        return count;
+    }
+
     void DownloadService::RetryFailedTransfers()
     {
         std::vector<std::wstring> ids;

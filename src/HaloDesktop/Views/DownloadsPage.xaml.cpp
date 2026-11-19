@@ -199,6 +199,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void DownloadsPage::OnManageFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { PickDownloadFolder(); }
     void DownloadsPage::OnOpenFolderClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenDownloadFolder(); }
+    void DownloadsPage::OnDeleteAllClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { ShowDeleteAllDialog(); }
     void DownloadsPage::OnRetryFailedClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.RetryFailed(); }
     void DownloadsPage::OnBrowseLibraryClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.BrowseLibrary(); }
 
@@ -260,6 +261,36 @@ namespace winrt::HaloDesktop::implementation
         }
         catch (...)
         {
+        }
+    }
+
+    // Everything this account has on the PC goes, so it is asked first, with
+    // the count, and the safe answer is the default.
+    winrt::fire_and_forget DownloadsPage::ShowDeleteAllDialog()
+    {
+        auto lifetime = get_strong();
+        if (!m_viewModel.CanDeleteAll()) co_return;
+        try
+        {
+            auto const count = m_viewModel.FilterAllCount();
+            auto dialog = ::HaloDesktop::Views::MakeDialog(
+                XamlRoot(),
+                ActualTheme(),
+                L"Delete all downloads?",
+                winrt::hstring{ L"All " + std::wstring{ count } + (count == L"1" ? L" download goes" : L" downloads go")
+                    + L" from this PC, including any still downloading. The files are deleted and cannot be recovered." },
+                ::HaloDesktop::Views::DialogTone::Destructive);
+            dialog.PrimaryButtonText(L"Delete all");
+            dialog.CloseButtonText(L"Cancel");
+            dialog.DefaultButton(Microsoft::UI::Xaml::Controls::ContentDialogButton::Close);
+            if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
+            {
+                m_viewModel.DeleteAll();
+            }
+        }
+        catch (...)
+        {
+            // Only one dialog can be open at a time; nothing was deleted.
         }
     }
 

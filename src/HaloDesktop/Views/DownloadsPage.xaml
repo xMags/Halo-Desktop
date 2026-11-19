@@ -129,6 +129,14 @@
                 <MenuFlyoutItem Click="OnRetryFailedClick" Text="Retry all failed">
                   <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE72C;" /></MenuFlyoutItem.Icon>
                 </MenuFlyoutItem>
+                <MenuFlyoutSeparator />
+                <MenuFlyoutItem
+                  Click="OnDeleteAllClick"
+                  IsEnabled="{x:Bind ViewModel.CanDeleteAll, Mode=OneWay}"
+                  Style="{StaticResource HaloDangerMenuFlyoutItemStyle}"
+                  Text="Delete all downloads…">
+                  <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE74D;" /></MenuFlyoutItem.Icon>
+                </MenuFlyoutItem>
               </MenuFlyout>
             </Button.Flyout>
           </Button>

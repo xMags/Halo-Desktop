@@ -31,6 +31,7 @@ namespace winrt::HaloDesktop::implementation
         void OnCancelRowClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnManageFolderClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnOpenFolderClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnDeleteAllClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnRetryFailedClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnBrowseLibraryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
@@ -44,6 +45,7 @@ namespace winrt::HaloDesktop::implementation
         winrt::fire_and_forget ShowPauseAllDialog();
         winrt::fire_and_forget ShowCancelDialog(winrt::hstring id);
         winrt::fire_and_forget ShowDeleteDialog();
+        winrt::fire_and_forget ShowDeleteAllDialog();
         winrt::fire_and_forget PickDownloadFolder();
 
         winrt::HaloDesktop::DownloadsViewModel m_viewModel{ nullptr };
