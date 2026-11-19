@@ -62,9 +62,13 @@
         FontWeight="SemiBold"
         Foreground="{ThemeResource HaloText1Brush}"
         Text="History" />
+      <!-- The tabs keep their width; the search gives way between 160 and 280,
+           so at the narrowest window with the menu open no tab is cut off. -->
       <Grid Grid.Row="1" ColumnSpacing="12">
         <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto" />
           <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" MinWidth="160" MaxWidth="280" />
           <ColumnDefinition Width="Auto" />
         </Grid.ColumnDefinitions>
         <SelectorBar x:Name="FilterBar" HorizontalAlignment="Left" SelectionChanged="OnFilterSelectionChanged">
@@ -73,9 +77,8 @@
           <SelectorBarItem x:Name="SeriesFilterItem" Text="{x:Bind ViewModel.SeriesTabText, Mode=OneWay}" />
           <SelectorBarItem x:Name="InProgressFilterItem" Text="{x:Bind ViewModel.InProgressTabText, Mode=OneWay}" />
         </SelectorBar>
-        <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="4">
           <!-- The search box, its Clear button shown whenever it holds text. -->
-          <Grid Width="280" Height="32">
+          <Grid Grid.Column="2" Height="32" VerticalAlignment="Center">
             <TextBox
               x:Name="QueryBox"
               Height="32"
@@ -105,7 +108,7 @@
               <FontIcon Width="30" FontSize="13" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE721;" IsHitTestVisible="False" />
             </StackPanel>
           </Grid>
-          <Button AutomationProperties.Name="More history actions" Style="{StaticResource HistorySubtleButtonStyle}" ToolTipService.ToolTip="More history actions">
+          <Button Grid.Column="3" Margin="-8,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="More history actions" Style="{StaticResource HistorySubtleButtonStyle}" ToolTipService.ToolTip="More history actions">
             <FontIcon FontSize="14" Glyph="&#xE712;" />
             <Button.Flyout>
               <MenuFlyout Placement="BottomEdgeAlignedRight">
@@ -120,7 +123,6 @@
               </MenuFlyout>
             </Button.Flyout>
           </Button>
-        </StackPanel>
       </Grid>
     </Grid>
 
@@ -246,8 +248,18 @@
                             BorderThickness="0"
                             Click="OnEntryClick"
                             CornerRadius="0"
-                            Tag="{x:Bind}"
-                            ToolTipService.ToolTip="{x:Bind OpenLabel}">
+                            Tag="{x:Bind}">
+                            <!-- What a click does, and when it was played in full:
+                                 the time on the right gives way to the buttons
+                                 under the pointer, so its date cannot carry this. -->
+                            <ToolTipService.ToolTip>
+                              <ToolTip>
+                                <StackPanel Spacing="2">
+                                  <TextBlock Text="{x:Bind OpenLabel}" />
+                                  <TextBlock Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind FullTime}" />
+                                </StackPanel>
+                              </ToolTip>
+                            </ToolTipService.ToolTip>
                             <Button.Resources>
                               <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="Transparent" />
                               <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="Transparent" />
@@ -326,8 +338,8 @@
                               FontSize="13"
                               Foreground="{ThemeResource HaloText3Brush}"
                               Text="{x:Bind Time}"
-                              TextWrapping="NoWrap"
-                              ToolTipService.ToolTip="{x:Bind FullTime}">
+                              IsHitTestVisible="False"
+                              TextWrapping="NoWrap">
                               <TextBlock.OpacityTransition>
                                 <ScalarTransition Duration="0:0:0.12" />
                               </TextBlock.OpacityTransition>
