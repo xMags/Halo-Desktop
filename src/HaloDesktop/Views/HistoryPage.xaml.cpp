@@ -9,7 +9,9 @@
 #include "ViewModels/HistoryViewModel.h"
 #include "Views/PageDialog.h"
 
+#include <algorithm>
 #include <array>
+#include <cmath>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -18,6 +20,17 @@
 
 namespace
 {
+    // The page's margin at either side, and the widest its content grows:
+    // past that the margins take the rest, so the content stays centred.
+    constexpr double PageMargin = 32.0;
+    constexpr double ContentMaxWidth = 1100.0;
+
+    double SideMargin(double pageWidth) noexcept
+    {
+        if (!(pageWidth > 0.0)) return PageMargin;
+        return (std::max)(PageMargin, std::floor((pageWidth - ContentMaxWidth) / 2.0));
+    }
+
     struct EntrySubject final
     {
         winrt::Microsoft::UI::Xaml::FrameworkElement Anchor{ nullptr };
@@ -161,6 +174,17 @@ namespace winrt::HaloDesktop::implementation
     {
         m_viewModel.Query(L"");
         QueryBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+    }
+
+    // The header and the list take the same side margins from the page's
+    // width, so their edges stay one line whatever the window does.
+    void HistoryPage::OnPageSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        auto const side = SideMargin(args.NewSize().Width);
+        HeaderRoot().Padding({ side, 28.0, side, 4.0 });
+        HistoryBody().Padding({ side, 16.0, side, 40.0 });
     }
 
     // The tabs in the view model's order: All, Movies, Series, In progress.
