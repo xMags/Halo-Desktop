@@ -61,6 +61,9 @@ namespace winrt::HaloDesktop::implementation
         bool m_onScreen{};
         bool m_pulseUnavailable{};
         winrt::Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
+        // The hero's Play button settling into its place, so the bar is judged
+        // again once it has a real position rather than only on scroll.
+        winrt::Microsoft::UI::Xaml::FrameworkElement::SizeChanged_revoker m_playButtonSized;
     };
 }
 

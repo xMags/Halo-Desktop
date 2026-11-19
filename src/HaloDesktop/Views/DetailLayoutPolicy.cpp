@@ -24,6 +24,8 @@ namespace HaloDesktop::Views
     bool CompactBarShown(double buttonTop, double buttonHeight) noexcept
     {
         if (!std::isfinite(buttonTop) || !std::isfinite(buttonHeight)) return false;
+        // Not measured yet, or not there: nothing has been scrolled past.
+        if (!(buttonHeight > 0.0)) return false;
         // An intersection observer counts an edge that only touches the band as
         // still intersecting, so the bottom has to be strictly above it.
         return buttonTop + buttonHeight < DetailCompactBarHeight;

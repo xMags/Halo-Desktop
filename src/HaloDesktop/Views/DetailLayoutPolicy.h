@@ -34,6 +34,8 @@ namespace HaloDesktop::Views
 
     // Whether the compact bar shows: the main button has scrolled wholly above
     // the band the bar covers. A button below the view (a short window) is not
-    // "scrolled past". `buttonTop` is measured from the page scroller's top.
+    // "scrolled past", and nor is one with no height: not laid out yet (it
+    // reads as sitting at the very top) or collapsed. `buttonTop` is measured
+    // from the page scroller's top.
     [[nodiscard]] bool CompactBarShown(double buttonTop, double buttonHeight) noexcept;
 }

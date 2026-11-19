@@ -50,6 +50,15 @@ namespace winrt::HaloDesktop::implementation
         CreditsPanel().ViewModel(m_viewModel);
         SimilarPanel().ViewModel(m_viewModel);
         m_viewModelChanged = m_viewModel.PropertyChanged(winrt::auto_revoke, { get_weak(), &DetailPage::OnViewModelChanged });
+        // The content appears before the hero is laid out, when the button has
+        // no position yet; its first real size is when the bar can be judged.
+        if (auto const play = winrt::get_self<DetailHero>(Hero())->PlayButtonElement())
+        {
+            m_playButtonSized = play.SizeChanged(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
+            {
+                if (auto const self = weak.get()) self->UpdateCompactBar();
+            });
+        }
 
         // The bar starts above the page, out of sight; it never takes a
         // composition visual, so its slide is a plain translation transition.

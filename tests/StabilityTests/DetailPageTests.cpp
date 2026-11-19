@@ -446,6 +446,8 @@ namespace
         Require(!CompactBarShown(100.0, 46.0) && !CompactBarShown(18.0, 46.0) && CompactBarShown(17.0, 46.0),
             "the compact bar did not follow the main button leaving the band under it");
         Require(!CompactBarShown(900.0, 46.0), "a button below the view showed the compact bar");
+        Require(!CompactBarShown(0.0, 0.0) && !CompactBarShown(-200.0, 0.0),
+            "a button not laid out yet, or collapsed, showed the compact bar as soon as the page opened");
     }
 
     void TestScrollRow()
