@@ -119,5 +119,7 @@ namespace HaloDesktop
     {
         SettingsPage();
         SettingsViewModel ViewModel { get; };
+        // The word Windows Settings shows beside a switch: "On" or "Off".
+        static String OnOffText(Boolean isOn);
     }
 }

@@ -13,12 +13,15 @@ namespace winrt::HaloDesktop::implementation
         void Label(winrt::hstring const& value);
         [[nodiscard]] winrt::hstring Hint() const;
         void Hint(winrt::hstring const& value);
+        [[nodiscard]] winrt::hstring Glyph() const;
+        void Glyph(winrt::hstring const& value);
         [[nodiscard]] winrt::Windows::Foundation::IInspectable SettingContent() const;
         void SettingContent(winrt::Windows::Foundation::IInspectable const& value);
 
     private:
         winrt::hstring m_label;
         winrt::hstring m_hint;
+        winrt::hstring m_glyph;
         winrt::Windows::Foundation::IInspectable m_settingContent{ nullptr };
     };
 }

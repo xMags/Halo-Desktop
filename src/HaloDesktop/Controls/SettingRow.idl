@@ -6,6 +6,8 @@ namespace HaloDesktop
         SettingRow();
         String Label;
         String Hint;
+        // A Segoe Fluent Icons glyph drawn before the label; none when empty.
+        String Glyph;
         Object SettingContent;
     }
 }

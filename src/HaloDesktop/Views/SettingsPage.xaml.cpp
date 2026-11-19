@@ -30,18 +30,18 @@ namespace
     // and the visual state that lights it. The three arrays are indexed together, so
     // they must stay in the same order as the rail itself.
     constexpr std::array<wchar_t const*, 5> kSectionNames{
+        L"AccountSection",
         L"AppearanceSection",
-        L"AddonsSection",
         L"PlaybackSection",
         L"SubtitlesSection",
-        L"AccountSection",
+        L"AddonsSection",
     };
     constexpr std::array<wchar_t const*, 5> kRailStates{
+        L"RailAccount",
         L"RailAppearance",
-        L"RailAddons",
         L"RailPlayback",
         L"RailSubtitles",
-        L"RailAccount",
+        L"RailAddons",
     };
 
     // How far below the top edge a section has to reach before the rail counts it as
@@ -49,8 +49,8 @@ namespace
     // the top of the viewport does not flip the selection back and forth.
     constexpr double kAnchorFraction = 0.25;
 
-    // The account card's avatar is drawn 40 pixels square.
-    constexpr std::uint32_t kAccountPictureEdge = 40;
+    // The account card's avatar is drawn 64 pixels square.
+    constexpr std::uint32_t kAccountPictureEdge = 64;
 }
 
 namespace winrt::HaloDesktop::implementation
@@ -60,6 +60,8 @@ namespace winrt::HaloDesktop::implementation
     {
     }
     winrt::HaloDesktop::SettingsViewModel SettingsPage::ViewModel() const { return m_viewModel; }
+    // Bound to each switch's own IsOn, so the word always matches what the switch shows.
+    winrt::hstring SettingsPage::OnOffText(bool isOn) { return isOn ? winrt::hstring{ L"On" } : winrt::hstring{ L"Off" }; }
     void SettingsPage::OnLoaded([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         ::HaloDesktop::Controls::AttachSmoothWheelScroll(SettingsScroller());

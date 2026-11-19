@@ -17,7 +17,22 @@ namespace winrt::HaloDesktop::implementation
     void SettingRow::Hint(winrt::hstring const& value)
     {
         m_hint = value;
-        if (auto const text = FindName(L"HintText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value);
+        if (auto const text = FindName(L"HintText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>())
+        {
+            text.Text(value);
+            // An empty hint takes no line, so a label-only row centres on its label.
+            text.Visibility(value.empty() ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
+        }
+    }
+    winrt::hstring SettingRow::Glyph() const { return m_glyph; }
+    void SettingRow::Glyph(winrt::hstring const& value)
+    {
+        m_glyph = value;
+        if (auto const icon = FindName(L"GlyphIcon").try_as<Microsoft::UI::Xaml::Controls::FontIcon>())
+        {
+            icon.Glyph(value);
+            icon.Visibility(value.empty() ? Microsoft::UI::Xaml::Visibility::Collapsed : Microsoft::UI::Xaml::Visibility::Visible);
+        }
     }
     winrt::Windows::Foundation::IInspectable SettingRow::SettingContent() const { return m_settingContent; }
     void SettingRow::SettingContent(winrt::Windows::Foundation::IInspectable const& value)

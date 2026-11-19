@@ -18,6 +18,7 @@ namespace winrt::HaloDesktop::implementation
     {
         SettingsPage();
         [[nodiscard]] winrt::HaloDesktop::SettingsViewModel ViewModel() const;
+        [[nodiscard]] static winrt::hstring OnOffText(bool isOn);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnAppearanceRailClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);

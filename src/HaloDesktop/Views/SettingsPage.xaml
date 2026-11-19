@@ -25,50 +25,101 @@
       <Setter Property="Foreground" Value="{StaticResource HaloSubtitleOutlineBrush}" />
     </Style>
     <!--
+      Windows Settings lays every setting out as its own card, the cards 4 pixels
+      apart, so a section reads as a column of rows rather than one boxed list.
+    -->
+    <Style x:Key="SettingsCardStyle" TargetType="Border">
+      <Setter Property="Background" Value="{ThemeResource HaloCardBrush}" />
+      <Setter Property="BorderBrush" Value="{ThemeResource HaloCardStrokeBrush}" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="6" />
+    </Style>
+    <!-- A row inside a grouped card: indented to the label above it, a hairline over it. -->
+    <Style x:Key="SettingsGroupRowStyle" TargetType="Grid">
+      <Setter Property="MinHeight" Value="58" />
+      <Setter Property="Padding" Value="52,10,16,10" />
+      <Setter Property="ColumnSpacing" Value="16" />
+      <Setter Property="BorderBrush" Value="{ThemeResource HaloDividerBrush}" />
+      <Setter Property="BorderThickness" Value="0,1,0,0" />
+    </Style>
+    <Style x:Key="SettingsSectionTitleStyle" TargetType="TextBlock" BasedOn="{StaticResource HaloShelfTitle}">
+      <Setter Property="FontFamily" Value="Segoe UI Variable Display" />
+      <Setter Property="Margin" Value="0,0,0,8" />
+    </Style>
+    <Style x:Key="SettingsListHeaderStyle" TargetType="TextBlock">
+      <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
+    </Style>
+    <Style x:Key="SettingsOnOffTextStyle" TargetType="TextBlock">
+      <Setter Property="MinWidth" Value="24" />
+      <Setter Property="VerticalAlignment" Value="Center" />
+      <Setter Property="TextAlignment" Value="Right" />
+      <Setter Property="FontSize" Value="{StaticResource HaloFontLabel}" />
+      <Setter Property="Foreground" Value="{ThemeResource HaloText1Brush}" />
+    </Style>
+    <!--
+      A rail entry as Windows Settings draws it: glyph and label, with a short accent
+      pill at the left edge marking the section being read (see RailSelection).
+    -->
+    <Style x:Key="SettingsNavButtonStyle" TargetType="Button" BasedOn="{StaticResource HaloRailButtonStyle}">
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="Height" Value="38" />
+      <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+      <Setter Property="VerticalContentAlignment" Value="Stretch" />
+      <Setter Property="CornerRadius" Value="5" />
+    </Style>
+    <!--
       An addon row is a ListView item only so the list's own reordering moves it:
       the item adds no padding, height or rounding of its own, and draws no hover
-      or press wash, so the row looks as the plain card row did.
+      or press wash; the row's card is its look.
     -->
     <Style x:Key="SettingsAddonItemStyle" TargetType="ListViewItem" BasedOn="{StaticResource DefaultListViewItemStyle}">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Margin" Value="0" />
       <Setter Property="MinHeight" Value="0" />
-      <Setter Property="CornerRadius" Value="0" />
+      <Setter Property="CornerRadius" Value="6" />
       <Setter Property="HorizontalContentAlignment" Value="Stretch" />
       <Setter Property="VerticalContentAlignment" Value="Stretch" />
     </Style>
     <SolidColorBrush x:Key="ListViewItemBackgroundPointerOver" Color="Transparent" />
     <SolidColorBrush x:Key="ListViewItemBackgroundPressed" Color="Transparent" />
     <!--
-      One addon row: grip, initials tile, name with version and badge over the
-      provides line, the catalog switch, then the row's actions. A shadowed row (the
+      One addon row, as its own card: grip, initials tile, name with version over the
+      provides line, the catalog switch, then the row's actions. Which list a row is
+      in (for everyone, or yours) is said by the list's heading. A shadowed row (the
       global copy answers for it) dims its grip, tile and text and has no switch.
     -->
     <DataTemplate x:Key="SettingsAddonRowTemplate" x:DataType="local:AddonRowViewModel">
-      <Grid Padding="14,13" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="{x:Bind DividerThickness, Mode=OneWay}" ColumnSpacing="13">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="12" /><ColumnDefinition Width="34" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-        <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloText4Brush}" Glyph="&#xE76F;" Opacity="{x:Bind IdentityOpacity}" ToolTipService.ToolTip="{x:Bind GripToolTip}" />
-        <Border Grid.Column="1" Width="34" Height="34" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="6" Opacity="{x:Bind IdentityOpacity}"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Initials}" /></Border>
-        <StackPanel Grid.Column="2" VerticalAlignment="Center" Opacity="{x:Bind IdentityOpacity}" Spacing="3">
-          <StackPanel Orientation="Horizontal" Spacing="9"><TextBlock FontSize="{StaticResource HaloFontBody}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Version}" /><Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="3" Visibility="{x:Bind GlobalVisibility}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="GLOBAL" /></Border><Border Padding="7,2" VerticalAlignment="Center" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="3" Visibility="{x:Bind YoursVisibility}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" Text="YOURS" /></Border></StackPanel>
-          <TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Provides}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-        </StackPanel>
-        <!--
-          The switch, then the buttons, at the row's end. The buttons' slot is as
-          wide as the widest row in the card needs, so the switches line up down
-          the card, and it is gone (with its gap) when no row has a button, so the
-          switches sit at the card's edge.
-        -->
-        <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="13">
-          <ToggleSwitch VerticalAlignment="Center" AutomationProperties.Name="{x:Bind CatalogSwitchLabel}" IsEnabled="{x:Bind CatalogSwitchEnabled}" IsOn="{x:Bind CatalogsShown, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" Visibility="{x:Bind CatalogSwitchVisibility}" />
-          <Grid MinWidth="{x:Bind ActionSlotWidth, Mode=OneWay}" VerticalAlignment="Center" Visibility="{x:Bind ActionSlotVisibility, Mode=OneWay}">
-            <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="2">
-              <Button Width="28" Height="28" MinWidth="0" Padding="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Install for every user" Click="OnInstallForEveryoneClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Install for every user" Visibility="{x:Bind InstallForEveryoneVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE774;" /></Button>
-              <Button Width="28" Height="28" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Remove addon" Click="OnDeleteAddonClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Style="{StaticResource HaloDangerIconButtonStyle}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Remove addon" Visibility="{x:Bind RemoveVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE74D;" /></Button>
-            </StackPanel>
-          </Grid>
-        </StackPanel>
-      </Grid>
+      <Border Margin="0,0,0,4" Style="{StaticResource SettingsCardStyle}">
+        <Grid MinHeight="62" Padding="14,10,16,10" ColumnSpacing="14">
+          <Grid.ColumnDefinitions><ColumnDefinition Width="12" /><ColumnDefinition Width="32" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+          <FontIcon VerticalAlignment="Center" FontSize="{StaticResource HaloFontEmphasis}" Foreground="{ThemeResource HaloText4Brush}" Glyph="&#xE76F;" Opacity="{x:Bind IdentityOpacity}" ToolTipService.ToolTip="{x:Bind GripToolTip}" />
+          <Border Grid.Column="1" Width="32" Height="32" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="5" Opacity="{x:Bind IdentityOpacity}"><TextBlock HorizontalAlignment="Center" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind Initials}" /></Border>
+          <StackPanel Grid.Column="2" VerticalAlignment="Center" Opacity="{x:Bind IdentityOpacity}" Spacing="2">
+            <StackPanel Orientation="Horizontal" Spacing="9"><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" /><TextBlock VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Version}" /></StackPanel>
+            <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind Provides}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+          </StackPanel>
+          <!--
+            The switch, then the buttons, at the row's end. The buttons' slot is as
+            wide as the widest row in the section needs, so the switches line up down
+            the list, and it is gone (with its gap) when no row has a button, so the
+            switches sit at the card's edge.
+          -->
+          <StackPanel Grid.Column="3" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12">
+            <!-- No On/Off word here: the list's "Catalogs on Home" heading names the column.
+                 (A function binding over a named element inside a DataTemplate also does
+                 not compile with the C++ x:Bind generator.) -->
+            <ToggleSwitch VerticalAlignment="Center" AutomationProperties.Name="{x:Bind CatalogSwitchLabel}" IsEnabled="{x:Bind CatalogSwitchEnabled}" IsOn="{x:Bind CatalogsShown, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" Visibility="{x:Bind CatalogSwitchVisibility}" />
+            <Grid MinWidth="{x:Bind ActionSlotWidth, Mode=OneWay}" VerticalAlignment="Center" Visibility="{x:Bind ActionSlotVisibility, Mode=OneWay}">
+              <StackPanel HorizontalAlignment="Right" VerticalAlignment="Center" Orientation="Horizontal" Spacing="2">
+                <Button Width="28" Height="28" MinWidth="0" Padding="0" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Install for every user" Click="OnInstallForEveryoneClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Install for every user" Visibility="{x:Bind InstallForEveryoneVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Glyph="&#xE774;" /></Button>
+                <Button Width="28" Height="28" Background="Transparent" BorderThickness="0" AutomationProperties.Name="Remove addon" Click="OnDeleteAddonClick" CornerRadius="4" IsEnabled="{x:Bind ListActionsEnabled, Mode=OneWay}" Style="{StaticResource HaloDangerIconButtonStyle}" Tag="{x:Bind Id}" ToolTipService.ToolTip="Remove addon" Visibility="{x:Bind RemoveVisibility}"><FontIcon FontSize="{StaticResource HaloFontLabel}" Glyph="&#xE74D;" /></Button>
+              </StackPanel>
+            </Grid>
+          </StackPanel>
+        </Grid>
+      </Border>
     </DataTemplate>
   </Page.Resources>
   <Grid x:Name="PageRoot" MaxWidth="1000" HorizontalAlignment="Center">
@@ -107,34 +158,34 @@
         exactly one entry marked without the page having to clear the previous one.
       -->
       <VisualStateGroup x:Name="RailSelection">
-        <VisualState x:Name="RailAppearance">
+        <VisualState x:Name="RailAccount">
           <VisualState.Setters>
-            <Setter Target="AppearanceRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
-            <Setter Target="AppearanceRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+            <Setter Target="AccountRail.Background" Value="{ThemeResource HaloSubtleBrush}" />
+            <Setter Target="AccountRailPill.Opacity" Value="1" />
           </VisualState.Setters>
         </VisualState>
-        <VisualState x:Name="RailAddons">
+        <VisualState x:Name="RailAppearance">
           <VisualState.Setters>
-            <Setter Target="AddonsRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
-            <Setter Target="AddonsRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+            <Setter Target="AppearanceRail.Background" Value="{ThemeResource HaloSubtleBrush}" />
+            <Setter Target="AppearanceRailPill.Opacity" Value="1" />
           </VisualState.Setters>
         </VisualState>
         <VisualState x:Name="RailPlayback">
           <VisualState.Setters>
-            <Setter Target="PlaybackRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
-            <Setter Target="PlaybackRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+            <Setter Target="PlaybackRail.Background" Value="{ThemeResource HaloSubtleBrush}" />
+            <Setter Target="PlaybackRailPill.Opacity" Value="1" />
           </VisualState.Setters>
         </VisualState>
         <VisualState x:Name="RailSubtitles">
           <VisualState.Setters>
-            <Setter Target="SubtitlesRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
-            <Setter Target="SubtitlesRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+            <Setter Target="SubtitlesRail.Background" Value="{ThemeResource HaloSubtleBrush}" />
+            <Setter Target="SubtitlesRailPill.Opacity" Value="1" />
           </VisualState.Setters>
         </VisualState>
-        <VisualState x:Name="RailAccount">
+        <VisualState x:Name="RailAddons">
           <VisualState.Setters>
-            <Setter Target="AccountRail.Background" Value="{ThemeResource HaloNavSelBrush}" />
-            <Setter Target="AccountRail.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+            <Setter Target="AddonsRail.Background" Value="{ThemeResource HaloSubtleBrush}" />
+            <Setter Target="AddonsRailPill.Opacity" Value="1" />
           </VisualState.Setters>
         </VisualState>
       </VisualStateGroup>
@@ -146,41 +197,61 @@
         <!-- Keep the page title over the rail instead of reserving its row across
              the form. The form can then use the otherwise empty space beside it. -->
         <local:SectionHeader ContentPadding="0,8,0,12" Title="Settings" />
-        <StackPanel Grid.Row="1" Spacing="2">
-        <Button x:Name="AppearanceRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAppearanceRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Appearance" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Theme" /></StackPanel></Button>
-        <Button x:Name="AddonsRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAddonsRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Addons" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams, subtitles" /></StackPanel></Button>
-        <Button x:Name="PlaybackRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnPlaybackRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Playback" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Decoding, autoplay, resume" /></StackPanel></Button>
-        <Button x:Name="SubtitlesRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnSubtitlesRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Subtitles" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Size, font, appearance" /></StackPanel></Button>
-        <Button x:Name="AccountRail" Style="{StaticResource HaloRailButtonStyle}" Click="OnAccountRailClick"><StackPanel Spacing="2"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Server &amp; account" /><TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Sync, identity, version" /></StackPanel></Button>
-        <Border Margin="0,18,0,0" Padding="14" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-          <StackPanel Spacing="9">
-            <StackPanel Orientation="Horizontal" Spacing="8"><local:HaloMark VerticalAlignment="Center" Size="20" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" FontWeight="SemiBold" Text="Halo Desktop" /></StackPanel>
-            <Button Padding="0,3" HorizontalAlignment="Left" Background="Transparent" BorderThickness="0" Click="OnCheckForUpdatesClick" CornerRadius="4" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloAccentBrush}" Content="Check for updates" ToolTipService.ToolTip="Opens the releases page on GitHub" />
-            <!-- The card pads by 14, so the hairline pulls back out to sit edge to edge. -->
-            <Rectangle Height="1" Margin="-14,0" Fill="{ThemeResource HaloDividerBrush}" />
-            <!--
-              The notice stays on the readable end of the text ramp rather than the
-              dimmest one. The credit follows the reference's About panel; the license
-              wording tracks this repository's LICENSE and licenses/TERMS.txt, which are
-              source available rather than the reference's GPL.
-            -->
-            <StackPanel Spacing="3">
-              <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="© 2026 Last Projects &amp; Shy" />
-              <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="Source-available license" />
-            </StackPanel>
-          </StackPanel>
-        </Border>
+        <StackPanel Grid.Row="1" Spacing="3">
+          <Button x:Name="AccountRail" AutomationProperties.Name="Account" Click="OnAccountRailClick" Style="{StaticResource SettingsNavButtonStyle}">
+            <Grid><Rectangle x:Name="AccountRailPill" Width="3" Height="16" HorizontalAlignment="Left" Fill="{ThemeResource HaloAccentBrush}" Opacity="0" RadiusX="1.5" RadiusY="1.5" /><StackPanel Margin="14,0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="14"><FontIcon FontSize="16" Glyph="&#xE77B;" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Account" /></StackPanel></Grid>
+          </Button>
+          <Button x:Name="AppearanceRail" AutomationProperties.Name="Appearance" Click="OnAppearanceRailClick" Style="{StaticResource SettingsNavButtonStyle}">
+            <Grid><Rectangle x:Name="AppearanceRailPill" Width="3" Height="16" HorizontalAlignment="Left" Fill="{ThemeResource HaloAccentBrush}" Opacity="0" RadiusX="1.5" RadiusY="1.5" /><StackPanel Margin="14,0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="14"><FontIcon FontSize="16" Glyph="&#xE790;" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Appearance" /></StackPanel></Grid>
+          </Button>
+          <Button x:Name="PlaybackRail" AutomationProperties.Name="Playback" Click="OnPlaybackRailClick" Style="{StaticResource SettingsNavButtonStyle}">
+            <Grid><Rectangle x:Name="PlaybackRailPill" Width="3" Height="16" HorizontalAlignment="Left" Fill="{ThemeResource HaloAccentBrush}" Opacity="0" RadiusX="1.5" RadiusY="1.5" /><StackPanel Margin="14,0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="14"><FontIcon FontSize="16" Glyph="&#xE768;" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Playback" /></StackPanel></Grid>
+          </Button>
+          <Button x:Name="SubtitlesRail" AutomationProperties.Name="Subtitles" Click="OnSubtitlesRailClick" Style="{StaticResource SettingsNavButtonStyle}">
+            <Grid><Rectangle x:Name="SubtitlesRailPill" Width="3" Height="16" HorizontalAlignment="Left" Fill="{ThemeResource HaloAccentBrush}" Opacity="0" RadiusX="1.5" RadiusY="1.5" /><StackPanel Margin="14,0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="14"><FontIcon FontSize="16" Glyph="&#xE7F0;" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Subtitles" /></StackPanel></Grid>
+          </Button>
+          <Button x:Name="AddonsRail" AutomationProperties.Name="Addons" Click="OnAddonsRailClick" Style="{StaticResource SettingsNavButtonStyle}">
+            <Grid><Rectangle x:Name="AddonsRailPill" Width="3" Height="16" HorizontalAlignment="Left" Fill="{ThemeResource HaloAccentBrush}" Opacity="0" RadiusX="1.5" RadiusY="1.5" /><StackPanel Margin="14,0" VerticalAlignment="Center" Orientation="Horizontal" Spacing="14"><FontIcon FontSize="16" Glyph="&#xEA86;" /><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Addons" /></StackPanel></Grid>
+          </Button>
         </StackPanel>
       </Grid>
 
       <ScrollView ContentOrientation="Vertical" x:Name="SettingsScroller" Grid.Column="1" Margin="0,8,0,0" VerticalScrollBarVisibility="Hidden" ViewChanged="OnFormViewChanged">
-        <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Left" Padding="0,0,8,48" Spacing="36" SizeChanged="OnFormSizeChanged">
-          <StackPanel x:Name="AppearanceSection" Spacing="14">
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Appearance" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Choose how Halo looks. System follows your Windows setting." /></StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="12">
-              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Light theme" Click="OnLightThemeClick" IsChecked="{x:Bind ViewModel.IsLightTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
-                <StackPanel Spacing="9">
-                  <Border Width="132" Height="80" Background="#FFFFFFFF" BorderBrush="#22000000" BorderThickness="1" CornerRadius="6">
+        <StackPanel x:Name="SettingsForm" MaxWidth="680" HorizontalAlignment="Stretch" Padding="0,0,8,48" Spacing="36" SizeChanged="OnFormSizeChanged">
+
+          <StackPanel x:Name="AccountSection" Spacing="4">
+            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Account" />
+            <InfoBar Margin="0,0,0,4" IsOpen="True" Severity="Error" Title="Sign out failed" Message="{x:Bind ViewModel.AccountNoticeText, Mode=OneWay}" Visibility="{x:Bind ViewModel.AccountNoticeVisibility, Mode=OneWay}" />
+            <Border Padding="16" Style="{StaticResource SettingsCardStyle}">
+              <Grid ColumnSpacing="18">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="64" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <!-- The account picture as the shell's account button shows it, else the stock avatar. -->
+                <Border Width="64" Height="64" CornerRadius="32"><Image x:Name="AccountPicture" Source="ms-appx:///Assets/user-avatar.png" Stretch="UniformToFill" /></Border>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="4"><TextBlock FontSize="{StaticResource HaloFontSubtitle}" FontWeight="SemiBold" Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" TextTrimming="CharacterEllipsis" /><TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.AccountRoleLine, Mode=OneWay}" /></StackPanel>
+                <Grid Grid.Column="2" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}">
+                  <Border Padding="11,5" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerCheckingVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
+                  <Border Padding="11,5" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerConnectedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
+                  <Border Padding="11,5" Background="{ThemeResource HaloCriticalTintBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerUnavailableVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
+                </Grid>
+              </Grid>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}">
+              <local:SettingRow Glyph="&#xF3B1;" Label="Sign out" Hint="Library, watch progress and addon order sync through this server"><local:SettingRow.SettingContent><Button Height="32" Padding="16,0" Click="OnSignOutClick" Content="Sign out" FontSize="{StaticResource HaloFontLabel}" Style="{StaticResource HaloDangerOutlineButtonStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}">
+              <local:SettingRow Glyph="&#xE895;" Label="Sign in to sync" Hint="Your library, watch progress and addons are kept on this PC. Sign in to sync them across your devices."><local:SettingRow.SettingContent><Button Height="32" Padding="16,0" Click="OnSignInToSyncClick" Content="Sign in" FontSize="{StaticResource HaloFontLabel}" Style="{StaticResource HaloAccentButtonStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+          </StackPanel>
+
+          <StackPanel x:Name="AppearanceSection" Spacing="4">
+            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Appearance" />
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <StackPanel>
+                <local:SettingRow Glyph="&#xE790;" Label="Theme" Hint="System follows your Windows setting" />
+                <StackPanel Margin="52,0,16,16" Orientation="Horizontal" Spacing="12">
+                  <RadioButton GroupName="AppTheme" AutomationProperties.Name="Light theme" Click="OnLightThemeClick" IsChecked="{x:Bind ViewModel.IsLightTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                    <StackPanel Spacing="9">
+                      <Border Width="132" Height="80" Background="#FFFFFFFF" BorderBrush="#22000000" BorderThickness="1" CornerRadius="6">
                         <Grid Padding="8" ColumnSpacing="8">
                           <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                           <Rectangle Fill="#FFE6E6EA" RadiusX="3" RadiusY="3" />
@@ -191,12 +262,12 @@
                           </StackPanel>
                         </Grid>
                       </Border>
-                  <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Light" />
-                </StackPanel>
-              </RadioButton>
-              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Dark theme" Click="OnDarkThemeClick" IsChecked="{x:Bind ViewModel.IsDarkTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
-                <StackPanel Spacing="9">
-                  <Border Width="132" Height="80" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6">
+                      <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Light" />
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton GroupName="AppTheme" AutomationProperties.Name="Dark theme" Click="OnDarkThemeClick" IsChecked="{x:Bind ViewModel.IsDarkTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                    <StackPanel Spacing="9">
+                      <Border Width="132" Height="80" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6">
                         <Grid Padding="8" ColumnSpacing="8">
                           <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                           <Rectangle Fill="#FF313138" RadiusX="3" RadiusY="3" />
@@ -207,228 +278,247 @@
                           </StackPanel>
                         </Grid>
                       </Border>
-                  <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Dark" />
+                      <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Dark" />
+                    </StackPanel>
+                  </RadioButton>
+                  <RadioButton GroupName="AppTheme" AutomationProperties.Name="Follow system theme" Click="OnSystemThemeClick" IsChecked="{x:Bind ViewModel.IsSystemTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
+                    <StackPanel Spacing="9">
+                      <!-- Split down the middle so the card reads as "either one". -->
+                      <Grid Width="132" Height="80">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                        <Border Grid.ColumnSpan="2" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6" />
+                        <Border Background="#FFFFFFFF" CornerRadius="6,0,0,6" />
+                        <Grid Grid.ColumnSpan="2" Padding="8" ColumnSpacing="8">
+                          <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                          <Rectangle Fill="#FFE6E6EA" RadiusX="3" RadiusY="3" />
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
+                            <Rectangle Height="5" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="46" HorizontalAlignment="Left" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
+                            <Rectangle Height="5" Width="34" HorizontalAlignment="Left" Fill="#FF60CDFF" RadiusX="2" RadiusY="2" />
+                          </StackPanel>
+                        </Grid>
+                      </Grid>
+                      <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="System" />
+                    </StackPanel>
+                  </RadioButton>
                 </StackPanel>
-              </RadioButton>
-              <RadioButton GroupName="AppTheme" AutomationProperties.Name="Follow system theme" Click="OnSystemThemeClick" IsChecked="{x:Bind ViewModel.IsSystemTheme, Mode=OneWay}" Style="{StaticResource HaloThemeCardRadioStyle}">
-                <StackPanel Spacing="9">
-                  <!-- Split down the middle so the card reads as "either one". -->
-                  <Grid Width="132" Height="80">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <Border Grid.ColumnSpan="2" Background="#FF202024" BorderBrush="#26FFFFFF" BorderThickness="1" CornerRadius="6" />
-                    <Border Background="#FFFFFFFF" CornerRadius="6,0,0,6" />
-                    <Grid Grid.ColumnSpan="2" Padding="8" ColumnSpacing="8">
-                      <Grid.ColumnDefinitions><ColumnDefinition Width="26" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                      <Rectangle Fill="#FFE6E6EA" RadiusX="3" RadiusY="3" />
-                      <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="7">
-                        <Rectangle Height="5" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
-                        <Rectangle Height="5" Width="46" HorizontalAlignment="Left" Fill="#FF54545C" RadiusX="2" RadiusY="2" />
-                        <Rectangle Height="5" Width="34" HorizontalAlignment="Left" Fill="#FF60CDFF" RadiusX="2" RadiusY="2" />
-                      </StackPanel>
-                    </Grid>
-                  </Grid>
-                  <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="System" />
-                </StackPanel>
-              </RadioButton>
-            </StackPanel>
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-              <local:SettingRow Label="Translucent window" Hint="A soft blur of your desktop shows through. Windows turns it off with transparency effects or battery saver."><local:SettingRow.SettingContent><ToggleSwitch AutomationProperties.Name="Translucent window" IsEnabled="{x:Bind ViewModel.TranslucentWindowSupported}" IsOn="{x:Bind ViewModel.TranslucentWindow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
+              </StackPanel>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE7F4;" Label="Translucent window" Hint="A soft blur of your desktop shows through. Windows turns it off with transparency effects or battery saver."><local:SettingRow.SettingContent><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(TranslucentSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="TranslucentSwitch" AutomationProperties.Name="Translucent window" IsEnabled="{x:Bind ViewModel.TranslucentWindowSupported}" IsOn="{x:Bind ViewModel.TranslucentWindow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel></local:SettingRow.SettingContent></local:SettingRow>
             </Border>
           </StackPanel>
 
-          <StackPanel x:Name="AddonsSection" Spacing="14">
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Addons" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Catalogs, streams and subtitles come from these. Order sets priority." /></StackPanel>
-            <Grid ColumnSpacing="8"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions><TextBox x:Name="AddonUrlBox" Height="32" AutomationProperties.Name="Addon manifest URL" FontSize="{StaticResource HaloFontBody}" IsSpellCheckEnabled="False" KeyDown="OnAddonUrlKeyDown" PlaceholderText="https://addon.example.com/manifest.json" Text="{x:Bind ViewModel.AddonUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" /><Button Grid.Column="1" Height="32" Padding="18,0" Click="OnAddAddonClick" Content="{x:Bind ViewModel.AddButtonText, Mode=OneWay}" FontSize="{StaticResource HaloFontBody}" IsEnabled="{x:Bind ViewModel.CanAddAddon, Mode=OneWay}" Style="{StaticResource HaloAccentButtonStyle}" /></Grid>
-            <TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.AddErrorText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.AddErrorVisibility, Mode=OneWay}" />
-            <TextBlock AutomationProperties.LiveSetting="Assertive" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.ListErrorText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.ListErrorVisibility, Mode=OneWay}" />
-            <InfoBar x:Name="AddonNotice" IsOpen="True" Severity="Informational" Title="Addon" Message="{x:Bind ViewModel.AddonNoticeText, Mode=OneWay}" Visibility="{x:Bind ViewModel.AddonNoticeVisibility, Mode=OneWay}" />
-            <StackPanel HorizontalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.AddonLoadingVisibility, Mode=OneWay}"><ProgressRing Width="32" Height="32" HorizontalAlignment="Center" IsActive="True" /><TextBlock FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" Text="Refreshing addons…" /></StackPanel>
-            <StackPanel HorizontalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.AddonErrorVisibility, Mode=OneWay}"><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloCriticalBrush}" Text="Addons could not be refreshed." /><Button HorizontalAlignment="Center" Click="OnRetrySettingsClick" Content="Retry" FontSize="{StaticResource HaloFontBody}" /></StackPanel>
-            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText3Brush}" Text="No addons are installed for this account." Visibility="{x:Bind ViewModel.AddonEmptyVisibility, Mode=OneWay}" />
+          <StackPanel x:Name="PlaybackSection" Spacing="4">
+            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Playback" />
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE767;" Label="Audio language" Hint="Picked when the file offers a match"><local:SettingRow.SettingContent><ComboBox Width="168" AutomationProperties.Name="Audio language" SelectedIndex="{x:Bind ViewModel.AudioLanguageIndex, Mode=TwoWay}" FontSize="{StaticResource HaloFontLabel}"><ComboBoxItem Content="English" /><ComboBoxItem Content="Japanese" /><ComboBoxItem Content="German" /><ComboBoxItem Content="Spanish" /><ComboBoxItem Content="Original" /></ComboBox></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE7F0;" Label="Subtitle language" Hint="Falls back to addon results"><local:SettingRow.SettingContent><ComboBox Width="168" AutomationProperties.Name="Subtitle language" SelectedIndex="{x:Bind ViewModel.SubtitleLanguageIndex, Mode=TwoWay}" FontSize="{StaticResource HaloFontLabel}"><ComboBoxItem Content="Off" /><ComboBoxItem Content="English" /><ComboBoxItem Content="Japanese" /><ComboBoxItem Content="German" /><ComboBoxItem Content="Spanish" /></ComboBox></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE893;" Label="Autoplay next episode" Hint="8 second countdown, cancellable"><local:SettingRow.SettingContent><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(AutoplaySwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="AutoplaySwitch" AutomationProperties.Name="Autoplay next episode" IsOn="{x:Bind ViewModel.AutoplayNext, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE81C;" Label="Resume where I left off" Hint="Ignored under 30 seconds watched"><local:SettingRow.SettingContent><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(ResumeSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="ResumeSwitch" AutomationProperties.Name="Resume where I left off" IsOn="{x:Bind ViewModel.ResumePlayback, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE8F2;" Label="Discord Rich Presence" Hint="Shares the title and episode you are watching with Discord"><local:SettingRow.SettingContent><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(DiscordSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="DiscordSwitch" AutomationProperties.Name="Discord Rich Presence" IsOn="{x:Bind ViewModel.DiscordPresence, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <local:SettingRow Glyph="&#xE9F5;" Label="Hardware decoding" Hint="mpv hwdec=d3d11va-copy. Changes take effect on the next file."><local:SettingRow.SettingContent><StackPanel Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(HwdecSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="HwdecSwitch" AutomationProperties.Name="Hardware decoding" IsOn="{x:Bind ViewModel.HardwareDecoding, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel></local:SettingRow.SettingContent></local:SettingRow>
+            </Border>
+          </StackPanel>
+
+          <StackPanel x:Name="SubtitlesSection" Spacing="4">
+            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Subtitles" />
             <!--
-              One card with hairline dividers between rows, as in the design. The global
-              and the personal list are two lists in that card because a row only ever
-              moves within its own list: the server keeps them apart and resolves them in
-              that order. Each list reorders natively by drag, and its row menu (the
-              context menu key or Shift+F10 on a row) moves a row up or down.
+              A stand-in for a video frame rather than a themed surface, because a
+              video frame is what subtitles are drawn over. The stripe is the dark
+              asset in both themes so the caption keeps the contrast playback gives
+              it; the light palette used to leave white text on a near-white panel.
             -->
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.AddonContentVisibility, Mode=OneWay}">
-              <StackPanel>
-                <ListView
-                  x:Name="GlobalAddonList"
-                  AllowDrop="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
-                  AutomationProperties.Name="Global addons"
-                  CanDragItems="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
-                  CanReorderItems="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
-                  ContextRequested="OnAddonRowContextRequested"
-                  DragItemsCompleted="OnAddonDragCompleted"
-                  DragItemsStarting="OnAddonDragStarting"
-                  IsItemClickEnabled="False"
-                  ItemContainerStyle="{StaticResource SettingsAddonItemStyle}"
-                  ItemTemplate="{StaticResource SettingsAddonRowTemplate}"
-                  ItemsSource="{x:Bind ViewModel.GlobalAddons}"
-                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                  ScrollViewer.VerticalScrollMode="Disabled"
-                  SelectionMode="None"
-                  Visibility="{x:Bind ViewModel.GlobalAddonsVisibility, Mode=OneWay}" />
-                <ListView
-                  x:Name="OwnAddonList"
-                  AllowDrop="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
-                  AutomationProperties.Name="Your addons"
-                  CanDragItems="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
-                  CanReorderItems="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
-                  ContextRequested="OnAddonRowContextRequested"
-                  DragItemsCompleted="OnAddonDragCompleted"
-                  DragItemsStarting="OnAddonDragStarting"
-                  IsItemClickEnabled="False"
-                  ItemContainerStyle="{StaticResource SettingsAddonItemStyle}"
-                  ItemTemplate="{StaticResource SettingsAddonRowTemplate}"
-                  ItemsSource="{x:Bind ViewModel.OwnAddons}"
-                  ScrollViewer.VerticalScrollBarVisibility="Disabled"
-                  ScrollViewer.VerticalScrollMode="Disabled"
-                  SelectionMode="None"
-                  Visibility="{x:Bind ViewModel.OwnAddonsVisibility, Mode=OneWay}" />
-              </StackPanel>
-            </Border>
-            <!-- Offered only when an installed catalog is a language row (TMDB's "Language"). -->
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8" Visibility="{x:Bind ViewModel.CatalogLanguageVisibility, Mode=OneWay}">
-              <local:SettingRow Label="Language rows on Home" Hint="Rows such as TMDB's Language row show titles in this language"><local:SettingRow.SettingContent><ComboBox MinWidth="148" AutomationProperties.Name="Language rows on Home" FontSize="{StaticResource HaloFontBody}" ItemsSource="{x:Bind ViewModel.CatalogLanguageOptions}" SelectedIndex="{x:Bind ViewModel.CatalogLanguageIndex, Mode=TwoWay}" /></local:SettingRow.SettingContent></local:SettingRow>
-            </Border>
-          </StackPanel>
-
-          <StackPanel x:Name="PlaybackSection" Spacing="10">
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Playback" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Applied to every stream mpv opens. Changes take effect on the next file." /></StackPanel>
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-              <StackPanel>
-                <local:SettingRow Label="Default audio language" Hint="Picked when the file offers a match"><local:SettingRow.SettingContent><ComboBox Width="148" SelectedIndex="{x:Bind ViewModel.AudioLanguageIndex, Mode=TwoWay}" FontSize="{StaticResource HaloFontBody}"><ComboBoxItem Content="English" /><ComboBoxItem Content="Japanese" /><ComboBoxItem Content="German" /><ComboBoxItem Content="Spanish" /><ComboBoxItem Content="Original" /></ComboBox></local:SettingRow.SettingContent></local:SettingRow>
-                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-                <local:SettingRow Label="Default subtitles" Hint="Falls back to addon results"><local:SettingRow.SettingContent><ComboBox Width="148" SelectedIndex="{x:Bind ViewModel.SubtitleLanguageIndex, Mode=TwoWay}" FontSize="{StaticResource HaloFontBody}"><ComboBoxItem Content="Off" /><ComboBoxItem Content="English" /><ComboBoxItem Content="Japanese" /><ComboBoxItem Content="German" /><ComboBoxItem Content="Spanish" /></ComboBox></local:SettingRow.SettingContent></local:SettingRow>
-                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-                <local:SettingRow Label="Autoplay next episode" Hint="8 second countdown, cancellable"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.AutoplayNext, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
-                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-                <local:SettingRow Label="Resume where I left off" Hint="Ignored under 30 seconds watched"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.ResumePlayback, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
-                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-                <local:SettingRow Label="Hardware decoding" Hint="mpv hwdec=d3d11va-copy"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.HardwareDecoding, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
-                <Rectangle Height="1" Fill="{ThemeResource HaloDividerBrush}" />
-                <local:SettingRow Label="Discord Rich Presence" Hint="Shares the title and episode you are watching with Discord"><local:SettingRow.SettingContent><ToggleSwitch IsOn="{x:Bind ViewModel.DiscordPresence, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
-              </StackPanel>
-            </Border>
-          </StackPanel>
-
-          <StackPanel x:Name="SubtitlesSection" Spacing="12">
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Subtitles" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Appearance applies live during playback." /></StackPanel>
-            <!-- Height comes from the controls rather than a fixed number, so a row added to the
-                 card cannot push its last control out of sight. The preview stretches to match. -->
-            <Grid MinHeight="220" ColumnSpacing="12"><Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="260" /></Grid.ColumnDefinitions>
-              <Border Padding="16" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-                <StackPanel>
-                  <Grid ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /><ColumnDefinition Width="44" /></Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Size" />
-                    <Slider Grid.Column="1" VerticalAlignment="Center" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.SubtitleSize, Mode=TwoWay}" />
-                    <TextBlock Grid.Column="2" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.SubtitleSizeLabel, Mode=OneWay}" TextAlignment="Right" />
-                  </Grid>
-                  <Grid Margin="92,-4,44,0"><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="50" /><TextBlock HorizontalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="100" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText4Brush}" Text="200" /></Grid>
-                  <Grid Margin="0,16,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Font" />
-                    <Border x:Name="SubtitleFontTray" Grid.Column="1" Style="{StaticResource HaloSegmentedTrayStyle}">
-                      <StackPanel Orientation="Horizontal">
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsDefaultFont, Mode=OneWay}" Click="OnDefaultFontClick" Content="Default" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" ToolTipService.ToolTip="Leaves the face to the player" />
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSystemFont, Mode=OneWay}" Click="OnSystemFontClick" Content="System" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSerifFont, Mode=OneWay}" Click="OnSerifFontClick" Content="Serif" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsMonoFont, Mode=OneWay}" Click="OnMonoFontClick" Content="Mono" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
-                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Outline" />
-                    <Border Grid.Column="1" Width="{Binding ElementName=SubtitleFontTray, Path=ActualWidth}" Style="{StaticResource HaloSegmentedTrayStyle}">
-                      <StackPanel Orientation="Horizontal">
-                        <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsNoOutline, Mode=OneWay}" Click="OnNoOutlineClick" Content="None" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsThinOutline, Mode=OneWay}" Click="OnThinOutlineClick" Content="Thin" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsNormalOutline, Mode=OneWay}" Click="OnNormalOutlineClick" Content="Normal" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                        <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsThickOutline, Mode=OneWay}" Click="OnHeavyOutlineClick" Content="Thick" FontSize="{StaticResource HaloFontLabel}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
-                      </StackPanel>
-                    </Border>
-                  </Grid>
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16"><Grid.ColumnDefinitions><ColumnDefinition Width="76" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions><TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Shadow" /><ToggleSwitch Grid.Column="1" HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></Grid>
-                  <!--
-                    The size and font choices above always reach a plain text track. This
-                    row decides whether they also override a track that ships its own
-                    styling, which is the only case where the two can disagree.
-                  -->
-                  <Grid Margin="0,10,0,0" ColumnSpacing="16" RowSpacing="3">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
-                    <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontBody}" Text="Track styling" />
-                    <ToggleSwitch Grid.Column="1" HorizontalAlignment="Right" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" />
-                    <TextBlock Grid.Row="1" Grid.ColumnSpan="2" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its own look. Off, these settings win." TextWrapping="Wrap" />
-                  </Grid>
-                </StackPanel>
-              </Border>
-              <!--
-                A stand-in for a video frame rather than a themed surface, because a
-                video frame is what subtitles are drawn over. The stripe is the dark
-                asset in both themes so the caption keeps the contrast playback gives
-                it; the light palette used to leave white text on a near-white panel.
-              -->
-              <!-- Capped because the stripe asset is 420px tall and would otherwise drive the
-                   whole row taller than the card it sits beside. -->
-              <Border Grid.Column="1" MaxHeight="300" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="8">
-                <Grid>
-                  <Image Source="ms-appx:///Assets/stripe-dark.png" Stretch="UniformToFill" />
-                  <Rectangle Fill="{StaticResource HaloSubtitleStageScrimBrush}" />
-                  <TextBlock Margin="12,10,0,0" HorizontalAlignment="Left" VerticalAlignment="Top" Foreground="{StaticResource HaloSubtitleStageTextBrush}" Style="{StaticResource HaloMonoKicker}" Text="PREVIEW" />
-                  <!--
-                    The copies share one layout slot so they wrap identically; the
-                    offsets come from a render transform, which does not affect layout.
-                    Giving them different margins made the caption read as several
-                    overlapping strings. The border copies ring the glyphs rather than
-                    trailing them, so thickness reads as a border instead of a second
-                    ghosted caption, and the shadow copy is the only trailing one.
-                  -->
-                  <Grid Margin="14,0,14,16" VerticalAlignment="Bottom">
-                    <TextBlock Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleShadowBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewShadowVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
-                    <TextBlock x:Name="SubtitlePreviewText" Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleGlyphBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" />
-                  </Grid>
-                </Grid>
-              </Border>
-            </Grid>
-          </StackPanel>
-
-          <StackPanel x:Name="AccountSection" Spacing="12">
-            <StackPanel Spacing="4"><TextBlock Style="{StaticResource HaloSectionTitle}" Text="Server &amp; account" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Library, watch progress and addon order sync through this server." Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}" /><TextBlock Style="{StaticResource HaloBodySmall}" Text="Your library, watch progress and addons are kept on this PC. Sign in to sync them across your devices." TextWrapping="Wrap" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}" /></StackPanel>
-            <InfoBar IsOpen="True" Severity="Error" Title="Sign out failed" Message="{x:Bind ViewModel.AccountNoticeText, Mode=OneWay}" Visibility="{x:Bind ViewModel.AccountNoticeVisibility, Mode=OneWay}" />
-            <Border Padding="14" Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
-              <Grid ColumnSpacing="13">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="40" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                <!-- The account picture as the shell's account button shows it, else the stock avatar. -->
-                <Border Width="40" Height="40" CornerRadius="20"><Image x:Name="AccountPicture" Source="ms-appx:///Assets/user-avatar.png" Stretch="UniformToFill" /></Border>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2"><TextBlock FontSize="{StaticResource HaloFontLabel}" FontWeight="SemiBold" Text="{x:Bind ViewModel.DisplayName, Mode=OneWay}" /><TextBlock Style="{StaticResource HaloMonoData}" Text="{x:Bind ViewModel.AccountRoleLine, Mode=OneWay}" /></StackPanel>
-                <Grid Grid.Column="2" VerticalAlignment="Center" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}">
-                  <Border Padding="11,5" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerCheckingVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
-                  <Border Padding="11,5" Background="{ThemeResource HaloSuccessTintBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerConnectedVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
-                  <Border Padding="11,5" Background="{ThemeResource HaloCriticalTintBrush}" CornerRadius="14" Visibility="{x:Bind ViewModel.ServerUnavailableVisibility, Mode=OneWay}"><TextBlock FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" /></Border>
+            <Border Height="200" Margin="0,0,0,4" Background="{StaticResource HaloSubtitleStageBrush}" BorderBrush="{StaticResource HaloSubtitleStageStrokeBrush}" BorderThickness="1" CornerRadius="6">
+              <Grid>
+                <Image Source="ms-appx:///Assets/stripe-dark.png" Stretch="UniformToFill" />
+                <Rectangle Fill="{StaticResource HaloSubtitleStageScrimBrush}" />
+                <!--
+                  The copies share one layout slot so they wrap identically; the
+                  offsets come from a render transform, which does not affect layout.
+                  Giving them different margins made the caption read as several
+                  overlapping strings. The border copies ring the glyphs rather than
+                  trailing them, so thickness reads as a border instead of a second
+                  ghosted caption, and the shadow copy is the only trailing one.
+                -->
+                <Grid MaxWidth="560" Margin="24,0,24,22" VerticalAlignment="Bottom">
+                  <TextBlock Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleShadowBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewShadowVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewShadowOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineNegativeOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock Style="{StaticResource SubtitlePreviewOutlineStyle}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" Visibility="{x:Bind ViewModel.PreviewOutlineVisibility, Mode=OneWay}"><TextBlock.RenderTransform><TranslateTransform X="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" Y="{x:Bind ViewModel.PreviewOutlineOffset, Mode=OneWay}" /></TextBlock.RenderTransform></TextBlock>
+                  <TextBlock x:Name="SubtitlePreviewText" Style="{StaticResource SubtitlePreviewLayerStyle}" Foreground="{StaticResource HaloSubtitleGlyphBrush}" FontFamily="{x:Bind ViewModel.PreviewFontFamily, Mode=OneWay}" FontSize="{x:Bind ViewModel.PreviewFontSize, Mode=OneWay}" Text="{x:Bind ViewModel.PreviewText, Mode=OneWay}" />
                 </Grid>
               </Grid>
             </Border>
-            <Border Background="{ThemeResource HaloCardBrush}" BorderBrush="{ThemeResource HaloCardStrokeBrush}" BorderThickness="1" CornerRadius="8">
+            <!-- One grouped card, as Windows groups related settings: a header row, then each style choice on its own hairline row. -->
+            <Border Style="{StaticResource SettingsCardStyle}">
               <StackPanel>
-                <Grid Padding="14,13" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Signed in as" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.SignedInLine, Mode=OneWay}" /></Grid>
-                <Grid Padding="14,13" BorderBrush="{ThemeResource HaloDividerBrush}" BorderThickness="0,0,0,1" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Status" /><Grid HorizontalAlignment="Right"><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" Visibility="{x:Bind ViewModel.ServerCheckingVisibility, Mode=OneWay}" /><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloSuccessBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" Visibility="{x:Bind ViewModel.ServerConnectedVisibility, Mode=OneWay}" /><TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.ServerStatusLine, Mode=OneWay}" Visibility="{x:Bind ViewModel.ServerUnavailableVisibility, Mode=OneWay}" /></Grid></Grid>
-                <Grid Padding="14,13"><TextBlock FontSize="{StaticResource HaloFontBody}" Text="Version" /><TextBlock HorizontalAlignment="Right" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.VersionLine, Mode=OneWay}" /></Grid>
+                <local:SettingRow Glyph="&#xE8D2;" Label="Caption style" Hint="Applies live during playback" />
+                <Grid Style="{StaticResource SettingsGroupRowStyle}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Size" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12">
+                    <Slider Width="240" VerticalAlignment="Center" AutomationProperties.Name="Subtitle size" Minimum="50" Maximum="200" Value="{x:Bind ViewModel.SubtitleSize, Mode=TwoWay}" />
+                    <TextBlock Width="44" VerticalAlignment="Center" FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind ViewModel.SubtitleSizeLabel, Mode=OneWay}" TextAlignment="Right" />
+                  </StackPanel>
+                </Grid>
+                <Grid Style="{StaticResource SettingsGroupRowStyle}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Font" />
+                  <Border x:Name="SubtitleFontTray" Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource HaloSegmentedTrayStyle}">
+                    <StackPanel Orientation="Horizontal">
+                      <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsDefaultFont, Mode=OneWay}" Click="OnDefaultFontClick" Content="Default" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" ToolTipService.ToolTip="Leaves the face to the player" />
+                      <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSystemFont, Mode=OneWay}" Click="OnSystemFontClick" Content="System" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsSerifFont, Mode=OneWay}" Click="OnSerifFontClick" Content="Serif" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      <RadioButton GroupName="SubtitleFont" IsChecked="{x:Bind ViewModel.IsMonoFont, Mode=OneWay}" Click="OnMonoFontClick" Content="Mono" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                <Grid Style="{StaticResource SettingsGroupRowStyle}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Outline" />
+                  <Border Grid.Column="1" Width="{Binding ElementName=SubtitleFontTray, Path=ActualWidth}" VerticalAlignment="Center" Style="{StaticResource HaloSegmentedTrayStyle}">
+                    <StackPanel Orientation="Horizontal">
+                      <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsNoOutline, Mode=OneWay}" Click="OnNoOutlineClick" Content="None" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsThinOutline, Mode=OneWay}" Click="OnThinOutlineClick" Content="Thin" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsNormalOutline, Mode=OneWay}" Click="OnNormalOutlineClick" Content="Normal" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                      <RadioButton GroupName="SubtitleOutline" IsChecked="{x:Bind ViewModel.IsThickOutline, Mode=OneWay}" Click="OnHeavyOutlineClick" Content="Thick" FontSize="{StaticResource HaloFontSmall}" Padding="12,4" Style="{StaticResource HaloSegmentedRadioStyle}" />
+                    </StackPanel>
+                  </Border>
+                </Grid>
+                <Grid Style="{StaticResource SettingsGroupRowStyle}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Text="Shadow" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(ShadowSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="ShadowSwitch" AutomationProperties.Name="Subtitle shadow" IsOn="{x:Bind ViewModel.SubtitleShadow, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel>
+                </Grid>
+                <!--
+                  The size and font choices above always reach a plain text track. This
+                  row decides whether they also override a track that ships its own
+                  styling, which is the only case where the two can disagree.
+                -->
+                <Grid Style="{StaticResource SettingsGroupRowStyle}">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <StackPanel VerticalAlignment="Center" Spacing="2">
+                    <TextBlock FontSize="{StaticResource HaloFontLabel}" Text="Keep a track's own styling" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="On, a styled track keeps its look. Off, these settings win." TextWrapping="Wrap" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12"><TextBlock Style="{StaticResource SettingsOnOffTextStyle}" Text="{x:Bind local:SettingsPage.OnOffText(TrackStylingSwitch.IsOn), Mode=OneWay}" /><ToggleSwitch x:Name="TrackStylingSwitch" AutomationProperties.Name="Keep a track's own styling" IsOn="{x:Bind ViewModel.SubtitleTrackStyling, Mode=TwoWay}" Style="{StaticResource HaloToggleSwitchStyle}" /></StackPanel>
+                </Grid>
               </StackPanel>
             </Border>
-            <StackPanel Orientation="Horizontal" Spacing="10" Visibility="{x:Bind ViewModel.SignedInAccountVisibility, Mode=OneWay}"><Button Height="32" Padding="16,0" Click="OnSignOutClick" Content="Sign out" FontSize="{StaticResource HaloFontBody}" Style="{StaticResource HaloDangerOutlineButtonStyle}" /></StackPanel>
-            <StackPanel Orientation="Horizontal" Spacing="10" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}"><Button Height="32" Padding="16,0" Click="OnSignInToSyncClick" Content="Sign in to sync" FontSize="{StaticResource HaloFontBody}" Style="{StaticResource HaloAccentButtonStyle}" /></StackPanel>
           </StackPanel>
+
+          <StackPanel x:Name="AddonsSection" Spacing="4">
+            <TextBlock Style="{StaticResource SettingsSectionTitleStyle}" Text="Addons" />
+            <Border Style="{StaticResource SettingsCardStyle}">
+              <Grid MinHeight="42" Padding="16,12" ColumnSpacing="16">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" MaxWidth="250" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                <FontIcon VerticalAlignment="Center" FontSize="20" Foreground="{ThemeResource HaloText1Brush}" Glyph="&#xE710;" />
+                <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                  <TextBlock FontSize="{StaticResource HaloFontLabel}" Text="Add an addon" />
+                  <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs, streams and subtitles come from these. Order sets priority." TextWrapping="Wrap" />
+                </StackPanel>
+                <TextBox x:Name="AddonUrlBox" Grid.Column="2" Height="32" VerticalAlignment="Center" AutomationProperties.Name="Addon manifest URL" FontSize="{StaticResource HaloFontLabel}" IsSpellCheckEnabled="False" KeyDown="OnAddonUrlKeyDown" PlaceholderText="https://addon.example.com/manifest.json" Text="{x:Bind ViewModel.AddonUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="3" Height="32" Padding="18,0" VerticalAlignment="Center" Click="OnAddAddonClick" Content="{x:Bind ViewModel.AddButtonText, Mode=OneWay}" FontSize="{StaticResource HaloFontLabel}" IsEnabled="{x:Bind ViewModel.CanAddAddon, Mode=OneWay}" Style="{StaticResource HaloAccentButtonStyle}" />
+              </Grid>
+            </Border>
+            <TextBlock Margin="2,4,0,0" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.AddErrorText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.AddErrorVisibility, Mode=OneWay}" />
+            <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Assertive" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind ViewModel.ListErrorText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind ViewModel.ListErrorVisibility, Mode=OneWay}" />
+            <InfoBar x:Name="AddonNotice" Margin="0,4,0,0" IsOpen="True" Severity="Informational" Title="Addon" Message="{x:Bind ViewModel.AddonNoticeText, Mode=OneWay}" Visibility="{x:Bind ViewModel.AddonNoticeVisibility, Mode=OneWay}" />
+            <StackPanel Margin="0,16,0,0" HorizontalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.AddonLoadingVisibility, Mode=OneWay}"><ProgressRing Width="32" Height="32" HorizontalAlignment="Center" IsActive="True" /><TextBlock FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText1Brush}" Text="Refreshing addons…" /></StackPanel>
+            <StackPanel Margin="0,16,0,0" HorizontalAlignment="Center" Spacing="8" Visibility="{x:Bind ViewModel.AddonErrorVisibility, Mode=OneWay}"><TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCriticalBrush}" Text="Addons could not be refreshed." /><Button HorizontalAlignment="Center" Click="OnRetrySettingsClick" Content="Retry" FontSize="{StaticResource HaloFontLabel}" /></StackPanel>
+            <TextBlock Margin="0,16,0,0" HorizontalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText3Brush}" Text="No addons are installed for this account." Visibility="{x:Bind ViewModel.AddonEmptyVisibility, Mode=OneWay}" />
+            <!--
+              The global and the personal list are two lists because a row only ever
+              moves within its own list: the server keeps them apart and resolves them
+              in that order. Each list reorders natively by drag, and its row menu (the
+              context menu key or Shift+F10 on a row) moves a row up or down.
+            -->
+            <StackPanel Visibility="{x:Bind ViewModel.AddonContentVisibility, Mode=OneWay}">
+              <Grid Margin="2,16,2,8" Visibility="{x:Bind ViewModel.GlobalAddonsVisibility, Mode=OneWay}">
+                <TextBlock Style="{StaticResource SettingsListHeaderStyle}" Text="For everyone" />
+                <TextBlock HorizontalAlignment="Right" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs on Home" />
+              </Grid>
+              <ListView
+                x:Name="GlobalAddonList"
+                AllowDrop="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
+                AutomationProperties.Name="Addons for everyone"
+                CanDragItems="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
+                CanReorderItems="{x:Bind ViewModel.CanReorderGlobal, Mode=OneWay}"
+                ContextRequested="OnAddonRowContextRequested"
+                DragItemsCompleted="OnAddonDragCompleted"
+                DragItemsStarting="OnAddonDragStarting"
+                IsItemClickEnabled="False"
+                ItemContainerStyle="{StaticResource SettingsAddonItemStyle}"
+                ItemTemplate="{StaticResource SettingsAddonRowTemplate}"
+                ItemsSource="{x:Bind ViewModel.GlobalAddons}"
+                ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                ScrollViewer.VerticalScrollMode="Disabled"
+                SelectionMode="None"
+                Visibility="{x:Bind ViewModel.GlobalAddonsVisibility, Mode=OneWay}" />
+              <Grid Margin="2,16,2,8" Visibility="{x:Bind ViewModel.OwnAddonsVisibility, Mode=OneWay}">
+                <TextBlock Style="{StaticResource SettingsListHeaderStyle}" Text="Yours" />
+                <TextBlock HorizontalAlignment="Right" FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Catalogs on Home" />
+              </Grid>
+              <ListView
+                x:Name="OwnAddonList"
+                AllowDrop="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
+                AutomationProperties.Name="Your addons"
+                CanDragItems="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
+                CanReorderItems="{x:Bind ViewModel.CanReorderOwn, Mode=OneWay}"
+                ContextRequested="OnAddonRowContextRequested"
+                DragItemsCompleted="OnAddonDragCompleted"
+                DragItemsStarting="OnAddonDragStarting"
+                IsItemClickEnabled="False"
+                ItemContainerStyle="{StaticResource SettingsAddonItemStyle}"
+                ItemTemplate="{StaticResource SettingsAddonRowTemplate}"
+                ItemsSource="{x:Bind ViewModel.OwnAddons}"
+                ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                ScrollViewer.VerticalScrollMode="Disabled"
+                SelectionMode="None"
+                Visibility="{x:Bind ViewModel.OwnAddonsVisibility, Mode=OneWay}" />
+            </StackPanel>
+            <!-- Offered only when an installed catalog is a language row (TMDB's "Language"). -->
+            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.CatalogLanguageVisibility, Mode=OneWay}">
+              <TextBlock Margin="2,12,2,4" Style="{StaticResource SettingsListHeaderStyle}" Text="Home" />
+              <Border Style="{StaticResource SettingsCardStyle}">
+                <local:SettingRow Glyph="&#xE774;" Label="Language rows" Hint="Rows such as TMDB's Language row show titles in this language"><local:SettingRow.SettingContent><ComboBox MinWidth="168" AutomationProperties.Name="Language rows on Home" FontSize="{StaticResource HaloFontLabel}" ItemsSource="{x:Bind ViewModel.CatalogLanguageOptions}" SelectedIndex="{x:Bind ViewModel.CatalogLanguageIndex, Mode=TwoWay}" /></local:SettingRow.SettingContent></local:SettingRow>
+              </Border>
+            </StackPanel>
+          </StackPanel>
+
+          <!--
+            About closes the page rather than sitting under the rail. The licence
+            wording tracks this repository's LICENSE and licenses/TERMS.txt, which are
+            source available.
+          -->
+          <Border Style="{StaticResource SettingsCardStyle}">
+            <Grid MinHeight="42" Padding="16,12" ColumnSpacing="16">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+              <local:HaloMark VerticalAlignment="Center" Size="20" />
+              <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                <TextBlock FontSize="{StaticResource HaloFontLabel}" Text="Halo Desktop" />
+                <TextBlock FontFamily="{StaticResource HaloMonoFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="{x:Bind ViewModel.VersionLine, Mode=OneWay}" TextWrapping="Wrap" />
+                <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="© 2026 Last Projects &amp; Shy · Source-available license" TextWrapping="Wrap" />
+              </StackPanel>
+              <Button Grid.Column="2" Height="32" Padding="14,0" VerticalAlignment="Center" Click="OnCheckForUpdatesClick" Content="Check for updates" FontSize="{StaticResource HaloFontLabel}" ToolTipService.ToolTip="Opens the releases page on GitHub" />
+            </Grid>
+          </Border>
         </StackPanel>
       </ScrollView>
     </Grid>
