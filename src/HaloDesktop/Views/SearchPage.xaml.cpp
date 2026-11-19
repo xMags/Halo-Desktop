@@ -315,6 +315,7 @@ namespace winrt::HaloDesktop::implementation
         if (!metrics) return;
         auto const current = metrics->Current();
         PageBody().Padding({ current.Gutter, 0.0, current.Gutter, 40.0 });
+        PageTitle().Margin({ current.Gutter, 28.0, current.Gutter, 10.0 });
         for (auto const& layout : { PopularLayout(), LibraryLayout(), ResultsLayout() })
         {
             if (!layout) continue;

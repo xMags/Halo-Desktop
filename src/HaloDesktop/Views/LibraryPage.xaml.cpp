@@ -67,9 +67,16 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.Retry();
         UpdateSkeletonPulse();
     }
-    void LibraryPage::OnAllFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
-    void LibraryPage::OnMoviesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
-    void LibraryPage::OnSeriesFilterClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
+    // The tabs in the view model's order: All, Movies, Series.
+    void LibraryPage::OnFilterSelectionChanged(
+        Microsoft::UI::Xaml::Controls::SelectorBar const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&)
+    {
+        auto const selected = sender.SelectedItem();
+        if (selected == AllFilterItem()) m_viewModel.SetFilter(0);
+        else if (selected == MoviesFilterItem()) m_viewModel.SetFilter(1);
+        else if (selected == SeriesFilterItem()) m_viewModel.SetFilter(2);
+    }
     void LibraryPage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
     void LibraryPage::OnSortClick(
         winrt::Windows::Foundation::IInspectable const& sender,
@@ -91,8 +98,7 @@ namespace winrt::HaloDesktop::implementation
         if (!metrics) return;
         auto const current = metrics->Current();
         auto const gutter = current.Gutter;
-        Header().ContentPadding({ gutter, 12.0, gutter, 12.0 });
-        LibraryBar().Margin({ gutter, 0.0, gutter, 0.0 });
+        LibraryHeader().Padding({ gutter, 28.0, gutter, 4.0 });
         for (auto const& note : { ErrorNote().as<Microsoft::UI::Xaml::FrameworkElement>(), EmptyNote().as<Microsoft::UI::Xaml::FrameworkElement>(), FilteredEmptyNote().as<Microsoft::UI::Xaml::FrameworkElement>() })
         {
             note.Margin({ gutter, 14.0, gutter, 14.0 });

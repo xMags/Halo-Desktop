@@ -34,7 +34,16 @@
   </Page.Resources>
   <Grid>
     <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-    <local:SectionHeader Title="Search" />
+    <!-- The title as Downloads, History and Library draw theirs; the sides
+         follow the page's gutter, as the box under it does. -->
+    <TextBlock
+      x:Name="PageTitle"
+      Margin="24,28,24,10"
+      FontFamily="Segoe UI Variable Display"
+      FontSize="28"
+      FontWeight="SemiBold"
+      Foreground="{ThemeResource HaloText1Brush}"
+      Text="Search" />
     <ScrollViewer
       Grid.Row="1"
       HorizontalScrollBarVisibility="Disabled"

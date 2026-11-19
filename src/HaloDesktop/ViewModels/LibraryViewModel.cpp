@@ -74,9 +74,9 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable LibraryViewModel::Items() const { return m_items; }
     std::int32_t LibraryViewModel::FilterIndex() const noexcept { return m_filterIndex; }
     std::int32_t LibraryViewModel::SortIndex() const noexcept { return m_sortIndex; }
-    winrt::hstring LibraryViewModel::AllLabel() const { return L"All " + winrt::to_hstring(m_sourceItems.size()); }
-    winrt::hstring LibraryViewModel::MoviesLabel() const { return L"Movies " + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return IsType(i, L"movie");})); }
-    winrt::hstring LibraryViewModel::SeriesLabel() const { return L"Series " + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return IsType(i, L"series");})); }
+    winrt::hstring LibraryViewModel::AllLabel() const { return L"All (" + winrt::to_hstring(m_sourceItems.size()) + L")"; }
+    winrt::hstring LibraryViewModel::MoviesLabel() const { return L"Movies (" + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return IsType(i, L"movie");})) + L")"; }
+    winrt::hstring LibraryViewModel::SeriesLabel() const { return L"Series (" + winrt::to_hstring(std::count_if(m_sourceItems.begin(),m_sourceItems.end(),[](auto const&i){return IsType(i, L"series");})) + L")"; }
     Microsoft::UI::Xaml::Visibility LibraryViewModel::ContentVisibility() const noexcept { return !m_loading&&!m_error&&m_items.Size()>0?Visible:Collapsed; }
     Microsoft::UI::Xaml::Visibility LibraryViewModel::LoadingVisibility() const noexcept { return m_loading?Visible:Collapsed; }
     Microsoft::UI::Xaml::Visibility LibraryViewModel::SkeletonVisibility() const noexcept { return m_loading?Visible:Collapsed; }
