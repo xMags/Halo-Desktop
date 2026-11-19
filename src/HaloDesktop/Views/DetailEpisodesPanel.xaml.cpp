@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/DetailEpisodesPanel.xaml.h"
+#include "Controls/ContentEntrance.h"
 #if __has_include("DetailEpisodesPanel.g.cpp")
 #include "DetailEpisodesPanel.g.cpp"
 #endif
@@ -12,12 +13,15 @@ namespace winrt::HaloDesktop::implementation
     {
         if (!m_viewModel) return;
         m_viewModel.SelectSeason(sender.as<Microsoft::UI::Xaml::Controls::ComboBox>().SelectedIndex());
+        // The new season's episodes settle in rather than replacing the last in one frame.
+        ::HaloDesktop::Controls::PlayContentEntrance(EpisodeList());
     }
 
     void DetailEpisodesPanel::OnPageChanged(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Controls::SelectionChangedEventArgs const&)
     {
         if (!m_viewModel) return;
         m_viewModel.SelectPage(sender.as<Microsoft::UI::Xaml::Controls::ComboBox>().SelectedIndex());
+        ::HaloDesktop::Controls::PlayContentEntrance(EpisodeList());
     }
 
     void DetailEpisodesPanel::OnEpisodeClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&)

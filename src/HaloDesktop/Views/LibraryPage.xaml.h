@@ -35,6 +35,8 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t m_metricsToken{};
         bool m_listBound{};
         bool m_onScreen{};
+        // Whether the grid was last seen shown, so it fades in as it takes over from its placeholders.
+        bool m_gridShown{};
     };
 }
 

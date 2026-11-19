@@ -77,6 +77,8 @@ namespace winrt::HaloDesktop::implementation
         std::unique_ptr<::HaloDesktop::Controls::WholeCardStrip> m_continueFit;
         bool m_listsBound{};
         bool m_onScreen{};
+        // Whether the page was last seen shown, so it fades in as it takes over from its placeholders.
+        bool m_contentShown{};
         // Last, so both are revoked before the presenter and the view model go.
         Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChanged;
         Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChanged;

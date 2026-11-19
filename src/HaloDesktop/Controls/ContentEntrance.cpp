@@ -84,4 +84,12 @@ namespace HaloDesktop::Controls
             element.Opacity(1.0);
         }
     }
+
+    void PlayEntranceWhenShown(winrt::Microsoft::UI::Xaml::UIElement const& element, bool& wasShown)
+    {
+        if (!element) return;
+        auto const shown = element.Visibility() == winrt::Microsoft::UI::Xaml::Visibility::Visible;
+        if (shown && !wasShown) PlayContentEntrance(element);
+        wasShown = shown;
+    }
 }

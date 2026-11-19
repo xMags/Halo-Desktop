@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/HomePage.xaml.h"
+#include "Controls/ContentEntrance.h"
 #if __has_include("HomePage.g.cpp")
 #include "HomePage.g.cpp"
 #endif
@@ -120,6 +121,7 @@ namespace winrt::HaloDesktop::implementation
                 self->SyncHero();
             }
             self->UpdateSkeletonPulse();
+            ::HaloDesktop::Controls::PlayEntranceWhenShown(self->PageScroller(), self->m_contentShown);
         });
         m_themeChanged = ActualThemeChanged(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
         {

@@ -42,6 +42,7 @@
         </StackPanel>
       </Grid>
       <ItemsControl
+        x:Name="EpisodeList"
         Margin="0,14,0,0"
         IsTabStop="False"
         ItemsSource="{x:Bind ViewModel.Episodes, Mode=OneWay}">

@@ -62,7 +62,10 @@ namespace winrt::HaloDesktop::implementation
             winrt::Windows::Foundation::IInspectable const&,
             Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const&)
         {
-            if (auto const self = weak.get()) self->UpdateSkeletonPulse();
+            auto const self = weak.get();
+            if (!self) return;
+            self->UpdateSkeletonPulse();
+            ::HaloDesktop::Controls::PlayEntranceWhenShown(self->LibraryGrid(), self->m_gridShown);
         });
         m_onScreen = true;
         m_viewModel.Retry();

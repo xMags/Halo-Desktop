@@ -63,6 +63,9 @@ namespace winrt::HaloDesktop::implementation
         std::uint64_t m_metricsToken{};
         bool m_listsBound{};
         bool m_onScreen{};
+        // What was last seen, so content fades in as it takes over from its placeholders.
+        bool m_popularShown{};
+        bool m_resultsLoading{};
         bool m_focusQueryOnLoaded{ true };
     };
 }

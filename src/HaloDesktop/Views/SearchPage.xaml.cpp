@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/SearchPage.xaml.h"
+#include "Controls/ContentEntrance.h"
 #if __has_include("SearchPage.g.cpp")
 #include "SearchPage.g.cpp"
 #endif
@@ -130,6 +131,12 @@ namespace winrt::HaloDesktop::implementation
                 self->ApplyKindBadges(self->ResultsGrid());
             }
             self->UpdateSkeletonPulse();
+            ::HaloDesktop::Controls::PlayEntranceWhenShown(self->PopularGrid(), self->m_popularShown);
+            // A query's results settle in when they arrive, which is when its
+            // placeholders go, never on each keystroke.
+            auto const loading = self->ResultsSkeleton().Visibility() == Microsoft::UI::Xaml::Visibility::Visible;
+            if (self->m_resultsLoading && !loading) ::HaloDesktop::Controls::PlayContentEntrance(self->ResultsGrid());
+            self->m_resultsLoading = loading;
         });
         m_onScreen = true;
         m_viewModel.Shown();

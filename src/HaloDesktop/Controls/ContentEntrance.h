@@ -15,4 +15,10 @@ namespace HaloDesktop::Controls
     // the beginning. Does nothing while Windows' animation effects are off, and a
     // refusal from XAML leaves the element fully shown.
     void PlayContentEntrance(winrt::Microsoft::UI::Xaml::UIElement const& element);
+
+    // Plays the entrance when `element` has turned visible since the last call
+    // (`wasShown` remembers, and is updated): content taking over from its
+    // loading placeholders fades in rather than replacing them in one frame.
+    // Call it after the bindings have updated, from a property-change handler.
+    void PlayEntranceWhenShown(winrt::Microsoft::UI::Xaml::UIElement const& element, bool& wasShown);
 }
