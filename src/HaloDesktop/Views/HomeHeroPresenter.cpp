@@ -341,10 +341,69 @@ namespace HaloDesktop::Views
         UpdatePlaceholder();
 
         // The text arrives with its picture rather than ahead of it.
-        if (m_bodyVisual && AnimationsEnabled())
+        RevealBody();
+    }
+
+    void HomeHeroPresenter::RevealBody()
+    {
+        if (!m_bodyVisual) return;
+        auto const item = m_active >= 0 && static_cast<std::size_t>(m_active) < m_items.size()
+            ? m_items[static_cast<std::size_t>(m_active)]
+            : winrt::HaloDesktop::FeaturedItem{ nullptr };
+        auto const waiting = item && m_pendingLogos.contains(std::wstring{ item.Logo() });
+        if (!waiting)
+        {
+            ShowBody();
+            return;
+        }
+        // Held out of sight, so the name never shows only to be swapped for
+        // the logo a moment later.
+        m_bodyHeld = true;
+        m_bodyVisual.StopAnimation(L"Opacity");
+        m_bodyVisual.Opacity(0.0F);
+        try
+        {
+            if (!m_logoWait)
+            {
+                auto const queue = m_parts.Root.DispatcherQueue();
+                if (!queue)
+                {
+                    ShowBody();
+                    return;
+                }
+                m_logoWait = queue.CreateTimer();
+                m_logoWait.IsRepeating(false);
+                m_logoWait.Interval(ToTimeSpan(HeroLogoWait));
+                m_logoWait.Tick([alive = std::weak_ptr<bool>{ m_alive }, this](auto const&, auto const&)
+                {
+                    if (!alive.expired() && m_bodyHeld) ShowBody();
+                });
+            }
+            m_logoWait.Stop();
+            m_logoWait.Start();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            ShowBody();
+        }
+    }
+
+    void HomeHeroPresenter::ShowBody()
+    {
+        m_bodyHeld = false;
+        if (m_logoWait)
+        {
+            try { m_logoWait.Stop(); } catch (winrt::hresult_error const&) {}
+        }
+        if (!m_bodyVisual) return;
+        if (AnimationsEnabled())
         {
             m_bodyVisual.StartAnimation(L"Opacity", m_bodyFade);
             m_bodyVisual.StartAnimation(L"Translation.Y", m_bodyRise);
+        }
+        else
+        {
+            m_bodyVisual.Opacity(1.0F);
         }
     }
 
@@ -494,6 +553,12 @@ namespace HaloDesktop::Views
             m_failedLogos.insert(url);
         }
         UpdateTitleTreatment();
+        // The text was waiting for this logo: it comes in with it now.
+        if (m_bodyHeld && m_active >= 0 && static_cast<std::size_t>(m_active) < m_items.size()
+            && std::wstring{ m_items[static_cast<std::size_t>(m_active)].Logo() } == url)
+        {
+            ShowBody();
+        }
     }
 
     // The title's logo once it has loaded, drawn as ChooseHeroLogoTreatment

@@ -12,6 +12,7 @@
 #include <vector>
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Composition.h>
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
@@ -33,6 +34,10 @@ namespace HaloDesktop::Views
     inline constexpr std::size_t HeroPipCount = 5;
     // `.pip` widening into `.pip-active`: `transition: width 0.3s ease`.
     inline constexpr std::chrono::milliseconds HeroPipResize{ 300 };
+    // The longest a title's text waits for its logo before it comes in with
+    // the name: long enough for a logo already on its way, short enough that
+    // a slow one never leaves the hero bare.
+    inline constexpr std::chrono::milliseconds HeroLogoWait{ 600 };
 
     // The hero's elements, all from HomePage.xaml.
     struct HomeHeroParts final
@@ -123,6 +128,10 @@ namespace HaloDesktop::Views
         void UpdateTitleTreatment();
         [[nodiscard]] winrt::Microsoft::UI::Xaml::Media::ImageSource InkedLogo(LoadedHeroLogo& logo);
         void UpdatePlaceholder();
+        // Brings the text in: at once, or after the active title's logo, when
+        // that is still loading (HeroLogoWait at most).
+        void RevealBody();
+        void ShowBody();
         void RestartClock();
         void StopClock();
         void LoadFadeMask();
@@ -179,6 +188,9 @@ namespace HaloDesktop::Views
         // Held only by this presenter: a load that finishes after it has gone
         // finds this expired and touches nothing.
         std::shared_ptr<bool> m_alive{ std::make_shared<bool>(true) };
+        // The text is held back for the active title's logo.
+        bool m_bodyHeld{};
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_logoWait{ nullptr };
         std::wstring m_shownLogo;
         // Whether the logo on screen is the inked copy rather than the original.
         bool m_shownInked{};
