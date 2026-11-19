@@ -40,10 +40,18 @@ namespace HaloDesktop::Services
             if (a.Tier != b.Tier) return a.Tier < b.Tier;
             return a.Person->Popularity > b.Person->Popularity;
         });
+        // Beside someone with a photo, a namesake without one is nobody the
+        // typist meant; with no photo anywhere, everyone stays.
+        auto const hasPhoto = [](Candidate const& candidate)
+        {
+            return candidate.Person->Photo.has_value() && !candidate.Person->Photo->empty();
+        };
+        auto const anyPhoto = std::any_of(candidates.begin(), candidates.end(), hasPhoto);
         std::vector<Api::Dto::PersonSummary> row;
         for (auto const& candidate : candidates)
         {
             if (row.size() == PeopleRowLimit) break;
+            if (anyPhoto && !hasPhoto(candidate)) continue;
             row.push_back(*candidate.Person);
         }
         return row;

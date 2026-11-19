@@ -261,6 +261,14 @@ namespace
             "someone not named by the query reached the people row");
         Require(Services::ChoosePeopleRow({}, L"dune", std::nullopt).empty(), "nobody made a people row");
 
+        // Beside someone with a photo, namesakes without one are left out.
+        auto pictured = Person(7, L"Denis Villeneuve", 5.0);
+        pictured.Photo = L"https://image.tmdb.org/t/p/w185/denis.jpg";
+        auto withPictured = people;
+        withPictured.push_back(pictured);
+        auto const photoRow = Services::ChoosePeopleRow(withPictured, L"denis villeneuve", std::nullopt);
+        Require(photoRow.size() == 1 && photoRow[0].TmdbId == 7, "a namesake without a photo stayed beside one with a photo");
+
         std::vector<Services::SearchTitle> titles(2);
         titles[0].Name = L"Dune: Part Two";
         titles[1].Name = L"Dune";

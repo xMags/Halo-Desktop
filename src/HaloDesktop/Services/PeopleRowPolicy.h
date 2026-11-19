@@ -22,7 +22,8 @@ namespace HaloDesktop::Services
     // (NameRelevance 0 to 3, so a surname alone finds its people), best named
     // first, then most popular. When a title is named exactly what was typed,
     // only people named exactly that stay: "dune" finds the film, not
-    // someone called Dune Smith.
+    // someone called Dune Smith. When anyone admitted has a photo, those
+    // without one are left out.
     [[nodiscard]] std::vector<Api::Dto::PersonSummary> ChoosePeopleRow(
         std::span<Api::Dto::PersonSummary const> people,
         std::wstring_view query,
