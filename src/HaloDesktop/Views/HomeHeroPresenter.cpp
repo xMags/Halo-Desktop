@@ -4,8 +4,11 @@
 #include "Views/HeroLogoPolicy.h"
 
 
+#include <algorithm>
 #include <cstdint>
 #include <optional>
+#include <vector>
+#include <winrt/Windows.Storage.Streams.h>
 #include <pplawait.h>
 #include <stdexcept>
 #include <utility>
@@ -493,9 +496,41 @@ namespace HaloDesktop::Views
         UpdateTitleTreatment();
     }
 
-    // The logo art when the title has one, it has loaded and it reads over the
-    // hero (HeroLogoReadable), else the name. Logos are drawn for dark
-    // backdrops, so in the light theme a mostly white one keeps the name.
+    // The title's logo once it has loaded, drawn as ChooseHeroLogoTreatment
+    // says: as drawn, inked in the name's colour (a light mark on the light
+    // theme's pale ground), or not at all, when the name shows instead.
+    // The logo's shape in the ink the name is drawn in, made once per logo
+    // and ink. Empty when the logo kept no pixels or XAML refuses the bitmap.
+    winrt::Microsoft::UI::Xaml::Media::ImageSource HomeHeroPresenter::InkedLogo(LoadedHeroLogo& logo)
+    {
+        if (logo.Pixels.empty() || logo.PixelWidth == 0 || logo.PixelHeight == 0) return nullptr;
+        auto const text = m_parts.TitleText.try_as<winrt::Microsoft::UI::Xaml::Controls::TextBlock>();
+        auto const brush = text ? text.Foreground().try_as<winrt::Microsoft::UI::Xaml::Media::SolidColorBrush>() : nullptr;
+        if (!brush) return nullptr;
+        auto const ink = brush.Color();
+        if (logo.Inked && logo.InkColor == ink) return logo.Inked;
+        try
+        {
+            std::vector<std::uint8_t> pixels = logo.Pixels;
+            ::HaloDesktop::Views::InkHeroLogo(pixels, ink.R, ink.G, ink.B);
+            winrt::Microsoft::UI::Xaml::Media::Imaging::WriteableBitmap bitmap{
+                static_cast<std::int32_t>(logo.PixelWidth),
+                static_cast<std::int32_t>(logo.PixelHeight) };
+            auto const buffer = bitmap.PixelBuffer();
+            if (buffer.Capacity() < pixels.size()) return nullptr;
+            std::copy(pixels.begin(), pixels.end(), buffer.data());
+            buffer.Length(static_cast<std::uint32_t>(pixels.size()));
+            bitmap.Invalidate();
+            logo.Inked = bitmap;
+            logo.InkColor = ink;
+            return bitmap;
+        }
+        catch (winrt::hresult_error const&)
+        {
+            return nullptr;
+        }
+    }
+
     void HomeHeroPresenter::UpdateTitleTreatment()
     {
         auto const item = m_active >= 0 && static_cast<std::size_t>(m_active) < m_items.size()
@@ -504,17 +539,37 @@ namespace HaloDesktop::Views
         std::wstring const url = item ? std::wstring{ item.Logo() } : std::wstring{};
         auto const light = m_parts.Root.ActualTheme() == winrt::Microsoft::UI::Xaml::ElementTheme::Light;
         auto const ready = url.empty() || m_failedLogos.contains(url) ? m_logos.end() : m_logos.find(url);
-        auto const showLogo = ready != m_logos.end()
-            && ::HaloDesktop::Views::HeroLogoReadable(ready->second.Luminance, light);
-        if (showLogo && url != m_shownLogo)
+        auto treatment = ready == m_logos.end()
+            ? ::HaloDesktop::Views::HeroLogoTreatment::Name
+            : ::HaloDesktop::Views::ChooseHeroLogoTreatment(ready->second.Luminance, ready->second.Coverage, light);
+        winrt::Microsoft::UI::Xaml::Media::ImageSource source{ nullptr };
+        if (treatment == ::HaloDesktop::Views::HeroLogoTreatment::Original)
+        {
+            source = ready->second.Image;
+        }
+        else if (treatment == ::HaloDesktop::Views::HeroLogoTreatment::Inked)
+        {
+            source = InkedLogo(ready->second);
+            if (!source) treatment = ::HaloDesktop::Views::HeroLogoTreatment::Name;
+        }
+        auto const showLogo = treatment != ::HaloDesktop::Views::HeroLogoTreatment::Name;
+        auto const inked = treatment == ::HaloDesktop::Views::HeroLogoTreatment::Inked;
+        if (showLogo && (url != m_shownLogo || inked != m_shownInked))
         {
             m_shownLogo = url;
-            m_parts.Logo.Source(ready->second.Image);
+            m_shownInked = inked;
+            m_parts.Logo.Source(source);
+            // An inked copy raises no ImageOpened of its own.
+            if (m_logoDropShadow) m_logoDropShadow.Mask(m_parts.Logo.GetAlphaMask());
         }
         if (!showLogo)
         {
             m_shownLogo.clear();
+            m_shownInked = false;
         }
+        // The drop shadow lifts a logo off a dark backdrop; on the light
+        // theme's pale ground it would only smudge the logo's edges.
+        if (m_logoShadow) m_logoShadow.Opacity(light ? 0.0F : 1.0F);
         m_parts.LogoFrame.Visibility(showLogo
             ? winrt::Microsoft::UI::Xaml::Visibility::Visible
             : winrt::Microsoft::UI::Xaml::Visibility::Collapsed);

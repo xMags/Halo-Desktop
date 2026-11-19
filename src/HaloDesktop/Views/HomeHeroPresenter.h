@@ -121,6 +121,7 @@ namespace HaloDesktop::Views
         void PreloadLogos(std::vector<winrt::HaloDesktop::FeaturedItem> const& items);
         winrt::fire_and_forget PreloadLogo(std::wstring url, std::uint64_t generation);
         void UpdateTitleTreatment();
+        [[nodiscard]] winrt::Microsoft::UI::Xaml::Media::ImageSource InkedLogo(LoadedHeroLogo& logo);
         void UpdatePlaceholder();
         void RestartClock();
         void StopClock();
@@ -179,6 +180,8 @@ namespace HaloDesktop::Views
         // finds this expired and touches nothing.
         std::shared_ptr<bool> m_alive{ std::make_shared<bool>(true) };
         std::wstring m_shownLogo;
+        // Whether the logo on screen is the inked copy rather than the original.
+        bool m_shownInked{};
         std::array<winrt::hstring, HeroPipCount> m_pipTitles;
         std::int32_t m_active{ -1 };
         bool m_autoAdvance{ true };

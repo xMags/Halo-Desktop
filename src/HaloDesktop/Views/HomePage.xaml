@@ -215,8 +215,11 @@
           <!-- Clamped because the hero is a fixed height and the synopsis is
                the addon's description verbatim: an overview that runs long
                used to push the action buttons out through the clip. -->
+          <!-- Left-aligned: capped narrower than the column, a stretched block
+               would sit centred in it, out of line with the title above. -->
           <TextBlock
             MaxWidth="520"
+            HorizontalAlignment="Left"
             MaxLines="3"
             Style="{StaticResource HaloBody}"
             Text="{x:Bind ViewModel.CurrentFeatured.Synopsis, Mode=OneWay}"

@@ -57,25 +57,42 @@ namespace HaloDesktop::Views
             auto const height = decoder.PixelHeight();
             if (width > 0 && height > 0)
             {
-                winrt::Windows::Graphics::Imaging::BitmapTransform transform;
-                auto const sampleWidth = (std::min)(width, HeroLogoSampleWidth);
-                auto const sampleHeight = (std::max)(1u, static_cast<std::uint32_t>(
-                    static_cast<std::uint64_t>(height) * sampleWidth / width));
-                transform.ScaledWidth(sampleWidth);
-                transform.ScaledHeight(sampleHeight);
-                auto const pixels = co_await decoder.GetPixelDataAsync(
-                    winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
-                    winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Straight,
-                    transform,
-                    winrt::Windows::Graphics::Imaging::ExifOrientationMode::IgnoreExifOrientation,
-                    winrt::Windows::Graphics::Imaging::ColorManagementMode::DoNotColorManage);
-                auto const data = pixels.DetachPixelData();
-                loaded.Luminance = HeroLogoLuminance(std::span<std::uint8_t const>{ data.data(), data.size() });
+                auto const decodeAt = [&decoder, width, height](std::uint32_t limit)
+                {
+                    winrt::Windows::Graphics::Imaging::BitmapTransform transform;
+                    auto const scaledWidth = (std::min)(width, limit);
+                    transform.ScaledWidth(scaledWidth);
+                    transform.ScaledHeight((std::max)(1u, static_cast<std::uint32_t>(
+                        static_cast<std::uint64_t>(height) * scaledWidth / width)));
+                    return decoder.GetPixelDataAsync(
+                        winrt::Windows::Graphics::Imaging::BitmapPixelFormat::Bgra8,
+                        winrt::Windows::Graphics::Imaging::BitmapAlphaMode::Straight,
+                        transform,
+                        winrt::Windows::Graphics::Imaging::ExifOrientationMode::IgnoreExifOrientation,
+                        winrt::Windows::Graphics::Imaging::ColorManagementMode::DoNotColorManage);
+                };
+                auto const sample = (co_await decodeAt(HeroLogoSampleWidth)).DetachPixelData();
+                std::span<std::uint8_t const> const sampled{ sample.data(), sample.size() };
+                loaded.Luminance = HeroLogoLuminance(sampled);
+                loaded.Coverage = HeroLogoCoverage(sampled);
+
+                auto const inkWidth = (std::min)(width, HeroLogoInkWidth);
+                auto const inkHeight = (std::max)(1u, static_cast<std::uint32_t>(
+                    static_cast<std::uint64_t>(height) * inkWidth / width));
+                auto const full = (co_await decodeAt(HeroLogoInkWidth)).DetachPixelData();
+                if (full.size() == static_cast<std::size_t>(inkWidth) * inkHeight * 4u)
+                {
+                    loaded.Pixels.assign(full.begin(), full.end());
+                    loaded.PixelWidth = inkWidth;
+                    loaded.PixelHeight = inkHeight;
+                }
             }
         }
         catch (winrt::hresult_error const&)
         {
             loaded.Luminance.reset();
+            loaded.Coverage.reset();
+            loaded.Pixels.clear();
         }
 
         co_await uiContext;

@@ -455,8 +455,11 @@ namespace
     // theme only when dark enough to read over the pale side.
     void TestHeroLogo()
     {
+        using HaloDesktop::Views::ChooseHeroLogoTreatment;
+        using HaloDesktop::Views::HeroLogoCoverage;
         using HaloDesktop::Views::HeroLogoLuminance;
-        using HaloDesktop::Views::HeroLogoReadable;
+        using HaloDesktop::Views::HeroLogoTreatment;
+        using HaloDesktop::Views::InkHeroLogo;
         using HaloDesktop::Views::IsHeroLogoUrl;
         Require(IsHeroLogoUrl(L"https://images.example.test/logo.png") && IsHeroLogoUrl(L"HTTPS://a.test/x"),
             "an https logo address was refused");
@@ -475,12 +478,32 @@ namespace
         Require(!HeroLogoLuminance(clear) && !HeroLogoLuminance({}) && !HeroLogoLuminance(std::vector<std::uint8_t>{ 1, 2, 3 }),
             "an invisible or broken sample was given a brightness");
 
-        Require(HeroLogoReadable(whiteLuma, false) && HeroLogoReadable(std::nullopt, false),
-            "the dark theme stopped showing every logo");
-        Require(!HeroLogoReadable(whiteLuma, true) && HeroLogoReadable(navyLuma, true),
-            "the light theme did not keep the name for a white logo, or hid a dark one");
-        Require(!HeroLogoReadable(std::nullopt, true), "the light theme showed a logo it could not judge");
-        Require(HeroLogoReadable(0.55, true) && !HeroLogoReadable(0.56, true), "the light theme's brightness limit moved");
+        auto const whiteCover = HeroLogoCoverage(white);
+        Require(whiteCover && std::abs(*whiteCover - 0.5) < 1e-9, "coverage was not the pixels' mean opacity");
+        Require(!HeroLogoCoverage({}) && !HeroLogoCoverage(std::vector<std::uint8_t>{ 1, 2 }), "a broken sample was given a coverage");
+
+        Require(ChooseHeroLogoTreatment(whiteLuma, 0.3, false) == HeroLogoTreatment::Original
+                && ChooseHeroLogoTreatment(std::nullopt, std::nullopt, false) == HeroLogoTreatment::Original,
+            "the dark theme stopped showing every logo as drawn");
+        Require(ChooseHeroLogoTreatment(navyLuma, 0.3, true) == HeroLogoTreatment::Original,
+            "the light theme did not show a dark logo as drawn");
+        Require(ChooseHeroLogoTreatment(whiteLuma, 0.3, true) == HeroLogoTreatment::Inked,
+            "the light theme did not ink a white mark");
+        Require(ChooseHeroLogoTreatment(whiteLuma, 0.95, true) == HeroLogoTreatment::Name
+                && ChooseHeroLogoTreatment(whiteLuma, 0.7, true) == HeroLogoTreatment::Inked
+                && ChooseHeroLogoTreatment(whiteLuma, std::nullopt, true) == HeroLogoTreatment::Name,
+            "the light theme inked a logo that fills its box, or one whose coverage it did not know");
+        Require(ChooseHeroLogoTreatment(std::nullopt, 0.3, true) == HeroLogoTreatment::Name,
+            "the light theme showed a logo it could not judge");
+        Require(ChooseHeroLogoTreatment(0.55, 0.3, true) == HeroLogoTreatment::Original
+                && ChooseHeroLogoTreatment(0.56, 0.3, true) == HeroLogoTreatment::Inked,
+            "the light theme's brightness limit moved");
+
+        // Half-opaque white becomes half-opaque ink, premultiplied.
+        std::vector<std::uint8_t> inked{ 255, 255, 255, 128, 10, 20, 30, 0 };
+        InkHeroLogo(inked, 14, 18, 32);
+        Require(inked == std::vector<std::uint8_t>{ 16, 9, 7, 128, 0, 0, 0, 0 },
+            "a logo was not turned into premultiplied ink with its shape kept");
     }
 
     void TestScrollRow()

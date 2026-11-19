@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
 #include <optional>
 #include <ppltasks.h>
 #include <string>
+#include <vector>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Windows.Web.Http.h>
 
@@ -13,8 +15,18 @@ namespace HaloDesktop::Views
     {
         // Already holds the picture: shown, it appears at once.
         winrt::Microsoft::UI::Xaml::Media::Imaging::BitmapImage Image{ nullptr };
-        // HeroLogoLuminance of a small sample, empty when it could not be judged.
+        // HeroLogoLuminance and HeroLogoCoverage of a small sample, empty
+        // when they could not be judged.
         std::optional<double> Luminance;
+        std::optional<double> Coverage;
+        // Straight-alpha BGRA8 at no more than HeroLogoInkWidth, for an inked
+        // copy (InkHeroLogo); empty when the logo could not be decoded so.
+        std::vector<std::uint8_t> Pixels;
+        std::uint32_t PixelWidth{};
+        std::uint32_t PixelHeight{};
+        // The inked copy, made the first time the light theme needs it.
+        winrt::Microsoft::UI::Xaml::Media::Imaging::WriteableBitmap Inked{ nullptr };
+        winrt::Windows::UI::Color InkColor{};
     };
 
     // Downloads the logo at `url` (an https address, at most

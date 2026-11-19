@@ -4,6 +4,11 @@ namespace
 {
     // Below this share of fully opaque pixels the logo is too faint to judge.
     constexpr double MinimumCoverage = 0.002;
+
+    std::uint8_t Premultiply(std::uint8_t channel, std::uint8_t alpha) noexcept
+    {
+        return static_cast<std::uint8_t>((channel * alpha + 127) / 255);
+    }
 }
 
 namespace HaloDesktop::Views
@@ -40,9 +45,37 @@ namespace HaloDesktop::Views
         return weighted / weight;
     }
 
-    bool HeroLogoReadable(std::optional<double> luminance, bool lightTheme) noexcept
+    std::optional<double> HeroLogoCoverage(std::span<std::uint8_t const> bgra) noexcept
     {
-        if (!lightTheme) return true;
-        return luminance && *luminance <= HeroLogoLightThemeMaximumLuminance;
+        if (bgra.empty() || bgra.size() % 4 != 0) return std::nullopt;
+        double opacity = 0.0;
+        for (std::size_t index = 3; index < bgra.size(); index += 4)
+        {
+            opacity += bgra[index] / 255.0;
+        }
+        return opacity / static_cast<double>(bgra.size() / 4);
+    }
+
+    HeroLogoTreatment ChooseHeroLogoTreatment(
+        std::optional<double> luminance,
+        std::optional<double> coverage,
+        bool lightTheme) noexcept
+    {
+        if (!lightTheme) return HeroLogoTreatment::Original;
+        if (!luminance) return HeroLogoTreatment::Name;
+        if (*luminance <= HeroLogoLightThemeMaximumLuminance) return HeroLogoTreatment::Original;
+        if (coverage && *coverage <= HeroLogoInkMaximumCoverage) return HeroLogoTreatment::Inked;
+        return HeroLogoTreatment::Name;
+    }
+
+    void InkHeroLogo(std::span<std::uint8_t> bgra, std::uint8_t red, std::uint8_t green, std::uint8_t blue) noexcept
+    {
+        for (std::size_t index = 0; index + 3 < bgra.size(); index += 4)
+        {
+            auto const alpha = bgra[index + 3];
+            bgra[index] = Premultiply(blue, alpha);
+            bgra[index + 1] = Premultiply(green, alpha);
+            bgra[index + 2] = Premultiply(red, alpha);
+        }
     }
 }
