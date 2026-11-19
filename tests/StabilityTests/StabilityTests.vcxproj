@@ -321,6 +321,10 @@
       <Link>DownloadAdoptionPolicy.cpp</Link>
     </ClCompile>
     <ClCompile Include="DeviceModeTests.cpp" />
+    <ClCompile Include="ShellInputTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Shell\PointerFocusPolicy.cpp">
+      <Link>PointerFocusPolicy.cpp</Link>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="DownloadTransferTest.h" />
@@ -343,6 +347,7 @@
     <ClInclude Include="AddonResolveTests.h" />
     <ClInclude Include="AddonTestFakes.h" />
     <ClInclude Include="DeviceModeTests.h" />
+    <ClInclude Include="ShellInputTests.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\..\src\HaloDesktop\Views\DownloadsPage.xaml">

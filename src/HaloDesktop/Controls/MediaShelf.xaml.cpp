@@ -9,6 +9,7 @@
 #include "Controls/PosterSkeleton.xaml.h"
 #include "Controls/SkeletonPulse.h"
 #include "Controls/ShelfScrollPolicy.h"
+#include "Controls/SidewaysWheelGuard.h"
 #include "Shell/LayoutMetricsService.h"
 #include <winrt/HaloDesktop.h>
 #include <winrt/Microsoft.UI.Input.h>
@@ -91,20 +92,11 @@ namespace winrt::HaloDesktop::implementation
     void MediaShelf::OnScrollLeft([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(-1); }
     void MediaShelf::OnScrollRight([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args) { ScrollBy(1); }
 
-    // Only sideways intent is swallowed. A plain wheel still reaches the page
-    // scroller above, so pointing at a strip does not trap the page.
     void MediaShelf::OnStripPointerWheelChanged(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        auto const point = args.GetCurrentPoint(nullptr);
-        auto const shifted =
-            (args.KeyModifiers() & winrt::Windows::System::VirtualKeyModifiers::Shift) !=
-            winrt::Windows::System::VirtualKeyModifiers::None;
-        if (point && (point.Properties().IsHorizontalMouseWheel() || shifted))
-        {
-            args.Handled(true);
-        }
+        ::HaloDesktop::Controls::GuardSidewaysWheel(args);
     }
 
     // Pages by the whole cards that fit, landing on a card boundary, so a click

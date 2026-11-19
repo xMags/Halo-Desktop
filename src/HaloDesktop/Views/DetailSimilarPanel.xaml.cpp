@@ -4,6 +4,8 @@
 #include "DetailSimilarPanel.g.cpp"
 #endif
 
+#include "Controls/SidewaysWheelGuard.h"
+
 namespace winrt::HaloDesktop::implementation
 {
     void DetailSimilarPanel::InitializeComponent()
@@ -27,6 +29,11 @@ namespace winrt::HaloDesktop::implementation
     {
         if (!m_viewModel) return;
         m_viewModel.OpenSimilar(sender.as<winrt::HaloDesktop::DetailSimilarCard>().Media());
+    }
+
+    void DetailSimilarPanel::OnStripPointerWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        ::HaloDesktop::Controls::GuardSidewaysWheel(args);
     }
 
     void DetailSimilarPanel::OnViewModelChanged(

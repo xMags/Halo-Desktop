@@ -61,7 +61,7 @@ namespace HaloDesktop::Playback
         m_stageTickRevoker=m_stageTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->StageNow();});
         m_stageTimer.Start();
         m_lastState=m_engine->State();m_seenFileSerial=m_lastState.FileSerial;m_seenEndSerial=m_lastState.EndSerial;m_reportedEndSerial=m_lastState.EndSerial;m_initialSeekSerial=m_lastState.SeekSerial;m_initialAudioSelectionSerial=m_lastState.AudioSelectionSerial;m_autoAudioSelectionSerial=m_initialAudioSelectionSerial;m_resumeDeadline=std::chrono::steady_clock::now()+std::chrono::seconds(5);m_fileReady=false;m_watchLoadFinished=false;
-        m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;
+        m_engineToken=m_engine->AddChangedHandler([weak=weak_from_this()](){if(auto self=weak.lock())self->OnEngineChanged();});m_started=true;m_stopped=false;
         RefreshPreferences();
         try{m_scrubPreview->Open(source);m_engine->Open(std::move(source));m_engine->SetPaused(false);m_presence->Update(m_engine->State());}
         catch(...){Stop();throw;}
@@ -71,6 +71,9 @@ namespace HaloDesktop::Playback
 
     concurrency::task<void> PlaybackSessionController::CloseAsync()
     {
+        // The owner may drop its reference while the final report is awaited (the
+        // player page unloads), so the close keeps this session alive itself.
+        auto lifetime=shared_from_this();
         if(m_closing)co_return;m_closing=true;++m_startVersion;
         auto const state=m_engine->State();
         if(state.EndReason==PlaybackEndReason::None||state.EndSerial!=m_reportedEndSerial)co_await ReportWithTimeoutAsync();
@@ -81,6 +84,10 @@ namespace HaloDesktop::Playback
     void PlaybackSessionController::Stop()noexcept
     {
         ++m_startVersion;m_started=false;
+        // The scrub preview and the presence are shared with whichever session
+        // runs next: a second Stop (a close that finishes after the page already
+        // stopped this session) must not close or clear that one's.
+        if(m_stopped)return;m_stopped=true;
         try{if(m_reportTimer)m_reportTimer.Stop();}catch(...){}
         m_reportTickRevoker.revoke();m_reportTimer=nullptr;
         try{if(m_stageTimer)m_stageTimer.Stop();}catch(...){}

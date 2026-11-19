@@ -31,6 +31,7 @@
 #include "SegmentPlannerTests.h"
 #include "DownloadsPageTests.h"
 #include "SettingsPageTests.h"
+#include "ShellInputTests.h"
 #include "SignInTests.h"
 #include "DeviceBackendTests.h"
 #include "DeviceModeTests.h"
@@ -387,6 +388,22 @@ namespace
             "stream": { "url": "https://mf.test/delete_all_watchlist", "name": "Next" }
         })"));
         Require(next.Video && !next.Stream, "an action stream was kept as the next episode's source");
+
+        // A stream's title and description keep their lines, so a stream that
+        // names no file is named by the first line, not by the whole title.
+        auto const lined = HaloDesktop::Api::Mappers::ParseStreams(Json(LR"({
+            "results": [ { "addon": { "id": "a", "name": "A" }, "streams": [
+                { "url": "https://cdn.test/one.mkv", "name": "Torrent\nio",
+                  "title": "Film.2019.1080p.WEB-DL.mkv\r\n⚙ Group\r\u0007 4.2 GB" } ] } ],
+            "errors": []
+        })"));
+        Require(lined.Results.size() == 1 && lined.Results.front().Streams.size() == 1, "a stream with a lined title was dropped");
+        auto const& linedStream = lined.Results.front().Streams.front();
+        Require(linedStream.Title == winrt::hstring{ L"Film.2019.1080p.WEB-DL.mkv\n\x2699 Group\n  4.2 GB" },
+            "a stream title lost its line breaks, or kept another control character");
+        Require(linedStream.Name == winrt::hstring{ L"Torrent io" }, "a stream name kept a line break");
+        auto const linedInfo = HaloDesktop::Services::ParseStreamInfo(linedStream);
+        Require(linedInfo.Filename == L"Film.2019.1080p.WEB-DL.mkv", "a stream without a file name was not named by its title's first line");
 
         // requestHeaders.test.ts at the mapper boundary: each unusable header is
         // dropped on its own, so the stream keeps the rest and still plays.
@@ -1584,6 +1601,7 @@ int main()
         RunCallQueueTests();
         RunDownloadsPageTests();
         RunSettingsPageTests();
+        RunShellInputTests();
         RunSignInTests();
         TestEpisodePositionParsing();
         TestDownloadPageOperationLifetime();

@@ -12,11 +12,14 @@
 #include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
+#include "Shell/PointerFocusPolicy.h"
 #include "Views/AccountPictureDecoder.h"
 #include "Views/PageDialog.h"
 
 #include <algorithm>
 #include <array>
+#include <chrono>
+#include <cstddef>
 #include <limits>
 #include <string_view>
 #include <winrt/Microsoft.UI.Input.h>
@@ -85,10 +88,14 @@ namespace winrt::HaloDesktop::implementation
 
         // XAML settles pointer focus after the press has finished bubbling, and when
         // the press landed on something that cannot hold focus it settles on the
-        // first tab stop in the page. On Home that is the header search box, so a
-        // click on empty background put a caret there and dragged the scroll up to
-        // show it. Nothing can undo that afterwards, because anything this shell does
-        // during the press is what gets overridden, so the move is refused instead.
+        // first tab stop in the page. On a page whose first tab stop is a text box
+        // (Home's header search, Search, History, Settings) a click on empty
+        // background put a caret there and dragged the scroll up to show it.
+        // Nothing can undo that afterwards, because anything this shell does during
+        // the press is what gets overridden, so the move is refused instead.
+        // The rule must stay free of page and control names and of any type beyond
+        // "is a text input" (PointerFocusPolicy): it once named only Home's box, and
+        // every page rebuilt with another box brought the stuck caret back.
         m_gettingFocusToken = Microsoft::UI::Xaml::Input::FocusManager::GettingFocus(
             [weak = get_weak()](
                 winrt::Windows::Foundation::IInspectable const&,
@@ -104,7 +111,28 @@ namespace winrt::HaloDesktop::implementation
                     return;
                 }
                 auto const target = eventArgs.NewFocusedElement();
-                if (!target || !IsHomeSearchTarget(target))
+                if (!target)
+                {
+                    return;
+                }
+                auto refuse = false;
+                try
+                {
+                    auto const targetInput = TextInputRoot(target);
+                    auto const oldFocused = eventArgs.OldFocusedElement();
+                    refuse = ::HaloDesktop::Shell::ShouldRefusePointerFocus({
+                        .GuardActive = self->m_nonTextPointerId.has_value(),
+                        .ByPointer = eventArgs.FocusState() == Microsoft::UI::Xaml::FocusState::Pointer,
+                        .TargetIsTextInput = static_cast<bool>(targetInput),
+                        .TargetInShellContent = targetInput && self->IsInShellContent(target),
+                        .TargetAlreadyFocused = targetInput && oldFocused && TextInputRoot(oldFocused) == targetInput,
+                    });
+                }
+                catch (winrt::hresult_error const&)
+                {
+                    // An element leaving the tree mid-walk: let XAML have its way.
+                }
+                if (!refuse)
                 {
                     return;
                 }
@@ -198,10 +226,8 @@ namespace winrt::HaloDesktop::implementation
         RefreshAccountIdentity();
         RefreshJumpBackIn();
         RefreshJumpBackInAsync();
-        if (auto unreported = App::Services().DeviceMove->TakeUnreportedSkippedAddons(); !unreported.empty())
-        {
-            ShowSkippedAddons(unreported);
-        }
+        // Also picks up a notice still pending from before the shell last unloaded.
+        ShowSkippedAddons(App::Services().DeviceMove->TakeUnreportedSkippedAddons());
     }
 
     void ShellPage::OnIdentityChanged()
@@ -216,28 +242,66 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
+    // The names stay pending until a dialog naming them was actually opened. Only
+    // one dialog can be open at a time, so while another is up the notice waits
+    // and tries again; one runner at a time, on the UI thread, ending when the
+    // shell unloads (OnLoaded starts it again for whatever is still pending).
     winrt::fire_and_forget ShellPage::ShowSkippedAddons(std::vector<std::wstring> names)
     {
         auto lifetime = get_strong();
-        if (names.empty())
+        m_pendingSkippedAddons.insert(m_pendingSkippedAddons.end(), names.begin(), names.end());
+        if (m_skippedNoticeRunning || m_pendingSkippedAddons.empty())
         {
             co_return;
         }
+        m_skippedNoticeRunning = true;
         try
         {
-            auto dialog = ::HaloDesktop::Views::MakeDialog(
-                XamlRoot(),
-                ActualTheme(),
-                winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsTitle(names.size()) },
-                winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsBody(names) });
-            dialog.CloseButtonText(L"OK");
-            static_cast<void>(co_await dialog.ShowAsync());
+            auto const uiContext = winrt::apartment_context{};
+            while (m_attached && !m_pendingSkippedAddons.empty())
+            {
+                auto const batch = m_pendingSkippedAddons;
+                winrt::Windows::Foundation::IAsyncOperation<Microsoft::UI::Xaml::Controls::ContentDialogResult> showing{ nullptr };
+                try
+                {
+                    auto dialog = ::HaloDesktop::Views::MakeDialog(
+                        XamlRoot(),
+                        ActualTheme(),
+                        winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsTitle(batch.size()) },
+                        winrt::hstring{ ::HaloDesktop::Services::Device::FailedAddonsBody(batch) });
+                    dialog.CloseButtonText(L"OK");
+                    showing = dialog.ShowAsync();
+                }
+                catch (winrt::hresult_error const&)
+                {
+                    // Another dialog is open, or the shell has no window yet.
+                }
+                if (!showing)
+                {
+                    co_await winrt::resume_after(std::chrono::seconds(2));
+                    co_await uiContext;
+                    continue;
+                }
+                // Shown: these names are told. Any that arrived meanwhile were
+                // appended after them and get a dialog of their own.
+                m_pendingSkippedAddons.erase(
+                    m_pendingSkippedAddons.begin(),
+                    m_pendingSkippedAddons.begin() + static_cast<std::ptrdiff_t>(batch.size()));
+                try
+                {
+                    static_cast<void>(co_await showing);
+                }
+                catch (winrt::hresult_error const&)
+                {
+                    // Closed with the window.
+                }
+                co_await uiContext;
+            }
         }
         catch (...)
         {
-            // Another dialog is open, or the window is closing: nothing is lost
-            // but the notice.
         }
+        m_skippedNoticeRunning = false;
     }
 
     void ShellPage::OnUnloaded(
@@ -286,8 +350,11 @@ namespace winrt::HaloDesktop::implementation
         m_attached = false;
     }
 
-    bool ShellPage::IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element)
+    // The outermost text input the element is part of, so a box's inner parts and
+    // a box nested in another (the TextBox inside an AutoSuggestBox) name one input.
+    Microsoft::UI::Xaml::DependencyObject ShellPage::TextInputRoot(Microsoft::UI::Xaml::DependencyObject const& element)
     {
+        Microsoft::UI::Xaml::DependencyObject root{ nullptr };
         auto current = element;
         while (current)
         {
@@ -296,20 +363,50 @@ namespace winrt::HaloDesktop::implementation
                 current.try_as<Microsoft::UI::Xaml::Controls::RichEditBox>() ||
                 current.try_as<Microsoft::UI::Xaml::Controls::PasswordBox>())
             {
+                root = current;
+            }
+            current = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetParent(current);
+        }
+        return root;
+    }
+
+    bool ShellPage::IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element)
+    {
+        return static_cast<bool>(TextInputRoot(element));
+    }
+
+    // The nearest control that would take focus for this press decides: one that
+    // declares interaction does not move focus keeps the caret where it is.
+    bool ShellPage::KeepsFocusOnInteraction(Microsoft::UI::Xaml::DependencyObject const& element)
+    {
+        auto current = element;
+        while (current)
+        {
+            if (auto const framework = current.try_as<Microsoft::UI::Xaml::FrameworkElement>();
+                framework && !framework.AllowFocusOnInteraction())
+            {
                 return true;
+            }
+            if (auto const control = current.try_as<Microsoft::UI::Xaml::Controls::Control>();
+                control && control.IsTabStop())
+            {
+                return false;
             }
             current = Microsoft::UI::Xaml::Media::VisualTreeHelper::GetParent(current);
         }
         return false;
     }
 
-    bool ShellPage::IsHomeSearchTarget(Microsoft::UI::Xaml::DependencyObject const& element)
+    // Dialogs, flyouts and popups hang off the window's popup root, and the sheet
+    // and overlay frames are siblings of the shell: none of them is under the
+    // content host, which is also the only place the press handlers listen.
+    bool ShellPage::IsInShellContent(Microsoft::UI::Xaml::DependencyObject const& element)
     {
+        auto const host = ContentHost().as<Microsoft::UI::Xaml::DependencyObject>();
         auto current = element;
         while (current)
         {
-            if (auto const search = current.try_as<Microsoft::UI::Xaml::Controls::AutoSuggestBox>();
-                search && search.Name() == L"HomeSearchBox")
+            if (current == host)
             {
                 return true;
             }
@@ -422,9 +519,16 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        // A press that landed inside a text box is that box's business, not ours.
         auto const source = args.OriginalSource().try_as<Microsoft::UI::Xaml::DependencyObject>();
-        if (source && IsWithinTextInput(source))
+        auto const focused =
+            Microsoft::UI::Xaml::Input::FocusManager::GetFocusedElement(XamlRoot())
+                .try_as<Microsoft::UI::Xaml::DependencyObject>();
+        auto const plan = ::HaloDesktop::Shell::PlanContentPress({
+            .LandedInTextInput = source && IsWithinTextInput(source),
+            .LandedOnFocusKeepingControl = source && KeepsFocusOnInteraction(source),
+            .CaretInTextInput = focused && IsWithinTextInput(focused),
+        });
+        if (!plan.GuardTextFocus)
         {
             m_nonTextPointerId.reset();
             return;
@@ -437,10 +541,7 @@ namespace winrt::HaloDesktop::implementation
         // Refusing the move keeps a caret from appearing, but an existing one has to
         // be sent somewhere. FocusSink is a sibling of the frame, so parking focus
         // there cannot scroll a page.
-        auto const focused =
-            Microsoft::UI::Xaml::Input::FocusManager::GetFocusedElement(XamlRoot())
-                .try_as<Microsoft::UI::Xaml::DependencyObject>();
-        if (focused && IsWithinTextInput(focused))
+        if (plan.ParkCaret)
         {
             FocusSink().Focus(Microsoft::UI::Xaml::FocusState::Pointer);
         }

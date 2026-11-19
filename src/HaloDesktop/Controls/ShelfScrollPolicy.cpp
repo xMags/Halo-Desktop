@@ -48,4 +48,9 @@ namespace HaloDesktop::Controls
         auto const end = (std::max)(0.0, extent - viewport);
         return std::clamp(offset + sign * step, 0.0, end);
     }
+
+    bool IsSidewaysWheel(bool horizontalWheel, bool shiftHeld) noexcept
+    {
+        return horizontalWheel || shiftHeld;
+    }
 }

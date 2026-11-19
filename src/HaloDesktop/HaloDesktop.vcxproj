@@ -411,6 +411,8 @@
     <ClInclude Include="Services\Device\DeviceMovePolicy.h" />
     <ClInclude Include="Services\Device\DeviceDataMove.h" />
     <ClInclude Include="Services\Downloads\DownloadAdoptionPolicy.h" />
+    <ClInclude Include="Shell\PointerFocusPolicy.h" />
+    <ClInclude Include="Controls\SidewaysWheelGuard.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -823,6 +825,10 @@
     <ClCompile Include="Services\Device\DeviceMovePolicy.cpp" />
     <ClCompile Include="Services\Device\DeviceDataMove.cpp" />
     <ClCompile Include="Services\Downloads\DownloadAdoptionPolicy.cpp" />
+    <ClCompile Include="Shell\PointerFocusPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Controls\SidewaysWheelGuard.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

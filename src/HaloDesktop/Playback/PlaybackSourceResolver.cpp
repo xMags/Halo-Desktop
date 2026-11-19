@@ -204,6 +204,21 @@ namespace HaloDesktop::Playback
 {
     PlaybackSource ResolvePlaybackSource(PlaybackSource source) noexcept
     {
+        std::wstring currentUrl;
+        bool forwardHeaders = true;
+        // Handing libmpv the original URL with its headers after a hop to
+        // another origin was seen would let libmpv follow that same redirect
+        // with them, so from then on a failure gives up the headers instead.
+        auto const unresolved = [&source, &currentUrl, &forwardHeaders]() noexcept
+        {
+            if (forwardHeaders)
+            {
+                return std::move(source);
+            }
+            PlaybackSource stripped{ .Location = std::move(currentUrl) };
+            stripped.PreferredAudioLanguages = std::move(source.PreferredAudioLanguages);
+            return stripped;
+        };
         try
         {
             if (source.Headers.empty() || !IsHttpUrl(source.Location))
@@ -211,14 +226,13 @@ namespace HaloDesktop::Playback
                 return source;
             }
 
-            auto currentUrl = source.Location;
-            bool forwardHeaders = true;
+            currentUrl = source.Location;
             for (int hop = 0;; ++hop)
             {
                 auto const probe = ProbeOnce(currentUrl, forwardHeaders ? source.Headers : decltype(source.Headers){});
                 if (!probe)
                 {
-                    return source;
+                    return unresolved();
                 }
                 if (!Security::IsRedirectStatus(probe->Status))
                 {
@@ -226,8 +240,9 @@ namespace HaloDesktop::Playback
                     {
                         // The source did not answer the way libmpv will be asked
                         // to open it. Nothing was learnt about its origin, so
-                        // nothing is changed.
-                        return source;
+                        // nothing is changed beyond what a cross-origin hop
+                        // already ruled out.
+                        return unresolved();
                     }
                     PlaybackSource resolved{ .Location = std::move(currentUrl) };
                     resolved.PreferredAudioLanguages = std::move(source.PreferredAudioLanguages);
@@ -239,12 +254,12 @@ namespace HaloDesktop::Playback
                 }
                 if (!probe->Location)
                 {
-                    return source;
+                    return unresolved();
                 }
                 auto const target = Security::NextRedirectTarget(currentUrl, *probe->Location, hop);
                 if (!target)
                 {
-                    return source;
+                    return unresolved();
                 }
                 if (!target->SameOrigin)
                 {
@@ -255,7 +270,7 @@ namespace HaloDesktop::Playback
         }
         catch (...)
         {
-            return source;
+            return unresolved();
         }
     }
 }

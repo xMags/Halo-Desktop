@@ -246,10 +246,14 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchPage::OnPosterFailed(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        if (auto const card = sender.try_as<winrt::HaloDesktop::PosterCard>())
-        {
-            m_viewModel.ReportMissingArt(card.Tag());
-        }
+        // The card names the art that failed; its Tag names the title it was last
+        // handed. A recycled card can hold one item's art under another's Tag, so
+        // the title is dropped only when both name the same item.
+        auto const card = sender.try_as<winrt::HaloDesktop::PosterCard>();
+        if (!card) return;
+        auto const media = card.Tag().try_as<winrt::HaloDesktop::MediaSummary>();
+        if (!media || card.MetaId() != media.Id() || card.Poster() != media.Poster()) return;
+        m_viewModel.ReportMissingArt(media);
     }
 
     void SearchPage::OnGridElementPrepared(

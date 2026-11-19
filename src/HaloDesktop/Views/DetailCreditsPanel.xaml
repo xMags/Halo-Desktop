@@ -58,22 +58,27 @@
           VerticalScrollBarVisibility="Disabled"
           VerticalScrollMode="Disabled"
           ZoomMode="Disabled">
-          <ItemsControl
-            x:Name="CastItems"
-            Padding="0,4,0,6"
-            IsTabStop="False"
-            ItemsSource="{x:Bind ViewModel.Credits, Mode=OneWay}">
-            <ItemsControl.ItemsPanel>
-              <ItemsPanelTemplate>
-                <StackPanel Orientation="Horizontal" Spacing="18" />
-              </ItemsPanelTemplate>
-            </ItemsControl.ItemsPanel>
-            <ItemsControl.ItemTemplate>
-              <DataTemplate x:DataType="local:DetailCreditViewModel">
-                <local:DetailCreditCard Click="OnCreditClick" Credit="{x:Bind}" />
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <!-- The strip moves by its arrows only: the sideways wheel guard sits on
+               the content (Controls/SidewaysWheelGuard.h), its transparent
+               background letting the gaps between cards answer too. -->
+          <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged">
+            <ItemsControl
+              x:Name="CastItems"
+              Padding="0,4,0,6"
+              IsTabStop="False"
+              ItemsSource="{x:Bind ViewModel.Credits, Mode=OneWay}">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal" Spacing="18" />
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate x:DataType="local:DetailCreditViewModel">
+                  <local:DetailCreditCard Click="OnCreditClick" Credit="{x:Bind}" />
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+          </Grid>
         </ScrollViewer>
         <Rectangle
           x:Name="CastStartFade"

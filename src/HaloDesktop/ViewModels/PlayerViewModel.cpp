@@ -982,7 +982,8 @@ namespace winrt::HaloDesktop::implementation
         {
             return;
         }
-        m_upNextClaimed = true;
+        // Only hides the card. The next episode stays on offer (its button, and the
+        // countdown at the end of the file); only PlayNext claims it.
         StopUpNextTimer();
         m_upNextOpen = false;
         m_upNextCountdown = false;

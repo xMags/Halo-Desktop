@@ -10,6 +10,7 @@
 #include <limits>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 
 namespace
 {
@@ -145,6 +146,35 @@ namespace
         std::replace_if(text.begin(), text.end(), [](wchar_t character) { return std::iswcntrl(character) != 0; }, L' ');
         if (text.empty()) return std::nullopt;
         if (text.size() > maximumLength) text.resize(maximumLength);
+        return winrt::hstring{ text };
+    }
+
+    // As OptionalDisplayString, but line breaks survive (a "\r\n" or a lone "\r"
+    // reads as "\n"): an addon's stream title and description are laid out in
+    // lines, the first of which is the release name when no file name is given.
+    std::optional<winrt::hstring> OptionalMultilineString(
+        winrt::Windows::Data::Json::JsonObject const& object,
+        wchar_t const* key,
+        std::size_t maximumLength)
+    {
+        if (!object.HasKey(key)) return std::nullopt;
+        auto const value = object.GetNamedValue(key);
+        if (value.ValueType() != winrt::Windows::Data::Json::JsonValueType::String) return std::nullopt;
+        std::wstring_view const raw{ value.GetString() };
+        std::wstring text;
+        text.reserve((std::min)(raw.size(), maximumLength));
+        for (std::size_t index = 0; index < raw.size() && text.size() < maximumLength; ++index)
+        {
+            auto const character = raw[index];
+            if (character == L'\r')
+            {
+                if (index + 1 < raw.size() && raw[index + 1] == L'\n') ++index;
+                text.push_back(L'\n');
+                continue;
+            }
+            text.push_back(character == L'\n' || std::iswcntrl(character) == 0 ? character : L' ');
+        }
+        if (text.empty()) return std::nullopt;
         return winrt::hstring{ text };
     }
 
@@ -389,8 +419,8 @@ namespace
         ::HaloDesktop::Api::Dto::StreamRecord record;
         record.Url = *url;
         record.Name = OptionalDisplayString(stream, L"name", 2048);
-        record.Title = OptionalDisplayString(stream, L"title", 4096);
-        record.Description = OptionalDisplayString(stream, L"description", 4096);
+        record.Title = OptionalMultilineString(stream, L"title", 4096);
+        record.Description = OptionalMultilineString(stream, L"description", 4096);
         for (auto const& item : stream.GetNamedArray(L"subtitles", winrt::Windows::Data::Json::JsonArray{}))
         {
             if (item.ValueType() != winrt::Windows::Data::Json::JsonValueType::Object

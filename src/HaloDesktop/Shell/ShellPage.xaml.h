@@ -71,8 +71,10 @@ namespace winrt::HaloDesktop::implementation
 
     private:
         void SetJumpBackVisibility(bool visible);
+        [[nodiscard]] static Microsoft::UI::Xaml::DependencyObject TextInputRoot(Microsoft::UI::Xaml::DependencyObject const& element);
         [[nodiscard]] static bool IsWithinTextInput(Microsoft::UI::Xaml::DependencyObject const& element);
-        [[nodiscard]] static bool IsHomeSearchTarget(Microsoft::UI::Xaml::DependencyObject const& element);
+        [[nodiscard]] static bool KeepsFocusOnInteraction(Microsoft::UI::Xaml::DependencyObject const& element);
+        [[nodiscard]] bool IsInShellContent(Microsoft::UI::Xaml::DependencyObject const& element);
         void AttachPointerHandlers();
         void DetachPointerHandlers() noexcept;
         void OnShellPointerPressed(
@@ -128,6 +130,10 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Services::IdentityChangedToken m_identityChangedToken{};
         ::HaloDesktop::Services::IdentityChangedToken m_profileChangedToken{};
         std::uint64_t m_skippedAddonsToken{};
+        // Skipped-addon names no dialog has shown yet, and whether the runner
+        // showing them is going. UI thread only.
+        std::vector<std::wstring> m_pendingSkippedAddons;
+        bool m_skippedNoticeRunning{};
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         Microsoft::UI::Xaml::Controls::Frame::Navigated_revoker m_frameNavigatedRevoker{};
     };

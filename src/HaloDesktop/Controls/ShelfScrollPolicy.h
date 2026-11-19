@@ -46,4 +46,10 @@ namespace HaloDesktop::Controls
     // Where an arrow click lands on a title page row: `max(viewport - 160, 160)`
     // further in `direction`, held inside the strip's range.
     [[nodiscard]] double ScrollRowPageTarget(double offset, double viewport, double extent, int direction) noexcept;
+
+    // Whether a wheel turn over a sideways strip asks to move it sideways: a
+    // tilt wheel (or a sideways touchpad swipe) or Shift held with the wheel. The
+    // strips move by their own arrows only, so such a turn is taken and dropped;
+    // a plain wheel is left alone to scroll the page the strip sits on.
+    [[nodiscard]] bool IsSidewaysWheel(bool horizontalWheel, bool shiftHeld) noexcept;
 }

@@ -281,6 +281,40 @@ namespace
             "the probe itself handed the protected header to the other origin");
     }
 
+    // Once the source is known to redirect to another origin, handing the engine
+    // the original URL with its headers would let it follow that redirect with
+    // them, so a walk that fails after the hop gives them up.
+    void TestFailureAfterCrossOriginHopDropsHeaders()
+    {
+        {
+            ProbeServer source;
+            ProbeServer cdn;
+            source.RedirectCrossTo(cdn.Url(L"/missing"));
+
+            auto const resolved = ResolvePlaybackSource(Protected(source.Url(L"/cross")));
+            Require(resolved.Headers.empty(),
+                "protected headers survived a walk that failed after a cross-origin redirect");
+            Require(resolved.Location == cdn.Url(L"/missing"),
+                "a walk that failed after a cross-origin redirect did not keep the URL it reached");
+        }
+        {
+            ProbeServer source;
+            std::wstring unreachable;
+            {
+                // Taken while the source holds its own port, then given back.
+                ProbeServer closing;
+                unreachable = closing.Url(L"/final");
+            }
+            source.RedirectCrossTo(unreachable);
+
+            auto const resolved = ResolvePlaybackSource(Protected(source.Url(L"/cross")));
+            Require(resolved.Headers.empty(),
+                "protected headers survived a cross-origin redirect to an unreachable host");
+            Require(resolved.Location == unreachable,
+                "a cross-origin redirect to an unreachable host did not keep the URL it reached");
+        }
+    }
+
     void TestSameOriginKeepsHeaders()
     {
         ProbeServer source;
@@ -329,6 +363,7 @@ void RunPlaybackSourceResolverTest()
 {
     TestRedirectPolicy();
     TestCrossOriginDropsHeaders();
+    TestFailureAfterCrossOriginHopDropsHeaders();
     TestSameOriginKeepsHeaders();
     TestSourceWithoutHeadersIsNotProbed();
     TestUnreachableSourceIsLeftAlone();

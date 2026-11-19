@@ -11,6 +11,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <string_view>
 
 namespace
 {
@@ -21,6 +22,14 @@ namespace
         return value ? std::wstring(value->c_str()) : std::wstring{};
     }
 
+    // Addon text is searched by every matcher below, so each field is bounded
+    // before it is: a real name, title or description is a few hundred
+    // characters, while the mapper lets each through at up to 4096.
+    constexpr std::size_t MaximumSearchedFieldLength = 1024;
+    // Longer digit runs cannot be a size (the bytes would not fit), and a long
+    // run is what makes the size pattern backtrack quadratically.
+    constexpr std::size_t MaximumSizeDigitRun = 12;
+
     std::wstring SearchText(HaloDesktop::Api::Dto::StreamRecord const& stream)
     {
         std::wstring result;
@@ -28,16 +37,73 @@ namespace
         {
             if (!value || value->empty()) continue;
             if (!result.empty()) result.push_back(L'\n');
-            result.append(value->c_str());
+            std::wstring_view text{ *value };
+            result.append(text.substr(0, MaximumSearchedFieldLength));
         }
         return result;
     }
 
-    bool Matches(std::wstring const& text, wchar_t const* pattern, bool insensitive = true)
+    std::wregex Pattern(wchar_t const* pattern, bool insensitive = true)
     {
         auto flags = std::regex_constants::ECMAScript;
         if (insensitive) flags |= std::regex_constants::icase;
-        return std::regex_search(text, std::wregex(pattern, flags));
+        return std::wregex(pattern, flags);
+    }
+
+    // The patterns are compiled once (function-local statics), and a const
+    // regex may be searched from several threads at once. A search the engine
+    // gives up on (its complexity or stack limit) reads as no match.
+    bool Matches(std::wstring const& text, std::wregex const& pattern)
+    {
+        try
+        {
+            return std::regex_search(text, pattern);
+        }
+        catch (std::regex_error const&)
+        {
+            return false;
+        }
+    }
+
+    bool Search(std::wstring const& text, std::wsmatch& match, std::wregex const& pattern)
+    {
+        try
+        {
+            return std::regex_search(text, match, pattern);
+        }
+        catch (std::regex_error const&)
+        {
+            return false;
+        }
+    }
+
+    // Replaces every digit run longer than MaximumSizeDigitRun with one '_', a
+    // character that is neither a digit nor a space, so the run can neither be
+    // read as a size nor let the number before it reach a unit after it.
+    // Shorter runs are kept as they are.
+    std::wstring WithBoundedDigitRuns(std::wstring const& text)
+    {
+        std::wstring result;
+        result.reserve(text.size());
+        std::size_t runStart = 0;
+        auto const flush = [&result, &text, &runStart](std::size_t runEnd)
+        {
+            if (runEnd - runStart > MaximumSizeDigitRun) result.push_back(L'_');
+            else result.append(text, runStart, runEnd - runStart);
+        };
+        for (std::size_t index = 0; index < text.size(); ++index)
+        {
+            auto const value = text[index];
+            if (value >= L'0' && value <= L'9')
+            {
+                if (index == 0 || text[index - 1] < L'0' || text[index - 1] > L'9') runStart = index;
+                continue;
+            }
+            if (index > 0 && text[index - 1] >= L'0' && text[index - 1] <= L'9') flush(index);
+            result.push_back(value);
+        }
+        if (!text.empty() && text.back() >= L'0' && text.back() <= L'9') flush(text.size());
+        return result;
     }
 
     bool IsLineEnd(wchar_t value) noexcept
@@ -78,39 +144,56 @@ namespace
     std::optional<winrt::hstring> MatchQuality(std::wstring const& source)
     {
         auto const text = WithoutQualityLookalikes(source);
-        if (Matches(text, LR"(\b(2160p?|4k|uhd)\b)")) return L"2160p";
-        if (Matches(text, LR"(\b1440p\b)")) return L"1440p";
-        if (Matches(text, LR"(\b1080p?\b|\bfullhd\b)")) return L"1080p";
-        if (Matches(text, LR"(\b720p?\b|\bhd\b)")) return L"720p";
-        if (Matches(text, LR"(\b480p?\b)")) return L"480p";
-        if (Matches(text, LR"(\b(sd|cam|ts)\b)")) return L"SD";
+        static auto const uhd = Pattern(LR"(\b(2160p?|4k|uhd)\b)");
+        static auto const qhd = Pattern(LR"(\b1440p\b)");
+        static auto const fullHd = Pattern(LR"(\b1080p?\b|\bfullhd\b)");
+        static auto const hd = Pattern(LR"(\b720p?\b|\bhd\b)");
+        static auto const sd480 = Pattern(LR"(\b480p?\b)");
+        static auto const sd = Pattern(LR"(\b(sd|cam|ts)\b)");
+        if (Matches(text, uhd)) return L"2160p";
+        if (Matches(text, qhd)) return L"1440p";
+        if (Matches(text, fullHd)) return L"1080p";
+        if (Matches(text, hd)) return L"720p";
+        if (Matches(text, sd480)) return L"480p";
+        if (Matches(text, sd)) return L"SD";
         return std::nullopt;
     }
 
     std::optional<winrt::hstring> MatchDynamicRange(std::wstring const& text)
     {
-        if (Matches(text, LR"(\b(dolby[ .]?vision|dovi)\b)") || Matches(text, LR"(\bDV\b)", false)) return L"DV";
-        if (Matches(text, LR"(\bhdr10\+?\b)")) return L"HDR10";
-        if (Matches(text, LR"(\bhlg\b)")) return L"HLG";
-        if (Matches(text, LR"(\bhdr\b)")) return L"HDR";
+        static auto const dolbyVision = Pattern(LR"(\b(dolby[ .]?vision|dovi)\b)");
+        static auto const dv = Pattern(LR"(\bDV\b)", false);
+        static auto const hdr10 = Pattern(LR"(\bhdr10\+?\b)");
+        static auto const hlg = Pattern(LR"(\bhlg\b)");
+        static auto const hdr = Pattern(LR"(\bhdr\b)");
+        if (Matches(text, dolbyVision) || Matches(text, dv)) return L"DV";
+        if (Matches(text, hdr10)) return L"HDR10";
+        if (Matches(text, hlg)) return L"HLG";
+        if (Matches(text, hdr)) return L"HDR";
         return std::nullopt;
     }
 
     std::optional<winrt::hstring> MatchCodec(std::wstring const& text)
     {
-        auto const tenBit = Matches(text, LR"(\b10[ .-]?bit\b)");
-        if (Matches(text, LR"(\b(hevc|h[ .]?265|x265)\b)")) return tenBit ? L"HEVC 10-BIT" : L"HEVC";
-        if (Matches(text, LR"(\bav1\b)")) return tenBit ? L"AV1 10-BIT" : L"AV1";
-        if (Matches(text, LR"(\b(avc|h[ .]?264|x264)\b)")) return L"H.264";
-        if (Matches(text, LR"(\bxvid\b)")) return L"XVID";
+        static auto const tenBitPattern = Pattern(LR"(\b10[ .-]?bit\b)");
+        static auto const hevc = Pattern(LR"(\b(hevc|h[ .]?265|x265)\b)");
+        static auto const av1 = Pattern(LR"(\bav1\b)");
+        static auto const avc = Pattern(LR"(\b(avc|h[ .]?264|x264)\b)");
+        static auto const xvid = Pattern(LR"(\bxvid\b)");
+        auto const tenBit = Matches(text, tenBitPattern);
+        if (Matches(text, hevc)) return tenBit ? L"HEVC 10-BIT" : L"HEVC";
+        if (Matches(text, av1)) return tenBit ? L"AV1 10-BIT" : L"AV1";
+        if (Matches(text, avc)) return L"H.264";
+        if (Matches(text, xvid)) return L"XVID";
         return std::nullopt;
     }
 
     winrt::hstring WithChannels(std::wstring const& text, wchar_t const* codec)
     {
         // No leading \b: the channel count is usually glued to the codec ("DDP5.1").
+        static auto const channels = Pattern(LR"(([2578])[ .]([01])(?!\d))", false);
         std::wsmatch match;
-        if (std::regex_search(text, match, std::wregex(LR"(([2578])[ .]([01])(?!\d))")))
+        if (Search(text, match, channels))
         {
             return winrt::hstring{ std::wstring(codec) + L" " + match[1].str() + L"." + match[2].str() };
         }
@@ -122,22 +205,33 @@ namespace
     // the name is no break at all. `DD+` is how many releases spell DDP.
     std::optional<winrt::hstring> MatchAudio(std::wstring const& text)
     {
-        if (Matches(text, LR"(\batmos(?![A-Za-z]))")) return L"ATMOS";
-        if (Matches(text, LR"(\btrue[ .]?hd(?![A-Za-z]))")) return L"TRUEHD";
-        if (Matches(text, LR"(\bdts[ .-]?hd(?![A-Za-z]))")) return L"DTS-HD";
-        if (Matches(text, LR"(\bdts(?![A-Za-z]))")) return L"DTS";
-        if (Matches(text, LR"(\b(ddp|dd\+|eac3|e-ac-3)(?![A-Za-z]))")) return WithChannels(text, L"DDP");
-        if (Matches(text, LR"(\b(dd|ac3)(?![A-Za-z]))")) return WithChannels(text, L"DD");
-        if (Matches(text, LR"(\baac(?![A-Za-z]))")) return WithChannels(text, L"AAC");
-        if (Matches(text, LR"(\bopus(?![A-Za-z]))")) return L"OPUS";
-        if (Matches(text, LR"(\bflac(?![A-Za-z]))")) return L"FLAC";
+        static auto const atmos = Pattern(LR"(\batmos(?![A-Za-z]))");
+        static auto const trueHd = Pattern(LR"(\btrue[ .]?hd(?![A-Za-z]))");
+        static auto const dtsHd = Pattern(LR"(\bdts[ .-]?hd(?![A-Za-z]))");
+        static auto const dts = Pattern(LR"(\bdts(?![A-Za-z]))");
+        static auto const ddp = Pattern(LR"(\b(ddp|dd\+|eac3|e-ac-3)(?![A-Za-z]))");
+        static auto const dd = Pattern(LR"(\b(dd|ac3)(?![A-Za-z]))");
+        static auto const aac = Pattern(LR"(\baac(?![A-Za-z]))");
+        static auto const opus = Pattern(LR"(\bopus(?![A-Za-z]))");
+        static auto const flac = Pattern(LR"(\bflac(?![A-Za-z]))");
+        if (Matches(text, atmos)) return L"ATMOS";
+        if (Matches(text, trueHd)) return L"TRUEHD";
+        if (Matches(text, dtsHd)) return L"DTS-HD";
+        if (Matches(text, dts)) return L"DTS";
+        if (Matches(text, ddp)) return WithChannels(text, L"DDP");
+        if (Matches(text, dd)) return WithChannels(text, L"DD");
+        if (Matches(text, aac)) return WithChannels(text, L"AAC");
+        if (Matches(text, opus)) return L"OPUS";
+        if (Matches(text, flac)) return L"FLAC";
         return std::nullopt;
     }
 
-    std::optional<std::uint64_t> MatchSize(std::wstring const& text)
+    std::optional<std::uint64_t> MatchSize(std::wstring const& source)
     {
+        static auto const size = Pattern(LR"((\d+(?:[.,]\d+)?)\s*(GB|GiB|MB|MiB)\b)");
+        auto const text = WithBoundedDigitRuns(source);
         std::wsmatch match;
-        if (!std::regex_search(text, match, std::wregex(LR"((\d+(?:[.,]\d+)?)\s*(GB|GiB|MB|MiB)\b)", std::regex_constants::icase))) return std::nullopt;
+        if (!Search(text, match, size)) return std::nullopt;
         auto number = match[1].str();
         std::replace(number.begin(), number.end(), L',', L'.');
         try
@@ -155,8 +249,10 @@ namespace
 
     std::optional<bool> MatchCached(std::wstring const& text)
     {
-        if (Matches(text, LR"(\[\w{2,3}\+\]|\b(cached|instant)\b)") || text.find(L'\x26A1') != std::wstring::npos) return true;
-        if (Matches(text, LR"(\[\w{2,3}\s*download\])")) return false;
+        static auto const cached = Pattern(LR"(\[\w{2,3}\+\]|\b(cached|instant)\b)");
+        static auto const download = Pattern(LR"(\[\w{2,3}\s*download\])");
+        if (Matches(text, cached) || text.find(L'\x26A1') != std::wstring::npos) return true;
+        if (Matches(text, download)) return false;
         return std::nullopt;
     }
 
@@ -225,7 +321,8 @@ namespace
             result.append(clean);
         }
         result = StripPictographs(result);
-        result = std::regex_replace(result, std::wregex(LR"(\s{2,})"), L" ");
+        static std::wregex const spaces(LR"(\s{2,})");
+        result = std::regex_replace(result, spaces, L" ");
         auto const begin = result.find_first_not_of(L" \t");
         if (begin == std::wstring::npos) return {};
         auto const end = result.find_last_not_of(L" \t");

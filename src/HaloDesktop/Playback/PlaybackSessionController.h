@@ -78,6 +78,6 @@ namespace HaloDesktop::Playback
         std::shared_ptr<concurrency::task<void>> m_reportTask;
         std::chrono::steady_clock::time_point m_resumeDeadline{};
         std::uint64_t m_seenFileSerial{},m_seenEndSerial{},m_reportedEndSerial{},m_startVersion{},m_initialSeekSerial{},m_initialAudioSelectionSerial{},m_autoAudioSelectionSerial{},m_audioPreferenceRevision{},m_appliedAudioPreferenceRevision{},m_appliedAudioFileSerial{};
-        bool m_started{},m_closing{},m_fileReady{},m_watchLoadFinished{};
+        bool m_started{},m_closing{},m_fileReady{},m_watchLoadFinished{},m_stopped{};
     };
 }

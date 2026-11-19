@@ -132,7 +132,15 @@ namespace winrt::HaloDesktop::implementation
                 m_upNext=std::move(result);auto viewModel=winrt::get_self<PlayerViewModel>(m_viewModel);auto const poster=m_upNext->Playback?m_upNext->Playback.Poster():(m_upNext->Sources?m_upNext->Sources.Poster():L"");viewModel->SetUpNext(m_upNext->Title,m_upNext->EpisodeLabel,poster,m_upNext->Still);
             }
             // The file ended while the lookup was still out: its end was held for this.
-            if(m_endAwaitingUpNext){m_endAwaitingUpNext=false;HandleEndOfVideo(generation);}
+            // A seek back since then cleared the end (the engine re-arms it, and the
+            // next end is reported again), so a held end only counts while the
+            // engine still stands at it.
+            if(m_endAwaitingUpNext)
+            {
+                m_endAwaitingUpNext=false;
+                auto const engine=App::Services().Playback;
+                if(engine&&engine->State().EndReason==::HaloDesktop::Playback::PlaybackEndReason::Eof)HandleEndOfVideo(generation);
+            }
         }
         catch(...)
         {
@@ -177,6 +185,9 @@ namespace winrt::HaloDesktop::implementation
             m_advancing=true;auto const sources=m_upNext->Sources;
             co_await PrepareForWindowCloseAsync();
             co_await uiContext;
+            // Unloaded during the close (the sign-in overlay replaced the player, or
+            // the window is closing): whatever replaced it keeps the overlay.
+            if(!m_loaded)co_return;
             auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,sources);
         }
         catch(...)
@@ -209,6 +220,8 @@ namespace winrt::HaloDesktop::implementation
             }
             if(playback){co_await StartRequestAsync(playback);co_return;}
             co_await PrepareForWindowCloseAsync();
+            co_await uiContext;
+            if(!m_loaded)co_return;
             auto navigation=App::Services().Navigation;navigation->CloseOverlay();navigation->ShowSheet(::HaloDesktop::Services::Page::Sources,next.Sources);
         }
         catch(...)
@@ -249,7 +262,9 @@ namespace winrt::HaloDesktop::implementation
         ++m_playbackGeneration;
         try
         {
-            if (m_session) co_await m_session->CloseAsync();
+            // Held locally: OnUnloaded resets m_session, and the page can unload
+            // while the final report is still being awaited.
+            if (auto const session = m_session) co_await session->CloseAsync();
         }
         catch (...)
         {

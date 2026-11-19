@@ -10,6 +10,7 @@
 #include "ViewModels/SourcesModel.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
@@ -477,6 +478,28 @@ namespace
         Require(!HaloDesktop::Services::WholeBytes(0.4), "a size that rounds to nothing was a size");
     }
 
+    // Addon text at the mapper's limits, shaped to make the patterns backtrack:
+    // the parse must neither throw nor stall the sheet, and still read a size
+    // stated in an ordinary place.
+    void TestHostileAddonText()
+    {
+        auto stream = Stream(std::wstring(4096, L'7') + L" GB");
+        stream.Name = winrt::hstring{ std::wstring(2048, L'1') };
+        std::wstring spaced;
+        while (spaced.size() < 4090) spaced += L"9 ";
+        stream.Description = winrt::hstring{ spaced };
+        auto const started = std::chrono::steady_clock::now();
+        auto const info = HaloDesktop::Services::ParseStreamInfo(stream);
+        auto const elapsed = std::chrono::steady_clock::now() - started;
+        Require(elapsed < std::chrono::seconds(5), "parsing addon text at the size limits took seconds");
+        Require(!info.SizeBytes, "a digit run too long to be a size was read as one");
+
+        auto ordinary = Stream(L"Movie.2019.1080p.WEB-DL.DDP5.1 " + std::wstring(600, L'x') + L" 4.2 GB");
+        auto const parsed = HaloDesktop::Services::ParseStreamInfo(ordinary);
+        Require(parsed.Quality == winrt::hstring{ L"1080p" }, "the quality of a long ordinary title was lost");
+        Require(parsed.SizeBytes == HaloDesktop::Services::WholeBytes(4.2 * static_cast<double>(GiB)), "the size at the end of a long ordinary title was lost");
+    }
+
     void TestKicker()
     {
         Require(Sources::KickerFor(L"Pilot", L"Show", L"S01E01") == L"S01E01 \x00B7 Show", "an episode's kicker did not name the show");
@@ -505,5 +528,6 @@ void RunSourcesSheetTests()
     TestGluedChannels();
     TestQualityLookalikes();
     TestWholeBytes();
+    TestHostileAddonText();
     TestKicker();
 }

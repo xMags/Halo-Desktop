@@ -6,6 +6,7 @@
 
 #include <memory>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
+#include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -19,6 +20,7 @@ namespace winrt::HaloDesktop::implementation
         void ViewModel(winrt::HaloDesktop::DetailViewModel const& value);
 
         void OnSimilarClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnStripPointerWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
 
     private:
         void OnViewModelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args);

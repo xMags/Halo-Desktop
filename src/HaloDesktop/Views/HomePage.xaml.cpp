@@ -11,6 +11,7 @@
 #include "Controls/PlaceholderArt.xaml.h"
 #include "Controls/PosterSkeleton.xaml.h"
 #include "Controls/ShelfScrollPolicy.h"
+#include "Controls/SidewaysWheelGuard.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
@@ -415,20 +416,11 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.OpenDetail(shelf.SelectedItem().as<winrt::HaloDesktop::MediaSummary>());
     }
 
-    // Only sideways intent is swallowed. A plain wheel still reaches the page
-    // scroller above, so pointing at a strip does not trap the page.
     void HomePage::OnStripPointerWheelChanged(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
     {
-        auto const point = args.GetCurrentPoint(nullptr);
-        auto const shifted =
-            (args.KeyModifiers() & winrt::Windows::System::VirtualKeyModifiers::Shift) !=
-            winrt::Windows::System::VirtualKeyModifiers::None;
-        if (point && (point.Properties().IsHorizontalMouseWheel() || shifted))
-        {
-            args.Handled(true);
-        }
+        ::HaloDesktop::Controls::GuardSidewaysWheel(args);
     }
 
     void HomePage::OnContinueSeeAllClick(

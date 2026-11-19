@@ -7,6 +7,7 @@
 #include "Controls/ArtworkUrlPolicy.h"
 
 #include <algorithm>
+#include <string_view>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -51,7 +52,19 @@ namespace winrt::HaloDesktop::implementation
     {
         if (m_metaId == value) return;
         m_metaId = value;
-        if (m_exhausted) TryNextSource();
+        // Bindings set the id and the urls in either order, and a recycled image
+        // gets them all anew. Only an image on its own SourceUrl can keep it (as
+        // PosterCard does); one on a fallback, which may be the previous title's
+        // metahub poster, or on nothing at all, starts over for the new id.
+        // An exhausted chain only needs the new id's own candidate tried.
+        if (m_exhausted)
+        {
+            TryNextSource();
+            return;
+        }
+        auto const onOwnSource = !m_sourceUrl.empty()
+            && m_attempted.size() == 1 && m_attempted.front() == std::wstring_view{ m_sourceUrl };
+        if (!onOwnSource) Refresh();
     }
 
     double ArtworkImage::DecodeWidth() const noexcept { return m_decodeWidth; }

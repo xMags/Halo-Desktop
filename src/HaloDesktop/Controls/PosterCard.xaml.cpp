@@ -218,9 +218,35 @@ namespace winrt::HaloDesktop::implementation
     void PosterCard::Click(winrt::event_token const& token) noexcept { m_click.remove(token); }
     winrt::event_token PosterCard::PosterFailed(Microsoft::UI::Xaml::RoutedEventHandler const& handler) { return m_posterFailed.add(handler); }
     void PosterCard::PosterFailed(winrt::event_token const& token) noexcept { m_posterFailed.remove(token); }
+    // Raised after the current turn, never from inside a setter: a recycled card
+    // is handed its new item one binding at a time, so mid-way its Tag and its
+    // art can name different titles, and a handler that changes the list would
+    // be changing it while the list builds its rows. The card raises only if it
+    // is still out of art for the same poster and id once the bindings settled.
     void PosterCard::RaisePosterFailed()
     {
-        if (!m_poster.empty()) m_posterFailed(*this, Microsoft::UI::Xaml::RoutedEventArgs{});
+        if (m_poster.empty()) return;
+        auto const raise = [weak = get_weak(), poster = m_poster, metaId = m_metaId]()
+        {
+            auto const self = weak.get();
+            if (!self || !self->m_exhausted || self->m_poster != poster || self->m_metaId != metaId) return;
+            try
+            {
+                self->m_posterFailed(*self, Microsoft::UI::Xaml::RoutedEventArgs{});
+            }
+            catch (winrt::hresult_error const&)
+            {
+                // A handler on a page being torn down: the notice is only a hint.
+            }
+        };
+        try
+        {
+            if (DispatcherQueue().TryEnqueue(raise)) return;
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+        // No queue to defer to: the card is going away and the notice with it.
     }
     void PosterCard::OnCardClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args) { m_click(*this, args); }
     void PosterCard::OnCardPointerEntered([[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)

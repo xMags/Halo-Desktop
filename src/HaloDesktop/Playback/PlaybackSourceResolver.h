@@ -14,9 +14,12 @@ namespace HaloDesktop::Playback
     //
     // A source with no headers has nothing to leak and is returned untouched, so
     // ordinary open streams pay nothing for this. If the walk cannot be completed
-    // (network error, or an answer that is neither a redirect nor a success) the
-    // original source is returned unchanged: refusing to play would be a worse
-    // outcome than the behaviour that shipped before this check existed.
+    // (network error, or an answer that is neither a redirect nor a success)
+    // before any hop changed origin, the original source is returned unchanged:
+    // refusing to play would be a worse outcome than the behaviour that shipped
+    // before this check existed. Once a hop has changed origin, the original URL
+    // is known to redirect away, so a failure after that returns the last URL the
+    // walk reached, without the headers.
     //
     // Blocking and network-bound. Never call it on the UI thread.
     [[nodiscard]] PlaybackSource ResolvePlaybackSource(PlaybackSource source) noexcept;

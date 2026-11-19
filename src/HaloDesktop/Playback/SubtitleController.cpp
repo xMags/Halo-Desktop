@@ -661,35 +661,50 @@ namespace HaloDesktop::Playback
         std::optional<winrt::hstring> language,
         bool includeItem)
     {
-        auto value=m_preferences->SubtitleSelectionMemory();
-        auto const kind=intent==SubtitleIntentKind::Addon?L"addon"
-            :intent==SubtitleIntentKind::Embedded?L"embedded"
-            :intent==SubtitleIntentKind::Off?L"off":L"automatic";
-        auto makeEntry=[&](bool exact)
+        // Remembering is best effort: the choice is already applied, and a
+        // preferences file that cannot be read or written (the store throws
+        // rather than writing defaults over it) must neither fail the selection
+        // nor be shown as a subtitle error.
+        try
         {
-            winrt::Windows::Data::Json::JsonObject entry;
-            entry.Insert(L"kind",winrt::Windows::Data::Json::JsonValue::CreateStringValue(kind));
-            if(exact&&identity)entry.Insert(L"identity",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*identity));
-            if(exact&&fingerprint)entry.Insert(L"fingerprint",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*fingerprint));
-            if(language)entry.Insert(L"lang",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*language));
-            entry.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(NowMs())));
-            return entry;
-        };
-        value.Insert(L"video:"+m_request.VideoId(),makeEntry(true));
-        auto const itemKey=L"item:"+m_request.ItemId();
-        if(includeItem)value.Insert(itemKey,makeEntry(false));
-        else if(value.HasKey(itemKey))value.Remove(itemKey);
-        if(value.Size()>300)
-        {
-            std::vector<std::pair<winrt::hstring,double>>rows;
-            for(auto const&pair:value)
+            auto value=m_preferences->SubtitleSelectionMemory();
+            auto const kind=intent==SubtitleIntentKind::Addon?L"addon"
+                :intent==SubtitleIntentKind::Embedded?L"embedded"
+                :intent==SubtitleIntentKind::Off?L"off":L"automatic";
+            auto makeEntry=[&](bool exact)
             {
-                if(pair.Value().ValueType()==winrt::Windows::Data::Json::JsonValueType::Object)rows.emplace_back(pair.Key(),pair.Value().GetObject().GetNamedNumber(L"updatedAt",0));
+                winrt::Windows::Data::Json::JsonObject entry;
+                entry.Insert(L"kind",winrt::Windows::Data::Json::JsonValue::CreateStringValue(kind));
+                if(exact&&identity)entry.Insert(L"identity",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*identity));
+                if(exact&&fingerprint)entry.Insert(L"fingerprint",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*fingerprint));
+                if(language)entry.Insert(L"lang",winrt::Windows::Data::Json::JsonValue::CreateStringValue(*language));
+                entry.Insert(L"updatedAt",winrt::Windows::Data::Json::JsonValue::CreateNumberValue(static_cast<double>(NowMs())));
+                return entry;
+            };
+            value.Insert(L"video:"+m_request.VideoId(),makeEntry(true));
+            auto const itemKey=L"item:"+m_request.ItemId();
+            if(includeItem)value.Insert(itemKey,makeEntry(false));
+            else if(value.HasKey(itemKey))value.Remove(itemKey);
+            if(value.Size()>300)
+            {
+                std::vector<std::pair<winrt::hstring,double>>rows;
+                for(auto const&pair:value)
+                {
+                    if(pair.Value().ValueType()==winrt::Windows::Data::Json::JsonValueType::Object)rows.emplace_back(pair.Key(),pair.Value().GetObject().GetNamedNumber(L"updatedAt",0));
+                }
+                std::sort(rows.begin(),rows.end(),[](auto const&left,auto const&right){return left.second<right.second;});
+                for(std::size_t index=0;index<rows.size()&&value.Size()>300;++index)value.Remove(rows[index].first);
             }
-            std::sort(rows.begin(),rows.end(),[](auto const&left,auto const&right){return left.second<right.second;});
-            for(std::size_t index=0;index<rows.size()&&value.Size()>300;++index)value.Remove(rows[index].first);
+            m_preferences->SubtitleSelectionMemory(value);
         }
-        m_preferences->SubtitleSelectionMemory(value);
+        catch(winrt::hresult_error const&)
+        {
+            OutputDebugStringW(L"Halo could not remember a subtitle choice; it stays applied for this video.\n");
+        }
+        catch(std::exception const&)
+        {
+            OutputDebugStringW(L"Halo could not remember a subtitle choice; it stays applied for this video.\n");
+        }
     }
 
     SubtitleController::SelectionMemory SubtitleController::ReadSelectionMemory()const

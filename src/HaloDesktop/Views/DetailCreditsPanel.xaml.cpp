@@ -4,6 +4,8 @@
 #include "DetailCreditsPanel.g.cpp"
 #endif
 
+#include "Controls/SidewaysWheelGuard.h"
+
 #include <limits>
 
 namespace
@@ -48,6 +50,11 @@ namespace winrt::HaloDesktop::implementation
     void DetailCreditsPanel::OnCastSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&)
     {
         MatchAboutToCast();
+    }
+
+    void DetailCreditsPanel::OnStripPointerWheelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args)
+    {
+        ::HaloDesktop::Controls::GuardSidewaysWheel(args);
     }
 
     void DetailCreditsPanel::OnViewModelChanged(
