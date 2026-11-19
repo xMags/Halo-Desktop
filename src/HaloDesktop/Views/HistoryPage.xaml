@@ -26,6 +26,8 @@
           <SolidColorBrush x:Key="HistoryTrackBrush" Color="#1F000000" />
         </ResourceDictionary>
       </ResourceDictionary.ThemeDictionaries>
+      <!-- 1100 of content between the 32 margins. -->
+      <x:Double x:Key="HistoryPageMaxWidth">1164</x:Double>
       <!-- A command bar button: no plate at rest, as Downloads' header has. -->
       <Style x:Key="HistorySubtleButtonStyle" BasedOn="{StaticResource DefaultButtonStyle}" TargetType="Button">
         <Setter Property="Width" Value="36" />
@@ -45,8 +47,11 @@
       <RowDefinition Height="*" />
     </Grid.RowDefinitions>
 
-    <!-- The title; under it the tabs on the left, the search and the menu on the right. -->
-    <Grid Padding="32,28,32,4" RowSpacing="6">
+    <!-- The title; under it the tabs on the left, the search and the menu on the right.
+         The header and the list share one width, capped as Settings caps its
+         page and centred past it, so a wide window does not stretch a row's
+         time far from its title. Their edges stay one line. -->
+    <Grid MaxWidth="{StaticResource HistoryPageMaxWidth}" Padding="32,28,32,4" RowSpacing="6">
       <Grid.RowDefinitions>
         <RowDefinition Height="Auto" />
         <RowDefinition Height="Auto" />
@@ -127,7 +132,7 @@
       HorizontalScrollBarVisibility="Disabled"
       HorizontalScrollMode="Disabled"
       VerticalScrollBarVisibility="Auto">
-      <StackPanel Padding="32,16,32,40" Spacing="28">
+      <StackPanel MaxWidth="{StaticResource HistoryPageMaxWidth}" Padding="32,16,32,40" Spacing="28">
         <Grid Visibility="{x:Bind ViewModel.ErrorVisibility, Mode=OneWay}">
           <InfoBar IsClosable="False" IsOpen="True" Message="Check the connection to your Halo server." Severity="Error" Title="Your history could not be loaded.">
             <InfoBar.ActionButton>
