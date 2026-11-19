@@ -12,6 +12,13 @@
 #include <winrt/Windows.UI.ViewManagement.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 
+namespace
+{
+    // Under two frames from asking to open: the picture was already decoded
+    // or cached, not fetched.
+    constexpr std::chrono::milliseconds InstantOpen{ 40 };
+}
+
 namespace winrt::HaloDesktop::implementation
 {
     ArtworkImage::ArtworkImage() = default;
@@ -140,7 +147,14 @@ namespace winrt::HaloDesktop::implementation
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        sender.as<Microsoft::UI::Xaml::Controls::Image>().Opacity(1);
+        auto const image = sender.as<Microsoft::UI::Xaml::Controls::Image>();
+        // A picture that opens at once came from memory: a card scrolled back
+        // into view, or one shown before. It is simply there, as it is in a
+        // browser; only a picture that had to be fetched fades in.
+        auto const instant = std::chrono::steady_clock::now() - m_requestedAt < InstantOpen;
+        if (m_fade && instant) image.OpacityTransition(nullptr);
+        image.Opacity(1);
+        if (m_fade && instant) image.OpacityTransition(m_fade);
         m_opened = true;
         StopRetry();
         ShowPlaceholder(false);
@@ -270,6 +284,7 @@ namespace winrt::HaloDesktop::implementation
             if (m_decodeWidth > 0.0) bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
             // A retry asks the network again rather than a failure it remembers.
             if (m_retries > 0) bitmap.CreateOptions(Microsoft::UI::Xaml::Media::Imaging::BitmapCreateOptions::IgnoreImageCache);
+            m_requestedAt = std::chrono::steady_clock::now();
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
             return true;

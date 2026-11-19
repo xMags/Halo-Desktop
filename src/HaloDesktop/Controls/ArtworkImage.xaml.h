@@ -2,6 +2,7 @@
 
 #include "ArtworkImage.g.h"
 
+#include <chrono>
 #include <string>
 #include <vector>
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -87,6 +88,9 @@ namespace winrt::HaloDesktop::implementation
         // recycled card drops its last picture at once rather than fading it.
         Microsoft::UI::Xaml::ScalarTransition m_fade{ nullptr };
         bool m_fadeChecked{};
+        // When the current source was handed to the bitmap, to tell a picture
+        // from memory (shown at once) from one fetched (faded in).
+        std::chrono::steady_clock::time_point m_requestedAt{};
         // Rounds tried again since the last refresh; a round bypasses the cache.
         int m_retries{};
         Microsoft::UI::Dispatching::DispatcherQueueTimer m_retryTimer{ nullptr };
