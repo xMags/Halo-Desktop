@@ -134,6 +134,17 @@ namespace HaloDesktop::Playback
             co_return;
         }
 
+        // No video id (a pasted link): there is nothing to ask the addons
+        // for, so neither the file is hashed nor the server asked. The
+        // file's own tracks still work.
+        if(request.VideoId().empty())
+        {
+            m_discoveryComplete=true;
+            if(m_changed)m_changed();
+            OnEngineChanged();
+            co_return;
+        }
+
         auto const ui=winrt::apartment_context{};
         std::optional<winrt::hstring>hash,sizeName;
         std::optional<std::uint64_t>videoSize;

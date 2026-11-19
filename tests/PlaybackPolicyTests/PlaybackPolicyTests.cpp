@@ -374,6 +374,14 @@ namespace
         Require(ShouldReportPlaybackChange(false,false,true,PlaybackEndReason::None),"a user pause did not request a report");
         Require(!ShouldReportPlaybackChange(false,false,false,PlaybackEndReason::None),"cache starvation requested a watch report");
         Require(!ShouldReportPlaybackChange(false,true,true,PlaybackEndReason::Eof),"the terminal pause sent a duplicate watch report");
+        // A request that keeps no history (a link pasted into Search) stages and
+        // reports nothing, wherever playback stands; others keep today's rule.
+        Require(!ShouldKeepWatchRow(false,1800.0,3600.0),"a link that keeps no history produced a watch row");
+        Require(!ShouldKeepWatchRow(false,3600.0,3600.0),"a finished link that keeps no history produced a watch row");
+        Require(ShouldKeepWatchRow(true,1800.0,3600.0),"a recorded request lost its watch row");
+        Require(!ShouldKeepWatchRow(true,4.0,3600.0),"a barely started video produced a watch row");
+        Require(!ShouldKeepWatchRow(true,30.0,59.0),"a video under a minute produced a watch row");
+        Require(ShouldKeepWatchRow(true,5.0,60.0),"the edges of the watch row rule moved");
         Require(ShouldExitMpvEventLoop(true,false),"mpv event loop ignored a shutdown request while events remained queued");
         Require(ShouldExitMpvEventLoop(false,true),"mpv event loop ignored the shutdown event");
         Require(!ShouldExitMpvEventLoop(false,false),"mpv event loop stopped during normal playback");

@@ -192,6 +192,10 @@
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchResultBoard.cpp">
       <Link>SearchResultBoard.cpp</Link>
     </ClCompile>
+    <ClCompile Include="SearchInputTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\SearchInputPolicy.cpp">
+      <Link>SearchInputPolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchHistoryPolicy.cpp">
       <Link>SearchHistoryPolicy.cpp</Link>
     </ClCompile>
@@ -356,6 +360,7 @@
     <ClInclude Include="HomeRowsTests.h" />
     <ClInclude Include="HomeShelfLoadTests.h" />
     <ClInclude Include="SearchResultsTests.h" />
+    <ClInclude Include="SearchInputTests.h" />
     <ClInclude Include="HistoryRowsTests.h" />
     <ClInclude Include="DetailPageTests.h" />
     <ClInclude Include="SourcesSheetTests.h" />

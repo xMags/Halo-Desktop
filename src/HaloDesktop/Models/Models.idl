@@ -233,5 +233,8 @@ namespace HaloDesktop
         String Filename { get; };
         UInt64 VideoSize { get; };
         String VideoHash { get; };
+        // False for a link pasted into Search: nothing about it is kept in
+        // watch history, and Discord is not told its name.
+        Boolean RecordsHistory { get; };
     };
 }

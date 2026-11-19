@@ -195,6 +195,13 @@ namespace HaloDesktop::Playback
     // long enough to be dismissed at once.
     [[nodiscard]] std::chrono::milliseconds BufferingIndicatorHoldRemaining(
         std::chrono::milliseconds shownFor) noexcept;
+    // Whether playback at this place is worth a watch history row: never for
+    // a request that keeps no history, nor while the video is under a minute
+    // long or barely started.
+    [[nodiscard]] bool ShouldKeepWatchRow(
+        bool recordsHistory,
+        double positionSeconds,
+        double durationSeconds) noexcept;
     [[nodiscard]] bool ShouldReportPlaybackChange(
         bool endChanged,
         bool wasPaused,

@@ -313,6 +313,18 @@ namespace winrt::HaloDesktop::implementation
     void SearchPage::OnTopMatchPlayClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.PlayTopMatch(); }
     void SearchPage::OnTopMatchDetailsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.OpenTopMatch(); }
 
+    // The action card acts as its one button does; its button acts for itself.
+    void SearchPage::OnActionCardTapped(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const& args)
+    {
+        if (FromButton(args.OriginalSource(), ActionCard()))
+        {
+            return;
+        }
+        m_viewModel.ActivateAction();
+    }
+
+    void SearchPage::OnActionButtonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.ActivateAction(); }
+
     void SearchPage::ApplyLayoutMetrics()
     {
         auto const metrics = App::Services().LayoutMetrics;
@@ -331,6 +343,8 @@ namespace winrt::HaloDesktop::implementation
         TopMatchSkeletonColumn().Width(posterColumn);
         TopMatchPoster().Height(current.PosterArtHeight());
         TopMatchSkeletonPoster().Height(current.PosterArtHeight());
+        ActionPosterFrame().Width(current.PosterWidth);
+        ActionPosterFrame().Height(current.PosterArtHeight());
     }
 
     void SearchPage::ApplyResultsStale()

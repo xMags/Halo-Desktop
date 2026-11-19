@@ -51,7 +51,10 @@ namespace HaloDesktop::Playback
             // this start was abandoned while the source was being settled.
             if(version!=m_startVersion)co_return;
         }
-        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel()),std::wstring(request.MediaType()),std::wstring(request.Poster())});
+        m_request=request;m_prior=m_watchState->Find(request.VideoId());m_reporter=std::make_shared<WatchReporter>(m_watchState,request);
+        // A pasted link keeps no history, and its name is not told to Discord either.
+        if(request.RecordsHistory())m_presence->SetMedia({std::wstring(request.Title()),std::wstring(request.ShowName()),std::wstring(request.EpisodeLabel()),std::wstring(request.MediaType()),std::wstring(request.Poster())});
+        else m_presence->SetMedia({});
         m_reportTimer=dispatcher.CreateTimer();m_reportTimer.Interval(std::chrono::seconds(15));m_reportTimer.IsRepeating(true);
         m_reportTickRevoker=m_reportTimer.Tick(winrt::auto_revoke,[weak=weak_from_this()](auto const&,auto const&){if(auto self=weak.lock())self->ReportNow();});
         // Between reports the position is kept on this PC only, so closing the

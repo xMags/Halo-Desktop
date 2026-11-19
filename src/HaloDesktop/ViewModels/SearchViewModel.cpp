@@ -13,6 +13,7 @@
 #include "Services/RatingPolicy.h"
 #include "Services/SearchRankingPolicy.h"
 #include "Services/SearchRevealPolicy.h"
+#include "Services/TitleLookupService.h"
 #include "ViewModels/ObservableHelper.h"
 
 #include <algorithm>
@@ -30,6 +31,14 @@ namespace
     // How often an unrevealed query checks whether its reveal is due.
     constexpr std::chrono::milliseconds RevealCheckInterval{ 100 };
     constexpr wchar_t AddonsUnreachableNote[] = L"Search could not reach your addons. Check your connection and try again.";
+
+    // The action card's sentences, until later stages give these kinds their own cards.
+    constexpr wchar_t LookingUpText[] = L"Looking up…";
+    constexpr wchar_t NoAddonKnowsTitleText[] = L"No addon knows this title";
+    constexpr wchar_t PlayLinkText[] = L"Play this link";
+    constexpr wchar_t MagnetNotYetText[] = L"Magnet links aren't available yet.";
+    constexpr wchar_t LinkNotYetText[] = L"This kind of link isn't available yet.";
+    constexpr wchar_t TvdbSlugText[] = L"This TVDB link has no number in it. Paste the IMDb link instead.";
 
     winrt::Microsoft::UI::Xaml::Visibility VisibleIf(bool value) noexcept
     {
@@ -139,6 +148,7 @@ namespace winrt::HaloDesktop::implementation
     SearchViewModel::SearchViewModel(::HaloDesktop::Services::AppServices const& services)
         : m_search(services.Search),
           m_navigation(services.Navigation),
+          m_titleLookup(services.TitleLookup),
           m_dispatcher(Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread()),
           m_suggestions(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_recent(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -146,9 +156,9 @@ namespace winrt::HaloDesktop::implementation
           m_library(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_results(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_search || !m_navigation || !m_dispatcher)
+        if (!m_search || !m_navigation || !m_titleLookup || !m_dispatcher)
         {
-            throw winrt::hresult_invalid_argument{ L"Search needs its service, navigation and a dispatcher." };
+            throw winrt::hresult_invalid_argument{ L"Search needs its services, navigation and a dispatcher." };
         }
         m_accountVersion = m_search->AccountVersion();
         m_debounceTimer = m_dispatcher.CreateTimer();
@@ -158,7 +168,7 @@ namespace winrt::HaloDesktop::implementation
         {
             if (auto const self = weak.get())
             {
-                self->m_activeQuery = std::wstring{ self->m_query };
+                self->m_activeQuery = ::HaloDesktop::Services::CappedQuery(self->m_query);
                 self->SearchNow();
             }
         });
@@ -198,6 +208,14 @@ namespace winrt::HaloDesktop::implementation
             {
                 if (auto const again = weak.get())
                 {
+                    // The IMDb card's lookup was asked of the old account's
+                    // backend, and the change retired it; asked again here,
+                    // after every service has heard of the change.
+                    if (again->m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle)
+                    {
+                        again->StartTitleLookup();
+                        again->RaiseAction();
+                    }
                     again->m_search->Search(again->m_activeQuery, true);
                     again->m_search->EnsurePopular();
                     again->Refresh();
@@ -222,23 +240,32 @@ namespace winrt::HaloDesktop::implementation
         {
             m_search->RemoveChangedHandler(m_searchToken);
         }
+        if (m_titleLookup && m_lookupState == LookupState::Looking)
+        {
+            m_titleLookup->Cancel();
+        }
     }
 
     winrt::hstring SearchViewModel::Query() const { return m_query; }
 
     void SearchViewModel::Query(winrt::hstring const& value)
     {
-        auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(value) };
-        if (capped == m_query)
+        // The box holds the whole text, so a long pasted link is read whole;
+        // only words are cut to the search's length (CappedQuery) below.
+        if (value == m_query)
         {
             return;
         }
-        SetQueryText(capped);
+        SetQueryText(value);
         m_debounceTimer.Stop();
-        // Too short to search: back to recent and popular at once, not after the pause.
-        if (!::HaloDesktop::Services::IsSearchableQuery(capped))
+        if (ApplyInput())
         {
-            m_activeQuery = std::wstring{ capped };
+            return;
+        }
+        // Too short to search: back to recent and popular at once, not after the pause.
+        if (!::HaloDesktop::Services::IsSearchableQuery(value))
+        {
+            m_activeQuery = ::HaloDesktop::Services::CappedQuery(value);
             SearchNow();
             return;
         }
@@ -404,13 +431,18 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::Submit()
     {
+        if (ActionShown())
+        {
+            ActivateAction();
+            return;
+        }
         if (!::HaloDesktop::Services::IsSearchableQuery(m_query))
         {
             return;
         }
-        m_activeQuery = std::wstring{ m_query };
+        m_activeQuery = ::HaloDesktop::Services::CappedQuery(m_query);
         SearchNow();
-        m_search->RecordTerm(m_query);
+        RecordIfText(m_activeQuery);
     }
 
     void SearchViewModel::ClearQuery()
@@ -422,9 +454,14 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(term) };
         SetQueryText(capped);
+        m_debounceTimer.Stop();
+        if (ApplyInput())
+        {
+            return;
+        }
         m_activeQuery = std::wstring{ capped };
         SearchNow();
-        m_search->RecordTerm(capped);
+        RecordIfText(capped);
     }
 
     void SearchViewModel::Forget(winrt::hstring const& term) { m_search->RemoveTerm(term); }
@@ -433,7 +470,18 @@ namespace winrt::HaloDesktop::implementation
 
     void SearchViewModel::RecordQuery()
     {
-        m_search->RecordTerm(::HaloDesktop::Services::TrimmedText(m_activeQuery));
+        RecordIfText(m_activeQuery);
+    }
+
+    void SearchViewModel::RecordIfText(std::wstring_view term)
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto const trimmed = Services::TrimmedText(term);
+        if (ActionShown() || Services::ClassifySearchInput(trimmed).Kind != Services::SearchInputKind::Text)
+        {
+            return;
+        }
+        m_search->RecordTerm(trimmed);
     }
 
     void SearchViewModel::OpenDetail(winrt::Windows::Foundation::IInspectable const& item)
@@ -485,6 +533,11 @@ namespace winrt::HaloDesktop::implementation
     {
         auto const capped = winrt::hstring{ ::HaloDesktop::Services::CappedQuery(query) };
         SetQueryText(capped);
+        m_debounceTimer.Stop();
+        if (ApplyInput())
+        {
+            return;
+        }
         m_activeQuery = std::wstring{ capped };
         SearchNow();
     }
@@ -523,10 +576,10 @@ namespace winrt::HaloDesktop::implementation
             terms.begin() + static_cast<std::ptrdiff_t>((std::min)(terms.size(), ::HaloDesktop::Services::SearchRecentShown)));
         fill(m_recent, m_recentTerms, std::move(recent));
         fill(m_suggestions, m_suggestionTerms, m_boxFocused
-            ? ::HaloDesktop::Services::SuggestedSearches(terms, m_query)
+            ? ::HaloDesktop::Services::SuggestedSearches(terms, ::HaloDesktop::Services::CappedQuery(m_query))
             : std::vector<std::wstring>{});
         auto const suggestionsShown = !m_suggestionTerms.empty();
-        auto const recentShown = !m_active && !m_recentTerms.empty();
+        auto const recentShown = !m_active && !ActionShown() && !m_recentTerms.empty();
         if (suggestionsShown != m_suggestionsShown)
         {
             m_suggestionsShown = suggestionsShown;
@@ -544,6 +597,11 @@ namespace winrt::HaloDesktop::implementation
         namespace Services = ::HaloDesktop::Services;
         auto const query = Services::TrimmedText(m_activeQuery);
         m_active = Services::IsSearchableQuery(query);
+        if (ActionShown())
+        {
+            ComposeAction();
+            return;
+        }
         if (!m_active)
         {
             ComposeIdle();
@@ -876,10 +934,266 @@ namespace winrt::HaloDesktop::implementation
         m_topMatchTitle = std::move(title);
     }
 
+    bool SearchViewModel::ActionShown() const noexcept
+    {
+        return m_input.Kind != ::HaloDesktop::Services::SearchInputKind::Text;
+    }
+
+    bool SearchViewModel::ApplyInput()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        auto input = Services::ClassifySearchInput(Services::TrimmedText(m_query));
+        if (input.Kind == Services::SearchInputKind::Text)
+        {
+            if (!ActionShown())
+            {
+                return false;
+            }
+            // Back to words: the card goes, and the words are searched as usual.
+            m_titleLookup->Cancel();
+            m_input = {};
+            m_lookupState = LookupState::None;
+            m_lookupTitle.reset();
+            Refresh();
+            return false;
+        }
+        if (input == m_input)
+        {
+            return true;
+        }
+        m_input = std::move(input);
+        m_lookupState = LookupState::None;
+        m_lookupTitle.reset();
+        if (m_input.Kind == Services::SearchInputKind::ImdbTitle)
+        {
+            StartTitleLookup();
+        }
+        else
+        {
+            m_titleLookup->Cancel();
+        }
+        // No catalog is asked about a link; what an earlier query asked is dropped.
+        m_activeQuery.clear();
+        m_search->Search(m_activeQuery, false);
+        Refresh();
+        return true;
+    }
+
+    void SearchViewModel::StartTitleLookup()
+    {
+        m_lookupState = LookupState::Looking;
+        m_lookupTitle.reset();
+        m_titleLookup->Lookup(m_input.ImdbId, [weak = get_weak(), id = m_input.ImdbId](std::optional<SearchTitle> title)
+        {
+            auto const self = weak.get();
+            if (!self
+                || self->m_input.Kind != ::HaloDesktop::Services::SearchInputKind::ImdbTitle
+                || self->m_input.ImdbId != id)
+            {
+                return;
+            }
+            self->m_lookupState = title ? LookupState::Found : LookupState::NotFound;
+            self->m_lookupTitle = std::move(title);
+            self->RaiseAction();
+        });
+    }
+
+    void SearchViewModel::ComposeAction()
+    {
+        m_revealTimer.Stop();
+        m_board = {};
+        m_boardSerial.reset();
+        m_absorbed.clear();
+        m_hasShown = false;
+        ForgetShown();
+        m_popularSection = false;
+        m_popularSkeleton = false;
+        m_resultsStale = false;
+        m_topMatchSkeleton = false;
+        m_resultsSkeleton = false;
+        m_stillAskingShown = false;
+        m_statusText = {};
+        m_noAddons = false;
+        m_filteredEmpty = false;
+        m_nothingFound = false;
+        FinishCompose();
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionCardVisibility() const noexcept { return VisibleIf(ActionShown()); }
+
+    winrt::hstring SearchViewModel::ActionKicker() const
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        switch (m_input.Kind)
+        {
+        case Kind::ImdbTitle: return L"IMDB TITLE";
+        case Kind::ImdbPerson: return L"IMDB PERSON";
+        case Kind::TvdbNumeric:
+        case Kind::TvdbSlug: return L"TVDB LINK";
+        case Kind::Magnet: return L"MAGNET LINK";
+        case Kind::WebLink: return L"VIDEO LINK";
+        case Kind::UnsupportedLink: return L"LINK";
+        case Kind::Text: break;
+        }
+        return {};
+    }
+
+    winrt::hstring SearchViewModel::ActionTitle() const
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        switch (m_input.Kind)
+        {
+        case Kind::ImdbTitle:
+            if (m_lookupState == LookupState::Found && m_lookupTitle) return winrt::hstring{ m_lookupTitle->Name };
+            if (m_lookupState == LookupState::NotFound) return NoAddonKnowsTitleText;
+            return LookingUpText;
+        case Kind::WebLink: return PlayLinkText;
+        case Kind::Magnet: return MagnetNotYetText;
+        case Kind::TvdbNumeric:
+        case Kind::ImdbPerson: return LinkNotYetText;
+        case Kind::TvdbSlug: return TvdbSlugText;
+        case Kind::UnsupportedLink: return winrt::hstring{ m_input.Reason };
+        case Kind::Text: break;
+        }
+        return {};
+    }
+
+    winrt::hstring SearchViewModel::ActionDetail() const
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        if (m_input.Kind == Kind::ImdbTitle)
+        {
+            if (m_lookupState != LookupState::Found || !m_lookupTitle) return winrt::hstring{ m_input.ImdbId };
+            std::wstring line = m_lookupTitle->Type == L"series" ? L"SERIES" : L"MOVIE";
+            if (auto const& year = m_lookupTitle->ReleaseInfo; year && !year->empty()) line.append(L" · ").append(*year);
+            return winrt::hstring{ line };
+        }
+        if (m_input.Kind == Kind::WebLink)
+        {
+            if (m_input.DisplayName.empty() || m_input.DisplayName == m_input.Host) return winrt::hstring{ m_input.Host };
+            return winrt::hstring{ m_input.Host + L" · " + m_input.DisplayName };
+        }
+        return {};
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionDetailVisibility() const noexcept
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        return VisibleIf(m_input.Kind == Kind::ImdbTitle || m_input.Kind == Kind::WebLink);
+    }
+
+    winrt::hstring SearchViewModel::ActionPoster() const
+    {
+        if (m_lookupState != LookupState::Found || !m_lookupTitle || ::HaloDesktop::Services::HasNoPoster(*m_lookupTitle)) return {};
+        return winrt::hstring{ *m_lookupTitle->Poster };
+    }
+
+    winrt::hstring SearchViewModel::ActionMetaId() const
+    {
+        return m_lookupState == LookupState::Found && m_lookupTitle ? winrt::hstring{ m_lookupTitle->Id } : winrt::hstring{};
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionPosterVisibility() const noexcept
+    {
+        return VisibleIf(m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle
+            && m_lookupState == LookupState::Found && m_lookupTitle.has_value());
+    }
+
+    winrt::hstring SearchViewModel::ActionButtonLabel() const
+    {
+        if (m_input.Kind == ::HaloDesktop::Services::SearchInputKind::WebLink) return L"Play";
+        return L"Open title";
+    }
+
+    Microsoft::UI::Xaml::Visibility SearchViewModel::ActionButtonVisibility() const noexcept
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        return VisibleIf(m_input.Kind == Kind::WebLink
+            || (m_input.Kind == Kind::ImdbTitle && m_lookupState == LookupState::Found && m_lookupTitle.has_value()));
+    }
+
+    bool SearchViewModel::ActionBusy() const noexcept
+    {
+        return m_input.Kind == ::HaloDesktop::Services::SearchInputKind::ImdbTitle && m_lookupState == LookupState::Looking;
+    }
+
+    void SearchViewModel::ActivateAction()
+    {
+        using Kind = ::HaloDesktop::Services::SearchInputKind;
+        if (m_input.Kind == Kind::ImdbTitle)
+        {
+            OpenFoundTitle();
+        }
+        else if (m_input.Kind == Kind::WebLink)
+        {
+            PlayPastedLink();
+        }
+    }
+
+    void SearchViewModel::OpenFoundTitle()
+    {
+        if (m_lookupState != LookupState::Found || !m_lookupTitle)
+        {
+            return;
+        }
+        auto const& title = *m_lookupTitle;
+        auto const poster = ::HaloDesktop::Services::HasNoPoster(title) ? std::wstring{} : title.Poster.value_or(L"");
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Detail,
+            winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(
+                winrt::hstring{ title.Type }, winrt::hstring{ title.Id }, winrt::hstring{ title.Name }, winrt::hstring{ poster }));
+    }
+
+    void SearchViewModel::PlayPastedLink()
+    {
+        namespace Services = ::HaloDesktop::Services;
+        // Read again from the box rather than trusted from the card: only a
+        // web link the classifier accepts, exactly as shown, reaches playback.
+        auto const input = Services::ClassifySearchInput(Services::TrimmedText(m_query));
+        if (input.Kind != Services::SearchInputKind::WebLink || input != m_input || input.Url.empty())
+        {
+            return;
+        }
+        // No video id, item id or title page: nothing about the link is kept
+        // in watch history, and no addon is asked for its subtitles.
+        auto const request = winrt::make<winrt::HaloDesktop::implementation::PlaybackRequest>(
+            winrt::hstring{ input.Url },
+            false,
+            L"",
+            L"",
+            L"movie",
+            L"",
+            L"",
+            L"",
+            winrt::hstring{ input.DisplayName },
+            L"",
+            L"",
+            L"",
+            L"",
+            L"",
+            L"",
+            0,
+            L"",
+            std::vector<std::pair<winrt::hstring, winrt::hstring>>{},
+            false);
+        m_navigation->ShowOverlay(Services::Page::Player, request);
+    }
+
+    void SearchViewModel::RaiseAction()
+    {
+        for (auto const name : {
+                 L"ActionCardVisibility", L"ActionKicker", L"ActionTitle", L"ActionDetail", L"ActionDetailVisibility",
+                 L"ActionPoster", L"ActionMetaId", L"ActionPosterVisibility", L"ActionButtonLabel",
+                 L"ActionButtonVisibility", L"ActionBusy" })
+        {
+            Raise(name);
+        }
+    }
+
     void SearchViewModel::FinishCompose()
     {
         m_topMatchInLibrary = m_topMatchTitle && m_search->InLibrary(m_topMatchTitle->Type, m_topMatchTitle->Id);
-        m_recentShown = !m_active && m_recent.Size() > 0;
+        m_recentShown = !m_active && !ActionShown() && m_recent.Size() > 0;
         RaiseAll();
     }
 
@@ -912,5 +1226,6 @@ namespace winrt::HaloDesktop::implementation
         {
             Raise(name);
         }
+        RaiseAction();
     }
 }

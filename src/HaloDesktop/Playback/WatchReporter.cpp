@@ -1,6 +1,8 @@
 #include "pch.h"
 #include "Playback/WatchReporter.h"
 
+#include "Playback/PlaybackPolicy.h"
+
 #include "Services/WatchStateService.h"
 
 #include <algorithm>
@@ -24,7 +26,7 @@ namespace HaloDesktop::Playback
 
     std::optional<Api::Dto::WatchEntry> WatchReporter::RowFor(PlaybackState const& state)
     {
-        if(state.DurationSeconds<60.0||state.PositionSeconds<5.0)return std::nullopt;
+        if(!ShouldKeepWatchRow(m_request.RecordsHistory(),state.PositionSeconds,state.DurationSeconds))return std::nullopt;
         auto const position=std::floor(state.PositionSeconds),duration=std::floor(state.DurationSeconds);
         if(duration<=0)return std::nullopt;
         // Drawn from the watch-state service, so a report is stamped after any
@@ -47,7 +49,7 @@ namespace HaloDesktop::Playback
     {
         // Compared before a stamp is drawn, so a paused player does not rewrite
         // the file every two seconds with the same place under a new time.
-        if(state.DurationSeconds<60.0||state.PositionSeconds<5.0)return;
+        if(!ShouldKeepWatchRow(m_request.RecordsHistory(),state.PositionSeconds,state.DurationSeconds))return;
         auto const position=std::floor(state.PositionSeconds),duration=std::floor(state.DurationSeconds);
         if(m_lastStaged&&m_lastStaged->PositionSec==position&&m_lastStaged->DurationSec==duration)return;
         auto row=RowFor(state);

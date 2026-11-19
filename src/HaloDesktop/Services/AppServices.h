@@ -40,6 +40,7 @@ namespace HaloDesktop::Services
     class DiscordPresenceService;
     class NavigationService;
     class SearchService;
+    class TitleLookupService;
     class PlaybackPreferences;
     class ThemeService;
     class SettingsSyncService;
@@ -50,6 +51,8 @@ namespace HaloDesktop::Services
     {
         std::shared_ptr<ICatalogService> Catalog;
         std::shared_ptr<SearchService> Search;
+        // The title a pasted IMDb id names, for Search's action card.
+        std::shared_ptr<TitleLookupService> TitleLookup;
         std::shared_ptr<IMetadataService> Metadata;
         std::shared_ptr<ISourceService> Sources;
         std::shared_ptr<IDownloadService> Downloads;

@@ -64,7 +64,7 @@
               VerticalContentAlignment="Center"
               FontSize="{StaticResource HaloFontEmphasis}"
               IsSpellCheckEnabled="False"
-              MaxLength="120"
+              MaxLength="2048"
               PlaceholderText="Search movies and series"
               Text="{x:Bind ViewModel.Query, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
               GotFocus="OnQueryGotFocus"
@@ -350,6 +350,71 @@
                 <ScalarTransition Duration="0:0:0.12" />
               </Border.OpacityTransition>
             </Border>
+          </Grid>
+
+          <!--
+            The action card, in the top match's place while the box holds a
+            pasted link or id: what it is and, when there is one, the single
+            thing it does (Enter, a click on the card, or its button).
+          -->
+          <Grid
+            x:Name="ActionCard"
+            Margin="0,26,0,0"
+            Padding="26,22"
+            Background="{ThemeResource HaloCardBrush}"
+            BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+            BorderThickness="1"
+            ColumnSpacing="26"
+            CornerRadius="8"
+            Tapped="OnActionCardTapped"
+            Visibility="{x:Bind ViewModel.ActionCardVisibility, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto" />
+              <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid
+              x:Name="ActionPosterFrame"
+              Width="132"
+              Height="198"
+              VerticalAlignment="Center"
+              BorderBrush="{ThemeResource HaloCardStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="8"
+              Visibility="{x:Bind ViewModel.ActionPosterVisibility, Mode=OneWay}">
+              <local:PlaceholderArt />
+              <local:ArtworkImage
+                DecodeWidth="168"
+                MetaId="{x:Bind ViewModel.ActionMetaId, Mode=OneWay}"
+                SourceUrl="{x:Bind ViewModel.ActionPoster, Mode=OneWay}" />
+            </Grid>
+            <StackPanel Grid.Column="1" MaxWidth="640" HorizontalAlignment="Left" VerticalAlignment="Center" Spacing="9">
+              <TextBlock Foreground="{ThemeResource HaloAccentBrush}" Style="{StaticResource HaloMonoKicker}" Text="{x:Bind ViewModel.ActionKicker, Mode=OneWay}" />
+              <StackPanel Orientation="Horizontal" Spacing="10">
+                <ProgressRing Width="16" Height="16" MinWidth="0" MinHeight="0" VerticalAlignment="Center" IsActive="{x:Bind ViewModel.ActionBusy, Mode=OneWay}" />
+                <TextBlock
+                  FontFamily="Segoe UI Variable Display"
+                  FontSize="22"
+                  FontWeight="SemiBold"
+                  Foreground="{ThemeResource HaloText1Brush}"
+                  Text="{x:Bind ViewModel.ActionTitle, Mode=OneWay}"
+                  TextWrapping="Wrap" />
+              </StackPanel>
+              <TextBlock
+                FontSize="{StaticResource HaloFontBody}"
+                Foreground="{ThemeResource HaloText2Brush}"
+                Text="{x:Bind ViewModel.ActionDetail, Mode=OneWay}"
+                TextTrimming="CharacterEllipsis"
+                Visibility="{x:Bind ViewModel.ActionDetailVisibility, Mode=OneWay}" />
+              <Button
+                Height="36"
+                Margin="0,12,0,0"
+                Padding="18,0"
+                AutomationProperties.Name="{x:Bind ViewModel.ActionButtonLabel, Mode=OneWay}"
+                Click="OnActionButtonClick"
+                Content="{x:Bind ViewModel.ActionButtonLabel, Mode=OneWay}"
+                Style="{StaticResource HaloAccentButtonStyle}"
+                Visibility="{x:Bind ViewModel.ActionButtonVisibility, Mode=OneWay}" />
+            </StackPanel>
           </Grid>
 
           <!-- `TopMatchSkeleton`: the card's frame, a poster frame and the body's bars. -->

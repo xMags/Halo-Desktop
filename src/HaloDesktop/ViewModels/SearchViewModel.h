@@ -2,6 +2,7 @@
 #include "RecentSearchViewModel.g.h"
 #include "SearchViewModel.g.h"
 #include "Services/AppServices.h"
+#include "Services/SearchInputPolicy.h"
 #include "Services/SearchResultBoard.h"
 #include "Services/SearchResultsPolicy.h"
 #include "Services/SearchService.h"
@@ -12,6 +13,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <vector>
 #include <winrt/Microsoft.UI.Dispatching.h>
@@ -108,6 +110,24 @@ namespace winrt::HaloDesktop::implementation
         // Whether any skeleton is drawn, for the page's pulse.
         [[nodiscard]] bool SkeletonsShown() const noexcept;
 
+        // The one card shown in the top match's place while the box holds a
+        // link or an id instead of words: what it is, and what Enter or a
+        // click on it does.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionCardVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring ActionKicker() const;
+        [[nodiscard]] winrt::hstring ActionTitle() const;
+        [[nodiscard]] winrt::hstring ActionDetail() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionDetailVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring ActionPoster() const;
+        [[nodiscard]] winrt::hstring ActionMetaId() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionPosterVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring ActionButtonLabel() const;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility ActionButtonVisibility() const noexcept;
+        [[nodiscard]] bool ActionBusy() const noexcept;
+        // Opens the IMDb title's page or plays the pasted link; nothing for a
+        // card that only says something.
+        void ActivateAction();
+
         void SetFilter(std::int32_t index);
         void SetBoxFocused(bool focused);
         // Enter: searches now and keeps the term.
@@ -136,7 +156,29 @@ namespace winrt::HaloDesktop::implementation
         void PropertyChanged(winrt::event_token const& token) noexcept;
 
     private:
+        // Where the IMDb card's lookup stands.
+        enum class LookupState
+        {
+            None,
+            Looking,
+            Found,
+            NotFound,
+        };
+
         void SetQueryText(winrt::hstring const& value);
+        // Reads the box. For anything but words it shows the action card,
+        // stops any catalog search and returns true; the caller then does
+        // nothing more with the text.
+        [[nodiscard]] bool ApplyInput();
+        [[nodiscard]] bool ActionShown() const noexcept;
+        void StartTitleLookup();
+        // While the action card is up: no results, no popular, no status line.
+        void ComposeAction();
+        void RaiseAction();
+        // Keeps `term` among the recent searches only when it is words.
+        void RecordIfText(std::wstring_view term);
+        void OpenFoundTitle();
+        void PlayPastedLink();
         void SearchNow();
         // Brings the page to where the service's answers stand.
         void Refresh();
@@ -178,6 +220,7 @@ namespace winrt::HaloDesktop::implementation
 
         std::shared_ptr<::HaloDesktop::Services::SearchService> m_search;
         std::shared_ptr<::HaloDesktop::Services::NavigationService> m_navigation;
+        std::shared_ptr<::HaloDesktop::Services::TitleLookupService> m_titleLookup;
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_debounceTimer{ nullptr };
         // Runs only while the current query is asked and not yet revealed.
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_revealTimer{ nullptr };
@@ -190,6 +233,10 @@ namespace winrt::HaloDesktop::implementation
         std::wstring m_activeQuery;
         std::int32_t m_filterIndex{};
         bool m_boxFocused{};
+        // What the box holds, read on every change.
+        ::HaloDesktop::Services::SearchInput m_input;
+        LookupState m_lookupState{ LookupState::None };
+        std::optional<::HaloDesktop::Services::SearchTitle> m_lookupTitle;
 
         // The current query's results, from the reveal on.
         ::HaloDesktop::Services::SearchResultBoard m_board;

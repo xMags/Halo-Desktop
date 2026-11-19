@@ -334,6 +334,11 @@ namespace HaloDesktop::Playback
         return BufferingIndicatorMinimumVisible-shownFor;
     }
 
+    bool ShouldKeepWatchRow(bool recordsHistory, double positionSeconds, double durationSeconds) noexcept
+    {
+        return recordsHistory && durationSeconds >= 60.0 && positionSeconds >= 5.0;
+    }
+
     bool ShouldReportPlaybackChange(
         bool endChanged,
         bool wasPaused,

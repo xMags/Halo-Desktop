@@ -58,6 +58,20 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility FilteredEmptyVisibility { get; };
         Microsoft.UI.Xaml.Visibility NothingFoundVisibility { get; };
 
+        // The card in the top match's place for a pasted link or id.
+        Microsoft.UI.Xaml.Visibility ActionCardVisibility { get; };
+        String ActionKicker { get; };
+        String ActionTitle { get; };
+        String ActionDetail { get; };
+        Microsoft.UI.Xaml.Visibility ActionDetailVisibility { get; };
+        String ActionPoster { get; };
+        String ActionMetaId { get; };
+        Microsoft.UI.Xaml.Visibility ActionPosterVisibility { get; };
+        String ActionButtonLabel { get; };
+        Microsoft.UI.Xaml.Visibility ActionButtonVisibility { get; };
+        Boolean ActionBusy { get; };
+        void ActivateAction();
+
         void SetFilter(Int32 index);
         void SetBoxFocused(Boolean focused);
         void Submit();

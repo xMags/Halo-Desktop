@@ -23,6 +23,7 @@
 #include "HomeRowsTests.h"
 #include "HomeShelfLoadTests.h"
 #include "SearchResultsTests.h"
+#include "SearchInputTests.h"
 #include "HistoryRowsTests.h"
 #include "DetailPageTests.h"
 #include "SourcesSheetTests.h"
@@ -1600,6 +1601,7 @@ int main()
         RunHomeRowsTests();
         RunHomeShelfLoadTests();
         RunSearchResultsTests();
+        RunSearchInputTests();
         TestWatchMarks();
         TestHistoryRemoval();
         RunHistoryRowsTests();

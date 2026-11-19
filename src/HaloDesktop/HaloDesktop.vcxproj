@@ -433,6 +433,8 @@
     <ClInclude Include="Services\SearchRankingPolicy.h" />
     <ClInclude Include="Services\SearchRevealPolicy.h" />
     <ClInclude Include="Services\SearchResultBoard.h" />
+    <ClInclude Include="Services\SearchInputPolicy.h" />
+    <ClInclude Include="Services\TitleLookupService.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -878,6 +880,10 @@
     <ClCompile Include="Services\SearchResultBoard.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Services\SearchInputPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\TitleLookupService.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>
