@@ -434,6 +434,87 @@ namespace HaloDesktop::Services
             : std::wstring{ L"No series in your history." };
     }
 
+    HistoryView HistoryViewFromIndex(std::int32_t index) noexcept
+    {
+        switch (index)
+        {
+        case 1: return HistoryView::Movies;
+        case 2: return HistoryView::Series;
+        case 3: return HistoryView::InProgress;
+        default: return HistoryView::All;
+        }
+    }
+
+    namespace
+    {
+        bool ShowsIn(HistoryEntry const& entry, HistoryView view) noexcept
+        {
+            switch (view)
+            {
+            case HistoryView::Movies:
+                return MatchesHomeFilterType(::HaloDesktop::ViewModels::HomeFilter::Movies, entry.Type);
+            case HistoryView::Series:
+                return MatchesHomeFilterType(::HaloDesktop::ViewModels::HomeFilter::Series, entry.Type);
+            case HistoryView::InProgress:
+                return !entry.Finished;
+            case HistoryView::All:
+                break;
+            }
+            return true;
+        }
+    }
+
+    std::vector<HistoryEntry> FilterHistoryView(std::vector<HistoryEntry> entries, HistoryView view)
+    {
+        std::erase_if(entries, [view](HistoryEntry const& entry) { return !ShowsIn(entry, view); });
+        return entries;
+    }
+
+    HistoryViewCounts CountHistoryViews(std::span<HistoryEntry const> entries)
+    {
+        HistoryViewCounts counts;
+        for (auto const& entry : entries)
+        {
+            ++counts.All;
+            if (ShowsIn(entry, HistoryView::Movies)) ++counts.Movies;
+            if (ShowsIn(entry, HistoryView::Series)) ++counts.Series;
+            if (ShowsIn(entry, HistoryView::InProgress)) ++counts.InProgress;
+        }
+        return counts;
+    }
+
+    std::optional<std::wstring> HistoryNote(
+        HistoryLoadState state,
+        bool hasAny,
+        bool groupsEmpty,
+        std::wstring_view query,
+        HistoryView view)
+    {
+        auto const filter = view == HistoryView::Movies
+            ? ::HaloDesktop::ViewModels::HomeFilter::Movies
+            : view == HistoryView::Series
+                ? ::HaloDesktop::ViewModels::HomeFilter::Series
+                : ::HaloDesktop::ViewModels::HomeFilter::All;
+        auto note = HistoryNote(state, hasAny, groupsEmpty, query, filter);
+        if (view != HistoryView::InProgress || !note || state != HistoryLoadState::Loaded || !hasAny || !TrimmedText(query).empty())
+        {
+            return note;
+        }
+        return std::wstring{ L"Nothing in progress. Everything you started is finished." };
+    }
+
+    std::wstring HistoryStateText(HistoryEntry const& entry)
+    {
+        if (entry.Finished) return L"Watched";
+        if (entry.DurationSec > 0.0) return FormatTimeLeft(entry.PositionSec, entry.DurationSec);
+        return L"Started";
+    }
+
+    std::wstring HistoryTitleCount(std::size_t count)
+    {
+        return std::to_wstring(count) + (count == 1 ? L" title" : L" titles");
+    }
+
     std::vector<std::wstring> ClearHistoryVideoIds(std::span<Api::Dto::WatchEntry const> rows)
     {
         std::vector<std::wstring> videoIds;

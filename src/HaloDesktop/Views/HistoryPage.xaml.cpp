@@ -6,11 +6,10 @@
 
 #include "App.xaml.h"
 #include "Services/HistoryRowsPolicy.h"
-#include "Shell/LayoutMetricsService.h"
 #include "ViewModels/HistoryViewModel.h"
 #include "Views/PageDialog.h"
 
-#include <algorithm>
+#include <array>
 #include <optional>
 #include <string_view>
 #include <utility>
@@ -19,9 +18,6 @@
 
 namespace
 {
-    // `minmax(min(100%, 400px), 1fr)`.
-    constexpr double CardMinWidth = 400.0;
-
     struct EntrySubject final
     {
         winrt::Microsoft::UI::Xaml::FrameworkElement Anchor{ nullptr };
@@ -124,17 +120,6 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        if (m_metricsToken == 0)
-        {
-            if (auto const metrics = App::Services().LayoutMetrics)
-            {
-                m_metricsToken = metrics->AddChangedHandler([weak = get_weak()]()
-                {
-                    if (auto const self = weak.get()) self->ApplyLayoutMetrics();
-                });
-            }
-        }
-        ApplyLayoutMetrics();
         auto const viewModel = winrt::get_self<HistoryViewModel>(m_viewModel);
         // Bound once for the life of the page: handing the list the same
         // collection again resets it, and this runs on every return.
@@ -152,40 +137,6 @@ namespace winrt::HaloDesktop::implementation
     {
         winrt::get_self<HistoryViewModel>(m_viewModel)->Hidden();
         m_hoveredCard = nullptr;
-        if (m_metricsToken == 0) return;
-        if (auto const metrics = App::Services().LayoutMetrics) metrics->RemoveChangedHandler(m_metricsToken);
-        m_metricsToken = 0;
-    }
-
-    void HistoryPage::ApplyLayoutMetrics()
-    {
-        auto const metrics = App::Services().LayoutMetrics;
-        if (!metrics) return;
-        m_gutter = metrics->Current().Gutter;
-        Header().ContentPadding({ m_gutter, 12.0, m_gutter, 12.0 });
-        HistoryBody().Padding({ m_gutter, 8.0, m_gutter, 32.0 });
-        StateNote().Margin({ m_gutter, 14.0, m_gutter, 14.0 });
-        ErrorNote().Margin({ m_gutter, 14.0, m_gutter, 14.0 });
-        ApplyColumnWidth();
-    }
-
-    void HistoryPage::OnScrollerSizeChanged(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
-        [[maybe_unused]] Microsoft::UI::Xaml::SizeChangedEventArgs const&)
-    {
-        ApplyColumnWidth();
-    }
-
-    // A column is never wider than the page, so a narrow window keeps one card
-    // across rather than one cut off at its right.
-    void HistoryPage::ApplyColumnWidth()
-    {
-        auto const layout = Resources().TryLookup(winrt::box_value(L"HistoryCardLayout"))
-            .try_as<Microsoft::UI::Xaml::Controls::UniformGridLayout>();
-        if (!layout) return;
-        auto const available = HistoryScroller().ActualWidth() - 2.0 * m_gutter;
-        auto const width = available > 0.0 ? (std::min)(CardMinWidth, available) : CardMinWidth;
-        if (layout.MinItemWidth() != width) layout.MinItemWidth(width);
     }
 
     void HistoryPage::OnQueryBoxLoaded(
@@ -212,9 +163,22 @@ namespace winrt::HaloDesktop::implementation
         QueryBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
     }
 
-    void HistoryPage::OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(0); }
-    void HistoryPage::OnMoviesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(1); }
-    void HistoryPage::OnSeriesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.SetFilter(2); }
+    // The tabs in the view model's order: All, Movies, Series, In progress.
+    void HistoryPage::OnFilterSelectionChanged(
+        Microsoft::UI::Xaml::Controls::SelectorBar const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&)
+    {
+        auto const selected = sender.SelectedItem();
+        std::array const items{ AllFilterItem(), MoviesFilterItem(), SeriesFilterItem(), InProgressFilterItem() };
+        for (std::size_t position = 0; position < items.size(); ++position)
+        {
+            if (items[position] == selected)
+            {
+                m_viewModel.SetFilter(static_cast<std::int32_t>(position));
+                return;
+            }
+        }
+    }
     void HistoryPage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
 
     void HistoryPage::OnClearHistoryClick(
@@ -361,7 +325,7 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    // A recycled card starts at rest: the one it was may have been hovered.
+    // A recycled row starts at rest: the one it was may have been hovered.
     void HistoryPage::OnCardPrepared(
         [[maybe_unused]] Microsoft::UI::Xaml::Controls::ItemsRepeater const&,
         Microsoft::UI::Xaml::Controls::ItemsRepeaterElementPreparedEventArgs const& args)
@@ -424,9 +388,9 @@ namespace winrt::HaloDesktop::implementation
             {
                 actions.Opacity(revealed ? 1.0 : 0.0);
             }
-            if (auto const rest = card.FindName(L"RestPlate").try_as<Microsoft::UI::Xaml::UIElement>())
+            if (auto const time = card.FindName(L"TimeText").try_as<Microsoft::UI::Xaml::UIElement>())
             {
-                rest.Opacity(hovered ? 0.0 : 1.0);
+                time.Opacity(revealed ? 0.0 : 1.0);
             }
             if (auto const hover = card.FindName(L"HoverPlate").try_as<Microsoft::UI::Xaml::UIElement>())
             {

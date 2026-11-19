@@ -18,6 +18,7 @@
 #include "ViewModels/HomeStatePolicy.h"
 #include "ViewModels/ObservableHelper.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <stdexcept>
@@ -28,8 +29,10 @@ namespace
     auto const Visible = winrt::Microsoft::UI::Xaml::Visibility::Visible;
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
-    // The reference's 52px thumbnail.
-    constexpr double ThumbnailWidth = 52.0;
+    // The row's progress bar.
+    constexpr double ProgressBarWidth = 120.0;
+    // The tabs, in the page's order: All, Movies, Series, In progress.
+    constexpr std::int32_t LastFilterIndex = 3;
     // Segoe Fluent Icons.
     constexpr wchar_t ResumeGlyph[] = L"\xE768";
     constexpr wchar_t PlayAgainGlyph[] = L"\xE72C";
@@ -41,15 +44,9 @@ namespace
             std::chrono::system_clock::now().time_since_epoch()).count();
     }
 
-    // The labels are English and the page draws them in capitals, as the
-    // reference's `text-transform: uppercase` does.
-    winrt::hstring UpperLabel(std::wstring text)
+    winrt::hstring TabText(wchar_t const* label, std::size_t count)
     {
-        for (auto& ch : text)
-        {
-            if (ch >= L'a' && ch <= L'z') ch = static_cast<wchar_t>(ch - L'a' + L'A');
-        }
-        return winrt::hstring{ text };
+        return winrt::hstring{ std::wstring{ label } + L" (" + std::to_wstring(count) + L")" };
     }
 
     std::int64_t LocalDayKey(std::int64_t now, ::HaloDesktop::Services::LocalTimeOf const& localTime)
@@ -64,25 +61,35 @@ namespace winrt::HaloDesktop::implementation
     HistoryEntryViewModel::HistoryEntryViewModel(
         ::HaloDesktop::Services::HistoryEntry entry,
         std::int64_t now,
-        ::HaloDesktop::Services::LocalTimeOf const& localTime)
-        : m_entry(std::move(entry))
+        ::HaloDesktop::Services::LocalTimeOf const& localTime,
+        bool firstInSection)
+        : m_entry(std::move(entry)), m_firstInSection(firstInSection)
     {
         m_title = winrt::hstring{ m_entry.Name };
-        m_meta = winrt::hstring{ ::HaloDesktop::Services::HistoryMetaLine(m_entry) };
+        m_tag = winrt::hstring{ ::HaloDesktop::Services::VideoIdTag(m_entry.VideoId, m_entry.MetaId) };
+        m_state = winrt::hstring{ ::HaloDesktop::Services::HistoryStateText(m_entry) };
         m_time = winrt::hstring{ ::HaloDesktop::Services::HistoryTime(m_entry.UpdatedAt, now, localTime) };
         m_fullTime = winrt::hstring{ ::HaloDesktop::Services::HistoryFullTime(m_entry.UpdatedAt, localTime) };
         m_progress = ::HaloDesktop::Services::HistoryProgress(m_entry);
     }
 
     winrt::hstring HistoryEntryViewModel::Title() const { return m_title; }
-    winrt::hstring HistoryEntryViewModel::Meta() const { return m_meta; }
+    winrt::hstring HistoryEntryViewModel::Tag() const { return m_tag; }
+    winrt::hstring HistoryEntryViewModel::State() const { return m_state; }
     winrt::hstring HistoryEntryViewModel::Time() const { return m_time; }
     winrt::hstring HistoryEntryViewModel::FullTime() const { return m_fullTime; }
     winrt::hstring HistoryEntryViewModel::Poster() const { return winrt::hstring{ m_entry.Poster.value_or(std::wstring{}) }; }
     winrt::hstring HistoryEntryViewModel::MetaId() const { return winrt::hstring{ m_entry.MetaId }; }
-    // `width: {Math.round(progress * 100)}%` of the thumbnail.
-    double HistoryEntryViewModel::ProgressWidth() const noexcept { return ThumbnailWidth * std::round(m_progress * 100.0) / 100.0; }
-    Microsoft::UI::Xaml::Visibility HistoryEntryViewModel::ProgressVisibility() const noexcept { return m_progress > 0.0 ? Visible : Collapsed; }
+    // Whole pixels of the bar, at least one, so a video just started shows it began.
+    double HistoryEntryViewModel::ProgressWidth() const noexcept { return (std::max)(1.0, std::round(ProgressBarWidth * m_progress)); }
+    // Any video of known length not yet finished, even one stopped in its
+    // first second: the bar sits beside how much is left.
+    Microsoft::UI::Xaml::Visibility HistoryEntryViewModel::ProgressVisibility() const noexcept
+    {
+        return !m_entry.Finished && m_entry.DurationSec > 0.0 ? Visible : Collapsed;
+    }
+    Microsoft::UI::Xaml::Visibility HistoryEntryViewModel::WatchedVisibility() const noexcept { return m_entry.Finished ? Visible : Collapsed; }
+    Microsoft::UI::Xaml::Visibility HistoryEntryViewModel::DividerVisibility() const noexcept { return m_firstInSection ? Collapsed : Visible; }
     winrt::hstring HistoryEntryViewModel::PlayGlyph() const { return m_entry.Finished ? PlayAgainGlyph : ResumeGlyph; }
     winrt::hstring HistoryEntryViewModel::PlayLabel() const { return m_entry.Finished ? L"Play again" : L"Resume"; }
     winrt::hstring HistoryEntryViewModel::OpenLabel() const
@@ -140,6 +147,10 @@ namespace winrt::HaloDesktop::implementation
     }
     Microsoft::UI::Xaml::Visibility HistoryViewModel::ClearQueryVisibility() const noexcept { return m_query.empty() ? Collapsed : Visible; }
     std::int32_t HistoryViewModel::FilterIndex() const noexcept { return m_filterIndex; }
+    winrt::hstring HistoryViewModel::AllTabText() const { return TabText(L"All", m_counts.All); }
+    winrt::hstring HistoryViewModel::MoviesTabText() const { return TabText(L"Movies", m_counts.Movies); }
+    winrt::hstring HistoryViewModel::SeriesTabText() const { return TabText(L"Series", m_counts.Series); }
+    winrt::hstring HistoryViewModel::InProgressTabText() const { return TabText(L"In progress", m_counts.InProgress); }
     bool HistoryViewModel::CanClear() const noexcept
     {
         return m_state == ::HaloDesktop::Services::HistoryLoadState::Loaded && m_hasAny && m_removalsInFlight == 0;
@@ -147,7 +158,7 @@ namespace winrt::HaloDesktop::implementation
     winrt::hstring HistoryViewModel::Note() const
     {
         auto const note = ::HaloDesktop::Services::HistoryNote(
-            m_state, m_hasAny, m_groupsEmpty, m_query, ::HaloDesktop::ViewModels::HomeFilterFromIndex(m_filterIndex));
+            m_state, m_hasAny, m_groupsEmpty, m_query, ::HaloDesktop::Services::HistoryViewFromIndex(m_filterIndex));
         return note ? winrt::hstring{ *note } : winrt::hstring{};
     }
     Microsoft::UI::Xaml::Visibility HistoryViewModel::NoteVisibility() const noexcept { return Note().empty() ? Collapsed : Visible; }
@@ -158,7 +169,7 @@ namespace winrt::HaloDesktop::implementation
 
     void HistoryViewModel::SetFilter(std::int32_t index)
     {
-        if (index < 0 || index > 2 || index == m_filterIndex) return;
+        if (index < 0 || index > LastFilterIndex || index == m_filterIndex) return;
         m_filterIndex = index;
         Raise(L"FilterIndex");
         Rebuild();
@@ -292,6 +303,7 @@ namespace winrt::HaloDesktop::implementation
     {
         std::vector<::HaloDesktop::Services::HistoryGroup> groups;
         m_hasAny = false;
+        ::HaloDesktop::Services::HistoryViewCounts counts;
         auto const now = NowMilliseconds();
         auto const localTime = ::HaloDesktop::Services::SystemLocalTime();
         if (m_state == ::HaloDesktop::Services::HistoryLoadState::Loaded)
@@ -299,13 +311,22 @@ namespace winrt::HaloDesktop::implementation
             auto const rows = m_watch->Rows();
             auto const library = m_library->Rows();
             m_hasAny = !rows.empty();
+            // One build serves every tab: the counts are of what each would
+            // show under the same search.
+            auto matching = ::HaloDesktop::Services::SearchHistory(
+                ::HaloDesktop::Services::BuildHistory(rows, library, ::HaloDesktop::ViewModels::HomeFilter::All),
+                m_query);
+            counts = ::HaloDesktop::Services::CountHistoryViews(matching);
             groups = ::HaloDesktop::Services::GroupHistory(
-                ::HaloDesktop::Services::SearchHistory(
-                    ::HaloDesktop::Services::BuildHistory(
-                        rows, library, ::HaloDesktop::ViewModels::HomeFilterFromIndex(m_filterIndex)),
-                    m_query),
+                ::HaloDesktop::Services::FilterHistoryView(
+                    std::move(matching), ::HaloDesktop::Services::HistoryViewFromIndex(m_filterIndex)),
                 now,
                 localTime);
+        }
+        if (counts != m_counts)
+        {
+            m_counts = counts;
+            for (auto const name : { L"AllTabText", L"MoviesTabText", L"SeriesTabText", L"InProgressTabText" }) Raise(name);
         }
         m_groupsEmpty = groups.empty();
         auto const day = LocalDayKey(now, localTime);
@@ -322,11 +343,11 @@ namespace winrt::HaloDesktop::implementation
             entries.reserve(group.Entries.size());
             for (auto const& entry : group.Entries)
             {
-                entries.push_back(winrt::make<HistoryEntryViewModel>(entry, now, localTime));
+                entries.push_back(winrt::make<HistoryEntryViewModel>(entry, now, localTime, entries.empty()));
             }
             items.push_back(winrt::make<HistoryGroupViewModel>(
-                UpperLabel(group.Label),
-                winrt::to_hstring(static_cast<std::uint64_t>(group.Entries.size())),
+                winrt::hstring{ group.Label },
+                winrt::hstring{ ::HaloDesktop::Services::HistoryTitleCount(group.Entries.size()) },
                 winrt::single_threaded_vector(std::move(entries))));
         }
         m_groups.ReplaceAll(items);

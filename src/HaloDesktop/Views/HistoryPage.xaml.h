@@ -10,7 +10,7 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    // The History page's view: the header's controls, the grouped cards and
+    // The History page's view: the header's controls, the sections' rows and
     // their hover-revealed buttons, the menus and the dialogs. What is shown and
     // every removal live in HistoryViewModel.
     struct HistoryPage : HistoryPageT<HistoryPage>
@@ -23,12 +23,9 @@ namespace winrt::HaloDesktop::implementation
         void OnContextRequested(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const&);
         void OnQueryBoxLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnClearQueryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnAllFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnMoviesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnSeriesFilterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnFilterSelectionChanged(Microsoft::UI::Xaml::Controls::SelectorBar const&, Microsoft::UI::Xaml::Controls::SelectorBarSelectionChangedEventArgs const&);
         void OnClearHistoryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnScrollerSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
         void OnEntryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPlayClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnMoreClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -39,10 +36,8 @@ namespace winrt::HaloDesktop::implementation
         void OnCardLostFocus(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
 
     private:
-        void ApplyLayoutMetrics();
-        void ApplyColumnWidth();
-        // Shows a card's buttons and hover fill while the pointer is over it or
-        // focus is inside it. Decorative: a refusal from XAML leaves it as it was.
+        // Shows a row's buttons in place of its time, and its hover wash, while
+        // the pointer is over it or focus is inside it. Decorative: a refusal from XAML leaves it as it was.
         void UpdateCard(Microsoft::UI::Xaml::FrameworkElement const& card);
         void ShowMenu(
             Microsoft::UI::Xaml::FrameworkElement const& anchor,
@@ -55,8 +50,6 @@ namespace winrt::HaloDesktop::implementation
         ::HaloDesktop::Views::TitleMenu m_titleMenu;
         // The one card under the pointer; only one can be.
         winrt::weak_ref<Microsoft::UI::Xaml::FrameworkElement> m_hoveredCard;
-        std::uint64_t m_metricsToken{};
-        double m_gutter{ 24.0 };
         bool m_listBound{};
     };
 }

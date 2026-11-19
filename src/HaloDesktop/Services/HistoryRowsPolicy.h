@@ -143,6 +143,52 @@ namespace HaloDesktop::Services
         std::wstring_view query,
         ::HaloDesktop::ViewModels::HomeFilter filter);
 
+    // The tabs over the history: the two kinds, and the videos left partway.
+    enum class HistoryView
+    {
+        All,
+        Movies,
+        Series,
+        // Started and not finished, whatever the kind.
+        InProgress,
+    };
+
+    // The tab at `index` in the page's order; anything out of range is All.
+    [[nodiscard]] HistoryView HistoryViewFromIndex(std::int32_t index) noexcept;
+
+    // The entries `view` shows, in their order. `entries` are built for
+    // HomeFilter::All, so one build serves every tab and their counts.
+    [[nodiscard]] std::vector<HistoryEntry> FilterHistoryView(std::vector<HistoryEntry> entries, HistoryView view);
+
+    // How many entries each tab would show, for their labels.
+    struct HistoryViewCounts final
+    {
+        std::size_t All{};
+        std::size_t Movies{};
+        std::size_t Series{};
+        std::size_t InProgress{};
+
+        bool operator==(HistoryViewCounts const&) const = default;
+    };
+
+    [[nodiscard]] HistoryViewCounts CountHistoryViews(std::span<HistoryEntry const> entries);
+
+    // HistoryNote for a tab: In progress says it has nothing left partway; the
+    // others read as their kind does.
+    [[nodiscard]] std::optional<std::wstring> HistoryNote(
+        HistoryLoadState state,
+        bool hasAny,
+        bool groupsEmpty,
+        std::wstring_view query,
+        HistoryView view);
+
+    // The row's state in sentence case: "48 min left", "Watched", or "Started"
+    // when the video's length is unknown.
+    [[nodiscard]] std::wstring HistoryStateText(HistoryEntry const& entry);
+
+    // A section's size under its heading: "1 title", "3 titles".
+    [[nodiscard]] std::wstring HistoryTitleCount(std::size_t count);
+
     // What "Clear history" forgets: every live row, whatever the filter and the
     // search show, as the dialog that asks first says. Each video once.
     [[nodiscard]] std::vector<std::wstring> ClearHistoryVideoIds(std::span<Api::Dto::WatchEntry const> rows);

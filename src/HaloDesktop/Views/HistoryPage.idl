@@ -4,17 +4,24 @@ namespace HaloDesktop
     runtimeclass HistoryEntryViewModel
     {
         String Title { get; };
-        // "{tag} · {WATCHED | time left | STARTED}".
-        String Meta { get; };
+        // MOVIE, S02E04 or SERIES.
+        String Tag { get; };
+        // "48 min left", "Watched" or "Started".
+        String State { get; };
         String Time { get; };
         // The full date and time, the time's tooltip.
         String FullTime { get; };
         String Poster { get; };
         // For the art's metahub fallback.
         String MetaId { get; };
-        // The filled part of the 52px thumbnail's bar.
+        // The filled part of the row's 120px bar.
         Double ProgressWidth { get; };
+        // The bar, shown while partway through a video of known length.
         Microsoft.UI.Xaml.Visibility ProgressVisibility { get; };
+        // The check before "Watched".
+        Microsoft.UI.Xaml.Visibility WatchedVisibility { get; };
+        // The rule above every row but a section's first.
+        Microsoft.UI.Xaml.Visibility DividerVisibility { get; };
         String PlayGlyph { get; };
         // "Resume", or "Play again" once finished.
         String PlayLabel { get; };
@@ -26,6 +33,7 @@ namespace HaloDesktop
     runtimeclass HistoryGroupViewModel
     {
         String Label { get; };
+        // "3 titles".
         String Count { get; };
         Windows.Foundation.Collections.IVector<Object> Entries { get; };
     }
@@ -35,6 +43,11 @@ namespace HaloDesktop
         String Query;
         Microsoft.UI.Xaml.Visibility ClearQueryVisibility { get; };
         Int32 FilterIndex { get; };
+        // The tabs' labels with their counts: "All (42)".
+        String AllTabText { get; };
+        String MoviesTabText { get; };
+        String SeriesTabText { get; };
+        String InProgressTabText { get; };
         // False while nothing is in the history or a removal is under way.
         Boolean CanClear { get; };
         String Note { get; };

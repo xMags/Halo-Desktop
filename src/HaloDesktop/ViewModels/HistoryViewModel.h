@@ -31,16 +31,20 @@ namespace winrt::HaloDesktop::implementation
         HistoryEntryViewModel(
             ::HaloDesktop::Services::HistoryEntry entry,
             std::int64_t now,
-            ::HaloDesktop::Services::LocalTimeOf const& localTime);
+            ::HaloDesktop::Services::LocalTimeOf const& localTime,
+            bool firstInSection);
 
         [[nodiscard]] winrt::hstring Title() const;
-        [[nodiscard]] winrt::hstring Meta() const;
+        [[nodiscard]] winrt::hstring Tag() const;
+        [[nodiscard]] winrt::hstring State() const;
         [[nodiscard]] winrt::hstring Time() const;
         [[nodiscard]] winrt::hstring FullTime() const;
         [[nodiscard]] winrt::hstring Poster() const;
         [[nodiscard]] winrt::hstring MetaId() const;
         [[nodiscard]] double ProgressWidth() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ProgressVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility WatchedVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility DividerVisibility() const noexcept;
         [[nodiscard]] winrt::hstring PlayGlyph() const;
         [[nodiscard]] winrt::hstring PlayLabel() const;
         [[nodiscard]] winrt::hstring OpenLabel() const;
@@ -50,10 +54,12 @@ namespace winrt::HaloDesktop::implementation
     private:
         ::HaloDesktop::Services::HistoryEntry m_entry;
         winrt::hstring m_title;
-        winrt::hstring m_meta;
+        winrt::hstring m_tag;
+        winrt::hstring m_state;
         winrt::hstring m_time;
         winrt::hstring m_fullTime;
         double m_progress{};
+        bool m_firstInSection{};
     };
 
     struct HistoryGroupViewModel : HistoryGroupViewModelT<HistoryGroupViewModel>
@@ -102,6 +108,10 @@ namespace winrt::HaloDesktop::implementation
         void Query(winrt::hstring const& value);
         [[nodiscard]] Microsoft::UI::Xaml::Visibility ClearQueryVisibility() const noexcept;
         [[nodiscard]] std::int32_t FilterIndex() const noexcept;
+        [[nodiscard]] winrt::hstring AllTabText() const;
+        [[nodiscard]] winrt::hstring MoviesTabText() const;
+        [[nodiscard]] winrt::hstring SeriesTabText() const;
+        [[nodiscard]] winrt::hstring InProgressTabText() const;
         [[nodiscard]] bool CanClear() const noexcept;
         [[nodiscard]] winrt::hstring Note() const;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility NoteVisibility() const noexcept;
@@ -159,6 +169,8 @@ namespace winrt::HaloDesktop::implementation
         std::int64_t m_shownDay{ -1 };
         winrt::hstring m_query;
         std::int32_t m_filterIndex{};
+        // What each tab would show under the search, for their labels.
+        ::HaloDesktop::Services::HistoryViewCounts m_counts;
         ::HaloDesktop::Services::HistoryLoadState m_state{ ::HaloDesktop::Services::HistoryLoadState::Loading };
         bool m_hasAny{};
         bool m_groupsEmpty{ true };

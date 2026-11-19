@@ -324,6 +324,86 @@ namespace
                 "the clear history question was wrong");
     }
 
+    // The tabs over the history are views of one build: the two kinds, and
+    // what was left partway whatever its kind.
+    void TestHistoryViews()
+    {
+        using HaloDesktop::Services::HistoryView;
+        auto entry = [](wchar_t const* id, wchar_t const* type, bool finished)
+        {
+            HistoryEntry made;
+            made.ItemId = id;
+            made.MetaId = id;
+            made.VideoId = id;
+            made.Type = type;
+            made.Name = id;
+            made.Finished = finished;
+            return made;
+        };
+        std::vector<HistoryEntry> const entries{
+            entry(L"a", L"movie", false),
+            entry(L"b", L"series", true),
+            entry(L"c", L"series", false),
+            entry(L"d", L"channel", true),
+        };
+        auto const ids = [](std::vector<HistoryEntry> const& kept)
+        {
+            std::wstring joined;
+            for (auto const& item : kept) joined += item.ItemId;
+            return joined;
+        };
+        using HaloDesktop::Services::FilterHistoryView;
+        Require(ids(FilterHistoryView(entries, HistoryView::All)) == L"abcd", "All dropped an entry");
+        Require(ids(FilterHistoryView(entries, HistoryView::Movies)) == L"ad", "Movies did not keep every non-series in order");
+        Require(ids(FilterHistoryView(entries, HistoryView::Series)) == L"bc", "Series did not keep the series in order");
+        Require(ids(FilterHistoryView(entries, HistoryView::InProgress)) == L"ac", "In progress did not keep the unfinished in order");
+
+        auto const counts = HaloDesktop::Services::CountHistoryViews(entries);
+        Require(counts == HaloDesktop::Services::HistoryViewCounts{ 4, 2, 2, 2 }, "a tab's count disagreed with what it shows");
+        Require(HaloDesktop::Services::CountHistoryViews({}) == HaloDesktop::Services::HistoryViewCounts{}, "an empty history counted something");
+
+        using HaloDesktop::Services::HistoryViewFromIndex;
+        Require(HistoryViewFromIndex(0) == HistoryView::All && HistoryViewFromIndex(1) == HistoryView::Movies
+                    && HistoryViewFromIndex(2) == HistoryView::Series && HistoryViewFromIndex(3) == HistoryView::InProgress,
+                "a tab index named the wrong view");
+        Require(HistoryViewFromIndex(-1) == HistoryView::All && HistoryViewFromIndex(4) == HistoryView::All,
+                "an index out of range was not All");
+
+        using HaloDesktop::Services::HistoryNote;
+        Require(HistoryNote(HistoryLoadState::Loaded, true, true, L"", HistoryView::InProgress)
+                    == std::optional<std::wstring>{ L"Nothing in progress. Everything you started is finished." },
+                "the empty In progress line was wrong");
+        Require(HistoryNote(HistoryLoadState::Loaded, true, true, L"dune", HistoryView::InProgress)
+                    == std::optional<std::wstring>{ L"Nothing in your history matches “dune”." },
+                "a search with nothing in progress did not read as a search");
+        Require(HistoryNote(HistoryLoadState::Loaded, false, true, L"", HistoryView::InProgress)
+                    == std::optional<std::wstring>{ L"Nothing watched yet. What you play shows up here." },
+                "an empty history read as nothing in progress");
+        Require(HistoryNote(HistoryLoadState::Loaded, true, true, L"", HistoryView::Movies)
+                    == std::optional<std::wstring>{ L"No movies in your history." },
+                "the Movies tab's line was not the kind's");
+        Require(!HistoryNote(HistoryLoadState::Loaded, true, false, L"", HistoryView::InProgress), "a note covered rows in progress");
+    }
+
+    void TestRowStateText()
+    {
+        HistoryEntry partway;
+        partway.PositionSec = 600.0;
+        partway.DurationSec = 3480.0;
+        using HaloDesktop::Services::HistoryStateText;
+        Require(HistoryStateText(partway) == L"48 min left", "a partway row's state was wrong");
+        auto finished = partway;
+        finished.Finished = true;
+        Require(HistoryStateText(finished) == L"Watched", "a finished row's state was wrong");
+        auto unknown = partway;
+        unknown.DurationSec = 0.0;
+        Require(HistoryStateText(unknown) == L"Started", "a row of unknown length was not Started");
+
+        using HaloDesktop::Services::HistoryTitleCount;
+        Require(HistoryTitleCount(1) == L"1 title" && HistoryTitleCount(3) == L"3 titles" && HistoryTitleCount(0) == L"0 titles",
+                "a section's count read wrong");
+    }
+
     void TestRemovalSelection()
     {
         using HaloDesktop::Services::ChunkRows;
@@ -394,5 +474,7 @@ void RunHistoryRowsTests()
     TestSearchHistory();
     TestRowText();
     TestNotes();
+    TestHistoryViews();
+    TestRowStateText();
     TestRemovalSelection();
 }
