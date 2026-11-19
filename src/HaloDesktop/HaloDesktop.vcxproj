@@ -10,6 +10,11 @@
   <Import Project="..\..\packages\Microsoft.WindowsAppSDK.Base.2.0.4\build\native\Microsoft.WindowsAppSDK.Base.props" Condition="Exists('..\..\packages\Microsoft.WindowsAppSDK.Base.2.0.4\build\native\Microsoft.WindowsAppSDK.Base.props')" />
   <Import Project="..\..\packages\Microsoft.Windows.SDK.BuildTools.MSIX.1.7.251221100\build\Microsoft.Windows.SDK.BuildTools.MSIX.props" Condition="Exists('..\..\packages\Microsoft.Windows.SDK.BuildTools.MSIX.1.7.251221100\build\Microsoft.Windows.SDK.BuildTools.MSIX.props')" />
   <PropertyGroup Label="Globals">
+    <!--
+      Use the 64-bit compiler and linker. The Release build optimises the whole
+      program at link time, and the default 32-bit linker runs out of memory on it.
+    -->
+    <PreferredToolArchitecture>x64</PreferredToolArchitecture>
     <CppWinRTOptimized>true</CppWinRTOptimized>
     <CppWinRTRootNamespaceAutoMerge>true</CppWinRTRootNamespaceAutoMerge>
     <MinimalCoreWin>true</MinimalCoreWin>
