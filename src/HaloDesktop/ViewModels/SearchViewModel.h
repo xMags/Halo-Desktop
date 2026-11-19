@@ -278,6 +278,11 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool PeopleAvailable() const noexcept;
         void AskPeople(bool retry);
         void OnPeopleAnswer(std::wstring const& query, ::HaloDesktop::Services::PeopleOutcome outcome, std::vector<::HaloDesktop::Api::Dto::PersonSummary> people);
+        // The films of the person a query names exactly, as one more answer
+        // beside the catalogs'.
+        void AskCredits(std::wstring const& query, std::int64_t tmdbId);
+        void OnCredits(std::wstring const& query, std::optional<::HaloDesktop::Api::Dto::PersonDetail> person);
+        void ForgetCredits();
         // Places the people row for the revealed query, once.
         void PlacePeople(PeoplePlace place);
         void ForgetPeople();
@@ -395,6 +400,11 @@ namespace winrt::HaloDesktop::implementation
         bool m_peopleAsked{};
         std::optional<std::vector<::HaloDesktop::Api::Dto::PersonSummary>> m_peopleAnswer;
         bool m_peopleFailed{};
+        // The films of the person `m_creditsQuery` (trimmed) names exactly:
+        // asked, and the titles once the answer is in (none when it failed).
+        std::wstring m_creditsQuery;
+        bool m_creditsAsked{};
+        std::optional<std::vector<::HaloDesktop::Services::SearchTitle>> m_credits;
         // The query the board revealed (trimmed), and its best title tier,
         // frozen at the reveal so a late people answer is judged the same way.
         std::wstring m_revealedQuery;

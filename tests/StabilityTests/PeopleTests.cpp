@@ -269,6 +269,21 @@ namespace
         auto const photoRow = Services::ChoosePeopleRow(withPictured, L"denis villeneuve", std::nullopt);
         Require(photoRow.size() == 1 && photoRow[0].TmdbId == 7, "a namesake without a photo stayed beside one with a photo");
 
+        // A person's films as Search titles: under their IMDb id, in the
+        // order given, without the ones that could not be opened.
+        std::vector<HaloDesktop::Api::Dto::PersonCredit> credits(4);
+        credits[0].Type = L"movie"; credits[0].ImdbId = L"tt1160419"; credits[0].Name = L"Dune";
+        credits[0].Year = L"2021"; credits[0].Poster = L"https://image.tmdb.org/t/p/w342/dune.jpg";
+        credits[1].Type = L"series"; credits[1].ImdbId = L"tt0000002"; credits[1].Name = L"A Series";
+        credits[2].Type = L"movie"; credits[2].Name = L"No Id";
+        credits[3].Type = L"channel"; credits[3].ImdbId = L"tt0000004"; credits[3].Name = L"Not A Film";
+        auto const creditTitles = Services::CreditTitles(credits);
+        Require(creditTitles.size() == 2 && creditTitles[0].Id == L"tt1160419" && creditTitles[0].Type == L"movie"
+                    && creditTitles[0].ImdbId == L"tt1160419" && creditTitles[0].Name == L"Dune"
+                    && creditTitles[0].ReleaseInfo == L"2021" && creditTitles[0].Poster == L"https://image.tmdb.org/t/p/w342/dune.jpg"
+                    && creditTitles[1].Id == L"tt0000002" && creditTitles[1].Type == L"series" && !creditTitles[1].Poster,
+            "a person's films were not read as Search titles");
+
         std::vector<Services::SearchTitle> titles(2);
         titles[0].Name = L"Dune: Part Two";
         titles[1].Name = L"Dune";

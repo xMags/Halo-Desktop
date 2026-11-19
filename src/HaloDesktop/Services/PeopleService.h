@@ -65,6 +65,10 @@ namespace HaloDesktop::Services
         void FindPerson(std::wstring name, FindHandler handler);
         void LoadPerson(std::int64_t tmdbId, PersonHandler handler);
         void CancelPerson() noexcept;
+        // Search's results for a person's exact name: the same person answer,
+        // on its own channel so an open person page is never retired by it.
+        void LoadFilmography(std::int64_t tmdbId, PersonHandler handler);
+        void CancelFilmography() noexcept;
         // Search's card for a pasted TVDB number or IMDb id.
         void Lookup(std::wstring source, std::wstring id, LookupHandler handler);
         void CancelLookup() noexcept;
@@ -76,8 +80,9 @@ namespace HaloDesktop::Services
             Search,
             Person,
             Lookup,
+            Filmography,
         };
-        static constexpr std::size_t ChannelCount = 3;
+        static constexpr std::size_t ChannelCount = 4;
 
         [[nodiscard]] std::uint64_t Begin(Channel channel) noexcept;
         [[nodiscard]] bool IsCurrent(Channel channel, std::uint64_t generation) const noexcept;

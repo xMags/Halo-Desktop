@@ -69,6 +69,27 @@ namespace HaloDesktop::Services
         return best;
     }
 
+    std::vector<SearchTitle> CreditTitles(std::span<Api::Dto::PersonCredit const> credits)
+    {
+        std::vector<SearchTitle> titles;
+        titles.reserve(credits.size());
+        for (auto const& credit : credits)
+        {
+            std::wstring id{ credit.ImdbId };
+            std::wstring type{ credit.Type };
+            if (!IsImdbId(id) || credit.Name.empty() || !IsSearchedCatalogType(type)) continue;
+            SearchTitle title;
+            title.Id = id;
+            title.ImdbId = std::move(id);
+            title.Type = std::move(type);
+            title.Name = std::wstring{ credit.Name };
+            if (credit.Poster) title.Poster = std::wstring{ *credit.Poster };
+            if (credit.Year) title.ReleaseInfo = std::wstring{ *credit.Year };
+            titles.push_back(std::move(title));
+        }
+        return titles;
+    }
+
     std::optional<std::size_t> ExactNamePerson(
         std::span<Api::Dto::PersonSummary const> people,
         std::wstring_view name)

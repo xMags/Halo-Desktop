@@ -190,6 +190,30 @@ namespace HaloDesktop::Services
         static_cast<void>(Begin(Channel::Person));
     }
 
+    void PeopleService::LoadFilmography(std::int64_t tmdbId, PersonHandler handler)
+    {
+        if (!handler)
+        {
+            CancelFilmography();
+            return;
+        }
+        if (tmdbId <= 0)
+        {
+            CancelFilmography();
+            handler(PeopleOutcome::NotFound, std::nullopt);
+            return;
+        }
+        Start<::HaloDesktop::Api::Dto::PersonDetail>(
+            Channel::Filmography,
+            [api = m_api, tmdbId]() { return api->GetPersonAsync(tmdbId); },
+            std::move(handler));
+    }
+
+    void PeopleService::CancelFilmography() noexcept
+    {
+        static_cast<void>(Begin(Channel::Filmography));
+    }
+
     void PeopleService::Lookup(std::wstring source, std::wstring id, LookupHandler handler)
     {
         if (!handler)

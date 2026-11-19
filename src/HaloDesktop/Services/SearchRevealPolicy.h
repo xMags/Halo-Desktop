@@ -18,6 +18,10 @@ namespace HaloDesktop::Services
     // The first titles' poster links are checked before the reveal, so one
     // leading nowhere is not laid out among them: this many titles, and no
     // longer than this after the query was asked.
+    // When the words are a person's exact name, their films are waited for
+    // this long after the query was asked, so they are ranked among the
+    // results; later than this they go after the last card.
+    inline constexpr std::chrono::milliseconds SearchCreditsDeadline{ 2000 };
     inline constexpr std::size_t SearchPosterCheckLimit = 24;
     inline constexpr std::chrono::milliseconds SearchPosterCheckDeadline{ 2000 };
 

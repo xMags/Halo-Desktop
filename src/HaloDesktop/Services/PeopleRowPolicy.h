@@ -40,6 +40,11 @@ namespace HaloDesktop::Services
         std::span<Api::Dto::PersonSummary const> people,
         std::wstring_view name);
 
+    // A person's films and series as Search titles, in the order given (the
+    // server's: best known first). One without an IMDb id, a name or a kind
+    // Search shows is left out.
+    [[nodiscard]] std::vector<SearchTitle> CreditTitles(std::span<Api::Dto::PersonCredit const> credits);
+
     // What a person is: "Actor", "Director", "Writer"; empty when unknown.
     [[nodiscard]] std::wstring KnownForLabel(Api::Dto::PersonDepartment department);
     // The department itself, as a person page's kicker: "Acting" and so on.

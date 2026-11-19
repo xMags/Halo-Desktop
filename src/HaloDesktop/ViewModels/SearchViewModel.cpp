@@ -39,6 +39,8 @@ namespace
     constexpr std::chrono::milliseconds RevealCheckInterval{ 100 };
     // The status line while a query's results are not revealed yet.
     constexpr wchar_t SearchingNote[] = L"Searching…";
+    // The named person's films, kept apart from every catalog's key.
+    constexpr wchar_t CreditsTargetKey[] = L"people/credits";
 
     // The action card's words; a magnet's come from MagnetCardPolicy.
     constexpr wchar_t LookingUpPrefix[] = L"Looking up ";
@@ -257,6 +259,7 @@ namespace winrt::HaloDesktop::implementation
             self->m_peopleQuery.clear();
             self->m_peopleAsked = false;
             self->m_peopleAnswer.reset();
+            self->ForgetCredits();
             self->m_idLookup.reset();
             self->Refresh();
             self->m_dispatcher.TryEnqueue([weak = self->get_weak()]()
@@ -805,6 +808,13 @@ namespace winrt::HaloDesktop::implementation
         {
             return false;
         }
+        // So are the films of the person they name, a little longer: ranked
+        // among the results when in by then, after the last card otherwise.
+        if (m_creditsAsked && !m_credits && sinceAsked < Services::SearchCreditsDeadline
+            && m_creditsQuery == Services::TrimmedText(m_activeQuery))
+        {
+            return false;
+        }
         return Services::DecideReveal(progress.Pending, progress.Total, answeredWithItems, sinceAsked) == Services::RevealDecision::Reveal
             && postersSettled;
     }
@@ -874,6 +884,7 @@ namespace winrt::HaloDesktop::implementation
         m_peopleQuery.clear();
         m_peopleAsked = false;
         m_peopleAnswer.reset();
+        ForgetCredits();
         m_board = {};
         m_boardSerial.reset();
         m_absorbed.clear();
@@ -978,6 +989,18 @@ namespace winrt::HaloDesktop::implementation
             // A target the service gave no rank for goes after every ranked one.
             auto const rank = index < ranks.size() ? ranks[index] : targets.size();
             answers.push_back({ targets[index], state.Titles, rank });
+        }
+        // The films of the person the query names, after every addon's
+        // answer: a copy of a title an addon also found fills that card.
+        if (m_credits && !m_credits->empty() && m_creditsQuery == Services::TrimmedText(m_activeQuery))
+        {
+            auto const fresh = m_absorbed.insert(CreditsTargetKey).second;
+            if (!onlyNew || fresh)
+            {
+                Services::SearchTarget target;
+                target.Key = CreditsTargetKey;
+                answers.push_back({ std::move(target), *m_credits, targets.size() });
+            }
         }
         return answers;
     }
@@ -1328,6 +1351,7 @@ namespace winrt::HaloDesktop::implementation
         m_peopleQuery = query;
         m_peopleAsked = true;
         m_peopleAnswer.reset();
+        ForgetCredits();
         m_peopleFailed = false;
         m_peopleService->SearchPeople(std::move(query), [weak = get_weak(), asked = m_peopleQuery](
             Services::PeopleOutcome outcome,
@@ -1353,6 +1377,10 @@ namespace winrt::HaloDesktop::implementation
         m_peopleAnswer = outcome == ::HaloDesktop::Services::PeopleOutcome::Found
             ? std::move(people)
             : std::vector<::HaloDesktop::Api::Dto::PersonSummary>{};
+        if (auto const named = ::HaloDesktop::Services::ExactNamePerson(*m_peopleAnswer, query))
+        {
+            AskCredits(query, (*m_peopleAnswer)[*named].TmdbId);
+        }
         // Before the reveal the answer waits for it (RevealNow). After it,
         // the row goes under the results: nothing already shown moves.
         if (m_board.Revealed() && m_revealedQuery == query && !m_peopleDecided)
@@ -1360,6 +1388,51 @@ namespace winrt::HaloDesktop::implementation
             PlacePeople(PeoplePlace::Below);
             Refresh();
         }
+    }
+
+    void SearchViewModel::AskCredits(std::wstring const& query, std::int64_t tmdbId)
+    {
+        ForgetCredits();
+        m_creditsQuery = query;
+        m_creditsAsked = true;
+        m_peopleService->LoadFilmography(tmdbId, [weak = get_weak(), query](
+            ::HaloDesktop::Services::PeopleOutcome,
+            std::optional<::HaloDesktop::Api::Dto::PersonDetail> person)
+        {
+            if (auto const self = weak.get())
+            {
+                self->OnCredits(query, std::move(person));
+            }
+        });
+    }
+
+    void SearchViewModel::OnCredits(std::wstring const& query, std::optional<::HaloDesktop::Api::Dto::PersonDetail> person)
+    {
+        if (!m_creditsAsked || query != m_creditsQuery)
+        {
+            return;
+        }
+        // No answer reads as no films: the addons' results stand as they are.
+        m_credits = person
+            ? ::HaloDesktop::Services::CreditTitles(person->Credits)
+            : std::vector<::HaloDesktop::Services::SearchTitle>{};
+        // Before the reveal the films wait for it. After it they are taken
+        // in like a late catalog: filling cards and adding after the last.
+        if (m_board.Revealed() && m_revealedQuery == query)
+        {
+            Refresh();
+        }
+    }
+
+    void SearchViewModel::ForgetCredits()
+    {
+        if (m_creditsAsked)
+        {
+            m_peopleService->CancelFilmography();
+        }
+        m_creditsQuery.clear();
+        m_creditsAsked = false;
+        m_credits.reset();
     }
 
     void SearchViewModel::PlacePeople(PeoplePlace place)
@@ -1430,6 +1503,7 @@ namespace winrt::HaloDesktop::implementation
         m_peopleQuery.clear();
         m_peopleAsked = false;
         m_peopleAnswer.reset();
+        ForgetCredits();
         m_board = {};
         m_boardSerial.reset();
         m_absorbed.clear();
