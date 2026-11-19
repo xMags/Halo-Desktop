@@ -97,12 +97,18 @@ namespace HaloDesktop::Services
     private:
         [[nodiscard]] concurrency::task<void> StartAsync(std::uint64_t serial);
         void AskTargets();
+        // Asks one catalog for the term; called on the UI thread.
+        using TargetAsk = std::function<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>()>;
+        // Awaits `request`; a failure is asked once more through `again`
+        // while `serial` is still the current query, then applied.
         static concurrency::task<void> RunTargetFetchAsync(
             std::weak_ptr<SearchService> weak,
             winrt::apartment_context uiContext,
             concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> request,
+            TargetAsk again,
             HomeShelfTicket ticket,
-            std::uint64_t accountVersion);
+            std::uint64_t accountVersion,
+            std::uint64_t serial);
         void ApplyTargetAnswer(
             HomeShelfTicket const& ticket,
             std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> answer);

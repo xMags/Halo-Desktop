@@ -248,14 +248,17 @@ namespace HaloDesktop::Services
             {
                 continue;
             }
+            // Asked through whichever backend is current when it runs, so the
+            // second try of a failed catalog goes where the first would now.
+            TargetAsk ask = [backends = m_backends, addonId = winrt::hstring{ target->AddonId },
+                type = winrt::hstring{ target->Type }, catalogId = winrt::hstring{ target->Id }, term]()
+            {
+                return backends->Current()->GetCatalogAsync(addonId, type, catalogId, { { L"search", term } });
+            };
             std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> request;
             try
             {
-                request = m_backends->Current()->GetCatalogAsync(
-                    winrt::hstring{ target->AddonId },
-                    winrt::hstring{ target->Type },
-                    winrt::hstring{ target->Id },
-                    { { L"search", term } });
+                request = ask();
             }
             catch (...)
             {
@@ -265,7 +268,8 @@ namespace HaloDesktop::Services
                 ApplyTargetAnswer(ticket, std::nullopt);
                 continue;
             }
-            ObserveDetached(RunTargetFetchAsync(weak, uiContext, std::move(*request), std::move(ticket), accountVersion));
+            ObserveDetached(RunTargetFetchAsync(
+                weak, uiContext, std::move(*request), std::move(ask), std::move(ticket), accountVersion, m_serial));
         }
         // After the requests are out, so a handler that searches again from
         // inside this cannot leave this query's loop half started.
@@ -276,8 +280,10 @@ namespace HaloDesktop::Services
         std::weak_ptr<SearchService> weak,
         winrt::apartment_context uiContext,
         concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> request,
+        TargetAsk again,
         HomeShelfTicket ticket,
-        std::uint64_t accountVersion)
+        std::uint64_t accountVersion,
+        std::uint64_t serial)
     {
         std::optional<std::vector<::HaloDesktop::Api::Dto::MetaPreview>> answer;
         try
@@ -288,6 +294,38 @@ namespace HaloDesktop::Services
         {
         }
         co_await uiContext;
+        if (!answer)
+        {
+            // One more try before the catalog is reported as not answering: a
+            // slow addon often answers the second time. Only for the query
+            // still on screen; an older one is not worth a request.
+            std::optional<concurrency::task<std::vector<::HaloDesktop::Api::Dto::MetaPreview>>> second;
+            {
+                auto const self = weak.lock();
+                if (!self || accountVersion != self->m_accountVersion || serial != self->m_serial)
+                {
+                    co_return;
+                }
+                try
+                {
+                    second = again();
+                }
+                catch (...)
+                {
+                }
+            }
+            if (second)
+            {
+                try
+                {
+                    answer = co_await *second;
+                }
+                catch (...)
+                {
+                }
+                co_await uiContext;
+            }
+        }
         auto const self = weak.lock();
         if (!self || accountVersion != self->m_accountVersion)
         {
