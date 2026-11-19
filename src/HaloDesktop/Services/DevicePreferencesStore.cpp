@@ -44,6 +44,46 @@ namespace
         return text.size() > maximumLength ? std::wstring{} : text;
     }
 
+    // The saved window, or nothing when any part of it is missing or not a whole
+    // number within a desktop's reach; RestorableBounds checks the rest.
+    std::optional<HaloDesktop::Shell::SavedWindowPlacement> ReadWindowPlacement(JsonObject const& root)
+    {
+        constexpr double CoordinateLimit = 100000.0;
+        auto const value = root.TryLookup(L"window");
+        if (!value || value.ValueType() != JsonValueType::Object)
+        {
+            return std::nullopt;
+        }
+        auto const window = value.GetObject();
+        auto const coordinate = [&window](wchar_t const* name) -> std::optional<std::int32_t>
+        {
+            auto const number = window.TryLookup(name);
+            if (!number || number.ValueType() != JsonValueType::Number)
+            {
+                return std::nullopt;
+            }
+            auto const n = number.GetNumber();
+            if (!std::isfinite(n) || std::floor(n) != n || n <= -CoordinateLimit || n >= CoordinateLimit)
+            {
+                return std::nullopt;
+            }
+            return static_cast<std::int32_t>(n);
+        };
+        auto const left = coordinate(L"left");
+        auto const top = coordinate(L"top");
+        auto const right = coordinate(L"right");
+        auto const bottom = coordinate(L"bottom");
+        if (!left || !top || !right || !bottom || *right <= *left || *bottom <= *top)
+        {
+            return std::nullopt;
+        }
+        auto const maximized = window.TryLookup(L"maximized");
+        return HaloDesktop::Shell::SavedWindowPlacement{
+            .Normal = { *left, *top, *right, *bottom },
+            .Maximized = maximized && maximized.ValueType() == JsonValueType::Boolean && maximized.GetBoolean(),
+        };
+    }
+
     std::size_t SerializedBytes(JsonObject const& value)
     {
         return winrt::to_string(value.Stringify()).size();
@@ -103,6 +143,7 @@ namespace
         result.NavPaneOpen = root.GetNamedBoolean(L"navPaneOpen", false);
         result.FillPicture = root.GetNamedBoolean(L"fillPicture", false);
         result.TranslucentWindow = root.GetNamedBoolean(L"translucentWindow", true);
+        result.Window = ReadWindowPlacement(root);
         result.LastServerAddress = BoundedString(root, L"lastServerAddress", MaximumServerAddressLength);
         result.SessionServerUrl = BoundedString(root, L"sessionServerUrl", MaximumServerUrlLength);
         return result;
@@ -153,6 +194,16 @@ namespace
         root.Insert(L"navPaneOpen", JsonValue::CreateBooleanValue(value.NavPaneOpen));
         root.Insert(L"fillPicture", JsonValue::CreateBooleanValue(value.FillPicture));
         root.Insert(L"translucentWindow", JsonValue::CreateBooleanValue(value.TranslucentWindow));
+        if (value.Window)
+        {
+            JsonObject window;
+            window.Insert(L"left", JsonValue::CreateNumberValue(value.Window->Normal.Left));
+            window.Insert(L"top", JsonValue::CreateNumberValue(value.Window->Normal.Top));
+            window.Insert(L"right", JsonValue::CreateNumberValue(value.Window->Normal.Right));
+            window.Insert(L"bottom", JsonValue::CreateNumberValue(value.Window->Normal.Bottom));
+            window.Insert(L"maximized", JsonValue::CreateBooleanValue(value.Window->Maximized));
+            root.Insert(L"window", window);
+        }
         if (!value.LastServerAddress.empty() && value.LastServerAddress.size() <= MaximumServerAddressLength)
         {
             root.Insert(L"lastServerAddress", JsonValue::CreateStringValue(value.LastServerAddress));
@@ -373,6 +424,19 @@ namespace HaloDesktop::Services
         Mutate(m_path, m_mutex, [value](DevicePreferences& current)
         {
             current.FillPicture = value;
+        });
+    }
+
+    std::optional<::HaloDesktop::Shell::SavedWindowPlacement> DevicePreferencesStore::WindowPlacement() const noexcept
+    {
+        try { return Read().Window; } catch (...) { return std::nullopt; }
+    }
+
+    void DevicePreferencesStore::WindowPlacement(::HaloDesktop::Shell::SavedWindowPlacement const& value)
+    {
+        Mutate(m_path, m_mutex, [value](DevicePreferences& current)
+        {
+            current.Window = value;
         });
     }
 

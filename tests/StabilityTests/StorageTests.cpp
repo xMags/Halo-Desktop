@@ -196,6 +196,23 @@ namespace
         verify.TranslucentWindow(true);
         Require(DevicePreferencesStore{ path }.TranslucentWindow(), "turning translucency on did not round-trip");
 
+        // The window as it was left: nothing until one has closed, then kept
+        // with the rest.
+        Require(!verify.WindowPlacement(), "a window placement was read before any was saved");
+        HaloDesktop::Shell::SavedWindowPlacement const placed{ .Normal = { -1800, 40, -200, 940 }, .Maximized = true };
+        verify.WindowPlacement(placed);
+        Require(DevicePreferencesStore{ path }.WindowPlacement() == placed, "the window placement did not round-trip");
+        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing the window placement lost other keys");
+
+        // A placement with a part missing or out of reach is no placement.
+        auto const brokenPath = temporary.Path() / L"broken-window.json";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(brokenPath, R"({"version":1,"window":{"left":0,"top":0,"right":"wide","bottom":900}})");
+        Require(!DevicePreferencesStore{ brokenPath }.WindowPlacement(), "a placement with a part of the wrong kind was read");
+        HaloDesktop::Storage::WriteUtf8FileAtomic(brokenPath, R"({"version":1,"window":{"left":0,"top":0,"right":9000000,"bottom":900}})");
+        Require(!DevicePreferencesStore{ brokenPath }.WindowPlacement(), "a placement out of any desktop's reach was read");
+        HaloDesktop::Storage::WriteUtf8FileAtomic(brokenPath, R"({"version":1,"window":{"left":500,"top":0,"right":100,"bottom":900}})");
+        Require(!DevicePreferencesStore{ brokenPath }.WindowPlacement(), "an inside-out placement was read");
+
         // A value of the wrong kind falls back to closed rather than opening it.
         auto const wrongPath = temporary.Path() / L"wrong-pane.json";
         HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");

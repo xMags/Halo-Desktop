@@ -416,6 +416,7 @@
     <ClInclude Include="Shell\WindowBackdropPolicy.h" />
     <ClInclude Include="Shell\WindowBackdropService.h" />
     <ClInclude Include="Controls\WholeCardStrip.h" />
+    <ClInclude Include="Shell\WindowPlacementPolicy.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -837,6 +838,9 @@
     </ClCompile>
     <ClCompile Include="Shell\WindowBackdropService.cpp" />
     <ClCompile Include="Controls\WholeCardStrip.cpp" />
+    <ClCompile Include="Shell\WindowPlacementPolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

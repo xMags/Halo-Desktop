@@ -3,6 +3,7 @@
 #include "Controls/ShelfScrollPolicy.h"
 #include "Shell/PointerFocusPolicy.h"
 #include "Shell/WindowBackdropPolicy.h"
+#include "Shell/WindowPlacementPolicy.h"
 
 #include <Windows.h>
 
@@ -145,6 +146,43 @@ namespace
             Require(strength.TintOpacity >= 0.5f && strength.TintOpacity <= 1.0f, "the palette tint was too weak to keep the window's colour");
             Require(strength.LuminosityOpacity >= 0.5f && strength.LuminosityOpacity <= 1.0f, "the backdrop's luminosity was too weak to keep text readable");
         }
+    }
+
+    void TestWindowPlacement()
+    {
+        using HaloDesktop::Shell::RestorableBounds;
+        using HaloDesktop::Shell::SavesAsMaximized;
+        using HaloDesktop::Shell::WindowRect;
+
+        Require(SavesAsMaximized(true, false, false) && !SavesAsMaximized(false, false, true), "a shown window did not save as it stood");
+        Require(SavesAsMaximized(false, true, true) && !SavesAsMaximized(false, true, false), "a minimized window did not save as it was before minimizing");
+
+        std::array const one{ WindowRect{ 0, 0, 1920, 1040 } };
+        WindowRect const saved{ 100, 80, 1500, 980 };
+        Require(RestorableBounds(saved, one, 960, 640) == saved, "a window on screen did not go back where it was");
+
+        // A second monitor to the left, unplugged since: nowhere to put it.
+        WindowRect const leftMonitor{ -1700, 100, -200, 1000 };
+        Require(!RestorableBounds(leftMonitor, one, 960, 640), "a window on an unplugged monitor was put off screen");
+        std::array const two{ WindowRect{ -1920, 0, 0, 1040 }, WindowRect{ 0, 0, 1920, 1040 } };
+        Require(RestorableBounds(leftMonitor, two, 960, 640) == leftMonitor, "a window on the second monitor did not go back to it");
+
+        // Title strip above every screen: it cannot be dragged, so not restored.
+        Require(!RestorableBounds(WindowRect{ 100, -500, 1500, 400 }, one, 960, 640), "a window with its title off screen was restored");
+        // Mostly off the right edge but with a title strip to grab: kept.
+        auto const edge = RestorableBounds(WindowRect{ 1700, 100, 3100, 1000 }, one, 960, 640);
+        Require(edge && edge->Left == 1700 && edge->Width() == 1400, "a window hanging off the edge by its own choice was moved");
+
+        // Too small: grown to the minimum. Too big: shrunk to the screen.
+        auto const grown = RestorableBounds(WindowRect{ 200, 200, 400, 300 }, one, 960, 640);
+        Require(grown && grown->Width() == 960 && grown->Height() == 640, "a too small window was not grown to the minimum");
+        auto const shrunk = RestorableBounds(WindowRect{ 0, 0, 5000, 3000 }, one, 960, 640);
+        Require(shrunk && shrunk->Width() == 1920 && shrunk->Height() == 1040, "a window bigger than its screen was not shrunk to it");
+
+        // Not a window at all.
+        Require(!RestorableBounds(WindowRect{ 500, 500, 400, 400 }, one, 960, 640), "an empty saved window was restored");
+        Require(!RestorableBounds(WindowRect{ 0, 0, 2000000, 900 }, one, 960, 640), "an absurd saved window was restored");
+        Require(!RestorableBounds(saved, {}, 960, 640), "a window was restored with no screens to put it on");
     }
 
     // ---- XAML scan -------------------------------------------------------
@@ -420,5 +458,6 @@ void RunShellInputTests()
     TestPointerFocusRefusal();
     TestSidewaysWheelRule();
     TestWindowBackdrop();
+    TestWindowPlacement();
     TestSidewaysStripsCarryTheWheelGuard();
 }

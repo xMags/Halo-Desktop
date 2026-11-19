@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Services/SearchHistoryPolicy.h"
+#include "Shell/WindowPlacementPolicy.h"
 
 #include <cstdint>
 #include <filesystem>
@@ -31,6 +32,9 @@ namespace HaloDesktop::Services
         bool FillPicture{};
         // The window lets a tinted blur of the desktop show through (acrylic).
         bool TranslucentWindow{ true };
+        // The window as it was left at the last close, in physical pixels.
+        // Empty until a window has been closed once.
+        std::optional<::HaloDesktop::Shell::SavedWindowPlacement> Window;
         // Highest download throughput this device has actually reached, in
         // megabits per second. Zero means nothing has been measured yet.
         double MeasuredLineMbps{};
@@ -76,6 +80,8 @@ namespace HaloDesktop::Services
         void FillPicture(bool value);
         [[nodiscard]] bool TranslucentWindow() const noexcept;
         void TranslucentWindow(bool value);
+        [[nodiscard]] std::optional<::HaloDesktop::Shell::SavedWindowPlacement> WindowPlacement() const noexcept;
+        void WindowPlacement(::HaloDesktop::Shell::SavedWindowPlacement const& value);
         // Zero until a transfer has been observed. Cached in memory after the
         // first read, because callers ask per rendered row.
         [[nodiscard]] double MeasuredLineMbps() const noexcept;

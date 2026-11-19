@@ -7,6 +7,7 @@
 #include "App.xaml.h"
 #include "Controls/ThemeColorLookup.h"
 #include "Playback/IPlaybackEngine.h"
+#include "Services/DevicePreferencesStore.h"
 #include "Services/DiscordPresence.h"
 #include "Views/PlayerPage.xaml.h"
 #include "Services/ServiceInterfaces.h"
@@ -29,6 +30,8 @@ namespace winrt::HaloDesktop::implementation
         SetTitleBar(AppTitleBarControl());
 
         m_windowSizing = std::make_unique<::HaloDesktop::Shell::WindowSizing>(*this);
+        // Where and how big it was left, before anything is shown.
+        m_windowSizing->Restore(App::Services().DevicePreferences->WindowPlacement());
         // Before App activates the window: it stays off screen until its first
         // frame has rendered, or the fallback passes.
         m_reveal = ::HaloDesktop::Shell::WindowReveal::Begin(
@@ -77,6 +80,9 @@ namespace winrt::HaloDesktop::implementation
                 {
                     return;
                 }
+                // The first activation shows the window; one left maximized
+                // goes back to maximized now (once, then never again).
+                self->m_windowSizing->ApplyPendingMaximize();
 
                 auto const page = self->OverlayFrameControl()
                     .Content()
@@ -168,6 +174,8 @@ namespace winrt::HaloDesktop::implementation
         }
         m_closePrepared = true;
 
+        RememberWindowPlacement();
+
         try
         {
             App::Services().DiscordPresence->Clear();
@@ -204,6 +212,27 @@ namespace winrt::HaloDesktop::implementation
         }
         catch (...)
         {
+        }
+    }
+
+    // Saved as the window closes. A player still full screen says nothing about
+    // the window, so the last placement saved stays.
+    void MainWindow::RememberWindowPlacement() noexcept
+    {
+        try
+        {
+            if (App::Services().WindowPresentation->IsFullscreen())
+            {
+                return;
+            }
+            if (auto const placement = m_windowSizing->CurrentPlacement())
+            {
+                App::Services().DevicePreferences->WindowPlacement(*placement);
+            }
+        }
+        catch (...)
+        {
+            OutputDebugStringW(L"Halo could not save the window's size and position.\n");
         }
     }
 
