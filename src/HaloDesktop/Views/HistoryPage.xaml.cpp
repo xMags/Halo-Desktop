@@ -8,6 +8,7 @@
 #include "Services/HistoryRowsPolicy.h"
 #include "ViewModels/HistoryViewModel.h"
 #include "Views/PageDialog.h"
+#include "Controls/ContentEntrance.h"
 
 #include <algorithm>
 #include <array>
@@ -199,6 +200,7 @@ namespace winrt::HaloDesktop::implementation
             if (items[position] == selected)
             {
                 m_viewModel.SetFilter(static_cast<std::int32_t>(position));
+                ::HaloDesktop::Controls::PlayContentEntrance(GroupsList());
                 return;
             }
         }

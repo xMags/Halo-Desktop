@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/LibraryPage.xaml.h"
+#include "Controls/ContentEntrance.h"
 #if __has_include("LibraryPage.g.cpp")
 #include "LibraryPage.g.cpp"
 #endif
@@ -76,6 +77,8 @@ namespace winrt::HaloDesktop::implementation
         if (selected == AllFilterItem()) m_viewModel.SetFilter(0);
         else if (selected == MoviesFilterItem()) m_viewModel.SetFilter(1);
         else if (selected == SeriesFilterItem()) m_viewModel.SetFilter(2);
+        else return;
+        ::HaloDesktop::Controls::PlayContentEntrance(LibraryGrid());
     }
     void LibraryPage::OnRetryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&) { m_viewModel.Retry(); }
     void LibraryPage::OnSortClick(

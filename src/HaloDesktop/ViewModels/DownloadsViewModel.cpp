@@ -229,12 +229,12 @@ namespace winrt::HaloDesktop::implementation
     bool DownloadRowViewModel::IsPaused() const noexcept { return m_row.State == RowState::Paused; }
     bool DownloadRowViewModel::IsExpanded() const noexcept { return m_expanded; }
     Microsoft::UI::Xaml::Visibility DownloadRowViewModel::DetailsVisibility() const noexcept { return VisibleWhen(m_expanded); }
-    double DownloadRowViewModel::ChevronAngle() const noexcept { return m_expanded ? 180.0 : 0.0; }
+    float DownloadRowViewModel::ChevronRotation() const noexcept { return m_expanded ? 180.0F : 0.0F; }
     void DownloadRowViewModel::SetExpanded(bool expanded)
     {
         if (m_expanded == expanded) return;
         m_expanded = expanded;
-        for (auto const property : { L"IsExpanded", L"DetailsVisibility", L"ChevronAngle" }) Raise(property);
+        for (auto const property : { L"IsExpanded", L"DetailsVisibility", L"ChevronRotation" }) Raise(property);
     }
     winrt::event_token DownloadRowViewModel::PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler) { return m_propertyChanged.add(handler); }
     void DownloadRowViewModel::PropertyChanged(winrt::event_token const& token) noexcept { m_propertyChanged.remove(token); }

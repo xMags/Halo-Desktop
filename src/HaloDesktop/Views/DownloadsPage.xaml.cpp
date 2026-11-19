@@ -7,6 +7,7 @@
 #include "App.xaml.h"
 #include "Views/DownloadReadyCard.xaml.h"
 #include "Views/PageDialog.h"
+#include "Controls/ContentEntrance.h"
 #include "ViewModels/DownloadsViewModel.h"
 
 #include <array>
@@ -120,6 +121,7 @@ namespace winrt::HaloDesktop::implementation
             if (items[position] == selected)
             {
                 m_viewModel.SetFilter(static_cast<std::int32_t>(position));
+                ::HaloDesktop::Controls::PlayContentEntrance(DownloadsBody());
                 return;
             }
         }
@@ -128,24 +130,36 @@ namespace winrt::HaloDesktop::implementation
     void DownloadsPage::ApplyFoldedCards()
     {
         StatusDetails().Visibility(VisibleWhen(m_statusOpen));
-        StatusChevronTurn().Angle(m_statusOpen ? 180.0 : 0.0);
+        StatusChevron().Rotation(m_statusOpen ? 180.0F : 0.0F);
         StatusHint().Text(m_statusOpen ? L"Hide details" : L"Details");
         WaitingList().Visibility(VisibleWhen(m_waitingOpen));
-        WaitingChevronTurn().Angle(m_waitingOpen ? 180.0 : 0.0);
+        WaitingChevron().Rotation(m_waitingOpen ? 180.0F : 0.0F);
     }
     void DownloadsPage::OnStatusToggleClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_statusOpen = !m_statusOpen;
         ApplyFoldedCards();
+        if (m_statusOpen) ::HaloDesktop::Controls::PlayContentEntrance(StatusDetails());
     }
     void DownloadsPage::OnWaitingToggleClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_waitingOpen = !m_waitingOpen;
         ApplyFoldedCards();
+        if (m_waitingOpen) ::HaloDesktop::Controls::PlayContentEntrance(WaitingList());
     }
     void DownloadsPage::OnToggleDetailsClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
-        if (auto const id = TagOf(sender); !id.empty()) m_viewModel.ToggleDetails(id);
+        auto const id = TagOf(sender);
+        if (id.empty()) return;
+        m_viewModel.ToggleDetails(id);
+        // The binding has already shown or hidden the row's details; an
+        // opened one settles in. The name is found in the row's own template.
+        auto const button = sender.try_as<Microsoft::UI::Xaml::FrameworkElement>();
+        auto const details = button ? button.FindName(L"RowDetails").try_as<Microsoft::UI::Xaml::UIElement>() : nullptr;
+        if (details && details.Visibility() == Microsoft::UI::Xaml::Visibility::Visible)
+        {
+            ::HaloDesktop::Controls::PlayContentEntrance(details);
+        }
     }
 
     // A ready card plays when clicked or when its play button is pressed.

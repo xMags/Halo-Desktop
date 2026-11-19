@@ -86,7 +86,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] bool IsPaused() const noexcept;
         [[nodiscard]] bool IsExpanded() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility DetailsVisibility() const noexcept;
-        [[nodiscard]] double ChevronAngle() const noexcept;
+        [[nodiscard]] float ChevronRotation() const noexcept;
         void SetExpanded(bool expanded);
 
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);

@@ -344,6 +344,7 @@
     <ClInclude Include="Services\PlayableVideoPolicy.h" />
     <ClInclude Include="Controls\CardHoverShadow.h" />
     <ClInclude Include="Controls\PressFeedback.h" />
+    <ClInclude Include="Controls\ContentEntrance.h" />
     <ClInclude Include="Services\HomeShelfLoadPolicy.h" />
     <ClInclude Include="Controls\SkeletonPulse.h" />
     <ClInclude Include="Controls\PosterSkeleton.xaml.h"><DependentUpon>PosterSkeleton.xaml</DependentUpon></ClInclude>
@@ -723,6 +724,7 @@
     </ClCompile>
     <ClCompile Include="Controls\CardHoverShadow.cpp" />
     <ClCompile Include="Controls\PressFeedback.cpp" />
+    <ClCompile Include="Controls\ContentEntrance.cpp" />
     <ClCompile Include="Services\HomeShelfLoadPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

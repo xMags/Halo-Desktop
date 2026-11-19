@@ -1068,7 +1068,7 @@ namespace
             "PauseVisibility",
             "ResumeVisibility",
             "RetryVisibility",
-            "ChevronAngle",
+            "ChevronRotation",
             "DetailsVisibility",
             "QualityLine",
             "SizeFactLabel",

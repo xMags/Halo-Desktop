@@ -145,7 +145,7 @@
     </Grid>
 
     <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-      <StackPanel Padding="32,12,32,40" Spacing="4">
+      <StackPanel x:Name="DownloadsBody" Padding="32,12,32,40" Spacing="4">
         <InfoBar
           Margin="0,0,0,8"
           IsClosable="False"
@@ -172,8 +172,9 @@
                   <TextBlock Style="{StaticResource DlCaptionStyle}" Text="{x:Bind ViewModel.StatusLine, Mode=OneWay}" />
                 </StackPanel>
                 <TextBlock x:Name="StatusHint" Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource DlCaptionStyle}" Text="Details" />
-                <FontIcon Grid.Column="3" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" RenderTransformOrigin="0.5,0.5">
-                  <FontIcon.RenderTransform><RotateTransform x:Name="StatusChevronTurn" /></FontIcon.RenderTransform>
+                <!-- Turned by Rotation about its centre, so the turn eases (RotationTransition). -->
+                <FontIcon x:Name="StatusChevron" Grid.Column="3" Width="12" Height="12" VerticalAlignment="Center" CenterPoint="6,6,0" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;">
+                  <FontIcon.RotationTransition><ScalarTransition Duration="0:0:0.2" /></FontIcon.RotationTransition>
                 </FontIcon>
               </Grid>
             </Button>
@@ -282,8 +283,8 @@
                             <TextBlock Foreground="{ThemeResource HaloCriticalBrush}" Style="{StaticResource DlCaptionStyle}" Visibility="{x:Bind ToneCriticalVisibility, Mode=OneWay}"><Run Text="{x:Bind MetaLead, Mode=OneWay}" /><Run Text="{x:Bind MetaMiddle, Mode=OneWay}" /><Run Text="{x:Bind MetaLast, Mode=OneWay}" /></TextBlock>
                           </Grid>
                         </StackPanel>
-                        <FontIcon Grid.Column="2" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" RenderTransformOrigin="0.5,0.5">
-                          <FontIcon.RenderTransform><RotateTransform Angle="{x:Bind ChevronAngle, Mode=OneWay}" /></FontIcon.RenderTransform>
+                        <FontIcon Grid.Column="2" Width="12" Height="12" VerticalAlignment="Center" CenterPoint="6,6,0" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" Rotation="{x:Bind ChevronRotation, Mode=OneWay}">
+                          <FontIcon.RotationTransition><ScalarTransition Duration="0:0:0.2" /></FontIcon.RotationTransition>
                         </FontIcon>
                       </Grid>
                     </Button>
@@ -308,7 +309,7 @@
                       </Button.Flyout>
                     </Button>
                   </Grid>
-                  <StackPanel Visibility="{x:Bind DetailsVisibility, Mode=OneWay}">
+                  <StackPanel x:Name="RowDetails" Visibility="{x:Bind DetailsVisibility, Mode=OneWay}">
                     <Grid Style="{StaticResource DlFactRowStyle}">
                       <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
                       <TextBlock VerticalAlignment="Center" Text="Quality" />
@@ -356,8 +357,8 @@
                 <FontIcon VerticalAlignment="Center" FontSize="16" Glyph="&#xE8FD;" />
                 <TextBlock Grid.Column="1" VerticalAlignment="Center" Foreground="{ThemeResource HaloText1Brush}" Text="Up next" />
                 <TextBlock Grid.Column="2" VerticalAlignment="Center" Style="{StaticResource DlCaptionStyle}" Text="{x:Bind ViewModel.WaitingLine, Mode=OneWay}" />
-                <FontIcon Grid.Column="3" VerticalAlignment="Center" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;" RenderTransformOrigin="0.5,0.5">
-                  <FontIcon.RenderTransform><RotateTransform x:Name="WaitingChevronTurn" /></FontIcon.RenderTransform>
+                <FontIcon x:Name="WaitingChevron" Grid.Column="3" Width="12" Height="12" VerticalAlignment="Center" CenterPoint="6,6,0" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE70D;">
+                  <FontIcon.RotationTransition><ScalarTransition Duration="0:0:0.2" /></FontIcon.RotationTransition>
                 </FontIcon>
               </Grid>
             </Button>

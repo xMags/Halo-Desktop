@@ -68,7 +68,8 @@ namespace HaloDesktop
         Boolean IsExpanded { get; };
         Microsoft.UI.Xaml.Visibility DetailsVisibility { get; };
         // The details chevron: 0 shut, 180 open.
-        Double ChevronAngle { get; };
+        // The chevron's turn, in degrees: up while the details are open.
+        Single ChevronRotation { get; };
     }
 
     runtimeclass DownloadsViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
