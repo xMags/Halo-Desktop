@@ -61,6 +61,17 @@ namespace HaloDesktop::Controls
         return result;
     }
 
+    std::optional<std::chrono::milliseconds> ArtworkRetryDelay(int retriesDone) noexcept
+    {
+        switch (retriesDone)
+        {
+        case 0: return std::chrono::milliseconds{ 2'000 };
+        case 1: return std::chrono::milliseconds{ 8'000 };
+        case 2: return std::chrono::milliseconds{ 30'000 };
+        default: return std::nullopt;
+        }
+    }
+
     bool UsesCardArtwork(double decodeWidth) noexcept
     {
         return decodeWidth > 0.0 && decodeWidth <= static_cast<double>(CardArtworkWidth);

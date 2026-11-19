@@ -963,6 +963,13 @@ namespace
             "a card-sized slot did not ask for the card copy");
         Require(!HaloDesktop::Controls::UsesCardArtwork(0.0) && !HaloDesktop::Controls::UsesCardArtwork(544.0),
             "a backdrop or a slot wider than the card copy asked for it");
+
+        using HaloDesktop::Controls::ArtworkRetryDelay;
+        Require(ArtworkRetryDelay(0) == std::chrono::milliseconds{ 2'000 }
+                && ArtworkRetryDelay(1) == std::chrono::milliseconds{ 8'000 }
+                && ArtworkRetryDelay(2) == std::chrono::milliseconds{ 30'000 },
+            "failed artwork was not tried again after 2, 8 and 30 seconds");
+        Require(!ArtworkRetryDelay(3) && !ArtworkRetryDelay(-1), "failed artwork was tried more than three more times");
     }
 
     // Mirrors apps/desktop/tests/accountLabel.test.ts.

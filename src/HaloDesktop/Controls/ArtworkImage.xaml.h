@@ -4,6 +4,7 @@
 
 #include <string>
 #include <vector>
+#include <winrt/Microsoft.UI.Dispatching.h>
 #include <winrt/Microsoft.UI.Xaml.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -17,6 +18,11 @@ namespace winrt::HaloDesktop::implementation
     // missing source is skipped rather than ending the chain. A slot whose
     // DecodeWidth fits the card-sized copy asks TMDB for that copy instead of
     // the original upload.
+    //
+    // When every source has failed, the whole chain is tried again a few
+    // times on a timer (ArtworkRetryDelay), bypassing the image cache, so a
+    // brief network fault does not leave a card blank while its page stays
+    // open. The timer runs only while the control is loaded.
     //
     // Hand it that placeholder and it will also take it away once the artwork is
     // up. The placeholder is opaque, so one left behind a loaded image means the
@@ -43,6 +49,9 @@ namespace winrt::HaloDesktop::implementation
         void OnLoaded(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
+        void OnUnloaded(
+            winrt::Windows::Foundation::IInspectable const& sender,
+            Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnImageOpened(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::RoutedEventArgs const& args);
@@ -56,6 +65,10 @@ namespace winrt::HaloDesktop::implementation
         // False when the URL could not even be handed to the bitmap.
         [[nodiscard]] bool SetImageSource(winrt::hstring const& value);
         void ShowPlaceholder(bool visible);
+        // Arms the next round after the chain ran out, if one is left.
+        void ScheduleRetry();
+        void StopRetry() noexcept;
+        void OnRetryTick();
 
         winrt::hstring m_sourceUrl;
         winrt::hstring m_fallbackUrl;
@@ -66,6 +79,9 @@ namespace winrt::HaloDesktop::implementation
         std::vector<std::wstring> m_attempted;
         bool m_exhausted{};
         bool m_opened{};
+        // Rounds tried again since the last refresh; a round bypasses the cache.
+        int m_retries{};
+        Microsoft::UI::Dispatching::DispatcherQueueTimer m_retryTimer{ nullptr };
         Microsoft::UI::Xaml::UIElement m_placeholder{ nullptr };
     };
 }

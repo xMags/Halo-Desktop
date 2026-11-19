@@ -100,12 +100,21 @@ namespace winrt::HaloDesktop::implementation
         Refresh();
     }
 
+    // Nothing waits on a control off screen; coming back loads afresh (OnLoaded).
+    void ArtworkImage::OnUnloaded(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        StopRetry();
+    }
+
     void ArtworkImage::OnImageOpened(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
         sender.as<Microsoft::UI::Xaml::Controls::Image>().Opacity(1);
         m_opened = true;
+        StopRetry();
         ShowPlaceholder(false);
     }
 
@@ -128,6 +137,8 @@ namespace winrt::HaloDesktop::implementation
         }
         m_attempted.clear();
         m_exhausted = false;
+        m_retries = 0;
+        StopRetry();
         image.Opacity(0);
         // Back to the placeholder until the new artwork actually opens, or a
         // recycled card would keep showing the previous item's picture.
@@ -164,6 +175,56 @@ namespace winrt::HaloDesktop::implementation
         image.Source(nullptr);
         image.Opacity(0);
         m_exhausted = true;
+        // Something was there to show and none of it loaded: worth another go.
+        if (!m_attempted.empty()) ScheduleRetry();
+    }
+
+    void ArtworkImage::ScheduleRetry()
+    {
+        auto const delay = ::HaloDesktop::Controls::ArtworkRetryDelay(m_retries);
+        if (!delay || !IsLoaded()) return;
+        try
+        {
+            if (!m_retryTimer)
+            {
+                auto const queue = DispatcherQueue();
+                if (!queue) return;
+                m_retryTimer = queue.CreateTimer();
+                m_retryTimer.IsRepeating(false);
+                m_retryTimer.Tick([weak = get_weak()](auto const&, auto const&)
+                {
+                    if (auto const self = weak.get()) self->OnRetryTick();
+                });
+            }
+            m_retryTimer.Interval(*delay);
+            m_retryTimer.Start();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // Without a timer the card keeps its placeholder until it is shown again.
+        }
+    }
+
+    void ArtworkImage::StopRetry() noexcept
+    {
+        if (!m_retryTimer) return;
+        try
+        {
+            m_retryTimer.Stop();
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+    }
+
+    // A source that arrived or opened meanwhile has already done the work.
+    void ArtworkImage::OnRetryTick()
+    {
+        if (m_opened || !m_exhausted || !IsLoaded()) return;
+        ++m_retries;
+        m_attempted.clear();
+        m_exhausted = false;
+        TryNextSource();
     }
 
     bool ArtworkImage::SetImageSource(winrt::hstring const& value)
@@ -178,6 +239,8 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
             // Set before the uri: assigning the source starts the decode.
             if (m_decodeWidth > 0.0) bitmap.DecodePixelWidth(static_cast<std::int32_t>(m_decodeWidth));
+            // A retry asks the network again rather than a failure it remembers.
+            if (m_retries > 0) bitmap.CreateOptions(Microsoft::UI::Xaml::Media::Imaging::BitmapCreateOptions::IgnoreImageCache);
             bitmap.UriSource(winrt::Windows::Foundation::Uri{ value });
             image.Source(bitmap);
             return true;

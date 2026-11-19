@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -34,4 +35,10 @@ namespace HaloDesktop::Controls
     // decode width of zero asks for full resolution (a backdrop), and anything
     // wider than the card copy would be upscaled from it.
     [[nodiscard]] bool UsesCardArtwork(double decodeWidth) noexcept;
+
+    // How long to wait before trying every source again once all of them
+    // failed, after `retriesDone` such rounds: 2, 8, then 30 seconds, then no
+    // more. A brief network fault then mends itself on a page that stays open,
+    // while artwork that is really missing costs three more rounds at most.
+    [[nodiscard]] std::optional<std::chrono::milliseconds> ArtworkRetryDelay(int retriesDone) noexcept;
 }
