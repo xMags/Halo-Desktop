@@ -44,7 +44,9 @@
     </Grid.RowDefinitions>
     <local:SectionHeader x:Name="Header" Title="History">
       <local:SectionHeader.RightContent>
-        <StackPanel Orientation="Horizontal" Spacing="16">
+        <!-- The search box, the filter tray and the clear button share one height
+             (32) and one edge, as Home's header does, so they read as a set. -->
+        <StackPanel Orientation="Horizontal" Spacing="12">
           <!-- `SearchBox`: 300 x 32 at 15px, its Clear button shown whenever it holds text. -->
           <Grid Width="300" Height="32" VerticalAlignment="Center">
             <TextBox
@@ -52,6 +54,10 @@
               Height="32"
               Padding="11,5,66,0"
               VerticalContentAlignment="Center"
+              Background="{ThemeResource HaloCtrlBrush}"
+              BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
+              BorderThickness="1"
+              CornerRadius="6"
               AutomationProperties.Name="Search history"
               FontSize="{StaticResource HaloFontBody}"
               IsSpellCheckEnabled="False"
@@ -74,7 +80,7 @@
                 Visibility="{x:Bind ViewModel.ClearQueryVisibility, Mode=OneWay}">
                 <FontIcon FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE894;" />
               </Button>
-              <FontIcon Width="32" FontSize="12" Foreground="{ThemeResource HaloText1Brush}" Glyph="&#xE721;" IsHitTestVisible="False" />
+              <FontIcon Width="32" FontSize="12" Foreground="{ThemeResource HaloText2Brush}" Glyph="&#xE721;" IsHitTestVisible="False" />
             </StackPanel>
           </Grid>
           <Border VerticalAlignment="Center" Style="{StaticResource HaloSegmentedTrayStyle}">
@@ -90,7 +96,8 @@
             VerticalAlignment="Center"
             AutomationProperties.Name="Clear history"
             Click="OnClearHistoryClick"
-            FontSize="{StaticResource HaloFontLabel}"
+            CornerRadius="6"
+            FontSize="{StaticResource HaloFontBody}"
             IsEnabled="{x:Bind ViewModel.CanClear, Mode=OneWay}"
             Style="{StaticResource HaloDangerOutlineButtonStyle}">
             <StackPanel Orientation="Horizontal" Spacing="8">
@@ -102,14 +109,16 @@
       </local:SectionHeader.RightContent>
     </local:SectionHeader>
 
-    <!-- `.history-scroll`: 8 above, the gutter at the sides, 32 below. -->
+    <!-- `.history-scroll`: 8 above, the gutter at the sides, 32 below. A long
+         history needs to show where it is and to be dragged through, so the
+         standard bar shows: a thin line at rest, full width under the pointer. -->
     <ScrollViewer
       x:Name="HistoryScroller"
       Grid.Row="1"
       HorizontalScrollBarVisibility="Disabled"
       HorizontalScrollMode="Disabled"
       SizeChanged="OnScrollerSizeChanged"
-      VerticalScrollBarVisibility="Hidden">
+      VerticalScrollBarVisibility="Auto">
       <StackPanel x:Name="HistoryBody" Padding="24,8,24,32">
         <!-- `.state-note`: 15px Text3, inset by the gutter again and 14 above and below. -->
         <StackPanel
@@ -136,21 +145,22 @@
           <ItemsRepeater.ItemTemplate>
             <DataTemplate x:DataType="local:HistoryGroupViewModel">
               <StackPanel>
-                <!-- `.history-label`: mono 700 12px, .06em, capitals, Text3; the count regular at .75. -->
+                <!-- `.history-label`: mono 700 12px, .06em, capitals. The day in the
+                     secondary ink and its count in the tertiary, both at full
+                     strength, so the headings read without straining. -->
                 <StackPanel Margin="2,8,0,10" Orientation="Horizontal" Spacing="8">
                   <TextBlock
                     CharacterSpacing="60"
                     FontFamily="{StaticResource HaloMonoBoldFont}"
                     FontSize="12"
                     FontWeight="Bold"
-                    Foreground="{ThemeResource HaloText3Brush}"
+                    Foreground="{ThemeResource HaloText2Brush}"
                     Text="{x:Bind Label}" />
                   <TextBlock
                     CharacterSpacing="60"
                     FontFamily="{StaticResource HaloMonoFont}"
                     FontSize="12"
                     Foreground="{ThemeResource HaloText3Brush}"
-                    Opacity="0.75"
                     Text="{x:Bind Count}" />
                 </StackPanel>
                 <ItemsRepeater
@@ -228,6 +238,7 @@
                               <TextBlock
                                 LineHeight="16"
                                 MaxLines="1"
+                                Foreground="{ThemeResource HaloText2Brush}"
                                 Style="{StaticResource HaloMonoData}"
                                 Text="{x:Bind Meta}"
                                 TextTrimming="CharacterEllipsis" />
