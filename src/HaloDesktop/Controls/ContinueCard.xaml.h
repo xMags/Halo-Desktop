@@ -11,8 +11,10 @@
 
 namespace winrt::HaloDesktop::implementation
 {
-    // The in-progress twin of PosterCard: 16:9 still instead of 2:3 artwork, and
-    // it sizes itself from the layout step for the same reason PosterCard does.
+    // The in-progress twin of PosterCard: 16:9 still instead of 2:3 artwork. It
+    // takes the width its slot gives it, never below the layout step's continue
+    // width (Home's strip stretches its cards so whole ones fill it), and its
+    // still follows that width.
     struct ContinueCard : ContinueCardT<ContinueCard>
     {
         ContinueCard();
@@ -36,12 +38,14 @@ namespace winrt::HaloDesktop::implementation
 
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const& args);
         void OnCardClick(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnCardPointerEntered(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
         void OnCardPointerExited(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const& args);
 
     private:
         void ApplyLayoutMetrics();
+        void ApplyWidth(double width);
         void ApplyProgress();
         void SetHovered(bool hovered);
 

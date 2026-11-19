@@ -103,66 +103,32 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
+        if (m_fit) return;
         auto const metrics = App::Services().LayoutMetrics;
-        if (metrics && m_metricsToken == 0)
-        {
-            m_metricsToken = metrics->AddChangedHandler([weak = get_weak()]()
-            {
-                if (auto const self = weak.get())
-                {
-                    self->ApplyEndInset();
-                }
-            });
-        }
-        ApplyEndInset();
-    }
-
-    void MediaShelf::OnUnloaded(
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
-    {
-        // A shelf moved within the tree can be loaded again before the old
-        // place's Unloaded arrives: it is still listening then.
-        if (IsLoaded() || m_metricsToken == 0)
-        {
-            return;
-        }
-        if (auto const metrics = App::Services().LayoutMetrics)
-        {
-            metrics->RemoveChangedHandler(m_metricsToken);
-        }
-        m_metricsToken = 0;
-    }
-
-    void MediaShelf::ApplyEndInset() noexcept
-    {
+        if (!metrics) return;
         try
         {
-            auto const metrics = App::Services().LayoutMetrics;
-            auto const inset = metrics ? metrics->Current().Gutter : 24.0;
-            if (inset == m_endInset)
-            {
-                return;
-            }
-            m_endInset = inset;
-            HeaderRow().Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, inset, 12.0 });
-            ShelfItems().Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, inset, 0.0 });
-            UpdateEdges();
+            m_fit = std::make_unique<::HaloDesktop::Controls::WholeCardStrip>(
+                ShelfScroller(),
+                ShelfItems(),
+                metrics,
+                &::HaloDesktop::Shell::LayoutMetrics::PosterWidth,
+                ::HaloDesktop::Controls::ShelfCardGap);
         }
-        catch (winrt::hresult_error const&)
+        catch (...)
         {
-            // A shelf leaving the tree: the next load sets it again.
+            // Without it the cards keep the step's poster width, as before.
         }
     }
 
-    // Pages by the whole cards that fit, landing on a card boundary, so a click
+    // Pages by the whole cards in view, landing on a card boundary, so a click
     // never leaves a half card at either edge. Every card on a shelf is a
-    // poster, as wide as the layout step makes posters.
+    // poster, as wide as WholeCardStrip makes them.
     void MediaShelf::ScrollBy(int direction)
     {
         auto const scroller = ShelfScroller();
         auto const metrics = App::Services().LayoutMetrics;
-        auto const cardWidth = metrics ? metrics->Current().PosterWidth : 132.0;
+        auto const cardWidth = m_fit ? m_fit->CardWidth() : metrics ? metrics->Current().PosterWidth : 132.0;
         auto const target = ::HaloDesktop::Controls::ShelfPageTarget(
             scroller.HorizontalOffset(),
             scroller.ViewportWidth(),

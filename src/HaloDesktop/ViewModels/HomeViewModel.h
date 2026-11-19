@@ -74,13 +74,6 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] double HeroLogoMaxHeight() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness ContentPadding() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Thickness HeaderPadding() const noexcept;
-        // A sideways strip row runs past the right gutter to the window's edge,
-        // so cards slide out under the edge instead of being cut at the gutter.
-        // The row keeps the left gutter; its header keeps the right one, and its
-        // strip ends a gutter in, so the last card still stops on the gutter line.
-        [[nodiscard]] Microsoft::UI::Xaml::Thickness StripRowPadding() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Thickness StripHeaderMargin() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Thickness StripEndInset() const noexcept;
         winrt::event_token PropertyChanged(Microsoft::UI::Xaml::Data::PropertyChangedEventHandler const& handler);
         void PropertyChanged(winrt::event_token const& token) noexcept;
     private:

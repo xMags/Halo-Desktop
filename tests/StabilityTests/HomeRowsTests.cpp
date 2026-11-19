@@ -5,6 +5,7 @@
 #include "Services/CatalogPagingPolicy.h"
 #include "Services/HomeRowsPolicy.h"
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <optional>
@@ -245,6 +246,22 @@ namespace
         Require(MeasureShelfEdges(0.5, 500.0, 1000.0) == ShelfEdges{ true, false }, "the start ignored its slack");
         Require(MeasureShelfEdges(499.5, 500.0, 1000.0) == ShelfEdges{ false, true }, "the end ignored its slack");
         Require(MeasureShelfEdges(200.0, 500.0, 1000.0) == ShelfEdges{ false, false }, "a mid strip claimed an end");
+
+        // Whole cards: 132 wide with a 14 gap, 1000 fits six (6 x 132 + 5 x 14 = 862),
+        // stretched to (1000 - 70) / 6 = 155 each, so six fill the strip exactly.
+        using HaloDesktop::Controls::WholeCardWidth;
+        Require(WholeCardWidth(1000.0, 132.0, 14.0) == 155.0, "the cards did not stretch to fill the strip with whole cards");
+        Require(WholeCardWidth(862.0, 132.0, 14.0) == 132.0, "a strip holding exactly six stretched them");
+        Require(std::abs(WholeCardWidth(861.0, 132.0, 14.0) - (861.0 - 56.0) / 5.0) < 1e-9, "a strip just short of six did not fall back to five");
+        Require(WholeCardWidth(100.0, 132.0, 14.0) == 132.0 && WholeCardWidth(0.0, 132.0, 14.0) == 132.0, "a strip with no usable width did not keep the minimum");
+        for (auto const viewport : { 862.0, 1000.0, 1234.5, 1777.0 })
+        {
+            auto const width = WholeCardWidth(viewport, 148.0, 14.0);
+            auto const count = std::round((viewport + 14.0) / (width + 14.0));
+            Require(std::abs(count * width + (count - 1.0) * 14.0 - viewport) < 1e-6, "whole cards did not fill the strip exactly");
+            // A page then moves exactly the cards in view, never part of one.
+            Require(std::abs(ShelfPageTarget(0.0, viewport, width, 14.0, 1) - count * (width + 14.0)) < 1e-6, "a page did not move by every card in view");
+        }
 
         using HaloDesktop::Controls::ShelfArrowsShown;
         Require(ShelfArrowsShown(true, 500.0, 300.0), "a loading row hid its arrows");

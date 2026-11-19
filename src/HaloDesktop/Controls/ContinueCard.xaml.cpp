@@ -120,11 +120,31 @@ namespace winrt::HaloDesktop::implementation
         auto const metrics = App::Services().LayoutMetrics;
         if (!metrics) return;
         auto const current = metrics->Current();
-        m_cardWidth = current.ContinueWidth;
-        Width(current.ContinueWidth);
-        if (auto const row = FindName(L"ArtRow").try_as<Microsoft::UI::Xaml::Controls::RowDefinition>())
+        // No width of its own: the slot decides, and never below the step's card.
+        MinWidth(current.ContinueWidth);
+        HorizontalAlignment(Microsoft::UI::Xaml::HorizontalAlignment::Stretch);
+        ApplyWidth((std::max)(ActualWidth(), current.ContinueWidth));
+    }
+
+    void ContinueCard::OnSizeChanged(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const&,
+        Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
+    {
+        ApplyWidth(args.NewSize().Width);
+    }
+
+    // The still keeps 16:9 at whatever width the card has. Height follows width
+    // only, so this settles in one pass.
+    void ContinueCard::ApplyWidth(double width)
+    {
+        constexpr double StillAspect = 9.0 / 16.0;
+        if (!std::isfinite(width) || width <= 0.0) return;
+        m_cardWidth = width;
+        auto const height = std::round(width * StillAspect);
+        if (auto const row = FindName(L"ArtRow").try_as<Microsoft::UI::Xaml::Controls::RowDefinition>();
+            row && row.Height().Value != height)
         {
-            row.Height(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(current.ContinueArtHeight()));
+            row.Height(Microsoft::UI::Xaml::GridLengthHelper::FromPixels(height));
         }
     }
 

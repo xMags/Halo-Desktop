@@ -153,18 +153,6 @@ namespace winrt::HaloDesktop::implementation
     {
         return Microsoft::UI::Xaml::Thickness{ Gutter(), 12.0, Gutter(), 12.0 };
     }
-    Microsoft::UI::Xaml::Thickness HomeViewModel::StripRowPadding() const noexcept
-    {
-        return Microsoft::UI::Xaml::Thickness{ Gutter(), 0.0, 0.0, 0.0 };
-    }
-    Microsoft::UI::Xaml::Thickness HomeViewModel::StripHeaderMargin() const noexcept
-    {
-        return Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, Gutter(), 12.0 };
-    }
-    Microsoft::UI::Xaml::Thickness HomeViewModel::StripEndInset() const noexcept
-    {
-        return Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, Gutter(), 0.0 };
-    }
     double HomeViewModel::Gutter() const noexcept { return m_layout ? m_layout->Current().Gutter : 24.0; }
     winrt::Windows::Foundation::IInspectable HomeViewModel::FeaturedItems() const { return m_featured; }
     std::int32_t HomeViewModel::FeaturedCount() const noexcept { return static_cast<std::int32_t>(m_featured.Size()); }
@@ -522,7 +510,7 @@ namespace winrt::HaloDesktop::implementation
     }
     void HomeViewModel::RaiseLayoutMetrics()
     {
-        for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"HeroLogoMaxHeight", L"ContentPadding", L"HeaderPadding", L"StripRowPadding", L"StripHeaderMargin", L"StripEndInset" }) Raise(property);
+        for (auto const* property : { L"HeroHeight", L"HeroTitleSize", L"HeroLogoMaxHeight", L"ContentPadding", L"HeaderPadding" }) Raise(property);
         // Every card carries the title size for the bindings that read it from
         // the card rather than this view model.
         auto const titleSize = m_layout ? m_layout->Current().HeroTitleSize : 36.0;

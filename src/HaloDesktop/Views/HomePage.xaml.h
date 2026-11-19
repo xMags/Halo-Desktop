@@ -3,6 +3,7 @@
 #include "HomePage.g.h"
 
 #include "Controls/SkeletonPulse.h"
+#include "Controls/WholeCardStrip.h"
 #include "Views/HomeHeroPresenter.h"
 #include "Views/TitleMenu.h"
 
@@ -71,6 +72,9 @@ namespace winrt::HaloDesktop::implementation
         std::unique_ptr<::HaloDesktop::Views::HomeHeroPresenter> m_hero;
         // The one clock every skeleton on the page pulses with.
         std::unique_ptr<::HaloDesktop::Controls::SkeletonPulse> m_skeletonPulse;
+        // Sizes Continue watching's cards so whole ones fill the strip. Created
+        // with the lists on first load; lives as long as the page.
+        std::unique_ptr<::HaloDesktop::Controls::WholeCardStrip> m_continueFit;
         bool m_listsBound{};
         bool m_onScreen{};
         // Last, so both are revoked before the presenter and the view model go.

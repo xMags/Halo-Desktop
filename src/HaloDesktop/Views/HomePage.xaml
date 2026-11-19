@@ -289,17 +289,16 @@
       <!--
         `ShelfSkeleton` twice, while the shelf list itself loads: a title bar
         150 and then 180 wide, a 48px bar at the far end, and six skeleton
-        cards. Each pulses as a whole. Laid out as the real rows are: running
-        to the window's right edge, the header keeping the gutter there.
+        cards. Each pulses as a whole.
       -->
       <StackPanel
-        Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}"
+        Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}"
         AutomationProperties.AccessibilityView="Raw"
         IsHitTestVisible="False"
         Spacing="28"
         Visibility="{x:Bind ViewModel.LoadingVisibility, Mode=OneWay}">
         <StackPanel x:Name="ShelfSkeleton0">
-          <Grid Height="28" Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
+          <Grid Height="28" Margin="0,0,0,12">
             <Border Width="150" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
             <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
           </Grid>
@@ -313,7 +312,7 @@
           </StackPanel>
         </StackPanel>
         <StackPanel x:Name="ShelfSkeleton1">
-          <Grid Height="28" Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
+          <Grid Height="28" Margin="0,0,0,12">
             <Border Width="180" Height="18" HorizontalAlignment="Left" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
             <Border Width="48" Height="14" HorizontalAlignment="Right" VerticalAlignment="Center" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="4" />
           </Grid>
@@ -327,9 +326,8 @@
           </StackPanel>
         </StackPanel>
       </StackPanel>
-      <!-- Runs to the window's right edge; see HomeViewModel::StripRowPadding. -->
-      <StackPanel Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
-        <Grid Margin="{x:Bind ViewModel.StripHeaderMargin, Mode=OneWay}">
+      <StackPanel Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" Visibility="{x:Bind ViewModel.ContinueVisibility, Mode=OneWay}">
+        <Grid Margin="0,0,0,12">
           <Grid.ColumnDefinitions>
             <ColumnDefinition Width="Auto" />
             <ColumnDefinition Width="Auto" />
@@ -358,19 +356,23 @@
                  cards hit-testable too, so the strip answers everywhere. -->
             <Grid Background="Transparent" PointerWheelChanged="OnStripPointerWheelChanged" SizeChanged="OnContinueScrollerSizeChanged">
               <!-- The last list on this page that realised everything it was given. -->
-              <ItemsRepeater x:Name="ContinueList" Margin="{x:Bind ViewModel.StripEndInset, Mode=OneWay}">
+              <ItemsRepeater x:Name="ContinueList">
               <ItemsRepeater.Layout><StackLayout Orientation="Horizontal" Spacing="14" /></ItemsRepeater.Layout>
               <ItemsRepeater.ItemTemplate>
+                <!-- The slot is sized so whole cards fill the strip (WholeCardStrip);
+                     the card stretches to it and keeps its 16:9 still. -->
                 <DataTemplate x:DataType="local:ContinueItem">
-                  <local:ContinueCard
-                    Title="{x:Bind Name}"
-                    Meta="{x:Bind Sub}"
-                    Art="{x:Bind Art, Mode=OneWay}"
-                    EpisodeTag="{x:Bind Tag}"
-                    TimeLeft="{x:Bind TimeLeft}"
-                    Progress="{x:Bind Progress}"
-                    Tag="{x:Bind}"
-                    Click="OnContinueItemClick" />
+                  <Grid>
+                    <local:ContinueCard
+                      Title="{x:Bind Name}"
+                      Meta="{x:Bind Sub}"
+                      Art="{x:Bind Art, Mode=OneWay}"
+                      EpisodeTag="{x:Bind Tag}"
+                      TimeLeft="{x:Bind TimeLeft}"
+                      Progress="{x:Bind Progress}"
+                      Tag="{x:Bind}"
+                      Click="OnContinueItemClick" />
+                  </Grid>
                 </DataTemplate>
               </ItemsRepeater.ItemTemplate>
               </ItemsRepeater>
@@ -387,9 +389,7 @@
         to the shelves actually in view. The shelf hands itself through Tag so
         its See all knows where it leads.
       -->
-      <!-- Runs to the window's right edge; each shelf keeps the right gutter for
-           its header and strip end itself (MediaShelf::ApplyEndInset). -->
-      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.StripRowPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
+      <ItemsRepeater x:Name="ShelfList" Margin="{x:Bind ViewModel.ContentPadding, Mode=OneWay}" ElementPrepared="OnShelfElementPrepared">
         <ItemsRepeater.Layout>
           <StackLayout Orientation="Vertical" Spacing="28" />
         </ItemsRepeater.Layout>

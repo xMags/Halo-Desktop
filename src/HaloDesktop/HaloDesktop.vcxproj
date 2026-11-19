@@ -415,6 +415,7 @@
     <ClInclude Include="Controls\SidewaysWheelGuard.h" />
     <ClInclude Include="Shell\WindowBackdropPolicy.h" />
     <ClInclude Include="Shell\WindowBackdropService.h" />
+    <ClInclude Include="Controls\WholeCardStrip.h" />
   </ItemGroup>
   <ItemGroup>
     <ApplicationDefinition Include="App.xaml" />
@@ -835,6 +836,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Shell\WindowBackdropService.cpp" />
+    <ClCompile Include="Controls\WholeCardStrip.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Midl Include="Controls\ArtworkImage.idl"><SubType>Code</SubType><DependentUpon>ArtworkImage.xaml</DependentUpon></Midl>

@@ -40,6 +40,14 @@ namespace HaloDesktop::Controls
     inline constexpr double ScrollRowFadeWidth = 48.0;
     inline constexpr double ScrollRowPageInset = 160.0;
 
+    // The width each card of a Home strip takes so a whole number of them fill
+    // the strip exactly and none is ever cut at its edge: as many as fit at
+    // `minWidth` with `gap` between them (at least one), stretched equally to
+    // share what is left, as the Library grid's columns are. Paging by the
+    // cards that fit then moves exactly one strip's width. Returns `minWidth`
+    // when the strip has no usable width yet.
+    [[nodiscard]] double WholeCardWidth(double viewport, double minWidth, double gap) noexcept;
+
     // Whether the strip is wider than its viewport by more than the slack.
     [[nodiscard]] bool ShelfOverflows(double viewport, double extent) noexcept;
 

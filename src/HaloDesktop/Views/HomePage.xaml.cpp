@@ -191,6 +191,22 @@ namespace winrt::HaloDesktop::implementation
             auto const viewModel = winrt::get_self<HomeViewModel>(m_viewModel);
             ContinueList().ItemsSource(viewModel->ContinueItemsView());
             ShelfList().ItemsSource(viewModel->ShelvesView());
+            if (auto const metrics = App::Services().LayoutMetrics)
+            {
+                try
+                {
+                    m_continueFit = std::make_unique<::HaloDesktop::Controls::WholeCardStrip>(
+                        ContinueScroller(),
+                        ContinueList(),
+                        metrics,
+                        &::HaloDesktop::Shell::LayoutMetrics::ContinueWidth,
+                        ::HaloDesktop::Controls::ShelfCardGap);
+                }
+                catch (...)
+                {
+                    // Without it the cards keep the step's continue width, as before.
+                }
+            }
         }
         EnsureHeroPresenter();
         m_viewModel.EnsureLoaded();
@@ -355,12 +371,12 @@ namespace winrt::HaloDesktop::implementation
     }
 
     // The continue strip pages the way every shelf does: by the whole cards
-    // that fit, landing on a card boundary.
+    // in view, landing on a card boundary.
     void HomePage::ScrollContinueBy(int direction)
     {
         auto const scroller = ContinueScroller();
         auto const metrics = App::Services().LayoutMetrics;
-        auto const cardWidth = metrics ? metrics->Current().ContinueWidth : 268.0;
+        auto const cardWidth = m_continueFit ? m_continueFit->CardWidth() : metrics ? metrics->Current().ContinueWidth : 268.0;
         auto const target = ::HaloDesktop::Controls::ShelfPageTarget(
             scroller.HorizontalOffset(),
             scroller.ViewportWidth(),

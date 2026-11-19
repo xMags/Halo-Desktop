@@ -24,11 +24,24 @@ namespace HaloDesktop::Controls
         {
             return offset;
         }
-        auto const perPage = (std::max)(1.0, std::floor((viewport + gap) / step));
+        // The tolerance keeps a strip sized to hold exactly n cards (WholeCardWidth)
+        // from reading as n - 1 through rounding in the division.
+        auto const perPage = (std::max)(1.0, std::floor((viewport + gap) / step + 1e-6));
         // JavaScript's Math.round: halves go up, toward positive infinity.
         auto const current = std::floor(offset / step + 0.5);
         auto const sign = direction < 0 ? -1.0 : 1.0;
         return (current + sign * perPage) * step;
+    }
+
+    double WholeCardWidth(double viewport, double minWidth, double gap) noexcept
+    {
+        if (!std::isfinite(viewport) || !std::isfinite(minWidth) || !std::isfinite(gap)
+            || minWidth <= 0.0 || gap < 0.0 || viewport < minWidth)
+        {
+            return minWidth;
+        }
+        auto const count = (std::max)(1.0, std::floor((viewport + gap) / (minWidth + gap) + 1e-6));
+        return (viewport - (count - 1.0) * gap) / count;
     }
 
     bool ShelfOverflows(double viewport, double extent) noexcept

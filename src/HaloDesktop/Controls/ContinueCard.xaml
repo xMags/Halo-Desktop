@@ -6,7 +6,8 @@
   xmlns:local="using:HaloDesktop"
   Loaded="OnLoaded"
   Unloaded="OnUnloaded"
-  Width="268">
+  SizeChanged="OnSizeChanged"
+  MinWidth="268">
   <UserControl.Resources>
     <!--
       The card already states hover itself, as PosterCard does: a 2px lift, a
