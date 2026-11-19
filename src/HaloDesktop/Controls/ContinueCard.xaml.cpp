@@ -6,6 +6,7 @@
 
 #include "App.xaml.h"
 #include "Controls/ArtworkImage.xaml.h"
+#include "Controls/PressFeedback.h"
 #include "Controls/TagChip.xaml.h"
 #include "Shell/LayoutMetricsService.h"
 
@@ -24,6 +25,8 @@ namespace winrt::HaloDesktop::implementation
         lift.Duration(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(
             ::HaloDesktop::Controls::CardHoverDuration));
         TranslationTransition(lift);
+        // A press sinks the whole card, lift and all, and springs it back.
+        ::HaloDesktop::Controls::AttachPressFeedback(*this, CardButton());
         ApplyLayoutMetrics();
     }
 

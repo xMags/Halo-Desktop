@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "Views/DownloadReadyCard.xaml.h"
+#include "Controls/PressFeedback.h"
 #if __has_include("DownloadReadyCard.g.cpp")
 #include "DownloadReadyCard.g.cpp"
 #endif
@@ -23,6 +24,8 @@ namespace winrt::HaloDesktop::implementation
     DownloadReadyCard::DownloadReadyCard()
     {
         InitializeComponent();
+        // A press sinks the whole card, art and caption, and springs it back.
+        ::HaloDesktop::Controls::AttachPressFeedback(*this, CardButton());
         // A double click on the card plays. The card's button handles the pointer
         // itself, so the gesture is listened for even when already marked
         // handled; the play button is a sibling, so its own clicks stay its own.
