@@ -249,62 +249,71 @@
               the card does.
             -->
             <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}">
+              <!--
+                Two rows, as Windows Settings lays out a setting that needs typing:
+                what it is above, the key box across the card's width below,
+                lined up under the text rather than the glyph. Saved, the box
+                gives way to a quiet "Key saved" and Remove beside the title.
+              -->
               <Border Style="{StaticResource SettingsCardStyle}">
-                <Grid MinHeight="42" Padding="16,12" ColumnSpacing="16">
-                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" MaxWidth="250" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
-                  <FontIcon VerticalAlignment="Center" FontSize="20" Foreground="{ThemeResource HaloText1Brush}" Glyph="&#xE77B;" />
+                <Grid Padding="16,14" ColumnSpacing="16" RowSpacing="12">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="20" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /></Grid.RowDefinitions>
+                  <FontIcon VerticalAlignment="Top" Margin="0,2,0,0" FontSize="20" Foreground="{ThemeResource HaloText1Brush}" Glyph="&#xE77B;" />
                   <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
                     <TextBlock FontSize="{StaticResource HaloFontLabel}" Text="People search" />
-                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Uses your own free TMDB key for people search and IMDb and TVDB links." TextWrapping="Wrap" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" TextWrapping="Wrap">
+                      <Run Text="Find actors, directors and writers, and open IMDb and TVDB links, with your own TMDB key." />
+                      <Hyperlink NavigateUri="https://www.themoviedb.org/settings/api" UnderlineStyle="None">Get a free key</Hyperlink>
+                    </TextBlock>
                   </StackPanel>
-                  <PasswordBox
-                    x:Name="TmdbKeyBox"
-                    Grid.Column="2"
-                    Height="32"
-                    VerticalAlignment="Center"
-                    AutomationProperties.Name="TMDB API key or read access token"
-                    FontSize="{StaticResource HaloFontLabel}"
-                    KeyDown="OnTmdbKeyKeyDown"
-                    Password="{x:Bind TmdbKey.KeyText, Mode=TwoWay}"
-                    PlaceholderText="TMDB API key or read access token"
-                    Visibility="{x:Bind TmdbKey.EntryVisibility, Mode=OneWay}" />
-                  <Button
-                    Grid.Column="3"
-                    Height="32"
-                    Padding="18,0"
-                    VerticalAlignment="Center"
-                    Click="OnSaveTmdbKeyClick"
-                    Content="{x:Bind TmdbKey.SaveButtonText, Mode=OneWay}"
-                    FontSize="{StaticResource HaloFontLabel}"
-                    IsEnabled="{x:Bind TmdbKey.CanSave, Mode=OneWay}"
-                    Style="{StaticResource HaloAccentButtonStyle}"
-                    Visibility="{x:Bind TmdbKey.EntryVisibility, Mode=OneWay}" />
+                  <StackPanel Grid.Column="2" VerticalAlignment="Center" Orientation="Horizontal" Spacing="12" Visibility="{x:Bind TmdbKey.SavedVisibility, Mode=OneWay}">
+                    <StackPanel VerticalAlignment="Center" Orientation="Horizontal" Spacing="6">
+                      <FontIcon FontSize="14" Foreground="{ThemeResource HaloSuccessBrush}" Glyph="&#xE73E;" />
+                      <TextBlock VerticalAlignment="Center" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="Key saved" />
+                    </StackPanel>
+                    <Button
+                      Height="32"
+                      Padding="16,0"
+                      Click="OnRemoveTmdbKeyClick"
+                      Content="Remove"
+                      FontSize="{StaticResource HaloFontLabel}"
+                      Style="{StaticResource HaloDangerOutlineButtonStyle}" />
+                  </StackPanel>
+                  <Grid Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="2" ColumnSpacing="8" Visibility="{x:Bind TmdbKey.EntryVisibility, Mode=OneWay}">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                    <PasswordBox
+                      x:Name="TmdbKeyBox"
+                      Height="32"
+                      AutomationProperties.Name="TMDB API key or read access token"
+                      FontSize="{StaticResource HaloFontLabel}"
+                      KeyDown="OnTmdbKeyKeyDown"
+                      Password="{x:Bind TmdbKey.KeyText, Mode=TwoWay}"
+                      PlaceholderText="Paste your API key or read access token" />
+                    <Button
+                      Grid.Column="1"
+                      Height="32"
+                      MinWidth="88"
+                      Padding="18,0"
+                      Click="OnSaveTmdbKeyClick"
+                      Content="{x:Bind TmdbKey.SaveButtonText, Mode=OneWay}"
+                      FontSize="{StaticResource HaloFontLabel}"
+                      IsEnabled="{x:Bind TmdbKey.CanSave, Mode=OneWay}"
+                      Style="{StaticResource HaloAccentButtonStyle}" />
+                  </Grid>
+                  <!-- TMDB asks every app using its API to say so. -->
                   <TextBlock
-                    Grid.Column="2"
-                    HorizontalAlignment="Right"
-                    VerticalAlignment="Center"
-                    FontSize="{StaticResource HaloFontLabel}"
-                    Foreground="{ThemeResource HaloText2Brush}"
-                    Text="Key saved"
-                    Visibility="{x:Bind TmdbKey.SavedVisibility, Mode=OneWay}" />
-                  <Button
-                    Grid.Column="3"
-                    Height="32"
-                    Padding="16,0"
-                    VerticalAlignment="Center"
-                    Click="OnRemoveTmdbKeyClick"
-                    Content="Remove"
-                    FontSize="{StaticResource HaloFontLabel}"
-                    Style="{StaticResource HaloDangerOutlineButtonStyle}"
-                    Visibility="{x:Bind TmdbKey.SavedVisibility, Mode=OneWay}" />
+                    Grid.Row="2"
+                    Grid.Column="1"
+                    Grid.ColumnSpan="2"
+                    FontSize="{StaticResource HaloFontCaption}"
+                    Foreground="{ThemeResource HaloText3Brush}"
+                    Text="This product uses the TMDB API but is not endorsed or certified by TMDB."
+                    TextWrapping="Wrap" />
                 </Grid>
               </Border>
               <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Polite" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind TmdbKey.StatusText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind TmdbKey.StatusOkVisibility, Mode=OneWay}" />
               <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Assertive" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind TmdbKey.StatusText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind TmdbKey.StatusProblemVisibility, Mode=OneWay}" />
-              <StackPanel Margin="2,2,0,0" Spacing="2">
-                <HyperlinkButton Padding="0" Content="Get a free TMDB key" FontSize="{StaticResource HaloFontSmall}" NavigateUri="https://www.themoviedb.org/settings/api" />
-                <TextBlock FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="This product uses the TMDB API but is not endorsed or certified by TMDB." TextWrapping="Wrap" />
-              </StackPanel>
             </StackPanel>
           </StackPanel>
 
