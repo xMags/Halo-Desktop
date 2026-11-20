@@ -248,6 +248,22 @@ namespace HaloDesktop::Services
         }
     }
 
+    concurrency::task<bool> AddonService::RefreshForEditAsync(std::uint64_t accountVersion)
+    {
+        auto const uiContext = winrt::apartment_context{};
+        m_queryCache->Invalidate(AddonsCacheKey);
+        auto const requestId = m_queryCache->Issue(AddonsCacheKey);
+        auto payload = co_await m_backends->Current()->GetAddonsAsync();
+        co_await uiContext;
+        if (accountVersion != m_accountVersion)
+        {
+            co_return false;
+        }
+        static_cast<void>(m_queryCache->Commit(AddonsCacheKey, requestId, payload, QueryTtl::Addons));
+        Apply(std::move(payload));
+        co_return true;
+    }
+
     concurrency::task<void> AddonService::AddAsync(winrt::hstring transportUrl)
     {
         auto const uiContext = winrt::apartment_context{};
@@ -291,6 +307,26 @@ namespace HaloDesktop::Services
                 {
                     throw std::invalid_argument{ "That addon is already installed." };
                 }
+            }
+
+            if (!co_await RefreshForEditAsync(accountVersion))
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            if (!m_editability.User)
+            {
+                throw std::runtime_error{ "The addon list cannot be edited safely." };
+            }
+            // Added elsewhere since this window loaded the list: what was asked
+            // for is already true, and the list shown is now the fresh one.
+            if (std::any_of(m_records.begin(), m_records.end(), [&url](auto const& record)
+                {
+                    return record.TransportUrl && *record.TransportUrl == url;
+                }))
+            {
+                mutationCompleted.set();
+                co_return;
             }
 
             auto urls = TransportUrls(false);
@@ -357,9 +393,38 @@ namespace HaloDesktop::Services
                 throw std::runtime_error{ "A built-in addon cannot be removed." };
             }
 
-            auto urls = TransportUrls(found->IsGlobal);
-            std::erase(urls, *found->TransportUrl);
-            co_await PutListAsync(std::move(urls), found->IsGlobal);
+            if (!co_await RefreshForEditAsync(accountVersion))
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            // The same checks on the fresh list. Already removed elsewhere:
+            // what was asked for is already true.
+            auto const fresh = std::find_if(m_records.begin(), m_records.end(), [&addonId](auto const& record)
+            {
+                return record.Id == addonId;
+            });
+            if (fresh == m_records.end())
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            if (!fresh->TransportUrl || !CanEditAddonInScope(m_editability, fresh->IsGlobal))
+            {
+                throw std::runtime_error{ "The addon cannot be removed safely." };
+            }
+            if (IsBuiltInAddon(
+                    fresh->IsGlobal ? AddonScope::Global : AddonScope::Yours,
+                    std::wstring_view{ *fresh->TransportUrl }))
+            {
+                throw std::runtime_error{ "A built-in addon cannot be removed." };
+            }
+
+            auto const global = fresh->IsGlobal;
+            auto const removedUrl = *fresh->TransportUrl;
+            auto urls = TransportUrls(global);
+            std::erase(urls, removedUrl);
+            co_await PutListAsync(std::move(urls), global);
             co_await uiContext;
             if (accountVersion != m_accountVersion)
             {
@@ -514,11 +579,25 @@ namespace HaloDesktop::Services
             {
                 ids.emplace_back(id);
             }
-            auto const entries = ListEntries(global);
-            auto const urls = ReorderedTransportUrls(entries, ids);
-            if (!urls)
+            if (!ReorderedTransportUrls(ListEntries(global), ids))
             {
                 throw std::invalid_argument{ "The new addon order does not match the list." };
+            }
+            if (!co_await RefreshForEditAsync(accountVersion))
+            {
+                mutationCompleted.set();
+                co_return;
+            }
+            if (!CanEditScope(global))
+            {
+                throw std::runtime_error{ "The addon list cannot be edited safely." };
+            }
+            // The order was dragged on the old copy; one added, removed or
+            // changed elsewhere since cannot be placed by guessing.
+            auto const urls = ReorderedTransportUrls(ListEntries(global), ids);
+            if (!urls)
+            {
+                throw std::invalid_argument{ "The addon list changed elsewhere. It has been reloaded; try again." };
             }
             std::vector<winrt::hstring> body;
             body.reserve(urls->size());
@@ -570,8 +649,14 @@ namespace HaloDesktop::Services
                 co_return InstallForEveryoneOutcome::Abandoned;
             }
 
-            // Planned again here, after any earlier save has landed, so the
-            // lists sent are the ones the account has now.
+            // Planned again here, from both lists read fresh after any earlier
+            // save has landed, so the lists sent are the ones the account and
+            // the server have now.
+            if (!co_await RefreshForEditAsync(accountVersion))
+            {
+                mutationCompleted.set();
+                co_return InstallForEveryoneOutcome::Abandoned;
+            }
             auto const plan = PlanInstall(addonId);
             if (!m_listApplied || plan.Check != InstallForEveryoneCheck::Proceed)
             {

@@ -64,6 +64,13 @@ namespace HaloDesktop::Services
         [[nodiscard]] std::vector<AddonListEntry> ListEntries(bool global) const;
         [[nodiscard]] InstallForEveryonePlan PlanInstall(winrt::hstring const& addonId) const;
         [[nodiscard]] concurrency::task<void> LoadCoreAsync(std::uint64_t accountVersion);
+        // Reads the list again and applies it, just before an edit is built:
+        // every save replaces a whole list, so it must start from what the
+        // account holds now, not from what this window loaded earlier (another
+        // window, device or admin may have changed it). Throws when the read
+        // fails, so an edit is never built on the old copy. False when the
+        // account changed meanwhile.
+        [[nodiscard]] concurrency::task<bool> RefreshForEditAsync(std::uint64_t accountVersion);
         void Apply(::HaloDesktop::Api::Dto::AddonsPayload payload);
         // Editability and the display rows, from the records and the admin flag.
         void RebuildItems();
