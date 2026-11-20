@@ -362,15 +362,32 @@ namespace HaloDesktop::Services
     {
         std::vector<ShelfQuery> queries;
         std::unordered_set<std::wstring> keys;
+        auto const records = m_addons->Records();
+        auto const shownAddon = [](::HaloDesktop::Api::Dto::AddonRecord const& addon)
+        {
+            return !addon.HideCatalogs && (addon.IsGlobal || !addon.ProvidedGlobally);
+        };
+        // Every row that would be drawn, before any is dropped as a repeat
+        // (RepeatsBuiltInPopularRow). Views into `records`, which outlives them.
+        std::vector<HomeRowSource> shownRows;
+        for (auto const& addon : records)
+        {
+            if (!shownAddon(addon) || !addon.TransportUrl) continue;
+            for (auto const& catalog : addon.Catalogs)
+            {
+                if (catalog.HasRequiredExtra || !IsHomeCatalogType(std::wstring_view{ catalog.Type })) continue;
+                shownRows.push_back({ std::wstring_view{ *addon.TransportUrl }, std::wstring_view{ catalog.Id }, std::wstring_view{ catalog.Type } });
+            }
+        }
         // The effective resolution order: global addons first, then the user's
         // own minus those the administrator already installs.
-        for (auto const& addon : m_addons->Records())
+        for (auto const& addon : records)
         {
             if (queries.size() == MaximumHomeShelves)
             {
                 break;
             }
-            if (addon.HideCatalogs || (!addon.IsGlobal && addon.ProvidedGlobally))
+            if (!shownAddon(addon))
             {
                 continue;
             }
@@ -381,6 +398,12 @@ namespace HaloDesktop::Services
                     break;
                 }
                 if (catalog.HasRequiredExtra || !IsHomeCatalogType(std::wstring_view{ catalog.Type }))
+                {
+                    continue;
+                }
+                if (addon.TransportUrl && RepeatsBuiltInPopularRow(
+                        { std::wstring_view{ *addon.TransportUrl }, std::wstring_view{ catalog.Id }, std::wstring_view{ catalog.Type } },
+                        shownRows))
                 {
                     continue;
                 }

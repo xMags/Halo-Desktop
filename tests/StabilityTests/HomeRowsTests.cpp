@@ -281,8 +281,48 @@ namespace
     }
 }
 
+namespace
+{
+    // The built-in TMDB addon's Popular rows give way to Cinemeta's, and only those.
+    void BuiltInPopularRowsAreNotRepeated()
+    {
+        using HaloDesktop::Services::HomeRowSource;
+        using HaloDesktop::Services::RepeatsBuiltInPopularRow;
+        constexpr std::wstring_view Cinemeta = L"https://v3-cinemeta.strem.io/manifest.json";
+        constexpr std::wstring_view Tmdb = L"https://tmdb.elfhosted.com/manifest.json";
+        std::vector<HomeRowSource> const shown{
+            { Cinemeta, L"top", L"movie" },
+            { Cinemeta, L"top", L"series" },
+            { Tmdb, L"tmdb.top", L"movie" },
+            { Tmdb, L"tmdb.top", L"series" },
+            { Tmdb, L"tmdb.trending", L"movie" },
+        };
+        if (!RepeatsBuiltInPopularRow({ Tmdb, L"tmdb.top", L"movie" }, shown)
+            || !RepeatsBuiltInPopularRow({ Tmdb, L"tmdb.top", L"series" }, shown))
+        {
+            throw std::runtime_error{ "TMDB's Popular rows were kept beside Cinemeta's" };
+        }
+        if (RepeatsBuiltInPopularRow({ Cinemeta, L"top", L"movie" }, shown)
+            || RepeatsBuiltInPopularRow({ Tmdb, L"tmdb.trending", L"movie" }, shown))
+        {
+            throw std::runtime_error{ "a row that repeats nothing was dropped" };
+        }
+        std::vector<HomeRowSource> const withoutCinemetaSeries{ { Cinemeta, L"top", L"movie" } };
+        if (RepeatsBuiltInPopularRow({ Tmdb, L"tmdb.top", L"series" }, withoutCinemetaSeries))
+        {
+            throw std::runtime_error{ "TMDB's Popular series row was dropped with no Cinemeta row beside it" };
+        }
+        // A configured TMDB copy is the viewer's own choice and is kept.
+        if (RepeatsBuiltInPopularRow({ L"https://tmdb.elfhosted.com/abc/manifest.json", L"tmdb.top", L"movie" }, shown))
+        {
+            throw std::runtime_error{ "a configured TMDB addon's row was dropped" };
+        }
+    }
+}
+
 void RunHomeRowsTests()
 {
+    BuiltInPopularRowsAreNotRepeated();
     TestHomeCatalogTypes();
     TestCatalogShelfLabels();
     TestRecentlyWatchedRow();

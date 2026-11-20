@@ -27,6 +27,22 @@ namespace HaloDesktop::Services
     // entries are release names and hashes, not titles to browse.
     [[nodiscard]] bool IsHomeCatalogType(std::wstring_view type) noexcept;
 
+    // One catalog row Home would draw: the addon it comes from (its manifest
+    // address) and the catalog's id and type.
+    struct HomeRowSource final
+    {
+        std::wstring_view AddonUrl;
+        std::wstring_view CatalogId;
+        std::wstring_view Type;
+    };
+
+    // The built-in addons repeat one row: TMDB's "Popular" for films and for
+    // series says what Cinemeta's "Popular" already does. True for the
+    // built-in TMDB addon's Popular row of a type whose built-in Cinemeta
+    // Popular row is among `shown`, so Home keeps Cinemeta's alone. Any other
+    // addon, or a TMDB Popular row with no Cinemeta one beside it, is kept.
+    [[nodiscard]] bool RepeatsBuiltInPopularRow(HomeRowSource const& row, std::span<HomeRowSource const> shown) noexcept;
+
     struct ShelfLabels final
     {
         std::wstring Title;

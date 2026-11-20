@@ -302,6 +302,19 @@ namespace HaloDesktop::Services
         return type == L"movie" || type == L"series";
     }
 
+    bool RepeatsBuiltInPopularRow(HomeRowSource const& row, std::span<HomeRowSource const> shown) noexcept
+    {
+        // The built-in addresses (AddonListPolicy's DefaultAddonUrls).
+        constexpr std::wstring_view Cinemeta = L"https://v3-cinemeta.strem.io/manifest.json";
+        constexpr std::wstring_view Tmdb = L"https://tmdb.elfhosted.com/manifest.json";
+        if (row.AddonUrl != Tmdb || row.CatalogId != L"tmdb.top") return false;
+        for (auto const& other : shown)
+        {
+            if (other.AddonUrl == Cinemeta && other.CatalogId == L"top" && other.Type == row.Type) return true;
+        }
+        return false;
+    }
+
     ShelfLabels CatalogShelfLabels(
         std::optional<std::wstring_view> catalogName,
         std::wstring_view type,
