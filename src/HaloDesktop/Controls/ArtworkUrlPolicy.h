@@ -18,6 +18,12 @@ namespace HaloDesktop::Controls
     // including TMDB sizes already chosen, is returned as given.
     [[nodiscard]] std::wstring CardArtworkUrl(std::wstring_view url, int width = CardArtworkWidth);
 
+    // A TMDB profile photo as its 632-pixel-tall copy, for a portrait shown
+    // large. The server hands out `w185` (185x278), sized for cast thumbnails,
+    // which a person page's photo has to upscale. Any other URL, including
+    // other TMDB sizes, is returned as given.
+    [[nodiscard]] std::wstring PortraitPhotoUrl(std::wstring_view url);
+
     // Stremio's own poster for a bare IMDb id (`tt` and digits), which is what
     // an addon's catalog falls back on when its art does not load. Empty for
     // any other id, since metahub knows no other kind.

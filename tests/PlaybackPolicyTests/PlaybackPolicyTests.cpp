@@ -949,6 +949,24 @@ namespace
             Require(CardArtworkUrl(url) == url, "an image that needed no rewrite was changed");
         }
 
+        // A person page asks for the large copy of a thumbnail-sized TMDB profile.
+        using HaloDesktop::Controls::PortraitPhotoUrl;
+        Require(PortraitPhotoUrl(L"https://image.tmdb.org/t/p/w185/b7fTC9WFkgqGOv77mLQztArwkZ.jpg")
+                == L"https://image.tmdb.org/t/p/h632/b7fTC9WFkgqGOv77mLQztArwkZ.jpg",
+            "a TMDB w185 profile was not asked for at h632");
+        for (auto const url : {
+                 L"https://image.tmdb.org/t/p/original/a.jpg",
+                 L"https://image.tmdb.org/t/p/h632/a.jpg",
+                 L"https://image.tmdb.org/t/p/w1850/a.jpg",
+                 L"http://image.tmdb.org/t/p/w185/a.jpg",
+                 L"https://example.com/image.tmdb.org/t/p/w185/a.jpg",
+                 L"https://addon.test/photo.jpg",
+                 L"",
+             })
+        {
+            Require(PortraitPhotoUrl(url) == url, "a photo that needed no rewrite was changed");
+        }
+
         // An IMDb title falls back on its metahub poster; other ids have none.
         Require(MetahubPosterUrl(L"tt12735488").value_or(L"") == L"https://images.metahub.space/poster/medium/tt12735488/img",
             "an IMDb id had no metahub poster");

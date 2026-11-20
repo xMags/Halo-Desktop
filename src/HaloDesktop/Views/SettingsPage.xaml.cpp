@@ -476,7 +476,7 @@ namespace winrt::HaloDesktop::implementation
                 ShowStockAccountPicture();
                 co_return;
             }
-            auto const picture = co_await ::HaloDesktop::Views::DecodeAccountPictureAsync(bytes, kAccountPictureEdge);
+            auto const picture = co_await ::HaloDesktop::Views::DecodeAccountPictureAsync(bytes, kAccountPictureEdge, ::HaloDesktop::Views::RasterizationScaleOf(*this));
             co_await uiContext;
             if (request != m_pictureRequest)
             {

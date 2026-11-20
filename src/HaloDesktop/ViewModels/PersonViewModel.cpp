@@ -3,6 +3,7 @@
 #if __has_include("PersonViewModel.g.cpp")
 #include "PersonViewModel.g.cpp"
 #endif
+#include "Controls/ArtworkUrlPolicy.h"
 #include "Models/Models.h"
 #include "Services/NavigationService.h"
 #include "Services/PeopleRowPolicy.h"
@@ -23,6 +24,13 @@ namespace
     auto const Collapsed = winrt::Microsoft::UI::Xaml::Visibility::Collapsed;
 
     using ::HaloDesktop::Services::FilmographyFilter;
+
+    // The page's photo is drawn far larger than the cast thumbnail the server's
+    // URL is sized for.
+    winrt::hstring LargePhoto(winrt::hstring const& url)
+    {
+        return winrt::hstring{ ::HaloDesktop::Controls::PortraitPhotoUrl(url) };
+    }
 
     constexpr wchar_t FailedTitle[] = L"Couldn't load this page";
     constexpr wchar_t FailedText[] = L"The server did not answer. Try again in a moment.";
@@ -180,7 +188,7 @@ namespace winrt::HaloDesktop::implementation
         m_tmdbId = m_params.TmdbId() > 0 ? m_params.TmdbId() : 0;
         m_name = m_params.Name();
         // Every caller passes a photo its mapper already held to https.
-        m_photo = std::wstring_view{ m_params.Photo() }.starts_with(L"https://") ? m_params.Photo() : winrt::hstring{};
+        m_photo = std::wstring_view{ m_params.Photo() }.starts_with(L"https://") ? LargePhoto(m_params.Photo()) : winrt::hstring{};
         if (m_featuresToken == 0)
         {
             m_featuresToken = m_features->AddChangedHandler([weak = get_weak()]()
@@ -255,7 +263,7 @@ namespace winrt::HaloDesktop::implementation
     void PersonViewModel::ShowPerson(::HaloDesktop::Api::Dto::PersonDetail detail)
     {
         m_name = detail.Person.Name;
-        if (detail.Person.Photo) m_photo = *detail.Person.Photo;
+        if (detail.Person.Photo) m_photo = LargePhoto(*detail.Person.Photo);
         m_knownFor = detail.Person.KnownFor;
         m_biography = detail.Person.Biography.value_or(winrt::hstring{});
         m_partial = detail.Partial;
