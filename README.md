@@ -5,7 +5,7 @@
 <h1 align="center">Halo Desktop</h1>
 
 <p align="center">
-  <strong>A native Windows 11 client for Halo, built with C++/WinRT, WinUI 3, and a medically inadvisable amount of Windows API.</strong>
+  <strong>A native Windows 11 app for Halo, the self-hosted media center.</strong>
 </p>
 
 <p align="center">
@@ -17,77 +17,120 @@
   <img alt="Source available" src="https://img.shields.io/badge/license-source--available-C62828?style=flat-square" />
 </p>
 
+<p align="center">
+  <img src=".github/screenshots/home.png" alt="Halo Desktop Home page" width="900" />
+</p>
+
+Halo Desktop browses catalogs, plays streams, downloads for offline viewing and keeps your library and watch progress. It is built with C++/WinRT and WinUI 3, with libmpv for playback. There is no browser or web view inside.
+
+It works in two ways:
+
+- **With a Halo server.** Sign in and your library, progress, addons and settings sync across your devices.
+- **Without an account.** Everything stays on this PC, and the app talks to your addons directly.
+
 > [!NOTE]
-> This is basically the same project as [cryguy/halo](https://github.com/cryguy/halo). I just had an itch in my three left-over brain cells to write the Windows desktop app in the most native way possible. Apparently those brain cells chose C++/WinRT, COM, child windows, and manual lifetime management instead of peace.
->
-> **This repository does not include the Halo backend.** For the API, server setup, and the rest of the actual responsible engineering, go to the [original Halo repository](https://github.com/cryguy/halo) and use the backend from there.
+> This repository is the Windows app only. The Halo server lives in [cryguy/halo](https://github.com/cryguy/halo), the project this app is based on.
 
-## What is this thing?
+## Contents
 
-Halo Desktop is a native Windows 11 client for a self-hosted Halo server. It is not Electron, not a WebView wearing a fake moustache, and not a website trapped inside an `.exe`.
+- [Install](#install)
+- [Get started](#get-started)
+- [Add addons](#add-addons)
+- [Features](#features)
+- [Player shortcuts](#player-shortcuts)
+- [Privacy and local data](#privacy-and-local-data)
+- [Build from source](#build-from-source)
+- [License](#license)
 
-It is a real WinUI 3 application with a native C++/WinRT shell and libmpv rendering through a DirectX composition swapchain into a XAML SwapChainPanel. It talks to the Halo API for catalogs, metadata, library state, watch progress, addons, settings, streams, and subtitles, or, when used without an account, to the addons themselves. Downloads stay on the Windows device and remain available offline.
+## Install
 
-The upstream project said native desktop apps would come later. One remaining brain cell took that personally.
+1. Download the latest installer from the [Releases page](https://github.com/xMags/Halo-Desktop/releases). Choose the ARM64 installer for ARM devices, otherwise the standard one.
+2. Run it. The installer is not signed, so Windows SmartScreen may warn you: choose **More info**, then **Run anyway**.
+3. Open **Halo Desktop** from the Start menu.
 
-## What currently works?
+Requires Windows 11. Updates are installed the same way, and your data is kept.
 
-| Area | Current behavior |
+## Get started
+
+<p align="center">
+  <img src=".github/screenshots/sign-in.png" alt="Sign-in screen" width="760" />
+</p>
+
+**If you have a Halo server:** choose **Use username & password**, enter the server address (for example `https://halo.example.com`), your username and your password, then **Sign in**. Servers that offer browser sign-in show that option as well.
+
+**If you do not:** choose **Continue without an account**. You can sign in later from **Settings > Account**, and the library, progress, addons and downloads on this PC move into your account.
+
+## Add addons
+
+Halo gets its catalogs, streams and subtitles from addons, which use the Stremio addon protocol. Three are included so the app is useful right away:
+
+| Addon | Provides |
 | --- | --- |
-| Home | Real addon catalogs, a featured hero, shelves per catalog and language, Continue Watching, and Recently watched |
-| Search | One merged grid across addon catalogs with a top match, library matches first, suggestions, recent searches, and popular titles |
-| Library | Movies and series with filtering and sorting |
-| History | Everything watched, with resume, removal of single entries, and Clear history |
-| Details | Metadata, seasons, episodes, progress, watched state, cast, trailer, similar titles, and artwork |
-| Sources | Fresh addon resolution, source ranking with quality medals, quality filters, and technical metadata |
-| Player | Native libmpv video, audio and subtitle tracks, seeking, speed, volume, resume, fullscreen, and up next |
-| Subtitles | Embedded tracks, addon subtitles, language preferences, styling, delay, and offline sidecars |
-| Downloads | Device-local transfers over several connections, pause and resume, rate chart, replacement safety, offline playback, and owner isolation |
-| Settings | Synced playback preferences, device-local Discord Rich Presence, addon management with reorder, theme, and account controls |
-| Authentication | Username and password for a self-hosted server, plus OIDC browser sign-in |
-| No account | "Continue without an account" keeps library, progress, addons, and downloads on this PC, and moves them into an account at a later sign-in |
+| Cinemeta | Catalogs and title details |
+| OpenSubtitles v3 | Subtitles |
+| The Movie Database Addon | More catalogs and cast pictures |
 
-## Native, because apparently I enjoy problems
+**Halo does not include any streams.** To watch something, add an addon that provides them.
 
-The desktop client deliberately uses native platform pieces where they make sense:
+<p align="center">
+  <img src=".github/screenshots/addons.png" alt="Addons in Settings" width="760" />
+</p>
 
-- **C++/WinRT and WinUI 3** for the application, navigation, controls, and Windows integration.
-- **libmpv** using its LGPL Windows build for playback of the formats browsers look at and quietly walk away from.
-- **Windows App SDK** for the self-contained desktop runtime.
-- **DPAPI** for protected local session and download-request storage.
-- **DirectX composition swapchain hosting** instead of piping frames through a browser or inventing a new GPU-shaped disaster.
-- **Windows audio sessions** so Halo behaves like an actual Windows media app in the Volume Mixer.
+1. Open **Settings > Addons**.
+2. Paste the addon's manifest address, which ends in `/manifest.json`, for example `https://addon.example.com/manifest.json`.
+3. Select **Add**.
 
-No browser frontend is hidden in here. The only HTML involved is the kind GitHub uses to render this README and judge my life choices.
+Then, for each addon:
 
-## Before building
+- **Order** sets priority. Drag a row, or use **Move up** and **Move down**.
+- **Catalogs on Home** switches an addon's rows on Home on or off.
+- **Remove** takes it off your list.
 
-You need:
+When you are signed in, addons your server provides are listed under **For everyone**. If the server already provides an addon you also have, your copy is greyed out and the server's is used. Server administrators can install an addon for every user from the same page.
 
-- Windows 11.
-- Visual Studio 2026 with **Desktop development with C++** and **C++/WinRT**.
-- PowerShell 7.
-- Internet access for the pinned libmpv development payload.
-- Node.js 22 and Corepack only if you want to run the upstream fixture backend.
+> [!TIP]
+> Without an account, add a free TMDB key under **Settings > Account** to search for actors, directors and writers, and to open their pages.
 
-The primary local development target is **x64 Debug**. ARM64 Release cross-builds are also supported for native ARM Windows devices.
+## Features
 
-### Discord Rich Presence
+<p align="center">
+  <img src=".github/screenshots/title.png" alt="A title page" width="900" />
+</p>
 
-Halo publishes playback activity through the Discord desktop client's local IPC
-pipe. Discord must be running for the activity to appear. The application uses
-the public Discord Application ID `1544266293249712128` and the artwork asset key
-`halo`. Upload a Halo logo with that key in the Discord Developer Portal before
-testing or distributing a build. Halo never sends stream URLs, request headers,
-account identifiers, or addon metadata to Discord. When a title has a public
-HTTPS poster URL, Discord receives that poster URL so it can fetch the artwork;
-local, private, credentialed, and signed URLs fall back to the Halo artwork.
+| Area | What you get |
+| --- | --- |
+| Home | Featured titles, a row per catalog, Continue watching and Recently watched |
+| Search | Movies, series and people in one place, with suggestions and recent searches. Paste a magnet link, an IMDb link or a video link to open it |
+| Library and History | Your saved titles, and everything you have watched, with resume |
+| Title pages | Details, seasons and episodes, cast, trailer and similar titles |
+| Sources | Every stream your addons find, ranked by quality, with filters |
+| Player | Audio and subtitle tracks, speed, picture fill, seek previews, resume and next episode |
+| Subtitles | Built-in and addon subtitles, with styling, delay and language preferences |
+| Downloads | Fast, resumable downloads kept on this PC and playable offline, with subtitles |
+| Settings | Light, dark and translucent themes, playback preferences and Discord Rich Presence |
 
-## Bring your own backend
+## Player shortcuts
 
-First, set up a Halo backend from [cryguy/halo](https://github.com/cryguy/halo). This repository contains the Windows client only. There is no surprise Node server under the sofa.
+| Key | Action |
+| --- | --- |
+| `Space` | Play or pause |
+| `Left` / `Right` | Seek back or forward 10 seconds |
+| `Up` / `Down` | Volume up or down |
+| `F` | Fullscreen |
+| `Escape` | Leave fullscreen, then close the player |
 
-Then create the local, ignored server configuration:
+## Privacy and local data
+
+- App data is stored in `%LOCALAPPDATA%\Halo Desktop`. Installing and updating never touch it, and uninstalling keeps it unless you choose otherwise.
+- Sign-in details, addon addresses added without an account, and download links are encrypted with Windows data protection (DPAPI).
+- Downloads belong to the account that made them and are hidden after sign-out.
+- Discord Rich Presence is optional. It shares the title you are watching and, when one is publicly available, its poster. It never shares stream links, account details or addon information.
+
+## Build from source
+
+You need Windows 11, Visual Studio 2026 with the **Desktop development with C++** and **C++/WinRT** components, and PowerShell 7.
+
+Create your local server configuration. The file is ignored by Git, so your server address stays out of commits:
 
 ```powershell
 Copy-Item `
@@ -95,179 +138,60 @@ Copy-Item `
   ".\src\HaloDesktop\Config\ServerConfig.local.h"
 ```
 
-Edit `ServerConfig.local.h` and set:
+Set `ServerBaseUrl` in that file to your server's address, without a trailing slash. The example points at the local test server, `http://127.0.0.1:18790`.
 
-```cpp
-HaloDesktop::Config::ServerBaseUrl
-```
-
-Use the server base URL without a trailing slash. The file is intentionally ignored by Git. Please keep real deployment addresses and private configuration out of commits, because the application already has enough opportunities for chaos.
-
-The tracked example points to the local fixture server at `http://127.0.0.1:18790`.
-
-## Restore, build, and launch
-
-Run the following from this repository root in PowerShell:
+Then restore, build and run from the repository root:
 
 ```powershell
 $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
-$msbuild = & $vswhere `
-  -latest `
-  -products * `
+$msbuild = & $vswhere -latest -products * `
   -requires Microsoft.Component.MSBuild `
-  -find "MSBuild\**\Bin\MSBuild.exe" |
-  Select-Object -First 1
+  -find "MSBuild\**\Bin\MSBuild.exe" | Select-Object -First 1
 
-& $msbuild "Halo-Desktop.slnx" `
-  -t:Restore `
-  -p:RestorePackagesConfig=true `
-  -p:Configuration=Debug `
-  -p:Platform=x64
+& $msbuild "Halo-Desktop.slnx" -t:Restore -p:RestorePackagesConfig=true `
+  -p:Configuration=Debug -p:Platform=x64
 
 & ".\tools\fetch-mpv.ps1"
 & ".\tools\Build-VulkanLoader.ps1"
 
-& $msbuild "Halo-Desktop.slnx" `
-  -p:Configuration=Debug `
-  -p:Platform=x64 `
-  -m `
-  -v:m
+& $msbuild "Halo-Desktop.slnx" -p:Configuration=Debug -p:Platform=x64 -m -v:m
 
 & ".\x64\Debug\HaloDesktop\HaloDesktop.exe"
 ```
 
-Halo is an unpackaged application, so it runs straight from the build output. There is no package to register, Developer Mode is not required, and the matching `x64\Release\HaloDesktop` or `ARM64\Release\HaloDesktop` folder can be copied to another machine and run as is.
+The two `tools` scripts download a pinned, checksum-verified libmpv build and build the Vulkan loader it needs. Both are safe to run again. Pass `-Platform ARM64` to either one, and to the build, for ARM devices.
 
-Both restore scripts are safe to run again.
-
-`tools/fetch-mpv.ps1` downloads the pinned LGPL developer archive for x64 by default, or ARM64 with `-Platform ARM64`. It verifies the archive against a recorded SHA-256, creates the matching MSVC import library, and places the ignored payload under `external/mpv/`. It downloads a specific release rather than "latest", so the binary Halo links against does not change underneath you. See `external/mpv/CORRESPONDING-SOURCE.md` for the LGPL source pointer.
-
-`tools/Build-VulkanLoader.ps1` builds `vulkan-1.dll` from pinned Khronos sources for x64 by default, or ARM64 with `-Platform ARM64`. It is required because `libmpv-2.dll` statically imports the Vulkan loader, which ships with GPU drivers rather than with Windows; without it Halo cannot load libmpv on a machine that has no driver installed. Halo renders through D3D11 and does not otherwise use Vulkan.
-
-`tools/Verify-Dependencies.ps1` checks the selected architecture against its pinned manifest and proves the Release output has the right PE machine type and no dependency outside its own folder and Windows itself. Run it before producing a release:
-
-```powershell
-& ".\tools\Verify-Dependencies.ps1"
-& ".\tools\Verify-Dependencies.ps1" -Platform ARM64
-```
-
-If you update `Assets/halo-mark.png`, regenerate the artwork and the application icon with:
-
-```powershell
-& ".\tools\make-app-assets.ps1"
-```
-
-## Building the installer
+**Installer.** With Inno Setup 6 installed:
 
 ```powershell
 & ".\tools\Build-Installer.ps1" -Version 1.0.0
 & ".\tools\Build-Installer.ps1" -Version 1.0.0 -Platform ARM64
 ```
 
-This restores packages and the pinned native payloads, builds the selected Release architecture, verifies every binary's PE architecture plus the payload hashes and dependency closure, then compiles `installer/HaloDesktop.iss` with Inno Setup 6. The results are `installer/Output/HaloDesktop-<version>-Setup.exe` for x64 and `installer/Output/HaloDesktop-<version>-ARM64-Setup.exe` for ARM64. The script prints each SHA-256. Add `-SkipBuild` to package an existing Release output; verification still runs, so an unverified folder can never be packaged.
+The script builds Release, verifies every binary and dependency, and writes the installer to `installer\Output`.
 
-Inno Setup 6 must be installed. The script finds it through its registry entry, so either the per-user or the all-users installation works.
-
-The installer is all-users only: it asks for administrator rights and installs to `Program Files\Halo Desktop`. It creates a "Halo Desktop" Start Menu shortcut, offers an optional desktop shortcut, and closes any running Halo Desktop during an upgrade through Restart Manager. The name keeps "Desktop" because plain "Halo" is the cross-platform Halo app's Start Menu entry; an upgrade from a version that still used "Halo" removes those old shortcuts only when they point at this install.
-
-Application data lives separately in `%LOCALAPPDATA%\Halo Desktop` and is never touched by install or upgrade. An interactive uninstall asks whether to delete it and keeps it by default; a silent uninstall always keeps it.
-
-Binaries and the installer are unsigned, so Windows SmartScreen shows an unknown-publisher warning on first run. Choose "More info" then "Run anyway".
-
-## Local fixture workflow
-
-For deterministic development, the original Halo repository provides a fixture mode. Run this from a checkout of the upstream backend repository:
+**Test server.** The [Halo repository](https://github.com/cryguy/halo) includes a test server with sample data that resets on restart. Run it from a checkout of that repository:
 
 ```powershell
 corepack pnpm --filter @halo/api dev:fixtures
 ```
 
-To test real playback and downloads, give the fixture a real media file:
-
-```powershell
-corepack pnpm --filter @halo/api dev:fixtures --media "C:\path\to\test.mkv"
-```
-
-The fixture listens on port `18790`, uses in-memory storage, and resets on restart. Its local test account is:
-
-```text
-Username: admin
-Password: fixture-pass
-```
-
-Use an H.264 MKV or another libmpv-compatible file for playback checks. A file full of random bytes may exercise transfer logic, but libmpv will correctly identify it as nonsense, much like a compiler reviewing half of my decisions.
-
-## Player shortcuts
-
-| Key | Action |
-| --- | --- |
-| `Space` | Play or pause |
-| `Left` / `Right` | Seek backward or forward 10 seconds |
-| `Up` / `Down` | Change volume by 5 |
-| `F` | Toggle fullscreen |
-| `Escape` | Leave fullscreen first, then close the player |
-
-Playback always starts from a freshly resolved addon source or a completed local download. Watch progress is reported while online; progress made offline waits on the PC and is sent at the next chance. Completed downloads can include a subtitle sidecar for offline playback.
-
-## Local data and security
-
-Some stream providers return short-lived URLs or protected request headers. Those do not belong in UI bindings, logs, screenshots, or plain-text indexes.
-
-Halo Desktop therefore keeps:
-
-- Authentication state protected with Windows DPAPI.
-- Download source URLs and headers inside per-download DPAPI-protected vault files.
-- The ordinary download index free of raw source URLs and credentials.
-- Download rows scoped to the signed-in server account, or to this PC's own profile when Halo is used without an account.
-- Addons added without an account protected with Windows DPAPI.
-- Old-account transfers paused and hidden after sign-out.
-- Server configuration local and untracked.
-
-In less formal terms: secrets go in the Windows vault-shaped hole, not in a `TextBlock`.
-
-## Repository map
-
-```text
-Halo-Desktop/
-|-- Halo-Desktop.slnx
-|-- src/HaloDesktop/
-|   |-- Api/                 HTTP client, DTOs, mapping, and error taxonomy
-|   |-- Controls/            Reusable native XAML controls
-|   |-- Models/              WinRT models shared with XAML
-|   |-- Playback/            libmpv engine, subtitles, watch reporting, up next
-|   |-- Security/            DPAPI helpers
-|   |-- Services/            Auth, catalogs, library, downloads, settings, sources
-|   |-- Shell/               Window, title bar, navigation, and presentation
-|   |-- ViewModels/          Screen state and commands
-|   `-- Views/               WinUI pages
-|-- tools/                   Reproducible mpv and asset scripts
-|-- external/mpv/            Ignored local mpv payload plus tracked instructions
-|-- licenses/                End-user terms and third-party notices
-|-- design/                  Local reference canvas, intentionally ignored
-`-- packages/                Restored NuGet packages, intentionally ignored
-```
-
-The local `design/` reference stays outside public source. The configured deployment address stays outside tracked source too. Some things are private, even when the C++ compiler has already seen me at my weakest.
+Sign in with username `admin` and password `fixture-pass`. Add `--media "C:\path\to\video.mkv"` to test playback and downloads with a real file.
 
 ## License
 
-Halo Desktop is **source available, not open source**. The source is published under the [Last Projects License 1.0](LICENSE).
+Halo Desktop is **source available, not open source**, under the [Last Projects License 1.0](LICENSE).
 
-In short, personal noncommercial study, building, running, forking, and modification are permitted subject to the full license. Organizational use, commercial use, private derivatives beyond the publication window, binary redistribution, and AI use require separate permission. The license text controls if this summary misses a detail.
+Personal, noncommercial study, building, running and modification are permitted, subject to the full license. Organizational or commercial use, binary redistribution and AI use need separate permission. The license text is authoritative.
 
-Installed applications and official binaries are also governed by [Last Projects End-User Terms](licenses/TERMS.txt). Third-party components retain their own licenses, collected under [licenses/](licenses/THIRD-PARTY-NOTICES.txt).
+Installed builds are also covered by the [End-User Terms](licenses/TERMS.txt). Third-party components keep their own licenses, listed in [licenses/](licenses/THIRD-PARTY-NOTICES.txt).
 
-For commercial or other permissions, contact `info@lastprojects.com`.
-
-## Project status
-
-This is an actively developed personal Windows client, not an official upstream desktop release. It ships native Windows 11 x64 and ARM64 builds and works either with a separately running Halo backend or without an account, in which case it talks to addons directly and keeps everything on the PC.
-
-Bug reports with exact reproduction steps are welcome. Code contributions are accepted only after a separate Contributor License Agreement is arranged, as required by the license. Reports containing only "it broke" will be forwarded to the same three brain cells that started this project, and response times may vary.
+For permissions, contact `info@lastprojects.com`. Bug reports with clear steps to reproduce are welcome. Code contributions need a Contributor License Agreement first, as the license requires.
 
 ## Credits
 
-- [cryguy/halo](https://github.com/cryguy/halo) for the original Halo project, backend, shared protocol work, and the excellent idea that caused all of this.
-- [Stremio](https://www.stremio.com/) and its addon ecosystem for the protocol and compatible providers.
-- [mpv](https://mpv.io/) for playing the media formats that browsers keep putting in the "someone else's problem" folder.
-- Microsoft for C++/WinRT, WinUI 3, the Windows App SDK, and enough lifetime rules to keep every remaining brain cell employed.
+- [cryguy/halo](https://github.com/cryguy/halo) for the original Halo project and its server.
+- [Stremio](https://www.stremio.com/) for the addon protocol and its ecosystem.
+- [mpv](https://mpv.io/) for playback.
+- Microsoft for C++/WinRT, WinUI 3 and the Windows App SDK.
+- This product uses the TMDB API but is not endorsed or certified by TMDB.
