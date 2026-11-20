@@ -42,8 +42,8 @@ namespace HaloDesktop::Shell
 
     // UI-thread-only. The shell measures the area its pages actually get and
     // pushes it here; everything else reads the resulting step. Content width
-    // rather than window width, because the nav rail is 48px collapsed and 280px
-    // expanded, and that 232px has nothing to do with how large the window is.
+    // rather than window width, because what pages get is the window less the
+    // nav rail, and the rail's width has nothing to do with the page's layout.
     class LayoutMetricsService final
     {
     public:

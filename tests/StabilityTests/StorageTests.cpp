@@ -142,7 +142,6 @@ namespace
         Require(first.Theme() == 2, "an invalid theme did not fall back to System");
         Require(first.ResumePlayback(), "an invalid resume value did not use its default");
         Require(first.DiscordPresence(), "an invalid Discord presence value did not use its default");
-        Require(!first.NavPaneOpen(), "the navigation pane did not start closed");
 
         std::atomic_bool start{};
         std::jthread themeWriter([&]()
@@ -170,15 +169,15 @@ namespace
                     { L"one", 1700000000000 }, { L"two", 0 } },
             "valid search history did not round-trip with its times");
 
-        // The pane state is merged like every other key: writing it keeps the
-        // rest, and a later write of another key keeps it.
-        verify.NavPaneOpen(true);
-        Require(DevicePreferencesStore{ path }.NavPaneOpen(), "the open navigation pane did not round-trip");
-        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing the pane state lost other keys");
+        // One key is merged like every other: writing it keeps the rest, and a
+        // later write of another key keeps it.
+        verify.FillPicture(true);
+        Require(DevicePreferencesStore{ path }.FillPicture(), "the fill choice did not round-trip");
+        Require(verify.Theme() == 1 && !verify.ResumePlayback(), "writing one preference lost other keys");
         second.HardwareDecoding(false);
-        Require(verify.NavPaneOpen(), "another preference write lost the pane state");
-        verify.NavPaneOpen(false);
-        Require(!DevicePreferencesStore{ path }.NavPaneOpen(), "the closed navigation pane did not round-trip");
+        Require(verify.FillPicture(), "another preference write lost the fill choice");
+        verify.FillPicture(false);
+        Require(!DevicePreferencesStore{ path }.FillPicture(), "the fit choice did not round-trip");
 
         // The player's fill choice is kept per device and fits until chosen.
         Require(!verify.FillPicture(), "the picture did not fit by default");
@@ -213,10 +212,10 @@ namespace
         HaloDesktop::Storage::WriteUtf8FileAtomic(brokenPath, R"({"version":1,"window":{"left":500,"top":0,"right":100,"bottom":900}})");
         Require(!DevicePreferencesStore{ brokenPath }.WindowPlacement(), "an inside-out placement was read");
 
-        // A value of the wrong kind falls back to closed rather than opening it.
-        auto const wrongPath = temporary.Path() / L"wrong-pane.json";
-        HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"navPaneOpen":"yes"})");
-        Require(!DevicePreferencesStore{ wrongPath }.NavPaneOpen(), "an invalid pane value did not fall back to closed");
+        // A value of the wrong kind falls back to the default rather than turning it on.
+        auto const wrongPath = temporary.Path() / L"wrong-fill.json";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(wrongPath, R"({"version":1,"fillPicture":"yes"})");
+        Require(!DevicePreferencesStore{ wrongPath }.FillPicture(), "an invalid fill value did not fall back to fit");
     }
 
     // A preferences file that cannot be read is never replaced by defaults:
@@ -262,13 +261,13 @@ namespace
         oversized.append(1024u * 1024u, 'x');
         oversized += R"("})";
         HaloDesktop::Storage::WriteUtf8FileAtomic(path, oversized);
-        Require(refuses([&store]() { store.NavPaneOpen(true); }), "a preference was written over an oversized file");
+        Require(refuses([&store]() { store.FillPicture(true); }), "a preference was written over an oversized file");
         Require(ReadBytes(path).size() == oversized.size(), "an oversized preferences file was replaced");
 
         // Read, but not preferences: the defaults, as before.
         HaloDesktop::Storage::WriteUtf8FileAtomic(path, "not json");
-        store.NavPaneOpen(true);
-        Require(store.NavPaneOpen() && store.Theme() == 2, "a corrupt preferences file did not start again from the defaults");
+        store.FillPicture(true);
+        Require(store.FillPicture() && store.Theme() == 2, "a corrupt preferences file did not start again from the defaults");
 
         auto const missing = temporary.Path() / L"missing" / L"preferences.json";
         DevicePreferencesStore fresh{ missing };

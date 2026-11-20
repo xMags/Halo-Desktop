@@ -24,9 +24,6 @@ namespace HaloDesktop::Services
         bool ResumePlayback{ true };
         bool HardwareDecoding{ true };
         bool DiscordPresence{ true };
-        // The navigation pane is expanded. Closed until the viewer first opens
-        // it, then as they last left it.
-        bool NavPaneOpen{};
         // The player crops the picture to fill the window (mpv panscan) rather than
         // fitting it. Kept across files and sessions, fit until first chosen.
         bool FillPicture{};
@@ -74,8 +71,6 @@ namespace HaloDesktop::Services
         void HardwareDecoding(bool value);
         [[nodiscard]] bool DiscordPresence() const noexcept;
         void DiscordPresence(bool value);
-        [[nodiscard]] bool NavPaneOpen() const noexcept;
-        void NavPaneOpen(bool value);
         [[nodiscard]] bool FillPicture() const noexcept;
         void FillPicture(bool value);
         [[nodiscard]] bool TranslucentWindow() const noexcept;
