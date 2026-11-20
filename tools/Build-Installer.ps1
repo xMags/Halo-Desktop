@@ -19,7 +19,7 @@
     unknown publisher on first run. That is expected.
 
 .PARAMETER Version
-    Installer version, default 1.0.0. Also stamped into the setup executable's
+    Installer version, default 1.1.0. Also stamped into the setup executable's
     file version resource.
 
 .PARAMETER Platform
@@ -33,7 +33,7 @@
 [CmdletBinding()]
 param(
     [ValidatePattern('^\d+\.\d+\.\d+$')]
-    [string] $Version = '1.0.0',
+    [string] $Version = '1.1.0',
     [ValidateSet('x64', 'ARM64')]
     [string] $Platform = 'x64',
     [switch] $SkipBuild

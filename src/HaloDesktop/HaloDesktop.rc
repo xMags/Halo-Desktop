@@ -10,8 +10,8 @@
 // (Services/BuildInfoReader.cpp), so it is the one place a release bumps it,
 // alongside the installer's /DAppVersion and Package.appxmanifest.
 1 VERSIONINFO
-FILEVERSION 1,0,0,0
-PRODUCTVERSION 1,0,0,0
+FILEVERSION 1,1,0,0
+PRODUCTVERSION 1,1,0,0
 FILEFLAGSMASK VS_FFI_FILEFLAGSMASK
 FILEFLAGS 0x0L
 FILEOS VOS_NT_WINDOWS32
@@ -24,11 +24,11 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "Last Projects"
             VALUE "FileDescription", "Halo Desktop"
-            VALUE "FileVersion", "1.0.0"
+            VALUE "FileVersion", "1.1.0"
             VALUE "InternalName", "HaloDesktop"
             VALUE "OriginalFilename", "HaloDesktop.exe"
             VALUE "ProductName", "Halo Desktop"
-            VALUE "ProductVersion", "1.0.0"
+            VALUE "ProductVersion", "1.1.0"
         END
     END
     BLOCK "VarFileInfo"

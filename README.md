@@ -164,8 +164,8 @@ The two `tools` scripts download a pinned, checksum-verified libmpv build and bu
 **Installer.** With Inno Setup 6 installed:
 
 ```powershell
-& ".\tools\Build-Installer.ps1" -Version 1.0.0
-& ".\tools\Build-Installer.ps1" -Version 1.0.0 -Platform ARM64
+& ".\tools\Build-Installer.ps1" -Version 1.1.0
+& ".\tools\Build-Installer.ps1" -Version 1.1.0 -Platform ARM64
 ```
 
 The script builds Release, verifies every binary and dependency, and writes the installer to `installer\Output`.

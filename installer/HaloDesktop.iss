@@ -9,7 +9,7 @@
 ; lives in one place.
 
 #ifndef AppVersion
-  #define AppVersion "1.0.0"
+  #define AppVersion "1.1.0"
 #endif
 
 ; "Halo" alone belongs to the cross-platform Halo app, which installs its own
