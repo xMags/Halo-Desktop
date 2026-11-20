@@ -204,6 +204,13 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Windows::Foundation::IInspectable AvailabilityFailures() const { return m_availabilityFailures; }
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AvailabilityLoadingVisibility() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::Visibility AvailabilityEmptyVisibility() const noexcept;
+        // No installed addon offers streams at all (Halo ships none), rather
+        // than none of them having this title: the card says so and offers
+        // to add one instead of browsing sources that cannot exist.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility NoStreamAddonsVisibility() const noexcept;
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility BrowseSourcesVisibility() const noexcept;
+        // Settings, at the box that adds an addon.
+        void OpenAddonSettings();
         [[nodiscard]] Microsoft::UI::Xaml::Visibility SubtitlesVisibility() const noexcept;
         [[nodiscard]] winrt::hstring SubtitlesText() const;
 
@@ -300,6 +307,9 @@ namespace winrt::HaloDesktop::implementation
         std::shared_ptr<::HaloDesktop::Services::WatchStateService> m_watch;
         std::shared_ptr<::HaloDesktop::Services::ISourceService> m_sources;
         std::shared_ptr<::HaloDesktop::Services::ServerFeaturesService> m_features;
+        std::shared_ptr<::HaloDesktop::Services::IAddonService> m_addons;
+        // Read once per availability answer, not per binding (Records copies the list).
+        [[nodiscard]] bool HasNoStreamAddons() const;
 
         winrt::HaloDesktop::DetailNavParams m_params{ nullptr };
         std::optional<::HaloDesktop::Api::Dto::MetaDetail> m_meta;

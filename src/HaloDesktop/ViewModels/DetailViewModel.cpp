@@ -179,6 +179,7 @@ namespace winrt::HaloDesktop::implementation
           m_watch(services.WatchState),
           m_sources(services.Sources),
           m_features(services.ServerFeatures),
+          m_addons(services.Addons),
           m_facts(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_availabilityRows(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_availabilityFailures(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
@@ -189,7 +190,7 @@ namespace winrt::HaloDesktop::implementation
           m_aboutRows(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>()),
           m_similar(winrt::single_threaded_observable_vector<winrt::Windows::Foundation::IInspectable>())
     {
-        if (!m_metadata || !m_library || !m_catalog || !m_navigation || !m_downloads || !m_watch || !m_sources || !m_features)
+        if (!m_metadata || !m_library || !m_catalog || !m_navigation || !m_downloads || !m_watch || !m_sources || !m_features || !m_addons)
         {
             throw std::invalid_argument{ "DetailViewModel requires its dependencies." };
         }
@@ -335,7 +336,42 @@ namespace winrt::HaloDesktop::implementation
     Microsoft::UI::Xaml::Visibility DetailViewModel::AvailabilityEmptyVisibility() const noexcept
     {
         return VisibleWhen(!m_availabilityLoading && m_availability && m_availability->Total == 0
-            && m_availabilityFailures.Size() == 0);
+            && m_availabilityFailures.Size() == 0 && !HasNoStreamAddons());
+    }
+
+    bool DetailViewModel::HasNoStreamAddons() const
+    {
+        // Until the list has been read nothing is known, and the card keeps its usual words.
+        if (!m_addons->HasLoaded()) return false;
+        auto const records = m_addons->Records();
+        return std::none_of(records.begin(), records.end(), [](::HaloDesktop::Api::Dto::AddonRecord const& addon)
+        {
+            return std::find(addon.Resources.begin(), addon.Resources.end(), winrt::hstring{ L"stream" }) != addon.Resources.end();
+        });
+    }
+
+    Microsoft::UI::Xaml::Visibility DetailViewModel::NoStreamAddonsVisibility() const noexcept
+    {
+        try
+        {
+            return VisibleWhen(!m_availabilityLoading && HasNoStreamAddons());
+        }
+        catch (...)
+        {
+            return Microsoft::UI::Xaml::Visibility::Collapsed;
+        }
+    }
+
+    Microsoft::UI::Xaml::Visibility DetailViewModel::BrowseSourcesVisibility() const noexcept
+    {
+        return NoStreamAddonsVisibility() == Microsoft::UI::Xaml::Visibility::Visible
+            ? Microsoft::UI::Xaml::Visibility::Collapsed
+            : Microsoft::UI::Xaml::Visibility::Visible;
+    }
+
+    void DetailViewModel::OpenAddonSettings()
+    {
+        m_navigation->GoTo(::HaloDesktop::Services::Page::Settings, winrt::box_value(L"addons"));
     }
 
     Microsoft::UI::Xaml::Visibility DetailViewModel::SubtitlesVisibility() const noexcept
@@ -1031,7 +1067,7 @@ namespace winrt::HaloDesktop::implementation
     void DetailViewModel::RaiseAvailability()
     {
         for (auto const name : { L"Availability", L"AvailabilityFailures", L"AvailabilityLoadingVisibility",
-                                 L"AvailabilityEmptyVisibility", L"SubtitlesVisibility", L"SubtitlesText", L"BestVisibility",
+                                 L"AvailabilityEmptyVisibility", L"NoStreamAddonsVisibility", L"BrowseSourcesVisibility", L"SubtitlesVisibility", L"SubtitlesText", L"BestVisibility",
                                  L"BestPlate", L"BestTag", L"BestFinish", L"SourcesLink", L"ProgressSeparatorVisibility" })
         {
             Raise(name);

@@ -373,9 +373,14 @@
             Margin="0,12,0,0"
             FontSize="13"
             Foreground="{StaticResource HaloDetailInk55Brush}"
-            Text="No addon offers streams for this title."
+            Text="None of your addons has streams for this title."
             TextWrapping="Wrap"
             Visibility="{x:Bind ViewModel.AvailabilityEmptyVisibility, Mode=OneWay}" />
+          <!-- No addon offers streams at all: Halo ships none, so say what to do. -->
+          <StackPanel Margin="0,12,0,0" Spacing="4" Visibility="{x:Bind ViewModel.NoStreamAddonsVisibility, Mode=OneWay}">
+            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource HaloDetailInk72Brush}" Text="Add a streaming addon to watch" TextWrapping="Wrap" />
+            <TextBlock FontSize="13" Foreground="{StaticResource HaloDetailInk55Brush}" Text="Halo doesn't come with streams. Add an addon that provides them, and its sources show up here." TextWrapping="Wrap" />
+          </StackPanel>
           <ItemsControl IsTabStop="False" ItemsSource="{x:Bind ViewModel.AvailabilityFailures, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
               <DataTemplate>
@@ -405,7 +410,14 @@
             Margin="0,16,0,0"
             Click="OnPlayClick"
             Content="Browse all sources"
-            Style="{StaticResource HaloDetailBrowseButtonStyle}" />
+            Style="{StaticResource HaloDetailBrowseButtonStyle}"
+            Visibility="{x:Bind ViewModel.BrowseSourcesVisibility, Mode=OneWay}" />
+          <Button
+            Margin="0,16,0,0"
+            Click="OnAddAddonClick"
+            Content="Add an addon"
+            Style="{StaticResource HaloDetailBrowseButtonStyle}"
+            Visibility="{x:Bind ViewModel.NoStreamAddonsVisibility, Mode=OneWay}" />
         </StackPanel>
       </Border>
     </Grid>

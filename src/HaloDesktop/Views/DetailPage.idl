@@ -109,6 +109,9 @@ namespace HaloDesktop
         Object AvailabilityFailures { get; };
         Microsoft.UI.Xaml.Visibility AvailabilityLoadingVisibility { get; };
         Microsoft.UI.Xaml.Visibility AvailabilityEmptyVisibility { get; };
+        Microsoft.UI.Xaml.Visibility NoStreamAddonsVisibility { get; };
+        Microsoft.UI.Xaml.Visibility BrowseSourcesVisibility { get; };
+        void OpenAddonSettings();
         Microsoft.UI.Xaml.Visibility SubtitlesVisibility { get; };
         String SubtitlesText { get; };
 

@@ -63,6 +63,36 @@ namespace winrt::HaloDesktop::implementation
         winrt::get_self<TmdbKeyViewModel>(m_tmdbKey)->Attach();
     }
 
+    void SettingsPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
+    {
+        auto const section = winrt::unbox_value_or<winrt::hstring>(args.Parameter(), L"");
+        m_showAddAddon = section == L"addons";
+        // A page already on screen gets no Loaded: it is shown from here.
+        if (m_showAddAddon && m_loaded) ShowAddAddonWhenLaidOut();
+    }
+
+    // Queued behind layout, so the section's place is known, and behind the
+    // navigation's own focus change, so the caret stays in the box.
+    void SettingsPage::ShowAddAddonWhenLaidOut()
+    {
+        DispatcherQueue().TryEnqueue(
+            Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
+            [weak = get_weak()]()
+            {
+                auto const self = weak.get();
+                if (!self || !self->m_showAddAddon) return;
+                self->m_showAddAddon = false;
+                try
+                {
+                    self->ScrollTo(L"AddonsSection");
+                    self->AddonUrlBox().Focus(Microsoft::UI::Xaml::FocusState::Programmatic);
+                }
+                catch (winrt::hresult_error const&)
+                {
+                }
+            });
+    }
+
     void SettingsPage::OnSaveTmdbKeyClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         m_tmdbKey.Save();
@@ -109,6 +139,7 @@ namespace winrt::HaloDesktop::implementation
             });
         }
         m_loaded = true;
+        if (m_showAddAddon) ShowAddAddonWhenLaidOut();
         m_viewModel.Refresh();
         RefreshAccountPictureAsync();
         if (!m_healthTimer)

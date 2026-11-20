@@ -71,6 +71,11 @@ namespace winrt::HaloDesktop::implementation
         if (m_viewModel) m_viewModel.Play();
     }
 
+    void DetailHero::OnAddAddonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        if (m_viewModel) m_viewModel.OpenAddonSettings();
+    }
+
     void DetailHero::OnLibraryClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         if (m_viewModel) m_viewModel.ToggleLibrary();
