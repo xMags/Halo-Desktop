@@ -63,9 +63,15 @@ namespace HaloDesktop::Services::Downloads
             if (existing == records.end()) continue;
             // A re-download with a finished backup counts as holding a finished
             // file: losing would discard that backup with it, so it beats a copy
-            // with nothing finished, and only a finished copy beats it. A tie
-            // keeps the copy already in `to`.
-            auto const movingWins = FinishedRank(records, moving) > FinishedRank(records, *existing);
+            // with nothing finished, and only a finished copy beats it. When
+            // neither holds anything finished, the one further along wins, so a
+            // nearly complete download never gives way to a barely started one.
+            // Any other tie keeps the copy already in `to`.
+            auto const movingRank = FinishedRank(records, moving);
+            auto const existingRank = FinishedRank(records, *existing);
+            auto const movingWins = movingRank != existingRank
+                ? movingRank > existingRank
+                : movingRank == 0 && moving.DownloadedBytes > existing->DownloadedBytes;
             auto const& loser = movingWins ? *existing : moving;
             discard.insert(loser.JobId);
             if (loser.Replacement)

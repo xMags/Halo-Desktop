@@ -606,6 +606,35 @@ namespace
         Require(plan.Discard == std::vector<std::wstring>{ L"a1", L"d2", L"d3" }, "the wrong duplicates were discarded");
     }
 
+    // Neither copy finished: the one further along stays, and equal progress
+    // keeps the account's own.
+    void TestAdoptionKeepsTheFurtherUnfinishedCopy()
+    {
+        auto const partial = [](wchar_t const* jobId, wchar_t const* owner, wchar_t const* videoId,
+                                 Downloads::DownloadStatus status, std::uint64_t bytes)
+        {
+            auto record = Owned(jobId, owner, videoId, status);
+            record.TotalBytes = 1000;
+            record.DownloadedBytes = bytes;
+            return record;
+        };
+        std::vector<Downloads::DownloadRecord> const records{
+            // The device's is 90% done, the account's queued at 0%: the device's wins.
+            partial(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Paused, 900),
+            partial(L"a1", L"account", L"movie:1", Downloads::DownloadStatus::Queued, 0),
+            // The account's is further along: it stays.
+            partial(L"d2", L"device", L"movie:2", Downloads::DownloadStatus::Failed, 100),
+            partial(L"a2", L"account", L"movie:2", Downloads::DownloadStatus::Paused, 500),
+            // Equal progress: the account keeps its own.
+            partial(L"d3", L"device", L"movie:3", Downloads::DownloadStatus::Paused, 300),
+            partial(L"a3", L"account", L"movie:3", Downloads::DownloadStatus::Paused, 300),
+        };
+        auto const plan = Downloads::PlanAdoption(records, L"device", L"account");
+        Require(plan.Rekey == std::vector<std::wstring>{ L"d1" }, "the further unfinished copy did not change owner");
+        Require(plan.Discard == std::vector<std::wstring>{ L"a1", L"d2", L"d3" },
+            "an unfinished duplicate further along was discarded, or a tie did not keep the account's");
+    }
+
     void TestAdoptionDiscardsALosingDownloadsBackupWithIt()
     {
         auto replacing = Owned(L"d1", L"device", L"movie:1", Downloads::DownloadStatus::Paused);
@@ -1075,6 +1104,7 @@ void RunDeviceModeTests()
     TestSelectorSwitches();
     TestAdoptionMovesEveryDownloadWithoutADuplicate();
     TestAdoptionKeepsTheFinishedCopyOfADuplicate();
+    TestAdoptionKeepsTheFurtherUnfinishedCopy();
     TestAdoptionDiscardsALosingDownloadsBackupWithIt();
     TestAdoptionNeverTradesAFinishedBackupForAnUnfinishedCopy();
     TestAdoptingIntoTheSamePartitionChangesNothing();

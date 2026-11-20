@@ -24,8 +24,9 @@ namespace HaloDesktop::Services::Downloads
     // Every record of `from` moves to `to`, except where `to` already shows
     // the same video: there a finished download beats an unfinished one, a
     // re-download whose replacement backup is finished counts in between (it
-    // beats a copy with nothing finished and loses to a finished one), and on a
-    // tie the one already in `to` stays. A losing record's replacement backup
+    // beats a copy with nothing finished and loses to a finished one). When
+    // neither has anything finished, the one with more bytes downloaded wins;
+    // any other tie keeps the one already in `to`. A losing record's replacement backup
     // goes with it, so it cannot resurface as a second copy; a winning record
     // keeps its backup. So a finished file is never discarded while the copy
     // kept for that video has nothing finished. Adopting into the same
