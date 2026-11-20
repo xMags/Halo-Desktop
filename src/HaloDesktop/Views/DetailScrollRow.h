@@ -16,14 +16,12 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Xaml::UIElement Pager{ nullptr };
         winrt::Microsoft::UI::Xaml::Controls::Button Previous{ nullptr };
         winrt::Microsoft::UI::Xaml::Controls::Button Next{ nullptr };
-        winrt::Microsoft::UI::Xaml::UIElement StartFade{ nullptr };
-        winrt::Microsoft::UI::Xaml::UIElement EndFade{ nullptr };
     };
 
-    // Drives a row's arrows and edge fades from the strip's own offset and
-    // size: the arrows appear only when the strip overflows and dim at either
-    // end, a click moves one page (ShelfScrollPolicy), and the edge with more to
-    // show fades. UI-thread-only; owned by the panel whose parts it holds, and
+    // Drives a row's arrows from the strip's own offset and size: the arrows
+    // appear only when the strip overflows and dim at either end, and a click
+    // moves one page (ShelfScrollPolicy). The edges do not fade: cards run to
+    // the panel's edge, as Home's shelves do. UI-thread-only; owned by the panel whose parts it holds, and
     // not copyable, because its handlers refer back to it. Every handler is
     // revoked before the rest of it is destroyed.
     class DetailScrollRow final

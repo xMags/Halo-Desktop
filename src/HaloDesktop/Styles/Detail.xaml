@@ -66,19 +66,6 @@
       <SolidColorBrush x:Key="HaloDetailBrowseBrush" Color="#1AFFFFFF" />
       <SolidColorBrush x:Key="HaloDetailBrowseHoverBrush" Color="#2EFFFFFF" />
       <SolidColorBrush x:Key="HaloDetailPagerBrush" Color="#14FFFFFF" />
-      <!--
-        A row's edge with more to show fades over 48px. XAML has no opacity mask for live
-        content, so a band of the glass's own colour is laid over that edge, fading to
-        clear, as Home's shelves do with their ground.
-      -->
-      <LinearGradientBrush x:Key="HaloDetailFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="#E616161A" />
-        <GradientStop Offset="1" Color="#0016161A" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="HaloDetailFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="#0016161A" />
-        <GradientStop Offset="1" Color="#E616161A" />
-      </LinearGradientBrush>
       <Color x:Key="HaloDetailGroundColor">#FF0B0B0D</Color>
       <Color x:Key="HaloDetailInkColor">#FFF5F5F7</Color>
       <Color x:Key="HaloDetailInk78Color">#C7F5F5F7</Color>
@@ -139,14 +126,6 @@
       <SolidColorBrush x:Key="HaloDetailBrowseBrush" Color="#0F0E1220" />
       <SolidColorBrush x:Key="HaloDetailBrowseHoverBrush" Color="#1A0E1220" />
       <SolidColorBrush x:Key="HaloDetailPagerBrush" Color="#0D0E1220" />
-      <LinearGradientBrush x:Key="HaloDetailFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="#E6FFFFFF" />
-        <GradientStop Offset="1" Color="#00FFFFFF" />
-      </LinearGradientBrush>
-      <LinearGradientBrush x:Key="HaloDetailFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-        <GradientStop Offset="0" Color="#00FFFFFF" />
-        <GradientStop Offset="1" Color="#E6FFFFFF" />
-      </LinearGradientBrush>
       <SolidColorBrush x:Key="HaloDetailPlayHoverBrush" Color="#FF262B3A" />
       <SolidColorBrush x:Key="HaloDetailPlayPressedBrush" Color="#FF3A4052" />
       <SolidColorBrush x:Key="HaloDetailRoundOnHoverBrush" Color="#FF262B3A" />

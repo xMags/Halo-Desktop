@@ -19,8 +19,7 @@ namespace HaloDesktop::Views
     DetailScrollRow::DetailScrollRow(DetailScrollRowParts parts)
         : m_parts(std::move(parts))
     {
-        if (!m_parts.Strip || !m_parts.Content || !m_parts.Pager || !m_parts.Previous || !m_parts.Next
-            || !m_parts.StartFade || !m_parts.EndFade)
+        if (!m_parts.Strip || !m_parts.Content || !m_parts.Pager || !m_parts.Previous || !m_parts.Next)
         {
             throw std::invalid_argument{ "A title page row needs all of its parts." };
         }
@@ -43,8 +42,6 @@ namespace HaloDesktop::Views
             m_parts.Pager.Visibility(VisibleWhen(overflows));
             m_parts.Previous.IsEnabled(overflows && !edges.AtStart);
             m_parts.Next.IsEnabled(overflows && !edges.AtEnd);
-            m_parts.StartFade.Visibility(VisibleWhen(overflows && !edges.AtStart));
-            m_parts.EndFade.Visibility(VisibleWhen(overflows && !edges.AtEnd));
         }
         catch (winrt::hresult_error const&)
         {

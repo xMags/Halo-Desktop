@@ -20,7 +20,7 @@ namespace winrt::HaloDesktop::implementation
     {
         DetailCreditsPanelT::InitializeComponent();
         m_castRow = std::make_unique<::HaloDesktop::Views::DetailScrollRow>(::HaloDesktop::Views::DetailScrollRowParts{
-            CastStrip(), CastItems(), CastPager(), CastPrevious(), CastNext(), CastStartFade(), CastEndFade() });
+            CastStrip(), CastItems(), CastPager(), CastPrevious(), CastNext() });
     }
 
     void DetailCreditsPanel::ViewModel(winrt::HaloDesktop::DetailViewModel const& value)

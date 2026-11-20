@@ -12,7 +12,7 @@ namespace winrt::HaloDesktop::implementation
     {
         DetailSimilarPanelT::InitializeComponent();
         m_row = std::make_unique<::HaloDesktop::Views::DetailScrollRow>(::HaloDesktop::Views::DetailScrollRowParts{
-            SimilarStrip(), SimilarItems(), SimilarPager(), SimilarPrevious(), SimilarNext(), SimilarStartFade(), SimilarEndFade() });
+            SimilarStrip(), SimilarItems(), SimilarPager(), SimilarPrevious(), SimilarNext() });
     }
 
     void DetailSimilarPanel::ViewModel(winrt::HaloDesktop::DetailViewModel const& value)

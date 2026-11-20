@@ -67,24 +67,6 @@
           </ItemsControl>
         </Grid>
       </ScrollViewer>
-      <Rectangle
-        x:Name="SimilarStartFade"
-        Grid.Row="1"
-        Width="48"
-        Margin="0,16,0,0"
-        HorizontalAlignment="Left"
-        Fill="{ThemeResource HaloDetailFadeStartBrush}"
-        IsHitTestVisible="False"
-        Visibility="Collapsed" />
-      <Rectangle
-        x:Name="SimilarEndFade"
-        Grid.Row="1"
-        Width="48"
-        Margin="0,16,0,0"
-        HorizontalAlignment="Right"
-        Fill="{ThemeResource HaloDetailFadeEndBrush}"
-        IsHitTestVisible="False"
-        Visibility="Collapsed" />
     </Grid>
   </Border>
 </UserControl>

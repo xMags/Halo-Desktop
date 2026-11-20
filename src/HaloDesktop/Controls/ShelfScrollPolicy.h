@@ -33,11 +33,9 @@ namespace HaloDesktop::Controls
         int direction) noexcept;
 
     // The title page's rows (`components/ScrollRow.tsx`) share the shelf's
-    // edges, but differ in three ways: their arrows appear only when the strip
-    // overflows, a page moves the viewport less one card's worth (so the last
-    // card seen stays as the anchor), and the edge with more to show fades over
-    // this many pixels.
-    inline constexpr double ScrollRowFadeWidth = 48.0;
+    // edges, but differ in two ways: their arrows appear only when the strip
+    // overflows, and a page moves the viewport less one card's worth (so the
+    // last card seen stays as the anchor).
     inline constexpr double ScrollRowPageInset = 160.0;
 
     // The width each card of a Home strip takes so a whole number of them fill
