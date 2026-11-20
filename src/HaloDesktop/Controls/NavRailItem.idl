@@ -1,0 +1,22 @@
+namespace HaloDesktop
+{
+    // One destination of the shell's rail. A RadioButton, so the rail's group
+    // keeps exactly one lit and automation reads it as a choice; it adds what
+    // its template draws: the label, the outline glyph shown at rest and the
+    // filled glyph shown while lit (24 by 24 geometry). Its Content, when set,
+    // is laid over the glyph's top right corner (the Downloads dot).
+    [default_interface]
+    runtimeclass NavRailItem : Microsoft.UI.Xaml.Controls.RadioButton
+    {
+        NavRailItem();
+
+        String Label;
+        static Microsoft.UI.Xaml.DependencyProperty LabelProperty { get; };
+
+        Microsoft.UI.Xaml.Media.Geometry Glyph;
+        static Microsoft.UI.Xaml.DependencyProperty GlyphProperty { get; };
+
+        Microsoft.UI.Xaml.Media.Geometry SelectedGlyph;
+        static Microsoft.UI.Xaml.DependencyProperty SelectedGlyphProperty { get; };
+    }
+}

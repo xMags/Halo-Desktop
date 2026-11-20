@@ -13,6 +13,7 @@
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 #include <winrt/Microsoft.UI.Xaml.Media.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Navigation.h>
 #include <winrt/Windows.Foundation.h>
 
@@ -66,6 +67,7 @@ namespace winrt::HaloDesktop::implementation
 
         [[nodiscard]] Microsoft::UI::Xaml::Controls::Frame ContentFrameControl() const;
         [[nodiscard]] Microsoft::UI::Xaml::Controls::RadioButton CheckedRailItem();
+        void MoveRailIndicator(Microsoft::UI::Xaml::Controls::RadioButton const& item);
         void OnFrameNavigated(
             winrt::Windows::Foundation::IInspectable const& sender,
             Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
@@ -83,6 +85,8 @@ namespace winrt::HaloDesktop::implementation
         // The account's name and tier, for the avatar's tooltip. UI thread only.
         winrt::hstring m_accountName;
         winrt::hstring m_accountRole;
+        // The selection pill's running slide, stopped by the next one. UI thread only.
+        Microsoft::UI::Xaml::Media::Animation::Storyboard m_indicatorSlide{ nullptr };
         // Advances with every picture request, so a slower earlier one never
         // replaces what a later one showed.
         std::uint64_t m_pictureRequest{};

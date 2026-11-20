@@ -17,12 +17,17 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <algorithm>
+#include <cmath>
+#include <optional>
+#include <utility>
 #include <chrono>
 #include <cstddef>
 #include <limits>
 #include <string_view>
 #include <winrt/Microsoft.UI.Input.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
+#include <winrt/Windows.UI.ViewManagement.h>
 #include <winrt/Windows.Graphics.Imaging.h>
 #include <winrt/Windows.Storage.Streams.h>
 
@@ -32,6 +37,65 @@ namespace
     // size the account uploaded.
     constexpr std::uint32_t AvatarSize = 28;
     constexpr wchar_t AccountToolTip[] = L"Server & account";
+
+    // The selection pill's slide: Windows' decelerate curve over 300ms, the pill
+    // stretching to at most three times its length in the first third and
+    // settling back as it lands, as the stock navigation pill does.
+    constexpr std::chrono::milliseconds IndicatorSlide{ 300 };
+    constexpr std::chrono::milliseconds IndicatorStretchPeak{ 100 };
+    constexpr double IndicatorMaxStretch = 3.0;
+    constexpr winrt::Windows::Foundation::Point DecelerateFirst{ 0.1F, 0.9F };
+    constexpr winrt::Windows::Foundation::Point DecelerateSecond{ 0.2F, 1.0F };
+
+    bool AnimationsEnabled()
+    {
+        try
+        {
+            return winrt::Windows::UI::ViewManagement::UISettings{}.AnimationsEnabled();
+        }
+        catch (winrt::hresult_error const&)
+        {
+            return false;
+        }
+    }
+
+    winrt::Microsoft::UI::Xaml::Media::Animation::KeyTime KeyAt(std::chrono::milliseconds time)
+    {
+        return winrt::Microsoft::UI::Xaml::Media::Animation::KeyTimeHelper::FromTimeSpan(
+            std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(time));
+    }
+
+    // From `from` at once to `to` at `end`, decelerating; with `peak`, by way of
+    // its value at its time, reached linearly.
+    winrt::Microsoft::UI::Xaml::Media::Animation::DoubleAnimationUsingKeyFrames Glide(
+        double from,
+        double to,
+        std::chrono::milliseconds end,
+        std::optional<std::pair<std::chrono::milliseconds, double>> peak = std::nullopt)
+    {
+        namespace Animation = winrt::Microsoft::UI::Xaml::Media::Animation;
+        Animation::DoubleAnimationUsingKeyFrames animation;
+        Animation::DiscreteDoubleKeyFrame start;
+        start.KeyTime(KeyAt({}));
+        start.Value(from);
+        animation.KeyFrames().Append(start);
+        if (peak)
+        {
+            Animation::LinearDoubleKeyFrame middle;
+            middle.KeyTime(KeyAt(peak->first));
+            middle.Value(peak->second);
+            animation.KeyFrames().Append(middle);
+        }
+        Animation::SplineDoubleKeyFrame finish;
+        finish.KeyTime(KeyAt(end));
+        finish.Value(to);
+        Animation::KeySpline spline;
+        spline.ControlPoint1(DecelerateFirst);
+        spline.ControlPoint2(DecelerateSecond);
+        finish.KeySpline(spline);
+        animation.KeyFrames().Append(finish);
+        return animation;
+    }
 
     // IsChecked is nullable (a three-state box); the rail's are never indeterminate.
     bool IsLit(winrt::Microsoft::UI::Xaml::Controls::RadioButton const& item)
@@ -679,6 +743,61 @@ namespace winrt::HaloDesktop::implementation
         if (selectedItem && !IsLit(selectedItem))
         {
             selectedItem.IsChecked(true);
+        }
+        MoveRailIndicator(selectedItem);
+    }
+
+    // The pill's place is worked out from the item's index rather than its laid-out
+    // position, so the first placement (before the rail's first layout) is right too:
+    // every item is the style's fixed height, RailItems' spacing apart, never hidden.
+    void ShellPage::MoveRailIndicator(Microsoft::UI::Xaml::Controls::RadioButton const& item)
+    {
+        namespace Animation = Microsoft::UI::Xaml::Media::Animation;
+        auto const indicator = RailIndicator();
+        auto const transform = RailIndicatorTransform();
+        auto const items = RailItems();
+        std::uint32_t index{};
+        if (!item || !items.Children().IndexOf(item, index))
+        {
+            indicator.Opacity(0.0);
+            return;
+        }
+        auto const pitch = item.Height() + items.Spacing();
+        auto const target = static_cast<double>(index) * pitch + (item.Height() - indicator.Height()) / 2.0;
+        // Read before stopping: a pill caught mid-slide carries on from where it is.
+        auto const from = transform.TranslateY();
+        auto const wasShown = indicator.Opacity() > 0.0;
+        if (m_indicatorSlide)
+        {
+            m_indicatorSlide.Stop();
+            m_indicatorSlide = nullptr;
+        }
+        transform.TranslateY(target);
+        transform.ScaleY(1.0);
+        indicator.Opacity(1.0);
+        if (!wasShown || std::abs(from - target) < 0.5 || !AnimationsEnabled())
+        {
+            return;
+        }
+
+        auto const stretch = (std::min)(1.0 + std::abs(target - from) / (indicator.Height() * 3.0), IndicatorMaxStretch);
+        auto const move = Glide(from, target, IndicatorSlide);
+        Animation::Storyboard::SetTarget(move, transform);
+        Animation::Storyboard::SetTargetProperty(move, L"TranslateY");
+        auto const scale = Glide(1.0, 1.0, IndicatorSlide, std::pair{ IndicatorStretchPeak, stretch });
+        Animation::Storyboard::SetTarget(scale, transform);
+        Animation::Storyboard::SetTargetProperty(scale, L"ScaleY");
+        Animation::Storyboard slide;
+        slide.Children().Append(move);
+        slide.Children().Append(scale);
+        try
+        {
+            slide.Begin();
+            m_indicatorSlide = slide;
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // Unanimated, it is already where it belongs.
         }
     }
 

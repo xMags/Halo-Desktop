@@ -29,5 +29,6 @@
 
 // The XAML type-info generator only writes includes for types that own a .xaml
 // file, so a code-only local type referenced from markup has to reach it here.
+#include "Controls/NavRailItem.h"
 #include "Controls/WrapPanel.h"
 #endif
