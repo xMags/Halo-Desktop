@@ -675,7 +675,7 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Xaml::Media::Animation::Storyboard::SetTarget(m_clockFill, scale);
         m_clock.Begin();
         m_clockRunning = true;
-        if (m_hovered)
+        if (ClockHeld())
         {
             m_clock.Pause();
         }
@@ -707,14 +707,19 @@ namespace HaloDesktop::Views
         }
     }
 
-    void HomeHeroPresenter::SetHovered(bool hovered)
+    bool HomeHeroPresenter::ClockHeld() const noexcept
     {
-        m_hovered = hovered;
-        if (!m_clockRunning)
+        return m_hovered || m_keyboardFocused;
+    }
+
+    void HomeHeroPresenter::ApplyHold(bool wasHeld)
+    {
+        auto const held = ClockHeld();
+        if (!m_clockRunning || held == wasHeld)
         {
             return;
         }
-        if (hovered)
+        if (held)
         {
             m_clock.Pause();
         }
@@ -724,14 +729,30 @@ namespace HaloDesktop::Views
         }
     }
 
+    void HomeHeroPresenter::SetHovered(bool hovered)
+    {
+        auto const wasHeld = ClockHeld();
+        m_hovered = hovered;
+        ApplyHold(wasHeld);
+    }
+
+    void HomeHeroPresenter::SetKeyboardFocused(bool focused)
+    {
+        auto const wasHeld = ClockHeld();
+        m_keyboardFocused = focused;
+        ApplyHold(wasHeld);
+    }
+
     void HomeHeroPresenter::SetRunning(bool running)
     {
         m_running = running;
         if (!running)
         {
-            // The pointer cannot be over a hero that is not on screen, and the
-            // exit that would have said so may never arrive.
+            // The pointer cannot be over a hero that is not on screen, nor
+            // focus inside it, and the exit that would have said so may never
+            // arrive.
             m_hovered = false;
+            m_keyboardFocused = false;
             StopClock();
             return;
         }

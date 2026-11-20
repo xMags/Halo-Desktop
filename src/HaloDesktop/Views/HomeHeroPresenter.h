@@ -93,6 +93,10 @@ namespace HaloDesktop::Views
         // The pointer rests on the hero: the clock pauses and later resumes
         // where it stopped.
         void SetHovered(bool hovered);
+        // Keyboard focus is inside the hero (on Play, Details or the library
+        // button), so a title cannot change under a key about to be pressed.
+        // Held apart from hover: the clock runs only once neither holds it.
+        void SetKeyboardFocused(bool focused);
         // Whether Home is on screen. Off screen the clock is stopped; back on,
         // the current title's dwell starts over.
         void SetRunning(bool running);
@@ -140,6 +144,9 @@ namespace HaloDesktop::Views
         void ResizeLogoShadow();
         void OnLayerLoaded(winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface, bool succeeded);
         void OnDwellCompleted();
+        [[nodiscard]] bool ClockHeld() const noexcept;
+        // Pauses or resumes a running clock after a hold reason changed.
+        void ApplyHold(bool wasHeld);
         [[nodiscard]] bool AnimationsEnabled() const;
 
         HomeHeroParts m_parts;
@@ -198,6 +205,7 @@ namespace HaloDesktop::Views
         std::int32_t m_active{ -1 };
         bool m_autoAdvance{ true };
         bool m_hovered{};
+        bool m_keyboardFocused{};
         bool m_running{};
         bool m_clockRunning{};
 

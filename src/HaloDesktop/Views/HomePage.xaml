@@ -213,6 +213,8 @@
         PointerEntered="OnFeaturedPointerEntered"
         PointerExited="OnFeaturedPointerExited"
         PointerCanceled="OnFeaturedPointerExited"
+        GotFocus="OnFeaturedGotFocus"
+        LostFocus="OnFeaturedLostFocus"
         Tag="{x:Bind ViewModel.CurrentFeatured, Mode=OneWay}"
         Visibility="{x:Bind ViewModel.FeaturedVisibility, Mode=OneWay}">
         <local:PlaceholderArt x:Name="HeroPlaceholder" />

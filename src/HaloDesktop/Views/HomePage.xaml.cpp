@@ -323,6 +323,26 @@ namespace winrt::HaloDesktop::implementation
         if (m_hero) m_hero->SetHovered(false);
     }
 
+    // Focus moving between the hero's buttons raises LostFocus and then
+    // GotFocus, both bubbling here, so the hold follows wherever focus lands.
+    // Only keyboard focus holds the clock: a click also focuses its button,
+    // and that must not freeze the carousel until focus moves elsewhere.
+    void HomePage::OnFeaturedGotFocus(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        if (!m_hero) return;
+        auto const control = args.OriginalSource().try_as<Microsoft::UI::Xaml::Controls::Control>();
+        m_hero->SetKeyboardFocused(control && control.FocusState() == Microsoft::UI::Xaml::FocusState::Keyboard);
+    }
+
+    void HomePage::OnFeaturedLostFocus(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
+    {
+        if (m_hero) m_hero->SetKeyboardFocused(false);
+    }
+
     void HomePage::OnHeroPipClick(
         winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
