@@ -2,6 +2,7 @@
 #include "Views/SearchPage.xaml.h"
 #include "Controls/SmoothWheelScroll.h"
 #include "Controls/ContentEntrance.h"
+#include "Controls/SearchBoxFlight.h"
 #if __has_include("SearchPage.g.cpp")
 #include "SearchPage.g.cpp"
 #endif
@@ -177,6 +178,13 @@ namespace winrt::HaloDesktop::implementation
         ApplyVisualStates();
         UpdateSkeletonPulse();
 
+        if (m_settleAroundField)
+        {
+            m_settleAroundField = false;
+            ::HaloDesktop::Controls::PlayContentEntrance(FilterChips());
+            ::HaloDesktop::Controls::PlayContentEntrance(SearchBody());
+        }
+
         if (!m_focusQueryOnLoaded)
         {
             return;
@@ -210,6 +218,9 @@ namespace winrt::HaloDesktop::implementation
     void SearchPage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
     {
         m_focusQueryOnLoaded = args.NavigationMode() != Microsoft::UI::Xaml::Navigation::NavigationMode::Back;
+        // From Home's search box: the box grows into the field, and what sits
+        // around the field settles in once the page is loaded.
+        m_settleAroundField = ::HaloDesktop::Controls::StartSearchBoxFlight(QueryField());
         if (auto const query = args.Parameter().try_as<winrt::Windows::Foundation::IPropertyValue>())
         {
             m_viewModel.Arrive(query.GetString());

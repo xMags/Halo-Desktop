@@ -352,7 +352,7 @@
         </Grid>
 
         <!-- The body: 22 under the status line, its sections 30 apart. -->
-        <StackPanel Margin="0,22,0,0" Spacing="30">
+        <StackPanel x:Name="SearchBody" Margin="0,22,0,0" Spacing="30">
 
           <!--
             Recent: one centred line, the label, up to six outline pills and

@@ -11,6 +11,7 @@
 #include "Controls/MediaShelf.xaml.h"
 #include "Controls/PlaceholderArt.xaml.h"
 #include "Controls/PosterSkeleton.xaml.h"
+#include "Controls/SearchBoxFlight.h"
 #include "Controls/ShelfScrollPolicy.h"
 #include "Controls/SidewaysWheelGuard.h"
 #include "Controls/SmoothWheelScroll.h"
@@ -242,6 +243,7 @@ namespace winrt::HaloDesktop::implementation
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
+        ::HaloDesktop::Controls::PrepareSearchBoxFlight(HomeSearchBox());
         m_viewModel.OpenSearch();
     }
 

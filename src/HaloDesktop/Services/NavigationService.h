@@ -45,9 +45,19 @@ namespace HaloDesktop::Services
         void AttachSheetFrame(winrt::Microsoft::UI::Xaml::Controls::Frame const& frame);
         void Detach() noexcept;
 
+        // How the shell's page change is drawn. Default is the page's own
+        // theme transition; None leaves the motion to the pages, for an
+        // arrival that animates itself (Home's search box flying into Search).
+        enum class PageTransition
+        {
+            Default,
+            None,
+        };
+
         bool GoTo(
             Page page,
-            winrt::Windows::Foundation::IInspectable const& parameter = nullptr);
+            winrt::Windows::Foundation::IInspectable const& parameter = nullptr,
+            PageTransition transition = PageTransition::Default);
         bool GoBack();
         bool ShowOverlay(
             Page page,

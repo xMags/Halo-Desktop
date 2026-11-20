@@ -178,7 +178,8 @@ namespace HaloDesktop::Services
 
     bool NavigationService::GoTo(
         Page page,
-        winrt::Windows::Foundation::IInspectable const& parameter)
+        winrt::Windows::Foundation::IInspectable const& parameter,
+        PageTransition transition)
     {
         if (!m_shellFrame || IsOverlayPage(page) || IsSheetPage(page))
         {
@@ -191,6 +192,13 @@ namespace HaloDesktop::Services
             return false;
         }
 
+        if (transition == PageTransition::None)
+        {
+            return m_shellFrame.Navigate(
+                targetType,
+                parameter,
+                winrt::Microsoft::UI::Xaml::Media::Animation::SuppressNavigationTransitionInfo{});
+        }
         // A title or person page is a step into what was clicked, so it drills
         // in (and Back, which replays the step in reverse, drills out), as
         // Windows' own apps open an item. Pages picked from the side menu slide
@@ -202,8 +210,10 @@ namespace HaloDesktop::Services
                 parameter,
                 winrt::Microsoft::UI::Xaml::Media::Animation::DrillInNavigationTransitionInfo{});
         }
-        auto const transition = winrt::Microsoft::UI::Xaml::Media::Animation::EntranceNavigationTransitionInfo{};
-        return m_shellFrame.Navigate(targetType, parameter, transition);
+        return m_shellFrame.Navigate(
+            targetType,
+            parameter,
+            winrt::Microsoft::UI::Xaml::Media::Animation::EntranceNavigationTransitionInfo{});
     }
 
     bool NavigationService::GoBack()

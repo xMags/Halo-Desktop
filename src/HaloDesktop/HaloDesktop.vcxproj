@@ -350,6 +350,7 @@
     <ClInclude Include="Controls\CardHoverShadow.h" />
     <ClInclude Include="Controls\PressFeedback.h" />
     <ClInclude Include="Controls\ContentEntrance.h" />
+    <ClInclude Include="Controls\SearchBoxFlight.h" />
     <ClInclude Include="Controls\ScrollHoverGate.h" />
     <ClInclude Include="Controls\SmoothWheelScroll.h" />
     <ClInclude Include="Services\HomeShelfLoadPolicy.h" />
@@ -752,6 +753,7 @@
     <ClCompile Include="Controls\CardHoverShadow.cpp" />
     <ClCompile Include="Controls\PressFeedback.cpp" />
     <ClCompile Include="Controls\ContentEntrance.cpp" />
+    <ClCompile Include="Controls\SearchBoxFlight.cpp" />
     <ClCompile Include="Controls\ScrollHoverGate.cpp" />
     <ClCompile Include="Controls\SmoothWheelScroll.cpp" />
     <ClCompile Include="Services\HomeShelfLoadPolicy.cpp">

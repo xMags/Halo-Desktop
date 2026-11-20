@@ -90,6 +90,9 @@ namespace winrt::HaloDesktop::implementation
         // What was last seen, so content fades in as it takes over from its placeholders.
         bool m_resultsLoading{};
         bool m_focusQueryOnLoaded{ true };
+        // Arrived by Home's search box flight: the chips and the body below the
+        // field fade in on Loaded, around the flying box.
+        bool m_settleAroundField{};
     };
 }
 

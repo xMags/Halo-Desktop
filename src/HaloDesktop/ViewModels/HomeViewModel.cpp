@@ -446,7 +446,15 @@ namespace winrt::HaloDesktop::implementation
             *m_navigation,
             item.try_as<winrt::HaloDesktop::ContinueItem>());
     }
-    void HomeViewModel::OpenSearch() { m_navigation->GoTo(::HaloDesktop::Services::Page::Search); }
+    void HomeViewModel::OpenSearch()
+    {
+        // The search box's flight into the page is the motion; a page slide on
+        // top of it would move the field twice.
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Search,
+            nullptr,
+            ::HaloDesktop::Services::NavigationService::PageTransition::None);
+    }
     void HomeViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
     {
         auto const snapshot = shelf.try_as<winrt::HaloDesktop::Shelf>();
