@@ -346,6 +346,13 @@ namespace winrt::HaloDesktop::implementation
             ? std::optional<winrt::hstring>{ winrt::hstring{ *language } }
             : std::nullopt);
         Raise(L"CatalogLanguageIndex");
+        // Home's rows reload now rather than on the next visit, so Home shows the
+        // new language when the viewer gets there instead of the old rows first.
+        // Home adopts the result on arrival (it compares snapshot versions).
+        m_catalog->RefreshCatalogsIfDirtyAsync().then([](concurrency::task<void> refreshed)
+        {
+            try { refreshed.get(); } catch (...) {}
+        });
     }
     Microsoft::UI::Xaml::Visibility SettingsViewModel::CatalogLanguageVisibility() const noexcept { return VisibleWhen(!m_catalogLanguageChoices.empty()); }
     double SettingsViewModel::SubtitleSize() const noexcept { return m_subtitleSize; }
