@@ -110,8 +110,6 @@
         HorizontalAlignment="Left"
         VerticalAlignment="Bottom"
         AutomationProperties.AccessibilityView="Raw"
-        ImageFailed="OnLogoFailed"
-        ImageOpened="OnLogoOpened"
         IsHitTestVisible="False"
         Opacity="0"
         Stretch="Uniform" />

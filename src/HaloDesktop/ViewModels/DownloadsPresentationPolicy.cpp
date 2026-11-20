@@ -260,7 +260,7 @@ namespace HaloDesktop::ViewModels::DownloadsPresentation
         row.MetaId = media.MetaId.value_or(L"");
         row.RowArtwork = media.LandscapeArtwork && !media.LandscapeArtwork->empty() ? *media.LandscapeArtwork : row.Poster;
         row.SavedArtwork = ::HaloDesktop::Controls::FileImageUrl(record.SidecarPath(Services::Downloads::SidecarKind::Art));
-        row.SavedLogo = ::HaloDesktop::Controls::FileImageUrl(record.SidecarPath(Services::Downloads::SidecarKind::Logo));
+        row.SavedLogo = record.SidecarPath(Services::Downloads::SidecarKind::Logo).wstring();
         row.OnlineLogo = ::HaloDesktop::Controls::MetahubLogoUrl(row.MetaId).value_or(L"");
         row.RequiresNewSource = newSource;
         row.CanPause = Services::Downloads::IsActive(record.Status);

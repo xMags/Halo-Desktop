@@ -68,6 +68,13 @@ namespace HaloDesktop::Views
         return HeroLogoTreatment::Name;
     }
 
+    bool InkForDarkGround(std::optional<double> luminance, std::optional<double> coverage) noexcept
+    {
+        return luminance && coverage
+            && *luminance < DarkGroundLogoMinimumLuminance
+            && *coverage <= HeroLogoInkMaximumCoverage;
+    }
+
     void InkHeroLogo(std::span<std::uint8_t> bgra, std::uint8_t red, std::uint8_t green, std::uint8_t blue) noexcept
     {
         for (std::size_t index = 0; index + 3 < bgra.size(); index += 4)

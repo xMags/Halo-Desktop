@@ -332,6 +332,7 @@
     <ClInclude Include="Api\CatalogExtrasPolicy.h" />
     <ClInclude Include="Controls\ArtworkUrlPolicy.h" />
     <ClInclude Include="Services\DownloadSidecarFetcher.h" />
+    <ClInclude Include="Views\CardLogoLoader.h" />
     <ClInclude Include="Api\PeopleDirectory.h" />
     <ClInclude Include="Services\Tmdb\TmdbCredential.h" />
     <ClInclude Include="Services\Tmdb\TmdbPeoplePolicy.h" />
@@ -828,6 +829,7 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\DownloadSidecarFetcher.cpp" />
+    <ClCompile Include="Views\CardLogoLoader.cpp" />
     <ClCompile Include="Services\Tmdb\TmdbCredential.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

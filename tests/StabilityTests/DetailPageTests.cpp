@@ -499,6 +499,14 @@ namespace
                 && ChooseHeroLogoTreatment(0.56, 0.3, true) == HeroLogoTreatment::Inked,
             "the light theme's brightness limit moved");
 
+        // Over dark art (a download card): only a dark mark is inked light.
+        using HaloDesktop::Views::InkForDarkGround;
+        Require(InkForDarkGround(0.1, 0.3) && InkForDarkGround(0.24, 0.9), "a dark mark over dark art was not inked");
+        Require(!InkForDarkGround(0.25, 0.3) && !InkForDarkGround(whiteLuma, 0.3), "a bright or colourful logo was inked");
+        Require(!InkForDarkGround(0.1, 0.95), "a dark logo that fills its box was inked into a block");
+        Require(!InkForDarkGround(std::nullopt, 0.3) && !InkForDarkGround(0.1, std::nullopt),
+            "a logo that could not be judged was inked");
+
         // Half-opaque white becomes half-opaque ink, premultiplied.
         std::vector<std::uint8_t> inked{ 255, 255, 255, 128, 10, 20, 30, 0 };
         InkHeroLogo(inked, 14, 18, 32);

@@ -1,6 +1,7 @@
 #include "pch.h"
 #include "Views/DownloadReadyCard.xaml.h"
 #include "Controls/PressFeedback.h"
+#include "Views/CardLogoLoader.h"
 #if __has_include("DownloadReadyCard.g.cpp")
 #include "DownloadReadyCard.g.cpp"
 #endif
@@ -10,6 +11,7 @@
 #include <string_view>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
+#include <filesystem>
 #include <winrt/Windows.Foundation.Numerics.h>
 
 namespace
@@ -75,40 +77,37 @@ namespace winrt::HaloDesktop::implementation
         ShowLogo();
     }
 
-    void DownloadReadyCard::ShowLogo()
+    winrt::fire_and_forget DownloadReadyCard::ShowLogo()
     {
+        auto const lifetime = get_strong();
+        auto const request = ++m_logoRequest;
         HideLogo();
-        m_logoSources.clear();
-        if (m_row)
+        if (!m_row) co_return;
+        std::filesystem::path const saved{ std::wstring{ m_row.SavedLogo() } };
+        std::wstring const online{ m_row.OnlineLogo() };
+        if (saved.empty() && online.empty()) co_return;
+        if (!m_logoClient) m_logoClient = winrt::Windows::Web::Http::HttpClient{};
+        winrt::Microsoft::UI::Xaml::Media::ImageSource logo{ nullptr };
+        try
         {
-            for (auto const& source : { m_row.SavedLogo(), m_row.OnlineLogo() })
-            {
-                if (!source.empty()) m_logoSources.push_back(source);
-            }
+            // Twice the 56 it is drawn at, for a dense display.
+            logo = co_await ::HaloDesktop::Views::LoadCardLogoAsync(m_logoClient, saved, online, 112);
         }
-        TryLogo(0);
-    }
-
-    void DownloadReadyCard::TryLogo(std::size_t index)
-    {
-        // Each address that cannot even be made into a bitmap moves on at once.
-        for (; index < m_logoSources.size(); ++index)
+        catch (...)
         {
-            try
-            {
-                Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
-                // Twice the 56 it is drawn at, for a dense display.
-                bitmap.DecodePixelHeight(112);
-                bitmap.UriSource(winrt::Windows::Foundation::Uri{ m_logoSources[index] });
-                m_logoIndex = index;
-                LogoImage().Source(bitmap);
-                return;
-            }
-            catch (winrt::hresult_error const&)
-            {
-            }
+            // Not saved yet and offline, or no logo for this title: the text title stays.
         }
-        HideLogo();
+        if (request != m_logoRequest || !logo) co_return;
+        try
+        {
+            LogoImage().Source(logo);
+            LogoImage().Opacity(1.0);
+            LogoScrim().Opacity(1.0);
+            TitleText().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
     }
 
     void DownloadReadyCard::HideLogo()
@@ -123,32 +122,6 @@ namespace winrt::HaloDesktop::implementation
         catch (winrt::hresult_error const&)
         {
         }
-    }
-
-    void DownloadReadyCard::OnLogoOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
-    {
-        try
-        {
-            LogoImage().Opacity(1.0);
-            LogoScrim().Opacity(1.0);
-            TitleText().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
-    }
-
-    void DownloadReadyCard::OnLogoFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
-    {
-        // Not saved yet, offline, or no logo for this title: the next, or the text.
-        try
-        {
-            LogoImage().Opacity(0.0);
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
-        TryLogo(m_logoIndex + 1);
     }
 
     void DownloadReadyCard::OnCardClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const& args)

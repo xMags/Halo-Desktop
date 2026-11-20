@@ -7,8 +7,8 @@
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
-#include <cstddef>
-#include <vector>
+#include <cstdint>
+#include <winrt/Windows.Web.Http.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -33,17 +33,15 @@ namespace winrt::HaloDesktop::implementation
         void OnHoverStarted(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnHoverEnded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
-        void OnLogoOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
-        void OnLogoFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&);
+
 
     private:
         void SetHovered(bool hovered);
         void UpdatePlayButton();
         void UpdatePlayName();
-        // Starts over on the row's logo: the saved one, then the network's.
-        void ShowLogo();
-        // Tries the logo at `index` of m_logoSources, or gives up past the end.
-        void TryLogo(std::size_t index);
+        // Starts over on the row's logo: the saved one, then the network's,
+        // judged and, for a dark mark, inked light (Views/CardLogoLoader).
+        winrt::fire_and_forget ShowLogo();
         // The text title back and the logo and its fade gone.
         void HideLogo();
 
@@ -51,9 +49,10 @@ namespace winrt::HaloDesktop::implementation
         winrt::event_token m_rowChangedToken{};
         bool m_hovered{};
         bool m_playFocused{};
-        // The logo addresses being tried, in order, and the one on screen.
-        std::vector<winrt::hstring> m_logoSources;
-        std::size_t m_logoIndex{};
+        // Advances with each logo asked for, so a slower earlier one never
+        // replaces a later one on a recycled card.
+        std::uint64_t m_logoRequest{};
+        winrt::Windows::Web::Http::HttpClient m_logoClient{ nullptr };
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_selectedEvent;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_playEvent;
         // Holds the hover back while the list under the card scrolls.

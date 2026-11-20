@@ -62,6 +62,17 @@ namespace HaloDesktop::Views
         std::optional<double> coverage,
         bool lightTheme) noexcept;
 
+    // Below this brightness a logo is a dark mark: drawn over dark art (a
+    // download card's fade), it would all but vanish.
+    inline constexpr double DarkGroundLogoMinimumLuminance = 0.25;
+
+    // A logo drawn over dark art, as a download card draws it: true for a dark
+    // mark, which is then drawn in light ink. A bright or colourful logo is
+    // drawn as its artist drew it, and so is a dark one that fills its box
+    // (a picture with its own ground, which inking would make a solid block),
+    // or one that could not be judged.
+    [[nodiscard]] bool InkForDarkGround(std::optional<double> luminance, std::optional<double> coverage) noexcept;
+
     // Turns straight-alpha BGRA8 pixels into the same shape in one colour, as
     // premultiplied BGRA8 (what a writeable bitmap holds), in place.
     void InkHeroLogo(std::span<std::uint8_t> bgra, std::uint8_t red, std::uint8_t green, std::uint8_t blue) noexcept;

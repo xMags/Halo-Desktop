@@ -15,8 +15,8 @@ namespace HaloDesktop
         String AccessibleName { get; };
         String MetaId { get; };
         String RowArtwork { get; };
-        // The art and logo saved beside the video, as file addresses; the
-        // logo on the network. See DownloadRow.
+        // The art saved beside the video as a file address, its logo as a
+        // file path; the logo on the network. See DownloadRow.
         String SavedArtwork { get; };
         String SavedLogo { get; };
         String OnlineLogo { get; };

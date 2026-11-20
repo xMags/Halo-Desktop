@@ -94,10 +94,10 @@ namespace HaloDesktop::ViewModels::DownloadsPresentation
         std::wstring MetaId;
         // Landscape still for the 16:9 art, falling back to the poster.
         std::wstring RowArtwork;
-        // The art and logo saved beside the video (file addresses), tried
-        // before anything on the network so the card works offline. Saved
-        // only once the download has finished; until then they do not load
-        // and the card falls through to the network.
+        // The art (a file address) and logo (a file path) saved beside the
+        // video, tried before anything on the network so the card works
+        // offline. Saved only once the download has finished; until then they
+        // are not there and the card falls through to the network.
         std::wstring SavedArtwork;
         std::wstring SavedLogo;
         // The logo on the network, for a title with an IMDb id; empty otherwise.
