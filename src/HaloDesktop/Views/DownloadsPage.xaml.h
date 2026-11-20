@@ -45,7 +45,9 @@ namespace winrt::HaloDesktop::implementation
         void ApplyFoldedCards();
         winrt::fire_and_forget ShowPauseAllDialog();
         winrt::fire_and_forget ShowCancelDialog(winrt::hstring id);
-        winrt::fire_and_forget ShowDeleteDialog();
+        // Deletes the download that was clicked, whatever the selection has
+        // moved to while the dialog was open.
+        winrt::fire_and_forget ShowDeleteDialog(winrt::hstring id);
         winrt::fire_and_forget ShowDeleteAllDialog();
         winrt::fire_and_forget PickDownloadFolder();
 

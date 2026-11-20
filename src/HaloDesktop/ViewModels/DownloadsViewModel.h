@@ -181,6 +181,7 @@ namespace winrt::HaloDesktop::implementation
         void Resume(winrt::hstring const& id);
         void Retry(winrt::hstring const& id);
         void Cancel(winrt::hstring const& id);
+        void Delete(winrt::hstring const& id);
         void ChooseSourceFor(winrt::hstring const& id);
         void Play(winrt::hstring const& id);
         void OpenDownloadFolder();
@@ -192,7 +193,6 @@ namespace winrt::HaloDesktop::implementation
         void PauseSelected();
         void ResumeSelected();
         void CancelSelected();
-        void DeleteSelected();
         void DeleteAll();
         void OpenPlayer();
         void ChooseSource();

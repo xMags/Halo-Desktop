@@ -414,6 +414,7 @@ namespace winrt::HaloDesktop::implementation
     void DownloadsViewModel::Resume(winrt::hstring const& id) { static_cast<void>(m_downloads->ResumeTransfer(id)); }
     void DownloadsViewModel::Retry(winrt::hstring const& id) { static_cast<void>(m_downloads->ResumeTransfer(id)); }
     void DownloadsViewModel::Cancel(winrt::hstring const& id) { static_cast<void>(m_downloads->CancelTransfer(id)); }
+    void DownloadsViewModel::Delete(winrt::hstring const& id) { static_cast<void>(m_downloads->DeleteReady(id)); }
     void DownloadsViewModel::ChooseSourceFor(winrt::hstring const& id)
     {
         if (auto const parameters = m_downloads->BuildSourcesNavigation(id))
@@ -474,10 +475,6 @@ namespace winrt::HaloDesktop::implementation
     void DownloadsViewModel::CancelSelected()
     {
         if (m_selected) static_cast<void>(m_downloads->CancelTransfer(winrt::hstring{ m_selectedId }));
-    }
-    void DownloadsViewModel::DeleteSelected()
-    {
-        if (m_selected) static_cast<void>(m_downloads->DeleteReady(winrt::hstring{ m_selectedId }));
     }
     void DownloadsViewModel::DeleteAll() { static_cast<void>(m_downloads->DeleteAllDownloads()); }
     void DownloadsViewModel::OpenPlayer()

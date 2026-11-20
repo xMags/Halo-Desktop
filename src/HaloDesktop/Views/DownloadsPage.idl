@@ -137,6 +137,8 @@ namespace HaloDesktop
         void Resume(String id);
         void Retry(String id);
         void Cancel(String id);
+        // Deletes that finished download only; anything else is refused.
+        void Delete(String id);
         void ChooseSourceFor(String id);
         void Play(String id);
         void OpenDownloadFolder();
@@ -149,7 +151,6 @@ namespace HaloDesktop
         void PauseSelected();
         void ResumeSelected();
         void CancelSelected();
-        void DeleteSelected();
         void DeleteAll();
         void OpenPlayer();
         void ChooseSource();

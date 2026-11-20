@@ -199,7 +199,7 @@ namespace winrt::HaloDesktop::implementation
         auto const id = TagOf(sender);
         if (id.empty()) return;
         m_viewModel.Select(id);
-        ShowDeleteDialog();
+        ShowDeleteDialog(id);
     }
 
     void DownloadsPage::OnPauseAllClick([[maybe_unused]] winrt::Windows::Foundation::IInspectable const&, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
@@ -270,7 +270,7 @@ namespace winrt::HaloDesktop::implementation
         {
         }
     }
-    winrt::fire_and_forget DownloadsPage::ShowDeleteDialog()
+    winrt::fire_and_forget DownloadsPage::ShowDeleteDialog(winrt::hstring id)
     {
         auto lifetime = get_strong();
         try
@@ -278,7 +278,9 @@ namespace winrt::HaloDesktop::implementation
             auto dialog = ::HaloDesktop::Views::MakeDeleteFromDeviceDialog(XamlRoot(), ActualTheme());
             if (co_await dialog.ShowAsync() == Microsoft::UI::Xaml::Controls::ContentDialogResult::Primary)
             {
-                m_viewModel.DeleteSelected();
+                // The clicked id, not the selection: a refresh while the
+                // dialog is open can move the selection to another download.
+                m_viewModel.Delete(id);
             }
         }
         catch (...)
