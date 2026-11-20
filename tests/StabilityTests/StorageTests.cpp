@@ -871,9 +871,10 @@ namespace
         Require(!odd->IsAdmin && !odd->Plan && !odd->AvatarVersion, "a malformed profile field was kept");
     }
 
-    // A saved sign-in that could not be read this launch (held open by another
-    // program, or not decryptable) is left on disk for the next launch; only one
-    // that was read and is not a session is removed.
+    // A saved sign-in that could not be read or understood this launch (held
+    // open by another program, not decryptable, or not a session this build
+    // knows, as one saved by a newer build) is left on disk: only a sign-in or
+    // sign-out replaces it.
     void TestUnreadableSessionIsKept()
     {
         using HaloDesktop::Services::Auth::SessionStore;
@@ -898,7 +899,19 @@ namespace
 
         HaloDesktop::Security::WriteProtectedTextAsync(sessionPath, "not a session").get();
         Require(!store.LoadAsync().get(), "a file that is not a session restored");
-        Require(!std::filesystem::exists(sessionPath), "a file that is not a session was kept");
+        Require(std::filesystem::exists(sessionPath), "a file that is not a session was deleted");
+
+        HaloDesktop::Security::WriteProtectedTextAsync(sessionPath, R"({"kind":"passkey","token":"x"})").get();
+        Require(!store.LoadAsync().get(), "a session of a kind this build does not know restored");
+        Require(std::filesystem::exists(sessionPath), "a session of a kind this build does not know was deleted");
+
+        auto const identityPath = temporary.Path() / L"auth-identity.bin";
+        HaloDesktop::Security::WriteProtectedTextAsync(identityPath, "not a profile").get();
+        Require(!store.LoadIdentityAsync().get(), "a file that is not a profile restored");
+        Require(std::filesystem::exists(identityPath), "a file that is not a profile was deleted");
+
+        store.ClearAsync().get();
+        Require(!std::filesystem::exists(sessionPath), "signing out left the session file behind");
     }
 }
 

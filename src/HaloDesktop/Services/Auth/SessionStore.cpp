@@ -275,8 +275,10 @@ namespace HaloDesktop::Services::Auth
         {
         }
 
-        // Read and decrypted, but not a session: it never will be, so it goes.
-        co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_path);
+        // Read and decrypted, but not a session this build knows: a sign-in
+        // saved by a newer Halo Desktop, or a damaged one. It stays on disk and
+        // reads as signed out for this launch. Leaving it is safe: every
+        // sign-in overwrites this file and every sign-out clears it.
         co_return std::nullopt;
     }
 
@@ -320,7 +322,8 @@ namespace HaloDesktop::Services::Auth
         catch (...)
         {
         }
-        try { co_await ::HaloDesktop::Security::DeleteProtectedFileAsync(m_identityPath); } catch (...) {}
+        // Not a profile this build knows: kept, as the session file is, for
+        // the next save or sign-out to replace.
         co_return std::nullopt;
     }
 
