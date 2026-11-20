@@ -670,6 +670,51 @@ namespace
             "replacement recovery did not persist its terminal state");
     }
 
+    // A pending deletion whose file another download still names (both came
+    // from the same source, so they share a name) drops its record at launch
+    // and leaves the file to the download that still has it.
+    void TestPendingDeletionKeepsSharedFiles()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        auto const downloadRoot = temporary.Path() / L"downloads";
+        std::filesystem::create_directories(downloadRoot);
+        auto const account = HaloDesktop::Services::Downloads::MakeAccountKey(
+            L"https://example.test", L"user-a");
+
+        auto doomed = Record(std::wstring(64, L'1'), L"movie:shared-a");
+        doomed.AccountKey = account;
+        doomed.RootPath = downloadRoot;
+        doomed.FileName = L"shared.mkv";
+        doomed.PendingDeletion = true;
+        auto keeper = Record(std::wstring(64, L'2'), L"movie:shared-b");
+        keeper.AccountKey = account;
+        keeper.RootPath = downloadRoot;
+        keeper.FileName = L"shared.mkv";
+        keeper.Status = DownloadStatus::Done;
+        keeper.ExplicitPause = false;
+        keeper.TotalBytes = 3;
+        keeper.DownloadedBytes = 3;
+        WriteBytes(keeper.TargetPath(), { 1, 2, 3 });
+
+        DownloadIndexStore store{ dataRoot };
+        store.SetDownloadDirectory(downloadRoot);
+        store.Apply({ doomed, keeper });
+        {
+            TransferEngine engine{ dataRoot };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            auto const records = engine.List();
+            Require(records.size() == 1 && records.front().JobId == keeper.JobId,
+                "a pending deletion that shares a file was not dropped at launch");
+        }
+        Require(std::filesystem::is_regular_file(keeper.TargetPath()),
+            "a pending deletion at launch removed a file another download still names");
+        DownloadIndexStore verify{ dataRoot };
+        auto const remaining = verify.Load(false);
+        Require(remaining.size() == 1 && remaining.front().JobId == keeper.JobId,
+            "a pending deletion that shares a file stayed in the index");
+    }
+
     void TestMissingCompletedDownloadRecovery()
     {
         TemporaryDirectory temporary;
@@ -872,6 +917,7 @@ void RunStandaloneStorageTests()
     TestCorruptDownloadIndexRecovery();
     TestDownloadLandscapeArtworkPersistence();
     TestPendingDownloadDeletionRecovery();
+    TestPendingDeletionKeepsSharedFiles();
     TestMissingCompletedDownloadRecovery();
     TestDownloadsOutsideApprovedRootsAreQuarantined();
 }

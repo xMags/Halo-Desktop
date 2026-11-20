@@ -544,7 +544,26 @@ namespace HaloDesktop::Services::Downloads
                     updatedOwner->BytesPerSecond = 0;
                     updatedOwner->Replacement.reset();
                 }
-                RemoveRecordFiles(pending, approvedRoots, updatedOwner ? &*updatedOwner : nullptr);
+                // As RemoveOwned does: a file another record still names stays.
+                // The owner is left out here because its files are already kept
+                // through preservedOwner. A path that cannot be compared counts
+                // as shared, since keeping a file is recoverable.
+                bool shared{};
+                try
+                {
+                    shared = SharesFilesWithAnotherRecord(
+                        pending,
+                        m_records,
+                        owner == m_records.end() ? std::wstring_view{} : std::wstring_view{ owner->first });
+                }
+                catch (...)
+                {
+                    shared = true;
+                }
+                if (!shared)
+                {
+                    RemoveRecordFiles(pending, approvedRoots, updatedOwner ? &*updatedOwner : nullptr);
+                }
                 m_vault.Remove(jobId);
                 m_store.Apply(updatedOwner ? std::vector<DownloadRecord>{ *updatedOwner }
                                            : std::vector<DownloadRecord>{},
