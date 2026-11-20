@@ -4,6 +4,7 @@
 #include "Api/ApiClient.h"
 #include "Api/ApiError.h"
 #include "Api/BackendSelector.h"
+#include "Api/PeopleDirectory.h"
 #include "Services/PeopleRowPolicy.h"
 #include "Services/SearchResultsPolicy.h"
 
@@ -26,14 +27,24 @@ namespace HaloDesktop::Services
 
     PeopleService::PeopleService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> api,
+        std::shared_ptr<::HaloDesktop::Api::IPeopleDirectory> withoutAccount,
         std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
-        : m_api(std::move(api)), m_backends(std::move(backends)), m_dispatcher(std::move(dispatcher))
+        : m_api(std::move(api)),
+          m_withoutAccount(std::move(withoutAccount)),
+          m_backends(std::move(backends)),
+          m_dispatcher(std::move(dispatcher))
     {
-        if (!m_api || !m_backends || !m_dispatcher)
+        if (!m_api || !m_withoutAccount || !m_backends || !m_dispatcher)
         {
-            throw std::invalid_argument{ "PeopleService requires the API client, a backend selector and a dispatcher." };
+            throw std::invalid_argument{ "PeopleService requires the API client, TMDB, a backend selector and a dispatcher." };
         }
+    }
+
+    std::shared_ptr<::HaloDesktop::Api::IPeopleDirectory> PeopleService::Directory() const
+    {
+        if (m_backends->UsesDevice()) return m_withoutAccount;
+        return m_api;
     }
 
     std::uint64_t PeopleService::Begin(Channel channel) noexcept
@@ -53,16 +64,6 @@ namespace HaloDesktop::Services
         std::function<void(PeopleOutcome, std::optional<T>)> deliver)
     {
         auto const generation = Begin(channel);
-        // Never without an account: the server these live on is the account's.
-        if (m_backends->UsesDevice())
-        {
-            m_dispatcher.TryEnqueue([weak = weak_from_this(), channel, generation, deliver = std::move(deliver)]()
-            {
-                auto const self = weak.lock();
-                if (self && self->IsCurrent(channel, generation)) deliver(PeopleOutcome::Failed, std::nullopt);
-            });
-            return;
-        }
         RunAsync<T>(weak_from_this(), m_dispatcher, channel, generation, std::move(start), std::move(deliver))
             .then([](concurrency::task<void> finished)
             {
@@ -120,7 +121,7 @@ namespace HaloDesktop::Services
         }
         Start<::HaloDesktop::Api::Dto::PeopleSearch>(
             Channel::Search,
-            [api = m_api, query = std::move(query)]() { return api->SearchPeopleAsync(winrt::hstring{ query }); },
+            [api = Directory(), query = std::move(query)]() { return api->SearchPeopleAsync(winrt::hstring{ query }); },
             [handler = std::move(handler)](PeopleOutcome outcome, std::optional<::HaloDesktop::Api::Dto::PeopleSearch> people)
             {
                 handler(outcome, people ? std::move(*people) : ::HaloDesktop::Api::Dto::PeopleSearch{});
@@ -148,7 +149,7 @@ namespace HaloDesktop::Services
         }
         Start<::HaloDesktop::Api::Dto::PeopleSearch>(
             Channel::Person,
-            [api = m_api, name]() { return api->SearchPeopleAsync(winrt::hstring{ name }); },
+            [api = Directory(), name]() { return api->SearchPeopleAsync(winrt::hstring{ name }); },
             [handler = std::move(handler), name](PeopleOutcome outcome, std::optional<::HaloDesktop::Api::Dto::PeopleSearch> answer)
             {
                 if (outcome != PeopleOutcome::Found || !answer)
@@ -183,7 +184,7 @@ namespace HaloDesktop::Services
         }
         Start<::HaloDesktop::Api::Dto::PersonDetail>(
             Channel::Person,
-            [api = m_api, tmdbId]() { return api->GetPersonAsync(tmdbId); },
+            [api = Directory(), tmdbId]() { return api->GetPersonAsync(tmdbId); },
             std::move(handler));
     }
 
@@ -207,7 +208,7 @@ namespace HaloDesktop::Services
         }
         Start<::HaloDesktop::Api::Dto::PersonDetail>(
             Channel::Filmography,
-            [api = m_api, tmdbId]() { return api->GetPersonAsync(tmdbId); },
+            [api = Directory(), tmdbId]() { return api->GetPersonAsync(tmdbId); },
             std::move(handler));
     }
 
@@ -225,7 +226,7 @@ namespace HaloDesktop::Services
         }
         Start<::HaloDesktop::Api::Dto::IdLookup>(
             Channel::Lookup,
-            [api = m_api, source = std::move(source), id = std::move(id)]()
+            [api = Directory(), source = std::move(source), id = std::move(id)]()
             {
                 return api->LookupAsync(winrt::hstring{ source }, winrt::hstring{ id });
             },

@@ -47,6 +47,8 @@
 #include "Services/TitleLookupService.h"
 #include "Services/ServerFeaturesService.h"
 #include "Services/PeopleService.h"
+#include "Services/Tmdb/TmdbKeyStore.h"
+#include "Services/Tmdb/TmdbPeopleClient.h"
 #include "Services/MagnetService.h"
 #include "Services/PosterCheckService.h"
 #include "Services/Downloads/DownloadTypes.h"
@@ -202,17 +204,39 @@ namespace winrt::HaloDesktop::implementation
             m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.TitleLookup = titleLookupService;
-        // Account-only: these live on the account's server, never on this PC's backend.
+        // The viewer's own TMDB key: people search and id lookups without an
+        // account. Kept for this PC, whoever signs in.
+        auto tmdbKey = std::make_shared<::HaloDesktop::Services::Tmdb::TmdbKeyStore>(
+            m_storagePaths->LocalState() / L"tmdb-key.dat",
+            Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
+        m_services.TmdbKey = tmdbKey;
+        // These live on the account's server; without an account, people search
+        // and id lookups follow the TMDB key instead.
         auto serverFeaturesService = std::make_shared<::HaloDesktop::Services::ServerFeaturesService>(
             m_apiClient,
             m_backends,
+            [weakKey = std::weak_ptr<::HaloDesktop::Services::Tmdb::TmdbKeyStore>{ tmdbKey }]()
+            {
+                auto const key = weakKey.lock();
+                return key && key->Current().has_value();
+            },
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.ServerFeatures = serverFeaturesService;
+        static_cast<void>(tmdbKey->AddChangedHandler(
+            [weakFeatures = std::weak_ptr<::HaloDesktop::Services::ServerFeaturesService>{ serverFeaturesService }]()
+            {
+                if (auto const features = weakFeatures.lock()) features->DeviceTmdbChanged();
+            }));
         auto peopleService = std::make_shared<::HaloDesktop::Services::PeopleService>(
             m_apiClient,
+            std::make_shared<::HaloDesktop::Services::Tmdb::TmdbPeopleClient>(tmdbKey),
             m_backends,
             Microsoft::UI::Dispatching::DispatcherQueue::GetForCurrentThread());
         m_services.People = peopleService;
+        tmdbKey->LoadAsync().then([](concurrency::task<void> loaded)
+        {
+            try { loaded.get(); } catch (...) {}
+        });
         auto magnetService = std::make_shared<::HaloDesktop::Services::MagnetService>(
             m_apiClient,
             m_backends,

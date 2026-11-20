@@ -18,6 +18,10 @@ namespace winrt::HaloDesktop::implementation
     {
         SettingsPage();
         [[nodiscard]] winrt::HaloDesktop::SettingsViewModel ViewModel() const;
+        [[nodiscard]] winrt::HaloDesktop::TmdbKeyViewModel TmdbKey() const { return m_tmdbKey; }
+        void OnSaveTmdbKeyClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnRemoveTmdbKeyClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnTmdbKeyKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
         [[nodiscard]] static winrt::hstring OnOffText(bool isOn);
         void OnLoaded(winrt::Windows::Foundation::IInspectable const& sender, Microsoft::UI::Xaml::RoutedEventArgs const& args);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -63,6 +67,7 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::Microsoft::UI::Xaml::Controls::ContentDialog MakeConfirmation(
             ::HaloDesktop::Services::ConfirmationCopy const& copy);
         winrt::HaloDesktop::SettingsViewModel m_viewModel{ nullptr };
+        winrt::HaloDesktop::TmdbKeyViewModel m_tmdbKey{ nullptr };
         winrt::Microsoft::UI::Xaml::Data::INotifyPropertyChanged::PropertyChanged_revoker m_viewModelChangedRevoker{};
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_healthTimer{ nullptr };
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer::Tick_revoker m_healthTickRevoker{};

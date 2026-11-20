@@ -24,7 +24,9 @@ namespace HaloDesktop::Services
     // it). Asked once per account; until the answer lands, and whenever it
     // cannot be had, everything reads as unavailable.
     //
-    // - Halo without an account: nothing is available and nothing is asked.
+    // - Halo without an account: nothing is asked. People search and id
+    //   lookups are offered while the viewer's own TMDB key works
+    //   (DeviceTmdbChanged re-reads it); everything else is unavailable.
     // - A 404 or any other failure reads as nothing available, and the next
     //   EnsureLoaded (the next arrival on a page that needs it) asks again.
     //
@@ -39,6 +41,7 @@ namespace HaloDesktop::Services
         ServerFeaturesService(
             std::shared_ptr<::HaloDesktop::Api::ApiClient> api,
             std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
+            std::function<bool()> deviceTmdbUsable,
             winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher);
 
         ServerFeaturesService(ServerFeaturesService const&) = delete;
@@ -57,6 +60,9 @@ namespace HaloDesktop::Services
         [[nodiscard]] ServerFeaturesChangedToken AddChangedHandler(ChangedHandler handler);
         void RemoveChangedHandler(ServerFeaturesChangedToken token) noexcept;
         void OnAccountChanged();
+        // The TMDB key was saved, removed or refused: without an account,
+        // what is offered follows it at once.
+        void DeviceTmdbChanged();
 
     private:
         enum class State
@@ -77,6 +83,7 @@ namespace HaloDesktop::Services
 
         std::shared_ptr<::HaloDesktop::Api::ApiClient> m_api;
         std::shared_ptr<::HaloDesktop::Api::BackendSelector> m_backends;
+        std::function<bool()> m_deviceTmdbUsable;
         winrt::Microsoft::UI::Dispatching::DispatcherQueue m_dispatcher{ nullptr };
         std::uint64_t m_accountVersion{};
         State m_state{ State::Unknown };

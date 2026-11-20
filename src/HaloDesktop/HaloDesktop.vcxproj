@@ -332,6 +332,13 @@
     <ClInclude Include="Api\CatalogExtrasPolicy.h" />
     <ClInclude Include="Controls\ArtworkUrlPolicy.h" />
     <ClInclude Include="Services\DownloadSidecarFetcher.h" />
+    <ClInclude Include="Api\PeopleDirectory.h" />
+    <ClInclude Include="Services\Tmdb\TmdbCredential.h" />
+    <ClInclude Include="Services\Tmdb\TmdbPeoplePolicy.h" />
+    <ClInclude Include="Services\Tmdb\TmdbHttp.h" />
+    <ClInclude Include="Services\Tmdb\TmdbKeyStore.h" />
+    <ClInclude Include="Services\Tmdb\TmdbPeopleClient.h" />
+    <ClInclude Include="ViewModels\TmdbKeyViewModel.h" />
     <ClInclude Include="Diagnostics\CrashLog.h" />
     <ClInclude Include="Security\InjectionGuard.h" />
     <ClInclude Include="Services\AccountLabelPolicy.h" />
@@ -821,6 +828,16 @@
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Services\DownloadSidecarFetcher.cpp" />
+    <ClCompile Include="Services\Tmdb\TmdbCredential.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Tmdb\TmdbPeoplePolicy.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="Services\Tmdb\TmdbHttp.cpp" />
+    <ClCompile Include="Services\Tmdb\TmdbKeyStore.cpp" />
+    <ClCompile Include="Services\Tmdb\TmdbPeopleClient.cpp" />
+    <ClCompile Include="ViewModels\TmdbKeyViewModel.cpp" />
     <ClCompile Include="ViewModels\DownloadsPresentationPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

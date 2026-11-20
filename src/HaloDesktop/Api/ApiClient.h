@@ -3,6 +3,7 @@
 #include "Api/Dto.h"
 #include "Api/HaloBackend.h"
 #include "Api/OpenSubtitlesHash.h"
+#include "Api/PeopleDirectory.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -41,7 +42,7 @@ namespace HaloDesktop::Api
     //
     // The IHaloBackend part is what Halo used with an account asks; the rest
     // is account-only.
-    class ApiClient final : public IHaloBackend
+    class ApiClient final : public IHaloBackend, public IPeopleDirectory
     {
     public:
         static constexpr std::size_t MaximumAvatarBytes = 4u * 1024u * 1024u;
@@ -109,13 +110,13 @@ namespace HaloDesktop::Api
         [[nodiscard]] concurrency::task<Dto::Capabilities> GetCapabilitiesAsync();
         // People whose name matches `query` (trimmed here; 2 to 120 characters,
         // else std::invalid_argument before anything is sent).
-        [[nodiscard]] concurrency::task<Dto::PeopleSearch> SearchPeopleAsync(winrt::hstring query);
+        [[nodiscard]] concurrency::task<Dto::PeopleSearch> SearchPeopleAsync(winrt::hstring query) override;
         // A person and their films and series. 404: no such person.
-        [[nodiscard]] concurrency::task<Dto::PersonDetail> GetPersonAsync(std::int64_t tmdbId);
+        [[nodiscard]] concurrency::task<Dto::PersonDetail> GetPersonAsync(std::int64_t tmdbId) override;
         // What a pasted id names. `source` is `tvdb` (digits) or `imdb`
         // (`tt` or `nm` and digits); anything else is refused before sending.
         // 404: nothing known by that id.
-        [[nodiscard]] concurrency::task<Dto::IdLookup> LookupAsync(winrt::hstring source, winrt::hstring id);
+        [[nodiscard]] concurrency::task<Dto::IdLookup> LookupAsync(winrt::hstring source, winrt::hstring id) override;
 
         // A pasted magnet, sent as its info hash (40 lower-case hex) and an
         // optional display name; never the magnet link or its trackers. Each

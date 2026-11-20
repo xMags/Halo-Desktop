@@ -11,6 +11,7 @@
 #include "Views/PageDialog.h"
 #include "ViewModels/SettingsRailPolicy.h"
 #include "ViewModels/SettingsViewModel.h"
+#include "ViewModels/TmdbKeyViewModel.h"
 
 #include <array>
 #include <chrono>
@@ -56,8 +57,28 @@ namespace
 namespace winrt::HaloDesktop::implementation
 {
     SettingsPage::SettingsPage()
-        : m_viewModel(winrt::make<SettingsViewModel>(App::Services()))
+        : m_viewModel(winrt::make<SettingsViewModel>(App::Services())),
+          m_tmdbKey(winrt::make<TmdbKeyViewModel>(App::Services().TmdbKey))
     {
+        winrt::get_self<TmdbKeyViewModel>(m_tmdbKey)->Attach();
+    }
+
+    void SettingsPage::OnSaveTmdbKeyClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_tmdbKey.Save();
+    }
+
+    void SettingsPage::OnRemoveTmdbKeyClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        m_tmdbKey.Remove();
+    }
+
+    // Enter in the key box saves, as the addon box adds.
+    void SettingsPage::OnTmdbKeyKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const& args)
+    {
+        if (args.Key() != winrt::Windows::System::VirtualKey::Enter) return;
+        args.Handled(true);
+        m_tmdbKey.Save();
     }
     winrt::HaloDesktop::SettingsViewModel SettingsPage::ViewModel() const { return m_viewModel; }
     // Bound to each switch's own IsOn, so the word always matches what the switch shows.

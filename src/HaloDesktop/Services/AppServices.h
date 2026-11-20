@@ -27,6 +27,11 @@ namespace HaloDesktop::Services::Device
     class DeviceDataMove;
 }
 
+namespace HaloDesktop::Services::Tmdb
+{
+    class TmdbKeyStore;
+}
+
 namespace HaloDesktop::Services
 {
     class AccountPictureService;
@@ -59,8 +64,11 @@ namespace HaloDesktop::Services
         std::shared_ptr<TitleLookupService> TitleLookup;
         // What the account's server offers beyond the shared contract.
         std::shared_ptr<ServerFeaturesService> ServerFeatures;
-        // People search, person pages and id lookups on the account's server.
+        // People search, person pages and id lookups: on the account's server,
+        // or without an account from TMDB with the viewer's own key.
         std::shared_ptr<PeopleService> People;
+        // The viewer's own TMDB key, for people search without an account.
+        std::shared_ptr<Tmdb::TmdbKeyStore> TmdbKey;
         // Pasted magnets on the account's server, and the last one that came
         // back ready, offered in the Sources sheet.
         std::shared_ptr<MagnetService> Magnets;

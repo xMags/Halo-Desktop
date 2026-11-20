@@ -101,6 +101,11 @@ namespace HaloDesktop::Services
     // decomposition, combining marks removed, then lower case, as the
     // reference's `text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase()`.
     [[nodiscard]] std::wstring FoldedText(std::wstring_view text);
+    // A name as compared for spelling: folded (FoldedText), every run of
+    // anything that is not a letter or a digit one space, none at either end.
+    // The server's `nameKey` (closest-people.ts), so both judge a misspelled
+    // name alike.
+    [[nodiscard]] std::wstring NameKey(std::wstring_view text);
     // Lower case only, as JavaScript's `toLowerCase`.
     [[nodiscard]] std::wstring LowerText(std::wstring_view text);
     // JavaScript's `String.prototype.trim`.

@@ -15,13 +15,25 @@ namespace HaloDesktop::Services
     ServerFeaturesService::ServerFeaturesService(
         std::shared_ptr<::HaloDesktop::Api::ApiClient> api,
         std::shared_ptr<::HaloDesktop::Api::BackendSelector> backends,
+        std::function<bool()> deviceTmdbUsable,
         winrt::Microsoft::UI::Dispatching::DispatcherQueue dispatcher)
-        : m_api(std::move(api)), m_backends(std::move(backends)), m_dispatcher(std::move(dispatcher))
+        : m_api(std::move(api)),
+          m_backends(std::move(backends)),
+          m_deviceTmdbUsable(std::move(deviceTmdbUsable)),
+          m_dispatcher(std::move(dispatcher))
     {
-        if (!m_api || !m_backends || !m_dispatcher)
+        if (!m_api || !m_backends || !m_deviceTmdbUsable || !m_dispatcher)
         {
-            throw std::invalid_argument{ "ServerFeaturesService requires the API client, a backend selector and a dispatcher." };
+            throw std::invalid_argument{ "ServerFeaturesService requires the API client, a backend selector, the TMDB key and a dispatcher." };
         }
+    }
+
+    void ServerFeaturesService::DeviceTmdbChanged()
+    {
+        // Only Halo without an account reads the key; an account's answer is the server's.
+        if (!m_backends->UsesDevice() || m_state != State::Loaded) return;
+        auto const usable = m_deviceTmdbUsable();
+        Apply(State::Loaded, ::HaloDesktop::Api::Dto::Capabilities{ .People = usable, .Lookup = usable });
     }
 
     void ServerFeaturesService::EnsureLoaded()
@@ -31,10 +43,12 @@ namespace HaloDesktop::Services
             return;
         }
         // These features live on the account's server; without an account
-        // there is no server to ask.
+        // there is no server to ask, and people search and id lookups go
+        // straight to TMDB while the viewer's own key works.
         if (m_backends->UsesDevice())
         {
-            Apply(State::Loaded, {});
+            auto const usable = m_deviceTmdbUsable();
+            Apply(State::Loaded, ::HaloDesktop::Api::Dto::Capabilities{ .People = usable, .Lookup = usable });
             return;
         }
         m_state = State::Loading;

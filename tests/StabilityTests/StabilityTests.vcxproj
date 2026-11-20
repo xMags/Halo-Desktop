@@ -180,6 +180,12 @@
       <Link>HomeShelfLoadPolicy.cpp</Link>
     </ClCompile>
     <ClCompile Include="SearchResultsTests.cpp" />
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Tmdb\TmdbCredential.cpp">
+      <Link>TmdbCredential.cpp</Link>
+    </ClCompile>
+    <ClCompile Include="..\..\src\HaloDesktop\Services\Tmdb\TmdbPeoplePolicy.cpp">
+      <Link>TmdbPeoplePolicy.cpp</Link>
+    </ClCompile>
     <ClCompile Include="..\..\src\HaloDesktop\Services\SearchResultsPolicy.cpp">
       <Link>SearchResultsPolicy.cpp</Link>
     </ClCompile>

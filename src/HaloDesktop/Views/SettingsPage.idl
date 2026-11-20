@@ -115,10 +115,26 @@ namespace HaloDesktop
     }
 
     [default_interface]
+    // Settings' TMDB key card, for Halo without an account (ViewModels/TmdbKeyViewModel.h).
+    runtimeclass TmdbKeyViewModel : Microsoft.UI.Xaml.Data.INotifyPropertyChanged
+    {
+        String KeyText;
+        Boolean CanSave { get; };
+        String SaveButtonText { get; };
+        String StatusText { get; };
+        Microsoft.UI.Xaml.Visibility StatusOkVisibility { get; };
+        Microsoft.UI.Xaml.Visibility StatusProblemVisibility { get; };
+        Microsoft.UI.Xaml.Visibility EntryVisibility { get; };
+        Microsoft.UI.Xaml.Visibility SavedVisibility { get; };
+        void Save();
+        void Remove();
+    }
+
     runtimeclass SettingsPage : Microsoft.UI.Xaml.Controls.Page
     {
         SettingsPage();
         SettingsViewModel ViewModel { get; };
+        TmdbKeyViewModel TmdbKey { get; };
         // The word Windows Settings shows beside a switch: "On" or "Off".
         static String OnOffText(Boolean isOn);
     }

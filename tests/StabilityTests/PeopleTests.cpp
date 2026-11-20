@@ -4,6 +4,8 @@
 #include "Services/FilmographyPolicy.h"
 #include "Services/PeopleRowPolicy.h"
 #include "Services/SearchResultsPolicy.h"
+#include "Services/Tmdb/TmdbCredential.h"
+#include "Services/Tmdb/TmdbPeoplePolicy.h"
 
 #include <stdexcept>
 #include <string>
@@ -16,6 +18,7 @@ namespace
     namespace Dto = HaloDesktop::Api::Dto;
     namespace Mappers = HaloDesktop::Api::Mappers;
     namespace Services = HaloDesktop::Services;
+    namespace Tmdb = HaloDesktop::Services::Tmdb;
 
     void Require(bool condition, std::string const& message)
     {
@@ -385,8 +388,163 @@ namespace
     }
 }
 
+namespace
+{
+    // What a pasted TMDB credential is taken for, by shape only.
+    void TestTmdbCredentials()
+    {
+        auto const key = Tmdb::ParseTmdbCredential(L"  0123456789abcdefABCDEF0123456789 \n");
+        Require(key && key->Kind == Tmdb::TmdbCredentialKind::ApiKey && key->Value == L"0123456789abcdefABCDEF0123456789",
+            "an API key with spaces around it was not taken");
+        Require(!Tmdb::ParseTmdbCredential(L"0123456789abcdef0123456789abcde"), "a 31-character key was taken");
+        Require(!Tmdb::ParseTmdbCredential(L"0123456789abcdef0123456789abcdeg"), "a key with a non-hex letter was taken");
+        std::wstring const header(40, L'a');
+        std::wstring const payload(60, L'B');
+        std::wstring const signature(43, L'c');
+        auto const token = Tmdb::ParseTmdbCredential(header + L"." + payload + L"." + signature);
+        Require(token && token->Kind == Tmdb::TmdbCredentialKind::ReadToken, "a read access token was not taken");
+        Require(!Tmdb::ParseTmdbCredential(header + L"." + payload + signature), "a token with two parts was taken");
+        Require(!Tmdb::ParseTmdbCredential(header + L".." + payload + L"." + signature), "a token with an empty part was taken");
+        Require(!Tmdb::ParseTmdbCredential(header + L"." + payload + L"." + signature + L"/"), "a token with a stray character was taken");
+        Require(!Tmdb::ParseTmdbCredential(L""), "nothing was taken for a key");
+    }
+
+    // TMDB's people search, read as the server reads it.
+    void TestTmdbPeopleSearch()
+    {
+        std::wstring body = LR"({"results":[
+            {"id":525,"name":" Christopher Nolan ","known_for_department":"Directing","profile_path":"/xuAIuYSmsUzKlUMBFGVZaWsY3DZ.jpg","popularity":12.5,
+             "known_for":[{"title":"Inception"},{"name":"Westworld"},{"title":"Interstellar"},{"title":"Tenet"}]},
+            {"id":-4,"name":"Negative"},
+            {"id":7,"name":""},
+            {"id":8,"name":"Bad Photo","profile_path":"/../x.jpg","known_for_department":"Sound"},
+            {"id":9,"name":"Two"},{"id":10,"name":"Three"},{"id":11,"name":"Four"},{"id":12,"name":"Five"},
+            {"id":13,"name":"Six"},{"id":14,"name":"Seven"},{"id":15,"name":"Eight"}]})";
+        auto const people = Tmdb::ParsePeopleSearch(Json(body));
+        Require(people.size() == Tmdb::MaximumSearchPeople, "a people search kept more than eight people or dropped a valid one");
+        Require(people[0].TmdbId == 525 && people[0].Name == L"Christopher Nolan", "a person's id or trimmed name was misread");
+        Require(people[0].KnownFor == std::optional<std::wstring>{ L"Directing" }, "a department was misread");
+        Require(people[0].Photo == std::optional<std::wstring>{ L"https://image.tmdb.org/t/p/w185/xuAIuYSmsUzKlUMBFGVZaWsY3DZ.jpg" },
+            "a profile photo was not made a w185 address");
+        Require(people[0].KnownForTitles == std::vector<std::wstring>{ L"Inception", L"Westworld", L"Interstellar" },
+            "known-for titles were not read from title or name, three at most");
+        Require(people[1].TmdbId == 8 && !people[1].Photo && !people[1].KnownFor, "an unsafe photo path or unknown department was kept");
+    }
+
+    // A person's credits: roles merged per title, appearances and talk shows dropped.
+    void TestTmdbCredits()
+    {
+        std::wstring body = LR"({"id":525,"name":"Christopher Nolan","biography":"  First one. Second one. ","known_for_department":"Directing",
+            "combined_credits":{
+              "cast":[
+                {"media_type":"movie","id":1,"title":"Tenet","release_date":"2020-08-22","popularity":40,"character":"Cameo","poster_path":"/tenet.jpg"},
+                {"media_type":"tv","id":2,"name":"The Talk Show","first_air_date":"2010-01-01","popularity":90,"genre_ids":[10767]},
+                {"media_type":"movie","id":3,"title":"A Documentary","popularity":80,"character":"Himself - Interviewee"},
+                {"media_type":"person","id":4,"name":"Not a title","popularity":99}
+              ],
+              "crew":[
+                {"media_type":"movie","id":1,"title":"Tenet","job":"Director","department":"Directing","popularity":40},
+                {"media_type":"movie","id":1,"title":"Tenet","job":"Screenplay","department":"Writing","popularity":40},
+                {"media_type":"movie","id":5,"title":"Interstellar","job":"Director","department":"Directing","popularity":60,"release_date":"2014"},
+                {"media_type":"tv","id":6,"name":"Westworld","job":"Writer","department":"Writing","popularity":50,"genre_ids":[18]}
+              ]}})";
+        auto const person = Tmdb::ParsePersonDetails(Json(body));
+        Require(person && person->TmdbId == 525 && person->Name == L"Christopher Nolan", "a person was not read");
+        Require(person->Biography == std::optional<std::wstring>{ L"First one. Second one." }, "a biography was not trimmed");
+        auto const& credits = person->Credits;
+        Require(credits.size() == 3, "appearances, talk shows or non-titles were kept among the credits");
+        Require(credits[0].Title.Name == L"Interstellar" && credits[1].Title.Name == L"Westworld" && credits[2].Title.Name == L"Tenet",
+            "credits were not ordered most popular first");
+        Require(credits[2].Roles == std::vector<Tmdb::CreditRole>{ Tmdb::CreditRole::Cast, Tmdb::CreditRole::Director, Tmdb::CreditRole::Writer },
+            "a title's roles were not merged in order");
+        Require(credits[2].Character == std::optional<std::wstring>{ L"Cameo" }, "a cast credit's character was lost");
+        Require(credits[2].Title.Year == std::optional<std::wstring>{ L"2020" } && !credits[0].Title.Year,
+            "a release year was misread, or one without a full date was kept");
+        Require(credits[1].Title.Type == Tmdb::TitleType::Series, "a series credit was taken for a film");
+        Require(!Tmdb::ParsePersonDetails(Json(LR"({"id":1,"name":"  "})")), "a person without a name was accepted");
+    }
+
+    void TestTmdbSentencesAndIds()
+    {
+        Require(Tmdb::EndAtSentence(L"Aaaa bbb. Cc dd. Eeeeeeeeeeee", 20) == L"Aaaa bbb. Cc dd.", "a biography was not cut at its last sentence");
+        Require(Tmdb::EndAtSentence(L"Hi. aaaaaaaaaaaaaaaaaaaaaaaa", 20) == L"Hi. aaaaaaaaaaaaaaaa", "an early sentence end was taken over the cut");
+        Require(Tmdb::EndAtSentence(L"Short.", 20) == L"Short.", "a short text was changed");
+        Require(Tmdb::ParseImdbId(Json(LR"({"imdb_id":"tt0816692"})")) == std::optional<std::wstring>{ L"tt0816692" }, "an IMDb id was misread");
+        Require(!Tmdb::ParseImdbId(Json(LR"({"imdb_id":"nm0634240"})")) && !Tmdb::ParseImdbId(Json(LR"({"imdb_id":null})")),
+            "something other than a title id was taken for one");
+        auto const found = Tmdb::ParseFind(Json(LR"({"movie_results":[{"id":157336,"title":"Interstellar","release_date":"2014-11-05"}],
+            "tv_results":[],"person_results":[{"id":525,"name":"Christopher Nolan"}]})"));
+        Require(found.Movies.size() == 1 && found.Movies[0].TmdbId == 157336 && found.People.size() == 1 && found.Series.empty(),
+            "a find answer was misread");
+    }
+
+    // A misspelled name: searched word by word, kept only when nearly what was typed.
+    void TestTmdbClosestPeople()
+    {
+        Require(Tmdb::ClosestPeopleWords(L"Crystophar Nolan") == std::vector<std::wstring>{ L"crystophar", L"nolan" },
+            "a misspelled name was not searched by its words, longest first");
+        Require(Tmdb::ClosestPeopleWords(L"Nolan").empty(), "a one-word name was searched word by word");
+        Require(Tmdb::ClosestPeopleWords(L"al de pacino") == std::vector<std::wstring>{ L"pacino" }, "short words were searched");
+        Require(Tmdb::EditDistance(L"kitten", L"sitting", 5) == 3, "an edit distance was wrong");
+        Require(Tmdb::EditDistance(L"abc", L"xyzxyz", 1) == 2, "a distance over the limit was not cut short");
+        Require(Tmdb::AllowedDistance(16) == 4 && Tmdb::AllowedDistance(2) == 1, "the allowed distance was wrong");
+
+        std::vector<std::vector<Tmdb::PersonSummary>> const answers{
+            { Tmdb::PersonSummary{ .TmdbId = 525, .Name = L"Christopher Nolan", .Popularity = 10 },
+              Tmdb::PersonSummary{ .TmdbId = 527, .Name = L"Jonathan Nolan", .Popularity = 20 } },
+            { Tmdb::PersonSummary{ .TmdbId = 525, .Name = L"Christopher Nolan", .Popularity = 10 } },
+        };
+        auto const closest = Tmdb::RankClosestPeople(L"crystophar nolan", answers);
+        Require(closest && closest->Corrected == L"Christopher Nolan", "the person a misspelling means was not found");
+        Require(closest->People.size() == 1 && closest->People[0].TmdbId == 525, "someone too far from the typed name was kept, or a person twice");
+        Require(!Tmdb::RankClosestPeople(L"zzzzzz qqqqqq", answers), "a name near nobody found someone");
+    }
+
+    // The local answers read exactly as the server's do.
+    void TestTmdbAnswersReadAsTheServers()
+    {
+        std::vector<Tmdb::PersonSummary> const people{
+            Tmdb::PersonSummary{ .TmdbId = 525, .Name = L"Christopher Nolan", .KnownFor = L"Directing",
+                .Photo = L"https://image.tmdb.org/t/p/w185/x.jpg", .Popularity = 12.5, .KnownForTitles = { L"Inception" } },
+        };
+        auto const search = Tmdb::PeopleSearchAnswer(people, std::wstring{ L"Christopher Nolan" });
+        auto const read = Mappers::ParsePeopleSearch(search);
+        Require(read.size() == 1 && read[0].TmdbId == 525 && read[0].Name == L"Christopher Nolan"
+                && read[0].KnownFor == Dto::PersonDepartment::Directing && read[0].KnownForTitles.size() == 1,
+            "a local people answer was not read as the server's");
+        Require(Mappers::ParsePeopleCorrection(search, read) == std::optional<winrt::hstring>{ L"Christopher Nolan" },
+            "a local spelling correction was not read");
+
+        Tmdb::PersonDetails const person{ .TmdbId = 525, .Name = L"Christopher Nolan", .KnownFor = L"Directing", .Biography = L"Director." };
+        std::vector<Tmdb::MappedCredit> const credits{
+            Tmdb::MappedCredit{
+                .Credit = Tmdb::CreditCandidate{
+                    .Title = Tmdb::TitleHit{ .Type = Tmdb::TitleType::Movie, .TmdbId = 157336, .Name = L"Interstellar", .Year = L"2014", .Popularity = 60 },
+                    .Roles = { Tmdb::CreditRole::Director, Tmdb::CreditRole::Writer } },
+                .ImdbId = L"tt0816692" },
+        };
+        auto const detail = Mappers::ParsePerson(Tmdb::PersonAnswer(person, credits, true));
+        Require(detail.Person.TmdbId == 525 && detail.Partial && detail.Credits.size() == 1, "a local person answer was not read");
+        Require(detail.Credits[0].ImdbId == L"tt0816692" && detail.Credits[0].Type == L"movie" && detail.Credits[0].Roles.size() == 2,
+            "a local credit was not read");
+
+        auto const title = Mappers::ParseIdLookup(Tmdb::TitleLookupAnswer(
+            Tmdb::TitleHit{ .Type = Tmdb::TitleType::Series, .TmdbId = 1399, .Name = L"Game of Thrones", .Year = L"2011" }, L"tt0944947"));
+        Require(title.Kind == Dto::IdLookupKind::Title && title.Id == L"tt0944947" && title.Type == L"series",
+            "a local title lookup was not read");
+        auto const who = Mappers::ParseIdLookup(Tmdb::PersonLookupAnswer(Tmdb::PersonHit{ .TmdbId = 525, .Name = L"Christopher Nolan" }));
+        Require(who.Kind == Dto::IdLookupKind::Person && who.TmdbId == 525, "a local person lookup was not read");
+    }
+}
+
 void RunPeopleTests()
 {
+    TestTmdbCredentials();
+    TestTmdbPeopleSearch();
+    TestTmdbCredits();
+    TestTmdbSentencesAndIds();
+    TestTmdbClosestPeople();
+    TestTmdbAnswersReadAsTheServers();
     TestCapabilitiesMapping();
     TestTmdbImageUrls();
     TestPeopleSearchMapping();

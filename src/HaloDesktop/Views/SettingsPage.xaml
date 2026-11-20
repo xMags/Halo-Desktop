@@ -241,6 +241,71 @@
             <Border Style="{StaticResource SettingsCardStyle}" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}">
               <local:SettingRow Glyph="&#xE895;" Label="Sign in to sync" Hint="Your library, watch progress and addons are kept on this PC. Sign in to sync them across your devices."><local:SettingRow.SettingContent><Button Height="32" Padding="16,0" Click="OnSignInToSyncClick" Content="Sign in" FontSize="{StaticResource HaloFontLabel}" Style="{StaticResource HaloAccentButtonStyle}" /></local:SettingRow.SettingContent></local:SettingRow>
             </Border>
+            <!--
+              Without an account, people search and IMDb/TVDB links ask TMDB
+              directly with the viewer's own free key. The pasted key is never
+              shown back: once saved, the card says so and offers to remove it.
+              TMDB asks every app using its API to credit it, as the line under
+              the card does.
+            -->
+            <StackPanel Spacing="4" Visibility="{x:Bind ViewModel.DeviceAccountVisibility, Mode=OneWay}">
+              <Border Style="{StaticResource SettingsCardStyle}">
+                <Grid MinHeight="42" Padding="16,12" ColumnSpacing="16">
+                  <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="Auto" MaxWidth="250" /><ColumnDefinition Width="*" /><ColumnDefinition Width="Auto" /></Grid.ColumnDefinitions>
+                  <FontIcon VerticalAlignment="Center" FontSize="20" Foreground="{ThemeResource HaloText1Brush}" Glyph="&#xE77B;" />
+                  <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
+                    <TextBlock FontSize="{StaticResource HaloFontLabel}" Text="People search" />
+                    <TextBlock FontSize="{StaticResource HaloFontSmall}" Foreground="{ThemeResource HaloText3Brush}" Text="Uses your own free TMDB key for people search and IMDb and TVDB links." TextWrapping="Wrap" />
+                  </StackPanel>
+                  <PasswordBox
+                    x:Name="TmdbKeyBox"
+                    Grid.Column="2"
+                    Height="32"
+                    VerticalAlignment="Center"
+                    AutomationProperties.Name="TMDB API key or read access token"
+                    FontSize="{StaticResource HaloFontLabel}"
+                    KeyDown="OnTmdbKeyKeyDown"
+                    Password="{x:Bind TmdbKey.KeyText, Mode=TwoWay}"
+                    PlaceholderText="TMDB API key or read access token"
+                    Visibility="{x:Bind TmdbKey.EntryVisibility, Mode=OneWay}" />
+                  <Button
+                    Grid.Column="3"
+                    Height="32"
+                    Padding="18,0"
+                    VerticalAlignment="Center"
+                    Click="OnSaveTmdbKeyClick"
+                    Content="{x:Bind TmdbKey.SaveButtonText, Mode=OneWay}"
+                    FontSize="{StaticResource HaloFontLabel}"
+                    IsEnabled="{x:Bind TmdbKey.CanSave, Mode=OneWay}"
+                    Style="{StaticResource HaloAccentButtonStyle}"
+                    Visibility="{x:Bind TmdbKey.EntryVisibility, Mode=OneWay}" />
+                  <TextBlock
+                    Grid.Column="2"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    FontSize="{StaticResource HaloFontLabel}"
+                    Foreground="{ThemeResource HaloText2Brush}"
+                    Text="Key saved"
+                    Visibility="{x:Bind TmdbKey.SavedVisibility, Mode=OneWay}" />
+                  <Button
+                    Grid.Column="3"
+                    Height="32"
+                    Padding="16,0"
+                    VerticalAlignment="Center"
+                    Click="OnRemoveTmdbKeyClick"
+                    Content="Remove"
+                    FontSize="{StaticResource HaloFontLabel}"
+                    Style="{StaticResource HaloDangerOutlineButtonStyle}"
+                    Visibility="{x:Bind TmdbKey.SavedVisibility, Mode=OneWay}" />
+                </Grid>
+              </Border>
+              <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Polite" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind TmdbKey.StatusText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind TmdbKey.StatusOkVisibility, Mode=OneWay}" />
+              <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Assertive" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloCriticalBrush}" Text="{x:Bind TmdbKey.StatusText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind TmdbKey.StatusProblemVisibility, Mode=OneWay}" />
+              <StackPanel Margin="2,2,0,0" Spacing="2">
+                <HyperlinkButton Padding="0" Content="Get a free TMDB key" FontSize="{StaticResource HaloFontSmall}" NavigateUri="https://www.themoviedb.org/settings/api" />
+                <TextBlock FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloText3Brush}" Text="This product uses the TMDB API but is not endorsed or certified by TMDB." TextWrapping="Wrap" />
+              </StackPanel>
+            </StackPanel>
           </StackPanel>
 
           <StackPanel x:Name="AppearanceSection" Spacing="4">

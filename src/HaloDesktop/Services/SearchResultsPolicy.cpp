@@ -330,6 +330,11 @@ namespace HaloDesktop::Services
         return LowerText(stripped);
     }
 
+    std::wstring NameKey(std::wstring_view text)
+    {
+        return Joined(SplitOnNonLettersOrNumbers(FoldedText(text)));
+    }
+
     std::wstring TrimmedText(std::wstring_view text)
     {
         while (!text.empty() && IsJsWhitespace(static_cast<char32_t>(text.front()))) text.remove_prefix(1);
