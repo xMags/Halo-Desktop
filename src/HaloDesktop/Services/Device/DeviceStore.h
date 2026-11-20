@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <string>
 #include <pplawait.h>
@@ -23,6 +24,17 @@ namespace HaloDesktop::Services::Device
         // The document's UTF-8 text.
         [[nodiscard]] virtual concurrency::task<std::optional<std::string>> ReadAsync(DeviceCollection collection) = 0;
         [[nodiscard]] virtual concurrency::task<void> WriteAsync(DeviceCollection collection, std::string contents) = 0;
+
+        // Turns the document's current text (empty when never written) into
+        // its next text, or into nothing to leave it as it is. Synchronous and
+        // quick: it runs while every other Halo process is kept from the file.
+        using DocumentTransform = std::function<std::optional<std::string>(std::optional<std::string> const& current)>;
+
+        // Reads the document, hands it to `transform` and writes what comes
+        // back as one step that no other writer, in this process or another
+        // Halo process, can come between. A transform that throws writes
+        // nothing, and its exception comes out of the task.
+        [[nodiscard]] virtual concurrency::task<void> UpdateAsync(DeviceCollection collection, DocumentTransform transform) = 0;
 
     protected:
         IDeviceDocumentStore() = default;
@@ -60,6 +72,10 @@ namespace HaloDesktop::Services::Device
 
         [[nodiscard]] concurrency::task<std::optional<std::string>> ReadAsync(DeviceCollection collection) override;
         [[nodiscard]] concurrency::task<void> WriteAsync(DeviceCollection collection, std::string contents) override;
+        // One background thread holds the file lock from the read to the
+        // write; nothing between them is awaited, since the lock is a named
+        // mutex that only the thread that took it can release.
+        [[nodiscard]] concurrency::task<void> UpdateAsync(DeviceCollection collection, DocumentTransform transform) override;
 
         // The saved profile, or empty when Halo has not been used here without
         // an account.

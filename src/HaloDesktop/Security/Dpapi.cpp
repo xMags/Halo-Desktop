@@ -165,18 +165,14 @@ namespace
 
 namespace HaloDesktop::Security
 {
-    concurrency::task<void> WriteProtectedTextAsync(
-        std::filesystem::path path,
+    void WriteProtectedTextLocked(
+        std::filesystem::path const& path,
         std::string plaintext)
     {
-        co_await winrt::resume_background();
         if (path.empty())
         {
             throw std::invalid_argument{ "A protected file path is required." };
         }
-
-        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
-
         std::vector<std::uint8_t> plaintextBytes(plaintext.begin(), plaintext.end());
         auto wipePlaintext = wil::scope_exit([&plaintext, &plaintextBytes]() noexcept
         {
@@ -235,18 +231,15 @@ namespace HaloDesktop::Security
         removeTemporary.release();
     }
 
-    concurrency::task<std::optional<std::string>> ReadProtectedTextAsync(
-        std::filesystem::path path,
+
+    std::optional<std::string> ReadProtectedTextLocked(
+        std::filesystem::path const& path,
         std::uint64_t maximumBytes)
     {
-        co_await winrt::resume_background();
         if (path.empty())
         {
             throw std::invalid_argument{ "A protected file path is required." };
         }
-
-        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
-
         wil::unique_hfile file{ CreateFileW(
             path.c_str(),
             GENERIC_READ,
@@ -260,7 +253,7 @@ namespace HaloDesktop::Security
             auto const error = GetLastError();
             if (error == ERROR_FILE_NOT_FOUND || error == ERROR_PATH_NOT_FOUND)
             {
-                co_return std::nullopt;
+                return std::nullopt;
             }
             ThrowLastError(L"Windows could not open protected Halo data.");
         }
@@ -279,7 +272,35 @@ namespace HaloDesktop::Security
                 SecureZeroMemory(plaintextBytes.data(), plaintextBytes.size());
             }
         });
-        co_return std::string(plaintextBytes.begin(), plaintextBytes.end());
+        return std::string(plaintextBytes.begin(), plaintextBytes.end());
+    }
+
+
+    concurrency::task<void> WriteProtectedTextAsync(
+        std::filesystem::path path,
+        std::string plaintext)
+    {
+        co_await winrt::resume_background();
+        if (path.empty())
+        {
+            throw std::invalid_argument{ "A protected file path is required." };
+        }
+        // Taken and released on this thread: nothing below is awaited.
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
+        WriteProtectedTextLocked(path, std::move(plaintext));
+    }
+
+    concurrency::task<std::optional<std::string>> ReadProtectedTextAsync(
+        std::filesystem::path path,
+        std::uint64_t maximumBytes)
+    {
+        co_await winrt::resume_background();
+        if (path.empty())
+        {
+            throw std::invalid_argument{ "A protected file path is required." };
+        }
+        ::HaloDesktop::Storage::FileMutationLock const fileLock{ path };
+        co_return ReadProtectedTextLocked(path, maximumBytes);
     }
 
     concurrency::task<void> DeleteProtectedFileAsync(std::filesystem::path path)

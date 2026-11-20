@@ -27,4 +27,16 @@ namespace HaloDesktop::Security
 
     [[nodiscard]] concurrency::task<void> DeleteProtectedFileAsync(
         std::filesystem::path path);
+
+    // The same read and write without the lock or the thread hop, for a caller
+    // that already holds the file's Storage::FileMutationLock on this thread
+    // (a named mutex, released only by the thread that took it). They do disk
+    // and cryptography work on the calling thread, so never call them on a UI
+    // thread.
+    [[nodiscard]] std::optional<std::string> ReadProtectedTextLocked(
+        std::filesystem::path const& path,
+        std::uint64_t maximumBytes);
+    void WriteProtectedTextLocked(
+        std::filesystem::path const& path,
+        std::string plaintext);
 }

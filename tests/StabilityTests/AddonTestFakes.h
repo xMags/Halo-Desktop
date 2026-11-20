@@ -10,6 +10,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <map>
 #include <mutex>
 #include <optional>
@@ -155,6 +156,27 @@ namespace AddonTests
                 std::scoped_lock const lock{ m_mutex };
                 m_documents.insert_or_assign(collection, std::move(contents));
             }
+            co_return;
+        }
+
+        // Runs at the start of each update, before the update reads: a test's
+        // stand-in for another Halo process writing after this one last read.
+        std::function<void(MemoryStore&, HaloDesktop::Services::Device::DeviceCollection)> BeforeUpdate;
+        // Runs once an update has written, or chosen not to.
+        std::function<void(MemoryStore&, HaloDesktop::Services::Device::DeviceCollection)> AfterUpdate;
+
+        [[nodiscard]] concurrency::task<void> UpdateAsync(
+            HaloDesktop::Services::Device::DeviceCollection collection,
+            DocumentTransform transform) override
+        {
+            if (BeforeUpdate) BeforeUpdate(*this, collection);
+            {
+                std::scoped_lock const lock{ m_mutex };
+                std::optional<std::string> current;
+                if (auto const found = m_documents.find(collection); found != m_documents.end()) current = found->second;
+                if (auto next = transform(current)) m_documents.insert_or_assign(collection, std::move(*next));
+            }
+            if (AfterUpdate) AfterUpdate(*this, collection);
             co_return;
         }
 

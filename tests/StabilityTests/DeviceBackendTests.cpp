@@ -21,6 +21,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 #include <wil/resource.h>
 
@@ -213,6 +214,68 @@ namespace
         Require(harness.Backend->GetAddonsAsync().get().User.at(0).Catalogs.size() == 1, "showing the catalogs again did not list them");
         RejectsWithStatus([&harness]() { harness.Backend->PatchAddonAsync(L"missing", true).get(); },
                           404, "patching an unknown addon was not a 404");
+    }
+
+    // Another Halo window writes the addon list after this one read it to
+    // fetch manifests: the list saved is built from what is there at the
+    // write, so the other window's change survives.
+    void TestAddonSaveBuildsOnTheListAtTheWrite()
+    {
+        auto const harness = MakeBackend({});
+        harness.Backend->PutAddonsAsync(Urls({ CatalogAddon })).get();
+        auto const catalogId = harness.Backend->GetAddonsAsync().get().User.at(0).Id;
+
+        // The other window hides the catalog's rows meanwhile.
+        auto other = true;
+        harness.Store->BeforeUpdate = [&other, &catalogId](AddonTests::MemoryStore& store, Device::DeviceCollection collection)
+        {
+            if (!other || collection != Device::DeviceCollection::Addons) return;
+            other = false;
+            auto addons = Device::ReadAddonsDocument(store.Get(collection));
+            for (auto& addon : addons)
+            {
+                if (addon.Id == catalogId.c_str()) addon.HideCatalogs = true;
+            }
+            store.Set(collection, Device::WriteAddonsDocument(addons));
+        };
+        harness.Backend->PutAddonsAsync(Urls({ CatalogAddon, StreamA })).get();
+        auto const listed = harness.Backend->GetAddonsAsync().get().User;
+        Require(listed.size() == 2 && listed[0].Id == catalogId && listed[0].HideCatalogs
+                    && listed[1].TransportUrl == winrt::hstring{ StreamA },
+                "an addon save wrote over another window's change to the list");
+
+        // The other window removes an addon this save keeps: its manifest was
+        // never fetched here, so the save starts over and fetches it.
+        auto const retry = MakeBackend({});
+        retry.Backend->PutAddonsAsync(Urls({ StreamA })).get();
+        auto removed = true;
+        retry.Store->BeforeUpdate = [&removed](AddonTests::MemoryStore& store, Device::DeviceCollection collection)
+        {
+            if (!removed || collection != Device::DeviceCollection::Addons) return;
+            removed = false;
+            store.Set(collection, Device::WriteAddonsDocument({}));
+        };
+        retry.Backend->PutAddonsAsync(Urls({ StreamA, StreamB })).get();
+        auto const after = retry.Backend->GetAddonsAsync().get().User;
+        Require(after.size() == 2 && after[0].TransportUrl == winrt::hstring{ StreamA }
+                    && after[1].TransportUrl == winrt::hstring{ StreamB },
+                "an addon save did not start over when the list lost an addon it keeps");
+
+        // Another window that keeps taking an addon away at the write and
+        // putting it back before the next read ends in a refusal, not a guess.
+        auto const busy = MakeBackend({});
+        busy.Backend->PutAddonsAsync(Urls({ StreamA })).get();
+        auto const original = busy.Store->Get(Device::DeviceCollection::Addons).value_or("");
+        busy.Store->BeforeUpdate = [](AddonTests::MemoryStore& store, Device::DeviceCollection collection)
+        {
+            if (collection == Device::DeviceCollection::Addons) store.Set(collection, Device::WriteAddonsDocument({}));
+        };
+        busy.Store->AfterUpdate = [original](AddonTests::MemoryStore& store, Device::DeviceCollection collection)
+        {
+            if (collection == Device::DeviceCollection::Addons) store.Set(collection, original);
+        };
+        RejectsWithStatus([&busy]() { busy.Backend->PutAddonsAsync(Urls({ StreamA, StreamB })).get(); },
+                          409, "an addon list that kept changing was saved anyway");
     }
 
     // An addon stored before installs required a shown name (blank after
@@ -610,6 +673,52 @@ namespace
         return false;
     }
 
+    // Two stores over one folder stand for two Halo processes: each update's
+    // read and write is one step, so no increment is lost, in a plain document
+    // and in the protected addon list.
+    void TestStoreUpdatesDoNotInterleave()
+    {
+        TemporaryFolder const folder{ L"update" };
+        auto const first = std::make_shared<Device::DeviceStore>(folder.Path());
+        auto const second = std::make_shared<Device::DeviceStore>(folder.Path());
+        auto const increment = [](std::optional<std::string> const& text) -> std::optional<std::string>
+        {
+            auto const value = text ? std::stoi(*text) : 0;
+            return std::to_string(value + 1);
+        };
+        auto const race = [&increment](std::shared_ptr<Device::DeviceStore> const& store, Device::DeviceCollection collection, int times)
+        {
+            for (int index = 0; index < times; ++index) store->UpdateAsync(collection, increment).get();
+        };
+        for (auto const& [collection, times] : { std::pair{ Device::DeviceCollection::Settings, 40 }, std::pair{ Device::DeviceCollection::Addons, 12 } })
+        {
+            std::thread a{ race, first, collection, times };
+            std::thread b{ race, second, collection, times };
+            a.join();
+            b.join();
+            Require(first->ReadAsync(collection).get() == std::optional<std::string>{ std::to_string(times * 2) },
+                    "an update from another process was lost between its read and write");
+        }
+
+        // A transform that throws, or answers nothing, writes nothing.
+        auto refused = false;
+        try
+        {
+            first->UpdateAsync(Device::DeviceCollection::Settings, [](std::optional<std::string> const&) -> std::optional<std::string>
+            {
+                throw std::runtime_error{ "no" };
+            }).get();
+        }
+        catch (std::runtime_error const&)
+        {
+            refused = true;
+        }
+        first->UpdateAsync(Device::DeviceCollection::Settings, [](std::optional<std::string> const&) { return std::optional<std::string>{}; }).get();
+        Require(refused && first->ReadAsync(Device::DeviceCollection::Settings).get() == std::optional<std::string>{ "80" },
+                "an update that was refused changed the document");
+        Require(!HasTemporaryFiles(folder.Path()), "an update left a temporary file");
+    }
+
     void TestStoreRoundTrip()
     {
         TemporaryFolder const folder{ L"round-trip" };
@@ -840,6 +949,7 @@ void RunDeviceBackendTests()
     TestOneBadManifestFailsTheInstall();
     TestAddonListsAreRefused();
     TestHiddenCatalogs();
+    TestAddonSaveBuildsOnTheListAtTheWrite();
     TestStoredBlankNamedAddonStaysUsable();
     TestCatalogs();
     TestMetaFirstAddonThatDescribes();
@@ -854,6 +964,7 @@ void RunDeviceBackendTests()
     TestSettings();
     TestUnreadableDocumentIsReportedNotReplaced();
     TestStoreRoundTrip();
+    TestStoreUpdatesDoNotInterleave();
     TestStoreUnreadableDocumentsAreLeftUntouched();
     TestStoreFailedWriteKeepsTheOldFile();
     TestDownloadPartitionVector();

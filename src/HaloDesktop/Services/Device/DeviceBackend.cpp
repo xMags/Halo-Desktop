@@ -11,7 +11,10 @@
 #include <cwctype>
 #include <iterator>
 #include <stdexcept>
+#include <optional>
+#include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 
 namespace
@@ -35,6 +38,10 @@ namespace
         if (message.size() > 512) message.resize(512);
         throw winrt::hresult_error{ ::HaloDesktop::Api::ApiError::MakeHttpStatus(status), winrt::hstring{ message } };
     }
+
+    // How many times saving the addon list starts over when another Halo
+    // process keeps changing it between the manifest fetch and the write.
+    constexpr int MaximumAddonListRounds = 3;
 
     // One write's turn on its collection. It waits for the write before it and
     // hands over when it is destroyed, whatever happened. The previous turn's
@@ -178,33 +185,59 @@ namespace HaloDesktop::Services::Device
         WriteTurn const turn{ queue.Mutex, queue.Tail };
         if (auto previous = turn.Previous()) co_await *previous;
 
-        auto const current = co_await ReadAddonsAsync();
-        std::unordered_map<std::wstring, StoredAddon const*> byUrl;
-        for (auto const& addon : current) byUrl.emplace(addon.TransportUrl, &addon);
-        std::vector<std::wstring> fresh;
-        std::copy_if(urls.begin(), urls.end(), std::back_inserter(fresh), [&byUrl](std::wstring const& url)
-        {
-            return !byUrl.contains(url);
-        });
-
-        auto const resolved = co_await Addons::FetchManifestsAsync(fresh, m_fetcher, m_timeout);
-        if (resolved.Error) ThrowApiError(400, *resolved.Error);
+        // Manifests are fetched outside the file lock, so another Halo process
+        // can change the list meanwhile. The list is built again from what the
+        // update reads under the lock; if that needs a manifest not fetched (an
+        // addon kept from the first read was removed meanwhile), the write is
+        // abandoned and the round runs again with that manifest fetched.
         std::unordered_map<std::wstring, Json::JsonObject> fetched;
-        for (auto const& [url, manifest] : resolved.Entries) fetched.insert_or_assign(url, manifest);
-
-        auto const addedAt = Now();
-        std::vector<StoredAddon> next;
-        next.reserve(urls.size());
-        for (auto const& url : urls)
+        for (int round = 0; round < MaximumAddonListRounds; ++round)
         {
-            if (auto const kept = byUrl.find(url); kept != byUrl.end())
+            auto const current = co_await ReadAddonsAsync();
+            std::unordered_set<std::wstring> stored;
+            for (auto const& addon : current) stored.insert(addon.TransportUrl);
+            std::vector<std::wstring> missing;
+            std::copy_if(urls.begin(), urls.end(), std::back_inserter(missing), [&stored, &fetched](std::wstring const& url)
             {
-                next.push_back(*kept->second);
-                continue;
+                return !stored.contains(url) && !fetched.contains(url);
+            });
+            if (!missing.empty())
+            {
+                auto const resolved = co_await Addons::FetchManifestsAsync(missing, m_fetcher, m_timeout);
+                if (resolved.Error) ThrowApiError(400, *resolved.Error);
+                for (auto const& [url, manifest] : resolved.Entries) fetched.insert_or_assign(url, manifest);
             }
-            next.push_back({ NewId(), url, fetched.at(url), false, addedAt });
+
+            auto const addedAt = Now();
+            auto unfetched = false;
+            co_await m_store->UpdateAsync(DeviceCollection::Addons,
+                [this, &urls, &fetched, &unfetched, addedAt](std::optional<std::string> const& text) -> std::optional<std::string>
+            {
+                auto const now = ReadAddonsDocument(text);
+                std::unordered_map<std::wstring, StoredAddon const*> byUrl;
+                for (auto const& addon : now) byUrl.emplace(addon.TransportUrl, &addon);
+                std::vector<StoredAddon> next;
+                next.reserve(urls.size());
+                for (auto const& url : urls)
+                {
+                    if (auto const kept = byUrl.find(url); kept != byUrl.end())
+                    {
+                        next.push_back(*kept->second);
+                        continue;
+                    }
+                    auto const manifest = fetched.find(url);
+                    if (manifest == fetched.end())
+                    {
+                        unfetched = true;
+                        return std::nullopt;
+                    }
+                    next.push_back({ NewId(), url, manifest->second, false, addedAt });
+                }
+                return WriteAddonsDocument(next);
+            });
+            if (!unfetched) co_return;
         }
-        co_await m_store->WriteAsync(DeviceCollection::Addons, WriteAddonsDocument(next));
+        ThrowApiError(409, L"the addon list kept changing while it was saved");
     }
 
     concurrency::task<void> DeviceBackend::PatchAddonAsync(winrt::hstring addonId, bool hideCatalogs)
@@ -214,14 +247,18 @@ namespace HaloDesktop::Services::Device
         WriteTurn const turn{ queue.Mutex, queue.Tail };
         if (auto previous = turn.Previous()) co_await *previous;
 
-        auto addons = co_await ReadAddonsAsync();
-        auto const target = std::find_if(addons.begin(), addons.end(), [&addonId](StoredAddon const& addon)
+        co_await m_store->UpdateAsync(DeviceCollection::Addons,
+            [&addonId, hideCatalogs](std::optional<std::string> const& text) -> std::optional<std::string>
         {
-            return addon.Id == std::wstring_view{ addonId };
+            auto addons = ReadAddonsDocument(text);
+            auto const target = std::find_if(addons.begin(), addons.end(), [&addonId](StoredAddon const& addon)
+            {
+                return addon.Id == std::wstring_view{ addonId };
+            });
+            if (target == addons.end()) ThrowApiError(404, L"addon not found");
+            target->HideCatalogs = hideCatalogs;
+            return WriteAddonsDocument(addons);
         });
-        if (target == addons.end()) ThrowApiError(404, L"addon not found");
-        target->HideCatalogs = hideCatalogs;
-        co_await m_store->WriteAsync(DeviceCollection::Addons, WriteAddonsDocument(addons));
     }
 
     /* Resolution */
@@ -347,8 +384,13 @@ namespace HaloDesktop::Services::Device
         WriteTurn const turn{ queue.Mutex, queue.Tail };
         if (auto previous = turn.Previous()) co_await *previous;
 
-        auto const merged = MergeLibrary(co_await ReadLibraryAsync(), rows);
-        co_await m_store->WriteAsync(DeviceCollection::Library, WriteLibraryDocument(merged));
+        std::vector<Api::Dto::LibraryRow> merged;
+        co_await m_store->UpdateAsync(DeviceCollection::Library,
+            [&merged, &rows](std::optional<std::string> const& text) -> std::optional<std::string>
+        {
+            merged = MergeLibrary(ReadLibraryDocument(text), rows);
+            return WriteLibraryDocument(merged);
+        });
         co_return Mappers::ParseLibrary(LibraryWire(merged));
     }
 
@@ -373,8 +415,13 @@ namespace HaloDesktop::Services::Device
         WriteTurn const turn{ queue.Mutex, queue.Tail };
         if (auto previous = turn.Previous()) co_await *previous;
 
-        auto const merged = MergeWatchStates(co_await ReadWatchStatesAsync(), rows);
-        co_await m_store->WriteAsync(DeviceCollection::WatchStates, WriteWatchStatesDocument(merged));
+        std::vector<Api::Dto::WatchEntry> merged;
+        co_await m_store->UpdateAsync(DeviceCollection::WatchStates,
+            [&merged, &rows](std::optional<std::string> const& text) -> std::optional<std::string>
+        {
+            merged = MergeWatchStates(ReadWatchStatesDocument(text), rows);
+            return WriteWatchStatesDocument(merged);
+        });
         co_return Mappers::ParseWatchState(WatchStatesWire(LiveWatchStates(merged)));
     }
 
@@ -399,13 +446,20 @@ namespace HaloDesktop::Services::Device
         WriteTurn const turn{ queue.Mutex, queue.Tail };
         if (auto previous = turn.Previous()) co_await *previous;
 
-        auto const stored = co_await ReadSettingsAsync();
-        if (stored && static_cast<double>(updatedAt) <= stored->UpdatedAt)
+        // Newest wins, decided against what is on disk under the lock.
+        std::optional<StoredSettings> kept;
+        co_await m_store->UpdateAsync(DeviceCollection::Settings,
+            [&kept, &ownValue, updatedAt](std::optional<std::string> const& text) -> std::optional<std::string>
         {
-            co_return Mappers::ParseSettings(SettingsJson(stored->Value, stored->UpdatedAt));
-        }
-        auto const document = WriteSettingsDocument(ownValue, updatedAt);
-        co_await m_store->WriteAsync(DeviceCollection::Settings, document);
+            auto stored = ReadSettingsDocument(text);
+            if (stored && static_cast<double>(updatedAt) <= stored->UpdatedAt)
+            {
+                kept = std::move(stored);
+                return std::nullopt;
+            }
+            return WriteSettingsDocument(ownValue, updatedAt);
+        });
+        if (kept) co_return Mappers::ParseSettings(SettingsJson(kept->Value, kept->UpdatedAt));
         co_return Mappers::ParseSettings(SettingsJson(ownValue, static_cast<double>(updatedAt)));
     }
 }

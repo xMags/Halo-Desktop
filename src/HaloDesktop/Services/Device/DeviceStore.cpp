@@ -93,12 +93,48 @@ namespace
         ThrowLastError("Could not remove this PC's saved data");
     }
 
+    // The document's text, for a caller holding the file's lock on this
+    // thread. An addon list that cannot be decrypted, or one too large, is
+    // unreadable and never overwritten.
+    std::optional<std::string> ReadLocked(std::filesystem::path const& path, Device::DeviceCollection collection);
+
     void RequireStorableSize(std::string const& contents)
     {
         if (contents.size() > Device::DeviceStore::MaximumDocumentBytes)
         {
             throw std::length_error{ "This PC's saved data is too large to store." };
         }
+    }
+}
+
+namespace
+{
+    std::optional<std::string> ReadLocked(std::filesystem::path const& path, Device::DeviceCollection collection)
+    {
+        if (collection != Device::DeviceCollection::Addons) return ReadPlainFile(path, collection);
+        try
+        {
+            return ::HaloDesktop::Security::ReadProtectedTextLocked(
+                path, Device::DeviceStore::MaximumDocumentBytes + ProtectionAllowanceBytes);
+        }
+        catch (std::length_error const&)
+        {
+        }
+        catch (winrt::hresult_error const&)
+        {
+            // Windows could not open or decrypt it; it stays as it is.
+        }
+        Device::ThrowDeviceDataUnreadable(collection);
+    }
+
+    void WriteLocked(std::filesystem::path const& path, Device::DeviceCollection collection, std::string contents)
+    {
+        if (collection == Device::DeviceCollection::Addons)
+        {
+            ::HaloDesktop::Security::WriteProtectedTextLocked(path, std::move(contents));
+            return;
+        }
+        ::HaloDesktop::Storage::WriteUtf8FileAtomic(path, contents);
     }
 }
 
@@ -127,29 +163,8 @@ namespace HaloDesktop::Services::Device
     {
         auto const path = PathFor(collection);
         co_await winrt::resume_background();
-        if (collection == DeviceCollection::Addons)
-        {
-            std::optional<std::string> text;
-            auto unreadable = false;
-            try
-            {
-                text = co_await ::HaloDesktop::Security::ReadProtectedTextAsync(
-                    path, MaximumDocumentBytes + ProtectionAllowanceBytes);
-            }
-            catch (std::length_error const&)
-            {
-                unreadable = true;
-            }
-            catch (winrt::hresult_error const&)
-            {
-                // Windows could not open or decrypt it; it stays as it is.
-                unreadable = true;
-            }
-            if (unreadable) ThrowDeviceDataUnreadable(collection);
-            co_return text;
-        }
         ::HaloDesktop::Storage::FileMutationLock const lock{ path };
-        co_return ReadPlainFile(path, collection);
+        co_return ReadLocked(path, collection);
     }
 
     concurrency::task<void> DeviceStore::WriteAsync(DeviceCollection collection, std::string contents)
@@ -157,13 +172,22 @@ namespace HaloDesktop::Services::Device
         auto const path = PathFor(collection);
         co_await winrt::resume_background();
         RequireStorableSize(contents);
-        if (collection == DeviceCollection::Addons)
-        {
-            co_await ::HaloDesktop::Security::WriteProtectedTextAsync(path, std::move(contents));
-            co_return;
-        }
         ::HaloDesktop::Storage::FileMutationLock const lock{ path };
-        ::HaloDesktop::Storage::WriteUtf8FileAtomic(path, contents);
+        WriteLocked(path, collection, std::move(contents));
+    }
+
+    concurrency::task<void> DeviceStore::UpdateAsync(DeviceCollection collection, DocumentTransform transform)
+    {
+        if (!transform) throw std::invalid_argument{ "A device document update needs a transform." };
+        auto const path = PathFor(collection);
+        co_await winrt::resume_background();
+        // From here to the end nothing is awaited, so the lock is released on
+        // the thread that took it.
+        ::HaloDesktop::Storage::FileMutationLock const lock{ path };
+        auto next = transform(ReadLocked(path, collection));
+        if (!next) co_return;
+        RequireStorableSize(*next);
+        WriteLocked(path, collection, std::move(*next));
     }
 
     concurrency::task<std::optional<DeviceProfile>> DeviceStore::ReadProfileAsync()
