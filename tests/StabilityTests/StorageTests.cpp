@@ -264,10 +264,38 @@ namespace
         Require(refuses([&store]() { store.FillPicture(true); }), "a preference was written over an oversized file");
         Require(ReadBytes(path).size() == oversized.size(), "an oversized preferences file was replaced");
 
-        // Read, but not preferences: the defaults, as before.
+        // Saved by a newer build: changes are refused and the file is kept,
+        // while reads fall back to the defaults.
+        std::string const newer = R"({"version":2,"theme":0,"lastServerAddress":"future.test"})";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(path, newer);
+        Require(refuses([&store]() { store.Theme(1); }), "a theme was written over a newer build's preferences");
+        auto const newerKept = ReadBytes(path);
+        Require(std::string(newerKept.begin(), newerKept.end()) == newer, "a newer build's preferences file was changed");
+        Require(store.Theme() == 2 && store.LastServerAddress().empty(), "a newer build's preferences were read as this build's");
+
+        // Read, but not preferences: a copy is kept aside, then the defaults.
+        auto const corruptCopies = [&temporary]()
+        {
+            std::vector<std::filesystem::path> found;
+            for (auto const& entry : std::filesystem::directory_iterator{ temporary.Path() })
+            {
+                auto const name = entry.path().filename().wstring();
+                if (name.starts_with(L"preferences.corrupt-") && name.ends_with(L".json")) found.push_back(entry.path());
+            }
+            return found;
+        };
         HaloDesktop::Storage::WriteUtf8FileAtomic(path, "not json");
         store.FillPicture(true);
         Require(store.FillPicture() && store.Theme() == 2, "a corrupt preferences file did not start again from the defaults");
+        auto copies = corruptCopies();
+        Require(copies.size() == 1 && ReadBytes(copies.front()) == std::vector<std::uint8_t>{ 'n', 'o', 't', ' ', 'j', 's', 'o', 'n' },
+            "a corrupt preferences file was not kept aside before the defaults replaced it");
+        std::this_thread::sleep_for(std::chrono::milliseconds{ 5 });
+        HaloDesktop::Storage::WriteUtf8FileAtomic(path, "broken again");
+        store.FillPicture(false);
+        copies = corruptCopies();
+        Require(copies.size() == 1 && ReadBytes(copies.front()).size() == std::string{ "broken again" }.size(),
+            "only the newest corrupt preferences copy was not the one kept");
 
         auto const missing = temporary.Path() / L"missing" / L"preferences.json";
         DevicePreferencesStore fresh{ missing };

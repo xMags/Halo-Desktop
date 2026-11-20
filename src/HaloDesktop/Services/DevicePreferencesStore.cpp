@@ -4,10 +4,14 @@
 #include "Storage/FileStorage.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <functional>
 #include <stdexcept>
+#include <string>
+#include <system_error>
 #include <utility>
+#include <vector>
 
 namespace
 {
@@ -84,6 +88,17 @@ namespace
         };
     }
 
+    // A preferences file a newer Halo Desktop wrote: never replaced, so a
+    // change made by this build is refused and the file waits for that build.
+    class NewerPreferencesError final : public std::runtime_error
+    {
+    public:
+        NewerPreferencesError()
+            : std::runtime_error{ "These preferences were saved by a newer version of Halo Desktop." }
+        {
+        }
+    };
+
     std::size_t SerializedBytes(JsonObject const& value)
     {
         return winrt::to_string(value.Stringify()).size();
@@ -98,6 +113,10 @@ namespace
         }
         auto const root = JsonObject::Parse(winrt::to_hstring(raw));
         auto const version = root.GetNamedNumber(L"version");
+        if (std::isfinite(version) && version > 1.0)
+        {
+            throw NewerPreferencesError{};
+        }
         if (!std::isfinite(version) || version != 1.0)
         {
             throw std::invalid_argument{ "The device preference version is unsupported." };
@@ -220,6 +239,47 @@ namespace
         return serialized;
     }
 
+    // `<stem>.corrupt-<milliseconds><extension>` beside the file.
+    std::filesystem::path CorruptCopyPath(std::filesystem::path const& path, std::int64_t at)
+    {
+        return path.parent_path()
+            / (path.stem().wstring() + L".corrupt-" + std::to_wstring(at) + path.extension().wstring());
+    }
+
+    bool IsCorruptCopyOf(std::filesystem::path const& candidate, std::filesystem::path const& path)
+    {
+        auto const name = candidate.filename().wstring();
+        auto const prefix = path.stem().wstring() + L".corrupt-";
+        auto const extension = path.extension().wstring();
+        if (name.size() <= prefix.size() + extension.size()) return false;
+        if (name.compare(0, prefix.size(), prefix) != 0) return false;
+        if (name.compare(name.size() - extension.size(), extension.size(), extension) != 0) return false;
+        auto const digits = name.substr(prefix.size(), name.size() - prefix.size() - extension.size());
+        return std::all_of(digits.begin(), digits.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; });
+    }
+
+    // Copies a file that was read but is not a preferences document aside
+    // before defaults replace it, keeping only this newest copy so a file that
+    // keeps breaking cannot fill the folder. Throws when the copy cannot be
+    // made, which refuses the change: the file is then left as it is.
+    void KeepCorruptCopy(std::filesystem::path const& path, std::string const& raw)
+    {
+        auto const at = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch()).count();
+        auto const copy = CorruptCopyPath(path, at);
+        HaloDesktop::Storage::WriteUtf8FileAtomic(copy, raw);
+        std::error_code error;
+        std::vector<std::filesystem::path> older;
+        for (auto const& entry : std::filesystem::directory_iterator{ path.parent_path(), error })
+        {
+            if (entry.path() != copy && IsCorruptCopyOf(entry.path(), path)) older.push_back(entry.path());
+        }
+        for (auto const& stale : older)
+        {
+            std::filesystem::remove(stale, error);
+        }
+    }
+
     template <typename Mutation>
     void Mutate(
         std::filesystem::path const& path,
@@ -238,10 +298,16 @@ namespace
         {
             current = Parse(raw);
         }
+        catch (NewerPreferencesError const&)
+        {
+            // A newer build's file: left exactly as it is.
+            throw;
+        }
         catch (...)
         {
-            // Read, but not a preferences document: nothing in it can be
-            // recovered, so it starts again from the defaults.
+            // Read, but not a preferences document: a copy is kept aside, and
+            // then it starts again from the defaults.
+            KeepCorruptCopy(path, raw);
             current = {};
         }
         std::invoke(std::forward<Mutation>(mutation), current);
