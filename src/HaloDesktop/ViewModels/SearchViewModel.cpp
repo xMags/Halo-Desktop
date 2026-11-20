@@ -395,14 +395,9 @@ namespace winrt::HaloDesktop::implementation
     winrt::Windows::Foundation::IInspectable SearchViewModel::PeopleItems() const { return m_people; }
 
     // People are not films or series, so a kind chip leaves them out.
-    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleAboveVisibility() const noexcept
+    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleVisibility() const noexcept
     {
-        return VisibleIf(m_peoplePlace == PeoplePlace::Above && m_filterIndex == 0);
-    }
-
-    Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleBelowVisibility() const noexcept
-    {
-        return VisibleIf(m_peoplePlace == PeoplePlace::Below && m_filterIndex == 0);
+        return VisibleIf(m_peopleShown && m_filterIndex == 0);
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleHintVisibility() const noexcept { return VisibleIf(PeopleAvailable()); }
@@ -981,8 +976,8 @@ namespace winrt::HaloDesktop::implementation
         // Chosen before the kind filter, so the filter does not move it.
         SetTopMatch(m_board.TopMatch());
         ShowSubsequence();
-        // The people row belongs to this reveal: in place now when its answer
-        // is already in, else below the results whenever it lands.
+        // The people row belongs to this reveal: placed now when its answer
+        // is already in, else on top whenever it lands.
         ForgetPeople();
         m_revealedQuery = query;
         auto titles = m_board.Titles();
@@ -990,7 +985,7 @@ namespace winrt::HaloDesktop::implementation
         m_bestTitleTier = Services::BestTitleTier(titles, query);
         if (m_peopleAnswer && m_peopleQuery == query)
         {
-            PlacePeople(PeoplePlace::Above);
+            PlacePeople();
         }
         ComposeRevealed(progress);
         FinishCompose();
@@ -1136,7 +1131,7 @@ namespace winrt::HaloDesktop::implementation
         auto const settledEmpty = !pending && m_libraryShown.empty() && m_resultCount == 0;
         m_filteredEmpty = settledEmpty && !progress.Groups.empty() && type.has_value();
         m_nothingFound = settledEmpty && !m_topMatchTitle && !type && progress.Total > 0
-            && progress.Failed.size() < progress.Total && m_peoplePlace == PeoplePlace::None;
+            && progress.Failed.size() < progress.Total && !m_peopleShown;
         // No catalog could be asked at all (the addons could not be listed),
         // or every one asked failed and nothing is on screen: the body says
         // so, and the status line stays empty so it is not said twice.
@@ -1158,7 +1153,7 @@ namespace winrt::HaloDesktop::implementation
             m_statusText = winrt::hstring{ Services::SearchFailureNote(progress.Failed, progress.Total) };
             m_statusFailed = !m_statusText.empty();
             // A misspelled name read as the person it most likely means.
-            if (m_statusText.empty() && m_peopleCorrected && m_peopleQuery == m_revealedQuery && m_peoplePlace != PeoplePlace::None)
+            if (m_statusText.empty() && m_peopleCorrected && m_peopleQuery == m_revealedQuery && m_peopleShown)
             {
                 m_statusText = winrt::hstring{ L"Showing results for " + m_peopleName };
             }
@@ -1442,10 +1437,10 @@ namespace winrt::HaloDesktop::implementation
         {
             ReofferAnswers();
         }
-        // The row goes under the results.
+        // The row still goes first, above what is already shown.
         if (!m_peopleDecided)
         {
-            PlacePeople(PeoplePlace::Below);
+            PlacePeople();
             changed = true;
         }
         if (changed)
@@ -1538,10 +1533,10 @@ namespace winrt::HaloDesktop::implementation
         m_credits.reset();
     }
 
-    void SearchViewModel::PlacePeople(PeoplePlace place)
+    void SearchViewModel::PlacePeople()
     {
         m_peopleDecided = true;
-        m_peoplePlace = PeoplePlace::None;
+        m_peopleShown = false;
         if (!m_peopleAnswer)
         {
             return;
@@ -1559,7 +1554,7 @@ namespace winrt::HaloDesktop::implementation
             items.push_back(winrt::make<SearchPersonViewModel>(person));
         }
         m_people.ReplaceAll(items);
-        m_peoplePlace = place;
+        m_peopleShown = true;
     }
 
     void SearchViewModel::ForgetPeople()
@@ -1568,7 +1563,7 @@ namespace winrt::HaloDesktop::implementation
         {
             m_people.Clear();
         }
-        m_peoplePlace = PeoplePlace::None;
+        m_peopleShown = false;
         m_peopleDecided = false;
     }
 
@@ -2205,7 +2200,7 @@ namespace winrt::HaloDesktop::implementation
                  L"RecentVisibility", L"HintsVisibility", L"StatusVisibility", L"StatusFailed", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
                  L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
                  L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility",
-                 L"PeopleAboveVisibility", L"PeopleBelowVisibility", L"PeopleHintVisibility", L"LinksHintText", L"Placeholder" })
+                 L"PeopleVisibility", L"PeopleHintVisibility", L"LinksHintText", L"Placeholder" })
         {
             Raise(name);
         }

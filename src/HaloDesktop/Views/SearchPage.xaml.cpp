@@ -138,8 +138,7 @@ namespace winrt::HaloDesktop::implementation
             LibraryGrid().ItemsSource(viewModel->LibraryItemsView());
             ResultsGrid().ItemsSource(viewModel->ResultItemsView());
             // One row of people, shown in one of its two places at a time.
-            PeopleAboveGrid().ItemsSource(viewModel->PeopleItemsView());
-            PeopleBelowGrid().ItemsSource(viewModel->PeopleItemsView());
+            PeopleGrid().ItemsSource(viewModel->PeopleItemsView());
         }
         m_viewModelChanged = m_viewModel.PropertyChanged(winrt::auto_revoke, [weak = get_weak()](
             winrt::Windows::Foundation::IInspectable const&,
@@ -504,7 +503,7 @@ namespace winrt::HaloDesktop::implementation
         PageBody().Padding({ current.Gutter, 40.0, current.Gutter, 40.0 });
         // The people rows too: a person's card sizes itself to the poster width
         // like any poster, so a slot fixed narrower would clip it.
-        for (auto const& layout : { LibraryLayout(), ResultsLayout(), PeopleAboveLayout(), PeopleBelowLayout() })
+        for (auto const& layout : { LibraryLayout(), ResultsLayout(), PeopleLayout() })
         {
             if (!layout) continue;
             layout.MinItemWidth(current.PosterWidth);

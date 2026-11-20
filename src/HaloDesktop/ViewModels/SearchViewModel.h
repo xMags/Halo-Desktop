@@ -70,10 +70,10 @@ namespace winrt::HaloDesktop::implementation
     // lays the grid out again.
     //
     // On a server with people search, a query also asks who matches it. The
-    // people row sits between the top match and the results when its answer
-    // was in by the reveal; one that lands later goes below the results, so
-    // nothing already shown moves. Without the feature (or an account) no
-    // people call is made and nothing about people is shown.
+    // people row always comes first, above the top match and the results. The
+    // reveal waits a while for its answer; one that lands later still goes on
+    // top, moving what is shown down once. Without the feature (or an account)
+    // no people call is made and nothing about people is shown.
     //
     // UI-thread only. Two timers (the typing pause, and the reveal check while
     // a query is unrevealed), both stopped on destruction; the service and the
@@ -98,9 +98,8 @@ namespace winrt::HaloDesktop::implementation
         auto ResultItemsView() const { return m_results; }
         [[nodiscard]] winrt::Windows::Foundation::IInspectable PeopleItems() const;
         auto PeopleItemsView() const { return m_people; }
-        // The people row, in one of its two places (see the class comment).
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleAboveVisibility() const noexcept;
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleBelowVisibility() const noexcept;
+        // The people row, first of everything a query shows (see the class comment).
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleVisibility() const noexcept;
         // The legend's people item, and the box's words, follow the server.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleHintVisibility() const noexcept;
         // The legend's link item names magnets only when the server opens them.
@@ -245,17 +244,6 @@ namespace winrt::HaloDesktop::implementation
             Unsupported,
         };
 
-        // Where the people row went for the revealed query.
-        enum class PeoplePlace
-        {
-            // Not decided yet, or nobody to show.
-            None,
-            // Between the top match and the results: its answer beat the reveal.
-            Above,
-            // Under the results: its answer landed after the reveal.
-            Below,
-        };
-
         void SetQueryText(winrt::hstring const& value);
         // Reads the box. For anything but words it shows the action card,
         // stops any catalog search and returns true; the caller then does
@@ -288,7 +276,7 @@ namespace winrt::HaloDesktop::implementation
         void OnCredits(std::wstring const& query, std::optional<::HaloDesktop::Api::Dto::PersonDetail> person);
         void ForgetCredits();
         // Places the people row for the revealed query, once.
-        void PlacePeople(PeoplePlace place);
+        void PlacePeople();
         void ForgetPeople();
         void OnFeaturesChanged();
         // While the action card is up: no results, no status line.
@@ -422,7 +410,8 @@ namespace winrt::HaloDesktop::implementation
         std::wstring m_revealedQuery;
         std::optional<int> m_bestTitleTier;
         bool m_peopleDecided{};
-        PeoplePlace m_peoplePlace{ PeoplePlace::None };
+        // The revealed query's people row has someone to show.
+        bool m_peopleShown{};
 
         // The current query's results, from the reveal on.
         ::HaloDesktop::Services::SearchResultBoard m_board;

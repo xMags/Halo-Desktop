@@ -57,8 +57,7 @@ namespace HaloDesktop
         // The people row: between the top match and the results when it came
         // with them, under the results when it came later.
         Object PeopleItems { get; };
-        Microsoft.UI.Xaml.Visibility PeopleAboveVisibility { get; };
-        Microsoft.UI.Xaml.Visibility PeopleBelowVisibility { get; };
+        Microsoft.UI.Xaml.Visibility PeopleVisibility { get; };
         // People search, when the server has it: the legend's item and the box's words.
         Microsoft.UI.Xaml.Visibility PeopleHintVisibility { get; };
         // The legend's link item: "HTTP & Magnet Links" when the server opens magnets.

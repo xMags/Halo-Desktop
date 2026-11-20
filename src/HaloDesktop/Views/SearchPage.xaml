@@ -488,6 +488,16 @@
             lessons on mixing the two XAML API families.
           -->
           <StackPanel x:Name="ResultsBlock" Spacing="26">
+            <!-- PEOPLE: always first, above the top match and the titles. -->
+            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.PeopleVisibility, Mode=OneWay}">
+              <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
+              <ItemsRepeater x:Name="PeopleGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
+                <ItemsRepeater.Layout>
+                  <UniformGridLayout x:Name="PeopleLayout" ItemsStretch="None" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
+                </ItemsRepeater.Layout>
+              </ItemsRepeater>
+            </StackPanel>
+
             <!--
               The slot, as the top match: the title's art across the card under
               the hero's scrim, its poster, and the one thing it does. Clicking
@@ -728,16 +738,6 @@
               </ItemsRepeater>
             </StackPanel>
 
-            <!-- PEOPLE, when its answer came with the results: before them. -->
-            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.PeopleAboveVisibility, Mode=OneWay}">
-              <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
-              <ItemsRepeater x:Name="PeopleAboveGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
-                <ItemsRepeater.Layout>
-                  <UniformGridLayout x:Name="PeopleAboveLayout" ItemsStretch="None" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
-                </ItemsRepeater.Layout>
-              </ItemsRepeater>
-            </StackPanel>
-
             <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.ResultsVisibility, Mode=OneWay}">
               <StackPanel Orientation="Horizontal" Spacing="8">
                 <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="Results" />
@@ -774,15 +774,6 @@
               </local:WrapPanel>
             </StackPanel>
 
-            <!-- PEOPLE, when its answer came after the results: under them, so nothing shown moves. -->
-            <StackPanel Spacing="12" Visibility="{x:Bind ViewModel.PeopleBelowVisibility, Mode=OneWay}">
-              <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
-              <ItemsRepeater x:Name="PeopleBelowGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
-                <ItemsRepeater.Layout>
-                  <UniformGridLayout x:Name="PeopleBelowLayout" ItemsStretch="None" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
-                </ItemsRepeater.Layout>
-              </ItemsRepeater>
-            </StackPanel>
           </StackPanel>
 
           <!-- `.empty`: the states a query can end in with nothing to show, centred, 44 above and below. -->
