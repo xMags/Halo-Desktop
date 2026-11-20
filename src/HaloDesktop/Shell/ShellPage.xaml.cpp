@@ -18,8 +18,6 @@
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <algorithm>
 #include <cmath>
-#include <optional>
-#include <utility>
 #include <chrono>
 #include <cstddef>
 #include <limits>
@@ -38,14 +36,15 @@ namespace
     constexpr std::uint32_t AvatarSize = 28;
     constexpr wchar_t AccountToolTip[] = L"Server & account";
 
-    // The selection pill's slide: Windows' decelerate curve over 300ms, the pill
-    // stretching to at most three times its length in the first third and
-    // settling back as it lands, as the stock navigation pill does.
-    constexpr std::chrono::milliseconds IndicatorSlide{ 300 };
-    constexpr std::chrono::milliseconds IndicatorStretchPeak{ 100 };
-    constexpr double IndicatorMaxStretch = 3.0;
-    constexpr winrt::Windows::Foundation::Point DecelerateFirst{ 0.1F, 0.9F };
-    constexpr winrt::Windows::Foundation::Point DecelerateSecond{ 0.2F, 1.0F };
+    // The selection pill's move: it stays on the old item for a beat, then in about 130ms
+    // stretches to cover both items and snaps onto the new one.
+    constexpr std::chrono::milliseconds IndicatorHold{ 150 };
+    constexpr std::chrono::milliseconds IndicatorSpan{ 215 };
+    constexpr std::chrono::milliseconds IndicatorLand{ 280 };
+    constexpr winrt::Windows::Foundation::Point StretchFirst{ 0.5F, 0.0F };
+    constexpr winrt::Windows::Foundation::Point StretchSecond{ 0.9F, 0.5F };
+    constexpr winrt::Windows::Foundation::Point SnapFirst{ 0.1F, 0.6F };
+    constexpr winrt::Windows::Foundation::Point SnapSecond{ 0.3F, 1.0F };
 
     bool AnimationsEnabled()
     {
@@ -65,36 +64,43 @@ namespace
             std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(time));
     }
 
-    // From `from` at once to `to` at `end`, decelerating; with `peak`, by way of
-    // its value at its time, reached linearly.
-    winrt::Microsoft::UI::Xaml::Media::Animation::DoubleAnimationUsingKeyFrames Glide(
-        double from,
-        double to,
-        std::chrono::milliseconds end,
-        std::optional<std::pair<std::chrono::milliseconds, double>> peak = std::nullopt)
+    // The pill's three phases for one property: `rest` through the hold, then
+    // `span` by IndicatorSpan (accelerating), then `land` by IndicatorLand
+    // (decelerating). Both properties use the same curves in each phase, which
+    // is what keeps the pill's far edge still while it stretches and its near
+    // edge still while it snaps.
+    winrt::Microsoft::UI::Xaml::Media::Animation::DoubleAnimationUsingKeyFrames PillTrack(
+        double rest,
+        double span,
+        double land)
     {
         namespace Animation = winrt::Microsoft::UI::Xaml::Media::Animation;
-        Animation::DoubleAnimationUsingKeyFrames animation;
+        Animation::DoubleAnimationUsingKeyFrames track;
         Animation::DiscreteDoubleKeyFrame start;
         start.KeyTime(KeyAt({}));
-        start.Value(from);
-        animation.KeyFrames().Append(start);
-        if (peak)
-        {
-            Animation::LinearDoubleKeyFrame middle;
-            middle.KeyTime(KeyAt(peak->first));
-            middle.Value(peak->second);
-            animation.KeyFrames().Append(middle);
-        }
-        Animation::SplineDoubleKeyFrame finish;
-        finish.KeyTime(KeyAt(end));
-        finish.Value(to);
-        Animation::KeySpline spline;
-        spline.ControlPoint1(DecelerateFirst);
-        spline.ControlPoint2(DecelerateSecond);
-        finish.KeySpline(spline);
-        animation.KeyFrames().Append(finish);
-        return animation;
+        start.Value(rest);
+        track.KeyFrames().Append(start);
+        Animation::DiscreteDoubleKeyFrame hold;
+        hold.KeyTime(KeyAt(IndicatorHold));
+        hold.Value(rest);
+        track.KeyFrames().Append(hold);
+        Animation::SplineDoubleKeyFrame stretch;
+        stretch.KeyTime(KeyAt(IndicatorSpan));
+        stretch.Value(span);
+        Animation::KeySpline stretchCurve;
+        stretchCurve.ControlPoint1(StretchFirst);
+        stretchCurve.ControlPoint2(StretchSecond);
+        stretch.KeySpline(stretchCurve);
+        track.KeyFrames().Append(stretch);
+        Animation::SplineDoubleKeyFrame snap;
+        snap.KeyTime(KeyAt(IndicatorLand));
+        snap.Value(land);
+        Animation::KeySpline snapCurve;
+        snapCurve.ControlPoint1(SnapFirst);
+        snapCurve.ControlPoint2(SnapSecond);
+        snap.KeySpline(snapCurve);
+        track.KeyFrames().Append(snap);
+        return track;
     }
 
     // IsChecked is nullable (a three-state box); the rail's are never indeterminate.
@@ -780,11 +786,16 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
 
-        auto const stretch = (std::min)(1.0 + std::abs(target - from) / (indicator.Height() * 3.0), IndicatorMaxStretch);
-        auto const move = Glide(from, target, IndicatorSlide);
+        // Scaled from its top edge. At full stretch it runs from the higher
+        // item's pill to the lower one's: moving down its top stays put while
+        // it grows, moving up its bottom does.
+        auto const length = indicator.Height();
+        auto const span = (std::abs(target - from) + length) / length;
+        auto const spanTop = (std::min)(from, target);
+        auto const move = PillTrack(from, spanTop, target);
         Animation::Storyboard::SetTarget(move, transform);
         Animation::Storyboard::SetTargetProperty(move, L"TranslateY");
-        auto const scale = Glide(1.0, 1.0, IndicatorSlide, std::pair{ IndicatorStretchPeak, stretch });
+        auto const scale = PillTrack(1.0, span, 1.0);
         Animation::Storyboard::SetTarget(scale, transform);
         Animation::Storyboard::SetTargetProperty(scale, L"ScaleY");
         Animation::Storyboard slide;

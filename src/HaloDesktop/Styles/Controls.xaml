@@ -5,14 +5,13 @@
   xmlns:local="using:HaloDesktop">
 
   <!--
-    One destination of the shell's rail (NavRailItem), drawn as the Microsoft
-    Store draws its own: at rest an outline glyph over a short label in a 64 by
-    60 tile; lit, a solid tile with the filled glyph alone, centred, in the
-    accent. Lighting and unlighting cross-fade the glyphs, fade the label and
-    glide the glyph to or from the centre over 200ms on a decelerate curve; the
-    rail's one selection pill slides between items on its own (ShellPage).
-    Storyboards rather than setters for those properties, so the transitions
-    are generated; XAML skips them while Windows' animation effects are off.
+    One destination of the shell's rail (NavRailItem): at rest a light
+    outline glyph over a short label in a 64 by 60 tile; lit, a solid tile with
+    the filled glyph alone, centred, in the accent. The swap is instant both
+    ways; only the lit tile fades in, over 130ms, and the glyph then plays its
+    item's motion (NavRailItem). The rail's one pill moves on its own
+    (ShellPage::MoveRailIndicator). Glyphs are drawn at their true size: the
+    paths are 24px Fluent icons whose ink spans about 18px.
   -->
   <Style x:Key="HaloNavRailItemStyle" TargetType="local:NavRailItem">
     <Setter Property="Width" Value="64" />
@@ -39,17 +38,23 @@
               <Grid.RenderTransform>
                 <TranslateTransform x:Name="GlyphShift" Y="-9" />
               </Grid.RenderTransform>
-              <Path
-                x:Name="OutlineGlyph"
-                Data="{TemplateBinding Glyph}"
-                Fill="{ThemeResource HaloText2Brush}"
-                Stretch="Uniform" />
-              <Path
-                x:Name="FilledGlyph"
-                Data="{TemplateBinding SelectedGlyph}"
-                Fill="{ThemeResource HaloAccentBrush}"
-                Opacity="0"
-                Stretch="Uniform" />
+              <!-- The motion plays on the figure, apart from the shift above, so the two never fight. -->
+              <Grid>
+                <Grid.RenderTransform>
+                  <CompositeTransform x:Name="GlyphMotion" CenterX="12" CenterY="12" />
+                </Grid.RenderTransform>
+                <Path
+                  x:Name="OutlineGlyph"
+                  Data="{TemplateBinding Glyph}"
+                  Fill="{ThemeResource HaloText3Brush}"
+                  Stretch="None" />
+                <Path
+                  x:Name="FilledGlyph"
+                  Data="{TemplateBinding SelectedGlyph}"
+                  Fill="{ThemeResource HaloAccentBrush}"
+                  Opacity="0"
+                  Stretch="None" />
+              </Grid>
               <ContentPresenter
                 Margin="0,-3,-7,0"
                 HorizontalAlignment="Right"
@@ -63,7 +68,7 @@
               VerticalAlignment="Bottom"
               AutomationProperties.AccessibilityView="Raw"
               FontSize="{StaticResource HaloFontCaption}"
-              Foreground="{ThemeResource HaloText2Brush}"
+              Foreground="{ThemeResource HaloText3Brush}"
               Text="{TemplateBinding Label}" />
             <VisualStateManager.VisualStateGroups>
               <VisualStateGroup x:Name="CommonStates">
@@ -71,8 +76,8 @@
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
                     <Setter Target="HoverLayer.Opacity" Value="1" />
-                    <Setter Target="LabelText.Foreground" Value="{ThemeResource HaloText1Brush}" />
-                    <Setter Target="OutlineGlyph.Fill" Value="{ThemeResource HaloText1Brush}" />
+                    <Setter Target="LabelText.Foreground" Value="{ThemeResource HaloText2Brush}" />
+                    <Setter Target="OutlineGlyph.Fill" Value="{ThemeResource HaloText2Brush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
@@ -89,16 +94,9 @@
                 </VisualState>
               </VisualStateGroup>
               <VisualStateGroup x:Name="CheckStates">
-                <VisualStateGroup.Transitions>
-                  <VisualTransition GeneratedDuration="0:0:0.2">
-                    <VisualTransition.GeneratedEasingFunction>
-                      <ExponentialEase EasingMode="EaseOut" Exponent="5" />
-                    </VisualTransition.GeneratedEasingFunction>
-                  </VisualTransition>
-                </VisualStateGroup.Transitions>
                 <VisualState x:Name="Checked">
                   <Storyboard>
-                    <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" To="1" Duration="0" />
+                    <DoubleAnimation Storyboard.TargetName="SelectionLayer" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.13" />
                     <DoubleAnimation Storyboard.TargetName="FilledGlyph" Storyboard.TargetProperty="Opacity" To="1" Duration="0" />
                     <DoubleAnimation Storyboard.TargetName="OutlineGlyph" Storyboard.TargetProperty="Opacity" To="0" Duration="0" />
                     <DoubleAnimation Storyboard.TargetName="LabelText" Storyboard.TargetProperty="Opacity" To="0" Duration="0" />

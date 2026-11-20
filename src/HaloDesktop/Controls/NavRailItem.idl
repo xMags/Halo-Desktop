@@ -1,5 +1,24 @@
 namespace HaloDesktop
 {
+    // The short motion a rail glyph plays as its item lights, each in the
+    // spirit of its picture. None plays nothing.
+    enum NavRailMotion
+    {
+        None,
+        // A house hopping up and landing with a little squash.
+        Hop,
+        // A magnifier tilting, as if picked up.
+        Tilt,
+        // Books squeezed together and springing back.
+        Squash,
+        // A clock's face turning back and settling.
+        Rewind,
+        // An arrow dropping and bouncing.
+        Drop,
+        // A gear making one turn.
+        Turn,
+    };
+
     // One destination of the shell's rail. A RadioButton, so the rail's group
     // keeps exactly one lit and automation reads it as a choice; it adds what
     // its template draws: the label, the outline glyph shown at rest and the
@@ -18,5 +37,9 @@ namespace HaloDesktop
 
         Microsoft.UI.Xaml.Media.Geometry SelectedGlyph;
         static Microsoft.UI.Xaml.DependencyProperty SelectedGlyphProperty { get; };
+
+        // Played on the glyph each time the item lights once it is on screen,
+        // unless Windows' animation effects are off.
+        NavRailMotion Motion;
     }
 }
