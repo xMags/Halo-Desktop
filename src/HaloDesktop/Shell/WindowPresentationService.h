@@ -3,6 +3,7 @@
 #include "Shell/WindowPresentationPolicy.h"
 
 #include <cstdint>
+#include <functional>
 #include <windows.h>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 
@@ -13,8 +14,15 @@ namespace HaloDesktop::Shell
     class WindowPresentationService final
     {
     public:
+        // Turns the window's content-in-title-bar mode on (true) or off (false).
+        // Fullscreen turns it off: while it is on, WinUI keeps a 1px top border
+        // strip above the content and a title bar drag strip over the top of
+        // the screen. Called on the UI thread; may throw.
+        using ContentInTitleBarSetter = std::function<void(bool extendsContent)>;
+
         void Attach(std::uintptr_t windowHandle,
-                    winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow);
+                    winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+                    ContentInTitleBarSetter setContentInTitleBar);
         void Detach() noexcept;
         [[nodiscard]] bool TrySetFullscreen(bool fullscreen) noexcept;
         // Called on every window activation change. While fullscreen this moves
@@ -32,6 +40,7 @@ namespace HaloDesktop::Shell
         WindowActivation m_activation{ WindowActivation::Active };
         FullscreenZOrder m_fullscreenZOrder{ FullscreenZOrder::TopmostWhileActive };
         winrt::Microsoft::UI::Xaml::Controls::RowDefinition m_titleBarRow{ nullptr };
+        ContentInTitleBarSetter m_setContentInTitleBar;
         WINDOWPLACEMENT m_windowedPlacement{ sizeof(WINDOWPLACEMENT) };
         RECT m_windowedBounds{};
         LONG_PTR m_windowedStyle{};

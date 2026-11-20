@@ -134,6 +134,21 @@ namespace
         }
     }
 
+    [[nodiscard]] bool TrySetContentInTitleBar(
+        HaloDesktop::Shell::WindowPresentationService::ContentInTitleBarSetter const& setter,
+        bool extendsContent) noexcept
+    {
+        try
+        {
+            setter(extendsContent);
+            return true;
+        }
+        catch (...)
+        {
+            return false;
+        }
+    }
+
     [[nodiscard]] std::optional<WindowedPresentation> TryCaptureWindowedPresentation(
         HWND window,
         winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
@@ -219,23 +234,30 @@ namespace
         HWND window,
         HaloDesktop::Shell::FullscreenWindowPolicy const& policy,
         winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+        HaloDesktop::Shell::WindowPresentationService::ContentInTitleBarSetter const& setContentInTitleBar,
         HaloDesktop::Shell::WindowActivation activation) noexcept
     {
+        // Before the styles: WinUI rewrites them when the mode changes, and the
+        // fullscreen policy's styles must be the last word.
+        auto const titleBarModeApplied = TrySetContentInTitleBar(setContentInTitleBar, false);
         auto const windowApplied = TryApplyFullscreenWindow(window, policy, activation);
         auto const titleBarApplied = TrySetTitleBarHeight(
             titleBarRow,
             { 0.0, winrt::Microsoft::UI::Xaml::GridUnitType::Pixel });
-        return windowApplied && titleBarApplied;
+        return titleBarModeApplied && windowApplied && titleBarApplied;
     }
 
     [[nodiscard]] bool TryRestoreWindowedPresentation(
         HWND window,
         WindowedPresentation const& presentation,
-        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow) noexcept
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+        HaloDesktop::Shell::WindowPresentationService::ContentInTitleBarSetter const& setContentInTitleBar) noexcept
     {
+        // Before the styles, for the same reason as on the way in.
+        auto const titleBarModeRestored = TrySetContentInTitleBar(setContentInTitleBar, true);
         auto const windowRestored = TryRestoreWindow(window, presentation);
         auto const titleBarRestored = TrySetTitleBarHeight(titleBarRow, presentation.TitleBarHeight);
-        return windowRestored && titleBarRestored;
+        return titleBarModeRestored && windowRestored && titleBarRestored;
     }
 
     // Windows' minimise, maximise and restore animations for this window, off for
@@ -330,14 +352,17 @@ namespace HaloDesktop::Shell
 {
     void WindowPresentationService::Attach(
         std::uintptr_t windowHandle,
-        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow)
+        winrt::Microsoft::UI::Xaml::Controls::RowDefinition const& titleBarRow,
+        ContentInTitleBarSetter setContentInTitleBar)
     {
-        if (windowHandle == 0 || !titleBarRow)
+        if (windowHandle == 0 || !titleBarRow || !setContentInTitleBar)
         {
-            throw std::invalid_argument("Window presentation requires a window handle and title row");
+            throw std::invalid_argument(
+                "Window presentation requires a window handle, title row and title bar mode setter");
         }
         m_windowHandle = windowHandle;
         m_titleBarRow = titleBarRow;
+        m_setContentInTitleBar = std::move(setContentInTitleBar);
     }
 
     void WindowPresentationService::Detach() noexcept
@@ -357,6 +382,7 @@ namespace HaloDesktop::Shell
 
         m_windowHandle = 0;
         m_titleBarRow = nullptr;
+        m_setContentInTitleBar = nullptr;
         m_activation = WindowActivation::Active;
         m_windowedPlacement = { sizeof(WINDOWPLACEMENT) };
         m_windowedBounds = {};
@@ -372,7 +398,7 @@ namespace HaloDesktop::Shell
 
     bool WindowPresentationService::TrySetFullscreen(bool fullscreen) noexcept
     {
-        if (m_windowHandle == 0 || !m_titleBarRow)
+        if (m_windowHandle == 0 || !m_titleBarRow || !m_setContentInTitleBar)
         {
             return false;
         }
@@ -408,9 +434,9 @@ namespace HaloDesktop::Shell
 
             auto const fullscreenPolicy =
                 CalculateFullscreenWindowPolicy(windowed->Style, windowed->ExtendedStyle);
-            if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
+            if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_setContentInTitleBar, m_activation))
             {
-                if (TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow))
+                if (TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow, m_setContentInTitleBar))
                 {
                     putBackMaximized();
                     m_fullscreen = ResolveFullscreenState(
@@ -419,9 +445,9 @@ namespace HaloDesktop::Shell
                         FullscreenTransitionOutcome::Failed);
                     return false;
                 }
-                if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
+                if (!TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_setContentInTitleBar, m_activation))
                 {
-                    static_cast<void>(TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow));
+                    static_cast<void>(TryRestoreWindowedPresentation(window, *windowed, m_titleBarRow, m_setContentInTitleBar));
                     putBackMaximized();
                     m_fullscreen = ResolveFullscreenState(
                         m_fullscreen,
@@ -458,11 +484,11 @@ namespace HaloDesktop::Shell
             m_windowedTitleBarHeight,
             m_wasMaximized,
         };
-        if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow))
+        if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow, m_setContentInTitleBar))
         {
             auto const fullscreenPolicy =
                 CalculateFullscreenWindowPolicy(windowed.Style, windowed.ExtendedStyle);
-            if (TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation))
+            if (TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_setContentInTitleBar, m_activation))
             {
                 RefreshFullscreenShellState();
                 m_fullscreen = ResolveFullscreenState(
@@ -471,9 +497,9 @@ namespace HaloDesktop::Shell
                     FullscreenTransitionOutcome::Failed);
                 return false;
             }
-            if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow))
+            if (!TryRestoreWindowedPresentation(window, windowed, m_titleBarRow, m_setContentInTitleBar))
             {
-                static_cast<void>(TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_activation));
+                static_cast<void>(TryApplyFullscreenPresentation(window, fullscreenPolicy, m_titleBarRow, m_setContentInTitleBar, m_activation));
                 RefreshFullscreenShellState();
                 m_fullscreen = ResolveFullscreenState(
                     m_fullscreen,

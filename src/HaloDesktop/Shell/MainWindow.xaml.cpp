@@ -72,7 +72,22 @@ namespace winrt::HaloDesktop::implementation
             });
         App::Services().WindowPresentation->Attach(
             m_windowSizing->WindowHandle(),
-            RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>());
+            RootGridControl().FindName(L"TitleBarRow").as<Microsoft::UI::Xaml::Controls::RowDefinition>(),
+            [weak = get_weak()](bool extendsContent)
+            {
+                auto const self = weak.get();
+                if (!self)
+                {
+                    return;
+                }
+                self->ExtendsContentIntoTitleBar(extendsContent);
+                // Turning the mode back on does not bring the drag region back
+                // by itself; the title bar element is handed over again.
+                if (extendsContent)
+                {
+                    self->SetTitleBar(self->AppTitleBarControl());
+                }
+            });
         m_activatedToken = Activated(
             [weak = get_weak()](
                 [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
