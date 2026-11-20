@@ -86,6 +86,8 @@ Then, for each addon:
 - **Catalogs on Home** switches an addon's rows on Home on or off.
 - **Remove** takes it off your list.
 
+Home shows up to 16 catalog rows, filled in addon order. If an addon's rows are missing from Home, move it higher or switch off **Catalogs on Home** for another addon. This limit will be raised if there is demand for it.
+
 When you are signed in, addons your server provides are listed under **For everyone**. If the server already provides an addon you also have, your copy is greyed out and the server's is used. Server administrators can install an addon for every user from the same page.
 
 > [!TIP]
