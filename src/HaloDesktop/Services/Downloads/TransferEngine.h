@@ -7,6 +7,7 @@
 #include <chrono>
 #include <atomic>
 #include <condition_variable>
+#include <cstddef>
 #include <cstdint>
 #include <deque>
 #include <filesystem>
@@ -95,6 +96,20 @@ namespace HaloDesktop::Services::Downloads
             std::wstring const& jobId,
             std::wstring const& expectedAccount,
             std::wstring artwork);
+
+        // The most a saved picture may weigh.
+        static constexpr std::size_t MaximumSidecarBytes = 10u * 1024u * 1024u;
+        // Writes a finished download's logo or art beside its video (through a
+        // temporary file renamed over it), so its card needs no network. The
+        // bytes must already be a checked image. False, writing nothing, when
+        // the account changed, the download is not finished or is being
+        // removed, its folder is gone or outside the download folders, or the
+        // download is busy (its lease is never waited for). Any thread.
+        bool SaveSidecar(
+            std::wstring const& jobId,
+            std::wstring const& expectedAccount,
+            SidecarKind kind,
+            std::vector<std::uint8_t> const& bytes);
 
         [[nodiscard]] PlaybackFiles FilesForPlayback(std::wstring const& jobId);
         [[nodiscard]] std::filesystem::path DownloadDirectory() const;

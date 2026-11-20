@@ -19,6 +19,7 @@ namespace HaloDesktop::Services
 {
     class DevicePreferencesStore;
     class DownloadArtworkService;
+    class DownloadSidecarFetcher;
 
     // UI-thread-only facade over the thread-safe transfer engine. Engine
     // callbacks are always marshalled through the captured dispatcher before
@@ -97,6 +98,21 @@ namespace HaloDesktop::Services
         void ApplyEngineProgress(Downloads::DownloadRecord record, std::uint64_t accountVersion, std::uint64_t sequence);
         void ApplySnapshot(Snapshot snapshot, std::uint64_t version);
         void EnrichMissingArtwork();
+        // Saves the logo and landscape art beside each finished download that
+        // lacks them, so its card works offline. Each job and picture is tried
+        // once per session (a failure waits for the next launch); the work runs
+        // off the UI thread and writes only through the engine.
+        void EnrichMissingSidecars();
+        static winrt::fire_and_forget SaveSidecarAsync(
+            std::weak_ptr<DownloadService> weak,
+            std::shared_ptr<Downloads::TransferEngine> engine,
+            std::shared_ptr<DownloadSidecarFetcher> fetcher,
+            std::wstring jobId,
+            std::wstring accountKey,
+            Downloads::SidecarKind kind,
+            std::wstring url,
+            std::filesystem::path target,
+            std::uint64_t accountVersion);
         void RecordsChanged();
         [[nodiscard]] std::vector<DownloadsLogic::PausableRecord> PausableRecords() const;
         void SampleThroughput();
@@ -127,6 +143,10 @@ namespace HaloDesktop::Services
         std::unordered_map<DownloadChangedToken, DownloadChangedHandler> m_handlers;
         DownloadsLogic::JobIdSet m_pauseAllIds;
         std::set<std::wstring, std::less<>> m_artworkPending;
+        // Shared with the saves in flight, which may outlive a call into this.
+        std::shared_ptr<DownloadSidecarFetcher> m_sidecarFetcher;
+        // `<job id>|logo` and `<job id>|art` already tried this session. UI thread only.
+        std::set<std::wstring, std::less<>> m_sidecarsTried;
         Downloads::DownloadChangedToken m_engineToken{};
         DownloadChangedToken m_nextToken{ 1 };
         std::atomic_uint64_t m_snapshotVersion{ 0 };

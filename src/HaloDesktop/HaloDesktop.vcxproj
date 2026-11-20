@@ -331,6 +331,7 @@
     <ClInclude Include="Api\ActionEntryPolicy.h" />
     <ClInclude Include="Api\CatalogExtrasPolicy.h" />
     <ClInclude Include="Controls\ArtworkUrlPolicy.h" />
+    <ClInclude Include="Services\DownloadSidecarFetcher.h" />
     <ClInclude Include="Diagnostics\CrashLog.h" />
     <ClInclude Include="Security\InjectionGuard.h" />
     <ClInclude Include="Services\AccountLabelPolicy.h" />
@@ -819,6 +820,7 @@
     <ClCompile Include="Services\DownloadsLogicPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Services\DownloadSidecarFetcher.cpp" />
     <ClCompile Include="ViewModels\DownloadsPresentationPolicy.cpp">
       <PrecompiledHeader>NotUsing</PrecompiledHeader>
     </ClCompile>

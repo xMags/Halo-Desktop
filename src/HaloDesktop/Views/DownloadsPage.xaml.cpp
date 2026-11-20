@@ -181,6 +181,12 @@ namespace winrt::HaloDesktop::implementation
         m_viewModel.Select(id);
         m_viewModel.Play(id);
     }
+    void DownloadsPage::OnReadyDetailsClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        auto const id = TagOf(sender);
+        if (id.empty()) return;
+        m_viewModel.OpenDetails(id);
+    }
     void DownloadsPage::OnReadyRevealClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)
     {
         auto const id = TagOf(sender);

@@ -15,6 +15,11 @@ namespace HaloDesktop
         String AccessibleName { get; };
         String MetaId { get; };
         String RowArtwork { get; };
+        // The art and logo saved beside the video, as file addresses; the
+        // logo on the network. See DownloadRow.
+        String SavedArtwork { get; };
+        String SavedLogo { get; };
+        String OnlineLogo { get; };
         Double Progress { get; };
         Microsoft.UI.Xaml.GridLength ProgressDone { get; };
         Microsoft.UI.Xaml.GridLength ProgressRest { get; };
@@ -136,6 +141,8 @@ namespace HaloDesktop
         void Play(String id);
         void OpenDownloadFolder();
         void RevealSelected();
+        // The download's title page: the film's, or for an episode its show's.
+        void OpenDetails(String id);
         void RetryFailed();
         void PauseAll();
         void ResumeAll();

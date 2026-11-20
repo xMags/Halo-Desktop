@@ -1,6 +1,8 @@
 #include "Controls/ArtworkUrlPolicy.h"
 
 #include <algorithm>
+#include <cstddef>
+#include <cstdint>
 
 namespace
 {
@@ -10,6 +12,7 @@ namespace
     constexpr std::wstring_view TmdbThumbnailProfileSegment = L"w185/";
     constexpr std::wstring_view TmdbLargeProfileSegment = L"h632/";
     constexpr std::wstring_view MetahubPosterPrefix = L"https://images.metahub.space/poster/medium/";
+    constexpr std::wstring_view MetahubLogoPrefix = L"https://images.metahub.space/logo/medium/";
     constexpr std::wstring_view MetahubPosterSuffix = L"/img";
 
     // /^tt\d+$/
@@ -46,6 +49,81 @@ namespace HaloDesktop::Controls
         std::wstring result{ TmdbImagePrefix };
         result.append(TmdbLargeProfileSegment);
         result.append(rest.substr(TmdbThumbnailProfileSegment.size()));
+        return result;
+    }
+
+    std::optional<std::wstring> MetahubLogoUrl(std::wstring_view id)
+    {
+        if (!IsImdbId(id)) return std::nullopt;
+        std::wstring result{ MetahubLogoPrefix };
+        result.append(id);
+        result.append(MetahubPosterSuffix);
+        return result;
+    }
+
+    std::wstring FileImageUrl(std::filesystem::path const& path)
+    {
+        if (path.empty() || !path.is_absolute()) return {};
+        constexpr wchar_t hex[] = L"0123456789ABCDEF";
+        auto const text = path.generic_wstring();
+        std::wstring result{ L"file:///" };
+        auto pushByte = [&result, &hex](std::uint32_t byte)
+        {
+            result.push_back(L'%');
+            result.push_back(hex[(byte >> 4) & 0x0F]);
+            result.push_back(hex[byte & 0x0F]);
+        };
+        for (std::size_t index = 0; index < text.size(); ++index)
+        {
+            auto const character = text[index];
+            auto const plain = (character >= L'a' && character <= L'z')
+                || (character >= L'A' && character <= L'Z')
+                || (character >= L'0' && character <= L'9')
+                || character == L'/' || character == L':' || character == L'-'
+                || character == L'_' || character == L'.' || character == L'~';
+            if (plain)
+            {
+                result.push_back(character);
+                continue;
+            }
+            // The code point, joining a surrogate pair; a lone half cannot name a file.
+            std::uint32_t point = character;
+            if (point >= 0xD800 && point <= 0xDBFF)
+            {
+                if (index + 1 >= text.size()) return {};
+                std::uint32_t const low = text[index + 1];
+                if (low < 0xDC00 || low > 0xDFFF) return {};
+                point = 0x10000 + ((point - 0xD800) << 10) + (low - 0xDC00);
+                ++index;
+            }
+            else if (point >= 0xDC00 && point <= 0xDFFF)
+            {
+                return {};
+            }
+            // Percent-encoded as UTF-8, so a title in any script still loads.
+            if (point < 0x80)
+            {
+                pushByte(point);
+            }
+            else if (point < 0x800)
+            {
+                pushByte(0xC0 | (point >> 6));
+                pushByte(0x80 | (point & 0x3F));
+            }
+            else if (point < 0x10000)
+            {
+                pushByte(0xE0 | (point >> 12));
+                pushByte(0x80 | ((point >> 6) & 0x3F));
+                pushByte(0x80 | (point & 0x3F));
+            }
+            else
+            {
+                pushByte(0xF0 | (point >> 18));
+                pushByte(0x80 | ((point >> 12) & 0x3F));
+                pushByte(0x80 | ((point >> 6) & 0x3F));
+                pushByte(0x80 | (point & 0x3F));
+            }
+        }
         return result;
     }
 

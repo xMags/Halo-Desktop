@@ -38,7 +38,13 @@
               <Vector3Transition Duration="0:0:0.3" />
             </Grid.ScaleTransition>
             <local:PlaceholderArt ArtCornerRadius="12" />
-            <local:ArtworkImage DecodeWidth="560" MetaId="{x:Bind Row.MetaId, Mode=OneWay}" SourceUrl="{x:Bind Row.RowArtwork, Mode=OneWay}" />
+            <!-- The art saved beside the video first, so the card works offline;
+                 the network's copy when it is not saved yet. -->
+            <local:ArtworkImage
+              DecodeWidth="560"
+              FallbackUrl="{x:Bind Row.RowArtwork, Mode=OneWay}"
+              MetaId="{x:Bind Row.MetaId, Mode=OneWay}"
+              SourceUrl="{x:Bind Row.SavedArtwork, Mode=OneWay}" />
           </Grid>
         </Border>
         <Border
@@ -72,7 +78,8 @@
           <TextBlock CharacterSpacing="40" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="11" FontWeight="SemiBold" Foreground="{ThemeResource DlBadgeInkBrush}" Text="{x:Bind Row.EpisodeLabel, Mode=OneWay}" />
         </Border>
         <StackPanel Grid.Row="1" Padding="2,0" Spacing="3">
-          <TextBlock FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource DlTextBrush}" Text="{x:Bind Row.CardTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+          <!-- Collapsed while the title's logo is on the art: it says the same. -->
+          <TextBlock x:Name="TitleText" FontSize="15" FontWeight="SemiBold" Foreground="{ThemeResource DlTextBrush}" Text="{x:Bind Row.CardTitle, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
           <TextBlock FontSize="13" Foreground="{ThemeResource DlMetaBrush}" Text="{x:Bind Row.CardSub, Mode=OneWay}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" Visibility="{x:Bind Row.CardSubVisibility, Mode=OneWay}" />
           <TextBlock Margin="0,2,0,0" Style="{StaticResource DlMonoStyle}" Text="{x:Bind Row.CardMeta, Mode=OneWay}" />
         </StackPanel>
@@ -81,6 +88,33 @@
     <!-- Laid over the art alone: its height is the art's, set in SizeChanged,
          so the frame and the play button never reach the text below. -->
     <Grid x:Name="ArtOverlay" Height="124" VerticalAlignment="Top">
+      <!--
+        The title's logo, bottom left on the art, over a fade that darkens the
+        art's lower part so a coloured wordmark still reads on busy art. The
+        saved logo first, then the network's; neither shows until one opens,
+        and with none the card keeps its text title. Fixed to the art, so the
+        hover zoom does not move it.
+      -->
+      <Border x:Name="LogoScrim" CornerRadius="12" IsHitTestVisible="False" Opacity="0">
+        <Border.Background>
+          <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Offset="0.4" Color="#00000000" />
+            <GradientStop Offset="1" Color="#A6000000" />
+          </LinearGradientBrush>
+        </Border.Background>
+      </Border>
+      <Image
+        x:Name="LogoImage"
+        MaxHeight="56"
+        Margin="14,0,14,12"
+        HorizontalAlignment="Left"
+        VerticalAlignment="Bottom"
+        AutomationProperties.AccessibilityView="Raw"
+        ImageFailed="OnLogoFailed"
+        ImageOpened="OnLogoOpened"
+        IsHitTestVisible="False"
+        Opacity="0"
+        Stretch="Uniform" />
       <!-- The art's 1px frame, and its brighter hover twin faded over it. No
            selected ring: the page has no detail pane for a selection to fill,
            and clicking the card plays it. -->

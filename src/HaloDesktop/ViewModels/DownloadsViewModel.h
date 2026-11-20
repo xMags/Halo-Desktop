@@ -40,6 +40,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] winrt::hstring AccessibleName() const;
         [[nodiscard]] winrt::hstring MetaId() const;
         [[nodiscard]] winrt::hstring RowArtwork() const;
+        [[nodiscard]] winrt::hstring SavedArtwork() const;
+        [[nodiscard]] winrt::hstring SavedLogo() const;
+        [[nodiscard]] winrt::hstring OnlineLogo() const;
         [[nodiscard]] double Progress() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::GridLength ProgressDone() const noexcept;
         [[nodiscard]] Microsoft::UI::Xaml::GridLength ProgressRest() const noexcept;
@@ -182,6 +185,7 @@ namespace winrt::HaloDesktop::implementation
         void Play(winrt::hstring const& id);
         void OpenDownloadFolder();
         void RevealSelected();
+        void OpenDetails(winrt::hstring const& id);
         void RetryFailed();
         void PauseAll();
         void ResumeAll();

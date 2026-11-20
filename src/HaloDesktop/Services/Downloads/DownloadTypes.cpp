@@ -126,6 +126,20 @@ namespace HaloDesktop::Services::Downloads
         return result;
     }
 
+    std::filesystem::path DownloadRecord::SidecarPath(SidecarKind kind) const
+    {
+        auto name = std::filesystem::path{ FileName }.stem().wstring();
+        name += kind == SidecarKind::Logo ? L"-clearlogo.png" : L"-fanart.jpg";
+        return RootPath / name;
+    }
+
+    std::filesystem::path DownloadRecord::SidecarTempPath(SidecarKind kind) const
+    {
+        auto result = SidecarPath(kind);
+        result += L".tmp";
+        return result;
+    }
+
     namespace
     {
         // At most five digits per field. A label longer than that is not a season
@@ -361,6 +375,81 @@ namespace HaloDesktop::Services::Downloads
             + L"." + Lower(extension);
     }
 
+    std::wstring MakeDownloadFolderName(DownloadMedia const& media)
+    {
+        constexpr std::size_t MaximumFolderName = 80;
+        auto const& source = media.ShowName && !media.ShowName->empty() ? *media.ShowName : media.Title;
+        std::wstring name;
+        name.reserve(source.size());
+        for (auto const character : source)
+        {
+            // Tabs and line breaks are spaces between words; other control
+            // characters are dropped.
+            if (std::iswspace(character))
+            {
+                name.push_back(L' ');
+                continue;
+            }
+            if (character < 0x20 || character == 0x7f)
+            {
+                continue;
+            }
+            switch (character)
+            {
+            case L':':
+                // `Spider-Man: No Way Home` reads as `Spider-Man - No Way Home`.
+                name += L" -";
+                continue;
+            case L'<': case L'>': case L'"': case L'/': case L'\\': case L'|': case L'?': case L'*':
+                name.push_back(L' ');
+                continue;
+            default:
+                name.push_back(std::iswspace(character) ? L' ' : character);
+            }
+        }
+        // One space between words, none at either end, and no trailing dot,
+        // which Windows would silently drop and so make another folder.
+        std::wstring collapsed;
+        collapsed.reserve(name.size());
+        for (auto const character : name)
+        {
+            if (character == L' ' && (collapsed.empty() || collapsed.back() == L' '))
+            {
+                continue;
+            }
+            collapsed.push_back(character);
+        }
+        auto trimEnd = [](std::wstring& value)
+        {
+            while (!value.empty() && (value.back() == L' ' || value.back() == L'.'))
+            {
+                value.pop_back();
+            }
+        };
+        trimEnd(collapsed);
+        if (collapsed.size() > MaximumFolderName)
+        {
+            collapsed.resize(MaximumFolderName);
+            trimEnd(collapsed);
+        }
+        if (collapsed.empty())
+        {
+            return L"Video";
+        }
+        // CON, PRN, AUX, NUL, COM1-9 and LPT1-9 name devices, with or without
+        // an extension, so `Con` or `Nul.2019` cannot be folders.
+        auto const device = Lower(collapsed.substr(0, collapsed.find(L'.')));
+        constexpr std::array<std::wstring_view, 4> reserved{ L"con", L"prn", L"aux", L"nul" };
+        auto const isNumbered = device.size() == 4
+            && (device.starts_with(L"com") || device.starts_with(L"lpt"))
+            && device[3] >= L'1' && device[3] <= L'9';
+        if (isNumbered || std::find(reserved.begin(), reserved.end(), device) != reserved.end())
+        {
+            collapsed.push_back(L'_');
+        }
+        return collapsed;
+    }
+
     bool IsSafeFileName(std::wstring const& value) noexcept
     {
         if (value.empty() || value == L"." || value == L"..")
@@ -468,6 +557,32 @@ namespace HaloDesktop::Services::Downloads
             return FilePresence{ .Kind = FilePresenceKind::Missing };
         }
         return FilePresence{ .Kind = FilePresenceKind::FolderUnavailable };
+    }
+
+    std::filesystem::path PresenceFolder(
+        std::filesystem::path const& rootPath,
+        std::vector<std::filesystem::path> const& approvedRoots) noexcept
+    {
+        try
+        {
+            for (auto const& root : approvedRoots)
+            {
+                if (root.empty() || !IsWithinApprovedRoot(rootPath, { root }))
+                {
+                    continue;
+                }
+                // Inside a root but not the root itself: its own folder.
+                if (!IsWithinApprovedRoot(root, { rootPath }))
+                {
+                    return root;
+                }
+            }
+            return rootPath;
+        }
+        catch (...)
+        {
+            return rootPath;
+        }
     }
 
     bool HasSufficientSpace(std::uint64_t availableBytes, std::uint64_t videoBytes) noexcept

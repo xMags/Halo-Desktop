@@ -7,6 +7,7 @@
 #include "DownloadsViewModel.g.cpp"
 #endif
 
+#include "Models/Models.h"
 #include "Services/DownloadStreamFacts.h"
 #include "Services/DownloadsLogicPolicy.h"
 #include "Services/NavigationService.h"
@@ -96,6 +97,12 @@ namespace winrt::HaloDesktop::implementation
         }
         if (previous.MetaId != next.MetaId) Raise(L"MetaId");
         if (previous.RowArtwork != next.RowArtwork) Raise(L"RowArtwork");
+        if (previous.SavedArtwork != next.SavedArtwork) Raise(L"SavedArtwork");
+        if (previous.SavedLogo != next.SavedLogo || previous.OnlineLogo != next.OnlineLogo)
+        {
+            Raise(L"SavedLogo");
+            Raise(L"OnlineLogo");
+        }
         if (previous.Progress != next.Progress)
         {
             for (auto const property : { L"Progress", L"ProgressDone", L"ProgressRest", L"PercentText" }) Raise(property);
@@ -173,6 +180,9 @@ namespace winrt::HaloDesktop::implementation
     }
     winrt::hstring DownloadRowViewModel::MetaId() const { return winrt::hstring{ m_row.MetaId }; }
     winrt::hstring DownloadRowViewModel::RowArtwork() const { return winrt::hstring{ m_row.RowArtwork }; }
+    winrt::hstring DownloadRowViewModel::SavedArtwork() const { return winrt::hstring{ m_row.SavedArtwork }; }
+    winrt::hstring DownloadRowViewModel::SavedLogo() const { return winrt::hstring{ m_row.SavedLogo }; }
+    winrt::hstring DownloadRowViewModel::OnlineLogo() const { return winrt::hstring{ m_row.OnlineLogo }; }
     double DownloadRowViewModel::Progress() const noexcept { return m_row.Progress; }
     Microsoft::UI::Xaml::GridLength DownloadRowViewModel::ProgressDone() const noexcept { return Star(m_row.Progress); }
     Microsoft::UI::Xaml::GridLength DownloadRowViewModel::ProgressRest() const noexcept { return Star(1.0 - m_row.Progress); }
@@ -428,6 +438,27 @@ namespace winrt::HaloDesktop::implementation
         {
             static_cast<void>(m_downloads->OpenDownloadDirectory());
         }
+    }
+    // The page the download came from: a film's own, an episode's show. A
+    // download without the title's id (an addon that gave none) has no page to open.
+    void DownloadsViewModel::OpenDetails(winrt::hstring const& id)
+    {
+        auto const& records = m_downloads->Records();
+        auto const found = std::find_if(records.begin(), records.end(), [&id](auto const& record)
+        {
+            return record.JobId == std::wstring_view{ id };
+        });
+        if (found == records.end()) return;
+        auto const& media = found->Media;
+        if (!media.MetaId || media.MetaId->empty() || media.MediaType.empty()) return;
+        auto const& title = media.ShowName && !media.ShowName->empty() ? *media.ShowName : media.Title;
+        m_navigation->GoTo(
+            ::HaloDesktop::Services::Page::Detail,
+            winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(
+                winrt::hstring{ media.MediaType },
+                winrt::hstring{ *media.MetaId },
+                winrt::hstring{ title },
+                winrt::hstring{ media.Poster.value_or(L"") }));
     }
     void DownloadsViewModel::RetryFailed() { m_downloads->RetryFailedTransfers(); }
     void DownloadsViewModel::PauseAll() { m_downloads->PauseAll(); }

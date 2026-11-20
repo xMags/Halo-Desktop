@@ -405,6 +405,9 @@
                       <MenuFlyoutItem MinWidth="200" Click="OnReadyPlayClick" Tag="{x:Bind Id}" Text="Play offline">
                         <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE768;" /></MenuFlyoutItem.Icon>
                       </MenuFlyoutItem>
+                      <MenuFlyoutItem Click="OnReadyDetailsClick" Tag="{x:Bind Id}" Text="View details">
+                        <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE946;" /></MenuFlyoutItem.Icon>
+                      </MenuFlyoutItem>
                       <MenuFlyoutItem Click="OnReadyRevealClick" Tag="{x:Bind Id}" Text="Show in folder">
                         <MenuFlyoutItem.Icon><FontIcon Glyph="&#xE838;" /></MenuFlyoutItem.Icon>
                       </MenuFlyoutItem>

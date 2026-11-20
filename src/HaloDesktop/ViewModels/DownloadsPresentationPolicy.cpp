@@ -1,5 +1,6 @@
 #include "ViewModels/DownloadsPresentationPolicy.h"
 
+#include "Controls/ArtworkUrlPolicy.h"
 #include "Services/DownloadsLogicPolicy.h"
 #include "Services/LanguagePolicy.h"
 
@@ -258,6 +259,9 @@ namespace HaloDesktop::ViewModels::DownloadsPresentation
         row.Poster = media.Poster.value_or(L"");
         row.MetaId = media.MetaId.value_or(L"");
         row.RowArtwork = media.LandscapeArtwork && !media.LandscapeArtwork->empty() ? *media.LandscapeArtwork : row.Poster;
+        row.SavedArtwork = ::HaloDesktop::Controls::FileImageUrl(record.SidecarPath(Services::Downloads::SidecarKind::Art));
+        row.SavedLogo = ::HaloDesktop::Controls::FileImageUrl(record.SidecarPath(Services::Downloads::SidecarKind::Logo));
+        row.OnlineLogo = ::HaloDesktop::Controls::MetahubLogoUrl(row.MetaId).value_or(L"");
         row.RequiresNewSource = newSource;
         row.CanPause = Services::Downloads::IsActive(record.Status);
         row.CanResume = record.Status == DownloadStatus::Paused || retryable;

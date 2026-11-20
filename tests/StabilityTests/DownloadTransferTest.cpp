@@ -10,6 +10,7 @@
 #include "Services/Downloads/SegmentPlanner.h"
 #include "Services/Downloads/SegmentedTransfer.h"
 #include "Storage/FileStorage.h"
+#include "Controls/ArtworkUrlPolicy.h"
 
 #include <algorithm>
 #include <array>
@@ -46,6 +47,8 @@ namespace
     using HaloDesktop::Services::Downloads::TransferEngine;
     using HaloDesktop::Services::Downloads::MakeAccountKey;
     using HaloDesktop::Services::Downloads::Sha256Hex;
+    using HaloDesktop::Services::Downloads::DownloadMedia;
+    using HaloDesktop::Services::Downloads::SidecarKind;
 
     constexpr auto TransferTimeout = std::chrono::seconds{ 10 };
 
@@ -2384,8 +2387,110 @@ namespace
         Require(!std::filesystem::exists(backup.TargetPath()), "the removed copy's file was kept");
     }
 
+    // A title's folder name is the title, made safe for Windows.
+    void ATitlesFolderIsSafeForWindows()
+    {
+        auto const named = [](std::wstring title, std::optional<std::wstring> show = std::nullopt)
+        {
+            return HaloDesktop::Services::Downloads::MakeDownloadFolderName(DownloadMedia{
+                .VideoId = L"movie:named",
+                .ItemId = L"movie:named",
+                .MediaType = L"movie",
+                .Title = std::move(title),
+                .ShowName = std::move(show),
+            });
+        };
+        Require(named(L"Spider-Man: No Way Home") == L"Spider-Man - No Way Home", "a colon was not read as a dash");
+        Require(named(L"Pilot", L"The Office") == L"The Office", "an episode did not go in its show's folder");
+        Require(named(L"What?  If*  <Really>.") == L"What If Really", "reserved characters or a trailing dot were kept");
+        Require(named(L"Tab\there") == L"Tab here", "a tab was kept in a folder name");
+        Require(named(L"Con") == L"Con_" && named(L"nul.2019") == L"nul.2019_" && named(L"LPT1") == L"LPT1_",
+            "a device name was allowed as a folder");
+        Require(named(L"Console") == L"Console", "an ordinary word was taken for a device name");
+        Require(named(L"...") == L"Video" && named(L"") == L"Video", "an empty folder name was made");
+        Require(named(std::wstring(200, L'a')).size() == 80, "a long title was not shortened");
+        Require(named(L"Am\u00E9lie") == L"Am\u00E9lie", "an accented title was changed");
+    }
+
+    // The pictures a download keeps are named after its video, beside it.
+    void SidecarsAreNamedAfterTheirVideo()
+    {
+        DownloadRecord record{ .JobId = L"sidecars", .FileName = L"Movie-0123456789ab-abcdef01.mkv", .RootPath = L"C:\\Downloads\\Movie" };
+        Require(record.SidecarPath(SidecarKind::Logo) == std::filesystem::path{ L"C:\\Downloads\\Movie\\Movie-0123456789ab-abcdef01-clearlogo.png" },
+            "the logo was not named after its video");
+        Require(record.SidecarPath(SidecarKind::Art) == std::filesystem::path{ L"C:\\Downloads\\Movie\\Movie-0123456789ab-abcdef01-fanart.jpg" },
+            "the art was not named after its video");
+        Require(record.SidecarTempPath(SidecarKind::Art).wstring().ends_with(L"-fanart.jpg.tmp"), "the art's temporary name was wrong");
+
+        using HaloDesktop::Services::Downloads::PresenceFolder;
+        std::vector<std::filesystem::path> const roots{ L"C:\\Downloads" };
+        Require(PresenceFolder(L"C:\\Downloads\\Movie", roots) == std::filesystem::path{ L"C:\\Downloads" },
+            "a title's folder was not judged by its download folder");
+        Require(PresenceFolder(L"C:\\Downloads", roots) == std::filesystem::path{ L"C:\\Downloads" },
+            "a download folder was not judged by itself");
+        Require(PresenceFolder(L"D:\\Elsewhere", roots) == std::filesystem::path{ L"D:\\Elsewhere" },
+            "a folder outside the download folders was not judged by itself");
+        Require(PresenceFolder(L"C:\\DownloadsOther\\Movie", roots) == std::filesystem::path{ L"C:\\DownloadsOther\\Movie" },
+            "a sibling folder sharing a prefix was taken for a title's folder");
+
+        using HaloDesktop::Controls::FileImageUrl;
+        Require(FileImageUrl(L"C:\\My Movies\\Caf\u00E9\\x-fanart.jpg") == L"file:///C:/My%20Movies/Caf%C3%A9/x-fanart.jpg",
+            "a saved picture's address was not escaped");
+        Require(FileImageUrl(L"C:\\Films\\\U0001F3AC.png") == L"file:///C:/Films/%F0%9F%8E%AC.png",
+            "a character outside the basic plane was not encoded");
+        Require(FileImageUrl(L"relative\\x.png").empty(), "a relative path became an address");
+        Require(HaloDesktop::Controls::MetahubLogoUrl(L"tt10872600").value_or(L"") == L"https://images.metahub.space/logo/medium/tt10872600/img",
+            "an IMDb title had no logo address");
+        Require(!HaloDesktop::Controls::MetahubLogoUrl(L"tmdb:634649"), "an id metahub does not know had a logo address");
+    }
+
+    // A new download is saved in its title's own folder; its pictures are
+    // written there once it has finished, and removing it takes the video,
+    // the pictures and the then-empty folder, but never a stranger's file.
+    void ADownloadLivesInItsTitlesFolderWithItsPictures()
+    {
+        FileServer server{ FileServerOptions{ .Body = Content(256u * 1024u) } };
+        TemporaryDirectory temporary;
+        TransferEngine engine{ temporary.Path(), {}, QuickEngine() };
+        engine.SetAccount(L"https://account.invalid", L"user-a");
+        auto const started = engine.Start(MakeRequest(server.Url(), L"titled.mkv", server.Body().size(), false, std::nullopt, L"movie:titled"));
+        Require(started.RootPath.filename() == std::filesystem::path{ L"Transfer stability" }, "a download was not given its title's folder");
+        auto const done = WaitForStatus(engine, started.JobId, DownloadStatus::Done);
+        Require(ReadBytes(engine.FilesForPlayback(done.JobId).VideoPath) == server.Body(), "a download in its title's folder did not play");
+
+        std::vector<std::uint8_t> const logo(64, 7);
+        std::vector<std::uint8_t> const art(96, 9);
+        Require(!engine.SaveSidecar(done.JobId, L"another-account", SidecarKind::Logo, logo), "a picture was saved for another account");
+        Require(!engine.SaveSidecar(done.JobId, done.AccountKey, SidecarKind::Logo, {}), "an empty picture was saved");
+        Require(engine.SaveSidecar(done.JobId, done.AccountKey, SidecarKind::Logo, logo), "a finished download's logo was not saved");
+        Require(engine.SaveSidecar(done.JobId, done.AccountKey, SidecarKind::Art, art), "a finished download's art was not saved");
+        Require(ReadBytes(done.SidecarPath(SidecarKind::Logo)) == logo && ReadBytes(done.SidecarPath(SidecarKind::Art)) == art,
+            "a saved picture's bytes were wrong");
+        Require(!std::filesystem::exists(done.SidecarTempPath(SidecarKind::Logo)), "a picture's temporary file was left behind");
+
+        engine.Remove(done.JobId);
+        Require(!std::filesystem::exists(done.TargetPath())
+                && !std::filesystem::exists(done.SidecarPath(SidecarKind::Logo))
+                && !std::filesystem::exists(done.SidecarPath(SidecarKind::Art)),
+            "removing a download left its video or pictures");
+        Require(!std::filesystem::exists(done.RootPath), "removing a title's last download left its empty folder");
+        Require(std::filesystem::is_directory(done.RootPath.parent_path()), "removing a download took the download folder");
+
+        // A folder the viewer has put something of their own in is kept, with it.
+        auto const again = engine.Start(MakeRequest(server.Url(), L"titled-again.mkv", server.Body().size(), false, std::nullopt, L"movie:titled-again"));
+        auto const finished = WaitForStatus(engine, again.JobId, DownloadStatus::Done);
+        auto const stranger = finished.RootPath / L"notes.txt";
+        WriteBytes(stranger, std::vector<std::uint8_t>(3, 1));
+        engine.Remove(finished.JobId);
+        Require(!std::filesystem::exists(finished.TargetPath()), "the second download was not removed");
+        Require(std::filesystem::exists(stranger), "removing a download deleted a file it did not own");
+    }
+
     void RunDownloadEngineSafetyTests()
     {
+        ATitlesFolderIsSafeForWindows();
+        SidecarsAreNamedAfterTheirVideo();
+        ADownloadLivesInItsTitlesFolderWithItsPictures();
         APauseWhileWaitingForTheSourceIsNoticed();
         ASourceThatNeverAnswersIsRetriedThenFails();
         ASlowSubtitleDoesNotHoldTheDownload();

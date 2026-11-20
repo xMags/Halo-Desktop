@@ -147,6 +147,13 @@ namespace
         {
             return true;
         }
+        for (auto const kind : { HaloDesktop::Services::Downloads::SidecarKind::Logo, HaloDesktop::Services::Downloads::SidecarKind::Art })
+        {
+            if (matchesPath(record.SidecarPath(kind)) || matchesPath(record.SidecarTempPath(kind)))
+            {
+                return true;
+            }
+        }
         return record.SubtitleFileName
             && matchesPath(record.RootPath / *record.SubtitleFileName);
     }
@@ -269,6 +276,49 @@ namespace
         }
     }
 
+    // A title's own folder goes once its last file has: only when it is empty,
+    // is inside a root without being one, and is a real folder rather than a
+    // link (removing a link would act on wherever it points). Best effort: a
+    // folder the viewer has put something else in is simply kept.
+    void RemoveFolderIfLeftEmpty(
+        std::filesystem::path const& folder,
+        std::vector<std::filesystem::path> const& resolvedRoots) noexcept
+    {
+        try
+        {
+            using HaloDesktop::Services::Downloads::IsWithinApprovedRoot;
+            if (folder.empty() || !IsWithinApprovedRoot(folder, resolvedRoots))
+            {
+                return;
+            }
+            for (auto const& root : resolvedRoots)
+            {
+                auto const same = PathsMatch(folder, root);
+                if (!same || *same)
+                {
+                    return;
+                }
+            }
+            std::error_code error;
+            if (!std::filesystem::is_directory(folder, error) || error
+                || std::filesystem::is_symlink(folder, error) || error)
+            {
+                return;
+            }
+            auto const real = RealPath(folder);
+            auto const unchanged = real ? PathsMatch(*real, folder) : std::nullopt;
+            if (!unchanged || !*unchanged)
+            {
+                return;
+            }
+            // Refused by the file system unless the folder is empty.
+            std::filesystem::remove(folder, error);
+        }
+        catch (...)
+        {
+        }
+    }
+
     void RemoveRecordFiles(
         HaloDesktop::Services::Downloads::DownloadRecord const& record,
         std::vector<std::filesystem::path> const& approvedRoots,
@@ -294,9 +344,15 @@ namespace
         {
             removeUnlessPreserved(record.RootPath / *record.SubtitleFileName);
         }
+        for (auto const kind : { HaloDesktop::Services::Downloads::SidecarKind::Logo, HaloDesktop::Services::Downloads::SidecarKind::Art })
+        {
+            removeUnlessPreserved(record.SidecarTempPath(kind));
+            removeUnlessPreserved(record.SidecarPath(kind));
+        }
         // Delete the playable file last. If an auxiliary cleanup fails, the
         // indexed download still has its primary content and can be retried.
         removeUnlessPreserved(record.TargetPath());
+        RemoveFolderIfLeftEmpty(record.RootPath, resolvedRoots);
     }
 
     // True when any file `record` names is also named by another record, which
@@ -315,6 +371,8 @@ namespace
             table,
             Segments::TableTempPath(table),
             record.TargetPath(),
+            record.SidecarPath(HaloDesktop::Services::Downloads::SidecarKind::Logo),
+            record.SidecarPath(HaloDesktop::Services::Downloads::SidecarKind::Art),
         };
         if (record.SubtitleFileName)
         {
@@ -860,6 +918,36 @@ namespace HaloDesktop::Services::Downloads
         {
             throw std::runtime_error{ "The download folder is unavailable. Choose another folder to continue." };
         }
+        // Each title gets its own folder in the download folder, which holds its
+        // video, subtitle and pictures (one per show for episodes). A folder made
+        // here and left empty by a start that then fails is taken away again.
+        directory /= MakeDownloadFolderName(request.Media);
+        bool createdFolder{};
+        {
+            std::error_code error;
+            createdFolder = std::filesystem::create_directory(directory, error);
+            if (error || !std::filesystem::is_directory(directory, error))
+            {
+                throw std::runtime_error{ "A folder for this title could not be made in the download folder." };
+            }
+        }
+        auto removeCreatedFolder = wil::scope_exit([&directory, createdFolder]() noexcept
+        {
+            if (createdFolder)
+            {
+                std::error_code ignored;
+                std::filesystem::remove(directory, ignored);
+            }
+        });
+        try
+        {
+            // A link planted under the download folder must not lead the download elsewhere.
+            EnsureWithinRoots(directory, ResolveRoots(m_store.ApprovedRoots()));
+        }
+        catch (ContainmentError const&)
+        {
+            throw std::runtime_error{ "This title's folder leads outside the download folder. Remove it and try again." };
+        }
         if (request.Media.VideoSize)
         {
             auto const free = DiskFree(directory);
@@ -1033,6 +1121,7 @@ namespace HaloDesktop::Services::Downloads
             throw;
         }
         removeVault.release();
+        removeCreatedFolder.release();
         std::vector<DownloadChangedHandler> handlers;
         {
             std::scoped_lock const lock{ m_mutex };
@@ -1041,6 +1130,105 @@ namespace HaloDesktop::Services::Downloads
         Notify(handlers, record);
         m_condition.notify_all();
         return record;
+    }
+
+    bool TransferEngine::SaveSidecar(
+        std::wstring const& jobId,
+        std::wstring const& expectedAccount,
+        SidecarKind kind,
+        std::vector<std::uint8_t> const& bytes)
+    {
+        if (bytes.empty() || bytes.size() > MaximumSidecarBytes)
+        {
+            return false;
+        }
+        {
+            std::scoped_lock const lock{ m_mutex };
+            if (!m_activeAccount || *m_activeAccount != expectedAccount)
+            {
+                return false;
+            }
+        }
+        // The job's lease keeps a removal from deleting the folder under the
+        // write, and a removal that already ran from having the picture come
+        // back after it. Never waited for: a running transfer holds it.
+        std::unique_ptr<::HaloDesktop::Storage::FileMutationLock> jobLease;
+        try
+        {
+            jobLease = std::make_unique<::HaloDesktop::Storage::FileMutationLock>(
+                m_store.Paths().DataRoot / (L"download-job-" + jobId),
+                std::chrono::milliseconds{ 0 });
+        }
+        catch (...)
+        {
+            return false;
+        }
+        auto const latest = m_store.Load(false);
+        auto const stored = std::find_if(latest.begin(), latest.end(), [&jobId](DownloadRecord const& record)
+        {
+            return record.JobId == jobId;
+        });
+        if (stored == latest.end()
+            || stored->AccountKey != expectedAccount
+            || stored->PendingDeletion
+            || stored->Status != DownloadStatus::Done)
+        {
+            return false;
+        }
+        auto const target = stored->SidecarPath(kind);
+        auto const temporary = stored->SidecarTempPath(kind);
+        try
+        {
+            auto const roots = ResolveRoots(m_store.ApprovedRoots());
+            EnsureWithinRoots(target, roots);
+            EnsureWithinRoots(temporary, roots);
+        }
+        catch (...)
+        {
+            return false;
+        }
+        std::error_code error;
+        if (!std::filesystem::is_directory(stored->RootPath, error) || error)
+        {
+            return false;
+        }
+        try
+        {
+            {
+                wil::unique_hfile file{ CreateFileW(
+                    temporary.c_str(),
+                    GENERIC_WRITE,
+                    0,
+                    nullptr,
+                    CREATE_ALWAYS,
+                    FILE_ATTRIBUTE_NORMAL,
+                    nullptr) };
+                if (!file)
+                {
+                    return false;
+                }
+                DWORD written{};
+                if (!WriteFile(file.get(), bytes.data(), static_cast<DWORD>(bytes.size()), &written, nullptr)
+                    || written != bytes.size()
+                    || !FlushFileBuffers(file.get()))
+                {
+                    file.reset();
+                    std::filesystem::remove(temporary, error);
+                    return false;
+                }
+            }
+            if (!MoveFileExW(temporary.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH))
+            {
+                std::filesystem::remove(temporary, error);
+                return false;
+            }
+            return true;
+        }
+        catch (...)
+        {
+            std::filesystem::remove(temporary, error);
+            return false;
+        }
     }
 
     void TransferEngine::Pause(std::wstring const& jobId)
@@ -2509,6 +2697,14 @@ namespace HaloDesktop::Services::Downloads
                 && record.Failure == DownloadFailureCode::MissingFile;
         };
         std::vector<Candidate> candidates;
+        std::vector<std::filesystem::path> approvedRoots;
+        try
+        {
+            approvedRoots = m_store.ApprovedRoots();
+        }
+        catch (...)
+        {
+        }
         {
             std::scoped_lock const lock{ m_mutex };
             for (auto const& [jobId, record] : m_records)
@@ -2522,7 +2718,7 @@ namespace HaloDesktop::Services::Downloads
                 {
                     candidates.push_back(Candidate{
                         .JobId = jobId,
-                        .Root = record.RootPath,
+                        .Root = PresenceFolder(record.RootPath, approvedRoots),
                         .Target = record.TargetPath(),
                         .TotalBytes = record.TotalBytes,
                         .MarkedMissing = marked,

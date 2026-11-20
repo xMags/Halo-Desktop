@@ -85,6 +85,18 @@ namespace HaloDesktop::Services::Downloads
         std::optional<std::wstring> SubtitleFileName;
     };
 
+    // The pictures saved beside a finished video so its card needs no network:
+    // the title's logo and its landscape art. Named after the video, in the
+    // names Kodi and Jellyfin read, so each video owns its own pair and no two
+    // downloads ever share one.
+    enum class SidecarKind
+    {
+        // `<video stem>-clearlogo.png`
+        Logo,
+        // `<video stem>-fanart.jpg`
+        Art,
+    };
+
     struct DownloadRecord final
     {
         std::wstring JobId;
@@ -112,6 +124,9 @@ namespace HaloDesktop::Services::Downloads
 
         [[nodiscard]] std::filesystem::path TargetPath() const;
         [[nodiscard]] std::filesystem::path PartialPath() const;
+        [[nodiscard]] std::filesystem::path SidecarPath(SidecarKind kind) const;
+        // Where a sidecar is written before it is renamed over SidecarPath.
+        [[nodiscard]] std::filesystem::path SidecarTempPath(SidecarKind kind) const;
     };
 
     struct DownloadStartRequest final
@@ -201,6 +216,11 @@ namespace HaloDesktop::Services::Downloads
         std::wstring const& sourceFingerprint,
         std::wstring const& accountKey);
     [[nodiscard]] bool IsSafeFileName(std::wstring const& value) noexcept;
+    // The folder a new download gets inside the download folder: the show's
+    // name for an episode, the title for a film, made safe for Windows (no
+    // reserved characters or device names, no trailing dot or space, at most
+    // 80 characters; `:` reads as ` -`). Never empty, never a path.
+    [[nodiscard]] std::wstring MakeDownloadFolderName(DownloadMedia const& media);
 
     // True when the path sits inside one of the approved download roots, compared
     // component by component so a sibling folder with a shared prefix does not
@@ -234,6 +254,14 @@ namespace HaloDesktop::Services::Downloads
     [[nodiscard]] FilePresence DetectFilePresence(
         std::filesystem::path const& root,
         std::filesystem::path const& target) noexcept;
+    // The folder whose presence tells a deleted file from an unreachable one.
+    // A download saved in its own folder under an approved root is judged by
+    // that root: the viewer deleting the title's folder means the file is gone,
+    // while an unplugged drive takes the root with it. A download saved at a
+    // root, or outside them all, is judged by its own folder as before.
+    [[nodiscard]] std::filesystem::path PresenceFolder(
+        std::filesystem::path const& rootPath,
+        std::vector<std::filesystem::path> const& approvedRoots) noexcept;
     [[nodiscard]] bool HasSufficientSpace(
         std::uint64_t availableBytes,
         std::uint64_t videoBytes) noexcept;

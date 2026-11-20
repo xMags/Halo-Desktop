@@ -3,7 +3,9 @@
 
 #include "Models/Models.h"
 #include "Services/DevicePreferencesStore.h"
+#include "Controls/ArtworkUrlPolicy.h"
 #include "Services/DownloadArtworkService.h"
+#include "Services/DownloadSidecarFetcher.h"
 
 #include <algorithm>
 #include <chrono>
@@ -132,6 +134,7 @@ namespace HaloDesktop::Services
         m_records.clear();
         m_pauseAllIds.clear();
         m_artworkPending.clear();
+        m_sidecarsTried.clear();
         m_artwork->OnAccountChanged();
         m_freeBytes.reset();
         m_directory.clear();
@@ -830,6 +833,7 @@ namespace HaloDesktop::Services
         m_directory = std::move(snapshot.Directory);
         RecordsChanged();
         EnrichMissingArtwork();
+        EnrichMissingSidecars();
     }
 
     void DownloadService::EnrichMissingArtwork()
@@ -880,6 +884,94 @@ namespace HaloDesktop::Services
                     }
                 });
             static_cast<void>(completion);
+        }
+    }
+
+    void DownloadService::EnrichMissingSidecars()
+    {
+        if (!m_sidecarFetcher)
+        {
+            m_sidecarFetcher = std::make_shared<DownloadSidecarFetcher>();
+        }
+        auto const accountVersion = m_accountVersion.load();
+        for (auto const& record : m_records)
+        {
+            if (record.Status != DownloadStatus::Done || record.PendingDeletion)
+            {
+                continue;
+            }
+            auto const& media = record.Media;
+            for (auto const kind : { Downloads::SidecarKind::Logo, Downloads::SidecarKind::Art })
+            {
+                std::wstring url;
+                if (kind == Downloads::SidecarKind::Logo)
+                {
+                    // The same logo Stremio shows, by the title's IMDb id.
+                    if (media.MetaId)
+                    {
+                        url = ::HaloDesktop::Controls::MetahubLogoUrl(*media.MetaId).value_or(L"");
+                    }
+                }
+                else if (media.LandscapeArtwork)
+                {
+                    url = *media.LandscapeArtwork;
+                }
+                if (url.empty() || !IsSidecarSourceUrl(url))
+                {
+                    continue;
+                }
+                auto key = record.JobId + (kind == Downloads::SidecarKind::Logo ? L"|logo" : L"|art");
+                if (!m_sidecarsTried.insert(std::move(key)).second)
+                {
+                    continue;
+                }
+                SaveSidecarAsync(
+                    weak_from_this(),
+                    m_engine,
+                    m_sidecarFetcher,
+                    record.JobId,
+                    record.AccountKey,
+                    kind,
+                    std::move(url),
+                    record.SidecarPath(kind),
+                    accountVersion);
+            }
+        }
+    }
+
+    winrt::fire_and_forget DownloadService::SaveSidecarAsync(
+        std::weak_ptr<DownloadService> weak,
+        std::shared_ptr<Downloads::TransferEngine> engine,
+        std::shared_ptr<DownloadSidecarFetcher> fetcher,
+        std::wstring jobId,
+        std::wstring accountKey,
+        Downloads::SidecarKind kind,
+        std::wstring url,
+        std::filesystem::path target,
+        std::uint64_t accountVersion)
+    {
+        try
+        {
+            co_await winrt::resume_background();
+            std::error_code error;
+            if (std::filesystem::exists(target, error) || error)
+            {
+                co_return;
+            }
+            auto const bytes = co_await fetcher->FetchAsync(std::move(url), kind);
+            // The account may have changed while the picture came in; the
+            // engine checks too, but nothing is written for a session that left.
+            auto const owner = weak.lock();
+            if (!owner || accountVersion != owner->m_accountVersion.load())
+            {
+                co_return;
+            }
+            static_cast<void>(engine->SaveSidecar(jobId, accountKey, kind, bytes));
+        }
+        catch (...)
+        {
+            // Offline, a missing picture or a refused write: the card keeps
+            // showing the picture from the network, and the next launch tries again.
         }
     }
 

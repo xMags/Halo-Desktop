@@ -9,6 +9,7 @@
 #include <string>
 #include <string_view>
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
+#include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
 #include <winrt/Windows.Foundation.Numerics.h>
 
 namespace
@@ -63,6 +64,7 @@ namespace winrt::HaloDesktop::implementation
                 if (!self) return;
                 auto const name = args.PropertyName();
                 if (name == L"AccessibleName") self->UpdatePlayName();
+                if (name == L"SavedLogo" || name == L"OnlineLogo") self->ShowLogo();
             });
         }
         // The card is handed its row by the grid's template, which can be after
@@ -70,6 +72,83 @@ namespace winrt::HaloDesktop::implementation
         if (Bindings) Bindings->Update();
         UpdatePlayName();
         UpdatePlayButton();
+        ShowLogo();
+    }
+
+    void DownloadReadyCard::ShowLogo()
+    {
+        HideLogo();
+        m_logoSources.clear();
+        if (m_row)
+        {
+            for (auto const& source : { m_row.SavedLogo(), m_row.OnlineLogo() })
+            {
+                if (!source.empty()) m_logoSources.push_back(source);
+            }
+        }
+        TryLogo(0);
+    }
+
+    void DownloadReadyCard::TryLogo(std::size_t index)
+    {
+        // Each address that cannot even be made into a bitmap moves on at once.
+        for (; index < m_logoSources.size(); ++index)
+        {
+            try
+            {
+                Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
+                // Twice the 56 it is drawn at, for a dense display.
+                bitmap.DecodePixelHeight(112);
+                bitmap.UriSource(winrt::Windows::Foundation::Uri{ m_logoSources[index] });
+                m_logoIndex = index;
+                LogoImage().Source(bitmap);
+                return;
+            }
+            catch (winrt::hresult_error const&)
+            {
+            }
+        }
+        HideLogo();
+    }
+
+    void DownloadReadyCard::HideLogo()
+    {
+        try
+        {
+            LogoImage().Source(nullptr);
+            LogoImage().Opacity(0.0);
+            LogoScrim().Opacity(0.0);
+            TitleText().Visibility(Microsoft::UI::Xaml::Visibility::Visible);
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+    }
+
+    void DownloadReadyCard::OnLogoOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&)
+    {
+        try
+        {
+            LogoImage().Opacity(1.0);
+            LogoScrim().Opacity(1.0);
+            TitleText().Visibility(Microsoft::UI::Xaml::Visibility::Collapsed);
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+    }
+
+    void DownloadReadyCard::OnLogoFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&)
+    {
+        // Not saved yet, offline, or no logo for this title: the next, or the text.
+        try
+        {
+            LogoImage().Opacity(0.0);
+        }
+        catch (winrt::hresult_error const&)
+        {
+        }
+        TryLogo(m_logoIndex + 1);
     }
 
     void DownloadReadyCard::OnCardClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const& args)
@@ -113,6 +192,9 @@ namespace winrt::HaloDesktop::implementation
             auto const length = Microsoft::UI::Xaml::GridLengthHelper::FromPixels(height);
             if (auto const row = ButtonArtRow(); row && row.Height().Value != height) row.Height(length);
             if (auto const overlay = ArtOverlay(); overlay && overlay.Height() != height) overlay.Height(height);
+            // The logo takes at most 45% of the art's width, so a long wordmark
+            // never reaches the play button in the opposite corner.
+            if (auto const logo = LogoImage()) logo.MaxWidth(std::round(width * 0.45));
             if (auto const art = ArtScale())
             {
                 art.CenterPoint({ static_cast<float>(width / 2.0), static_cast<float>(height / 2.0), 0.0F });

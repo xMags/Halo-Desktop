@@ -7,6 +7,9 @@
 #include <winrt/Microsoft.UI.Xaml.Data.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
+#include <cstddef>
+#include <vector>
+
 namespace winrt::HaloDesktop::implementation
 {
     // One finished download in the "Ready to watch" grid. View behaviour only:
@@ -30,16 +33,27 @@ namespace winrt::HaloDesktop::implementation
         void OnHoverStarted(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnHoverEnded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::PointerRoutedEventArgs const&);
         void OnSizeChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::SizeChangedEventArgs const&);
+        void OnLogoOpened(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnLogoFailed(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::ExceptionRoutedEventArgs const&);
 
     private:
         void SetHovered(bool hovered);
         void UpdatePlayButton();
         void UpdatePlayName();
+        // Starts over on the row's logo: the saved one, then the network's.
+        void ShowLogo();
+        // Tries the logo at `index` of m_logoSources, or gives up past the end.
+        void TryLogo(std::size_t index);
+        // The text title back and the logo and its fade gone.
+        void HideLogo();
 
         winrt::HaloDesktop::DownloadRowViewModel m_row{ nullptr };
         winrt::event_token m_rowChangedToken{};
         bool m_hovered{};
         bool m_playFocused{};
+        // The logo addresses being tried, in order, and the one on screen.
+        std::vector<winrt::hstring> m_logoSources;
+        std::size_t m_logoIndex{};
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_selectedEvent;
         winrt::event<Microsoft::UI::Xaml::RoutedEventHandler> m_playEvent;
         // Holds the hover back while the list under the card scrolls.

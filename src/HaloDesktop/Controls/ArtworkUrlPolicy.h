@@ -1,6 +1,7 @@
 #pragma once
 
 #include <chrono>
+#include <filesystem>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -28,6 +29,15 @@ namespace HaloDesktop::Controls
     // an addon's catalog falls back on when its art does not load. Empty for
     // any other id, since metahub knows no other kind.
     [[nodiscard]] std::optional<std::wstring> MetahubPosterUrl(std::wstring_view id);
+
+    // Stremio's logo for a bare IMDb id: a transparent PNG of the title's
+    // wordmark, the one its own player shows. Empty for any other id.
+    [[nodiscard]] std::optional<std::wstring> MetahubLogoUrl(std::wstring_view id);
+
+    // A file on this PC as an address an image can load (`file:///C:/...`, with
+    // anything that is not a plain path character escaped). Empty for a path
+    // that is not absolute.
+    [[nodiscard]] std::wstring FileImageUrl(std::filesystem::path const& path);
 
     // The sources to try in order, before the placeholder: the artwork, the
     // caller's own fallback, then metahub's poster for an IMDb id. Empty and
