@@ -20,7 +20,7 @@ namespace
     constexpr double CaptionHeight = 52.0;
     constexpr double LiftBand = 4.0;
     // The header's text goes under the photo when it would be narrower than this.
-    constexpr double PhotoWidth = 220.0;
+    constexpr double PhotoWidth = 200.0;
     constexpr double HeadGap = 48.0;
     constexpr double HeadStackedGap = 24.0;
     constexpr double HeadTextMinWidth = 320.0;

@@ -32,8 +32,9 @@
       </Button>
 
       <!--
-        The header, in one quiet box: the 220 round photo (initials until it
-        loads), then who they are. The biography stops at four lines until
+        The header, in one quiet box: the photo as a 200x300 portrait, the 2:3
+        shape TMDB's profile photos come in, so none of it is cropped away
+        (initials until it loads), then who they are. The biography stops at four lines until
         Read more opens it. Both sides hang from the top, so an opened
         biography grows downward and the photo stays where it was.
       -->
@@ -54,13 +55,13 @@
         </Grid.RowDefinitions>
         <Grid
           x:Name="PersonPhoto"
-          Width="220"
-          Height="220"
+          Width="200"
+          Height="300"
           VerticalAlignment="Top"
           Background="{ThemeResource HaloAccentTintBrush}"
           BorderBrush="{ThemeResource HaloCardStrokeBrush}"
           BorderThickness="1"
-          CornerRadius="110">
+          CornerRadius="{StaticResource HaloArtCornerRadius}">
           <TextBlock
             x:Name="PersonInitials"
             HorizontalAlignment="Center"
