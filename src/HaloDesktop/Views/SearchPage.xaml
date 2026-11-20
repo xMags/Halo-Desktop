@@ -225,7 +225,8 @@
           Drawn above the sections after it, so the suggestions cover them.
         -->
         <StackPanel x:Name="SearchHead" Canvas.ZIndex="5">
-          <Grid x:Name="FieldColumn" MaxWidth="560">
+          <!-- Above the chips after it: the suggestions hang down over them, and must cover them. -->
+          <Grid x:Name="FieldColumn" MaxWidth="560" Canvas.ZIndex="1">
             <Grid.RowDefinitions>
               <RowDefinition Height="Auto" />
               <RowDefinition Height="Auto" />
