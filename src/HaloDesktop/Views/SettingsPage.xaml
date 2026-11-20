@@ -301,15 +301,28 @@
                       IsEnabled="{x:Bind TmdbKey.CanSave, Mode=OneWay}"
                       Style="{StaticResource HaloAccentButtonStyle}" />
                   </Grid>
-                  <!-- TMDB asks every app using its API to say so. -->
-                  <TextBlock
-                    Grid.Row="2"
-                    Grid.Column="1"
-                    Grid.ColumnSpan="2"
-                    FontSize="{StaticResource HaloFontCaption}"
-                    Foreground="{ThemeResource HaloText3Brush}"
-                    Text="This product uses the TMDB API but is not endorsed or certified by TMDB."
-                    TextWrapping="Wrap" />
+                  <!--
+                    TMDB asks every app using its API to say so, with its logo,
+                    less prominent than the app's own marks: its official short
+                    logo (Assets/tmdb-logo.svg, unaltered but for its fill moved
+                    inline, as Windows' SVG renderer reads no CSS).
+                  -->
+                  <Grid Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto" /><ColumnDefinition Width="*" /></Grid.ColumnDefinitions>
+                    <Image
+                      Height="10"
+                      VerticalAlignment="Center"
+                      AutomationProperties.Name="TMDB">
+                      <Image.Source><SvgImageSource UriSource="ms-appx:///Assets/tmdb-logo.svg" /></Image.Source>
+                    </Image>
+                    <TextBlock
+                      Grid.Column="1"
+                      VerticalAlignment="Center"
+                      FontSize="{StaticResource HaloFontCaption}"
+                      Foreground="{ThemeResource HaloText3Brush}"
+                      Text="This product uses the TMDB API but is not endorsed or certified by TMDB."
+                      TextWrapping="Wrap" />
+                  </Grid>
                 </Grid>
               </Border>
               <TextBlock Margin="2,4,0,0" AutomationProperties.LiveSetting="Polite" FontSize="{StaticResource HaloFontLabel}" Foreground="{ThemeResource HaloText2Brush}" Text="{x:Bind TmdbKey.StatusText, Mode=OneWay}" TextWrapping="Wrap" Visibility="{x:Bind TmdbKey.StatusOkVisibility, Mode=OneWay}" />
