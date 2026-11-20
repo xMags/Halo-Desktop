@@ -733,7 +733,7 @@
               <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
               <ItemsRepeater x:Name="PeopleAboveGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
                 <ItemsRepeater.Layout>
-                  <UniformGridLayout ItemsStretch="None" MinColumnSpacing="18" MinItemWidth="132" MinRowSpacing="14" Orientation="Horizontal" />
+                  <UniformGridLayout x:Name="PeopleAboveLayout" ItemsStretch="None" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
                 </ItemsRepeater.Layout>
               </ItemsRepeater>
             </StackPanel>
@@ -779,7 +779,7 @@
               <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
               <ItemsRepeater x:Name="PeopleBelowGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
                 <ItemsRepeater.Layout>
-                  <UniformGridLayout ItemsStretch="None" MinColumnSpacing="18" MinItemWidth="132" MinRowSpacing="14" Orientation="Horizontal" />
+                  <UniformGridLayout x:Name="PeopleBelowLayout" ItemsStretch="None" MinColumnSpacing="22" MinRowSpacing="14" Orientation="Horizontal" />
                 </ItemsRepeater.Layout>
               </ItemsRepeater>
             </StackPanel>

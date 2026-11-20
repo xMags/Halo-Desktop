@@ -502,7 +502,9 @@ namespace winrt::HaloDesktop::implementation
         if (!metrics) return;
         auto const current = metrics->Current();
         PageBody().Padding({ current.Gutter, 40.0, current.Gutter, 40.0 });
-        for (auto const& layout : { LibraryLayout(), ResultsLayout() })
+        // The people rows too: a person's card sizes itself to the poster width
+        // like any poster, so a slot fixed narrower would clip it.
+        for (auto const& layout : { LibraryLayout(), ResultsLayout(), PeopleAboveLayout(), PeopleBelowLayout() })
         {
             if (!layout) continue;
             layout.MinItemWidth(current.PosterWidth);
