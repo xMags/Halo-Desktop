@@ -6,8 +6,8 @@
   <!--
     One destination of the shell's rail: a
     large icon over a short label in a 64 by 60 tile. The chosen one sits on a
-    raised tile (the segmented selector's fill and hairline edge) with an accent
-    pill in the rail's gutter, and its icon and label take the accent. A
+    soft filled tile (the segmented selector's fill, no edge) with an accent
+    pill just inside its left edge, and its icon and label take the accent. A
     RadioButton, so one group keeps exactly one lit and automation reads it as
     a choice; the shell navigates on Click, never on Checked, so lighting the
     current page from code does not navigate.
@@ -26,13 +26,13 @@
         <ControlTemplate TargetType="RadioButton">
           <Grid x:Name="Root" Background="Transparent">
             <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="8" Opacity="0" />
-            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloSegmentSelectedBrush}" BorderBrush="{ThemeResource HaloSegmentSelectedStrokeBrush}" BorderThickness="1" CornerRadius="8" Opacity="0" />
-            <!-- In the 6px gutter left of the tile, outside its frame. -->
+            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloSegmentSelectedBrush}" CornerRadius="8" Opacity="0" />
+            <!-- Just inside the tile's left edge. -->
             <Border
               x:Name="Indicator"
               Width="3"
-              Height="18"
-              Margin="-5,0,0,0"
+              Height="16"
+              Margin="3,0,0,0"
               HorizontalAlignment="Left"
               VerticalAlignment="Center"
               Background="{ThemeResource HaloAccentBrush}"

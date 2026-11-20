@@ -32,7 +32,7 @@
       Arrow keys move between destinations (XY focus) without navigating; Enter
       or Space opens one. Tab enters the rail once.
     -->
-    <Grid x:Name="Rail" Width="{StaticResource HaloRailWidth}" Padding="0,4,0,12">
+    <Grid x:Name="Rail" Width="{StaticResource HaloRailWidth}" Padding="0,8,0,12">
       <Grid.RowDefinitions>
         <RowDefinition Height="*" />
         <RowDefinition Height="Auto" />
