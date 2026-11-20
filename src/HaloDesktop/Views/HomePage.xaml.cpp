@@ -238,11 +238,11 @@ namespace winrt::HaloDesktop::implementation
         UpdateSkeletonPulse();
     }
 
-    void HomePage::OnSearchSubmitted(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::AutoSuggestBox const& sender,
-        Microsoft::UI::Xaml::Controls::AutoSuggestBoxQuerySubmittedEventArgs const& args)
+    void HomePage::OnSearchClick(
+        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        m_viewModel.OpenSearch(args.QueryText());
+        m_viewModel.OpenSearch();
     }
 
     void HomePage::OnAllFilterClick(

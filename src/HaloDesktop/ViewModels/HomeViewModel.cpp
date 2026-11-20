@@ -446,7 +446,7 @@ namespace winrt::HaloDesktop::implementation
             *m_navigation,
             item.try_as<winrt::HaloDesktop::ContinueItem>());
     }
-    void HomeViewModel::OpenSearch(winrt::hstring const& query) { m_navigation->GoTo(::HaloDesktop::Services::Page::Search, winrt::box_value(query)); }
+    void HomeViewModel::OpenSearch() { m_navigation->GoTo(::HaloDesktop::Services::Page::Search); }
     void HomeViewModel::OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf)
     {
         auto const snapshot = shelf.try_as<winrt::HaloDesktop::Shelf>();

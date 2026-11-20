@@ -81,19 +81,51 @@
           <!-- The search box and the filter tray share one height (32), one
                corner and one hairline edge, so the pair reads as a set. -->
           <StackPanel Orientation="Horizontal" Spacing="12">
-            <AutoSuggestBox
+            <!--
+              Looks like a search box, but is a button: a click (or Enter or
+              Space) opens the Search page, which takes the caret itself, the
+              same as the nav item and Ctrl+K. A real text box here would also
+              fire whenever focus came back to it, such as on returning Home.
+            -->
+            <Button
               x:Name="HomeSearchBox"
               Width="300"
               Height="32"
+              Padding="11,0,10,0"
               VerticalAlignment="Center"
+              HorizontalContentAlignment="Stretch"
+              AutomationProperties.Name="Search"
               Background="{ThemeResource HaloCtrlBrush}"
               BorderBrush="{ThemeResource HaloCtrlStrokeBrush}"
               BorderThickness="1"
+              Click="OnSearchClick"
               CornerRadius="6"
-              FontSize="{StaticResource HaloFontBody}"
-              PlaceholderText="Search movies and series"
-              QueryIcon="Find"
-              QuerySubmitted="OnSearchSubmitted" />
+              ToolTipService.ToolTip="Search (Ctrl+K)">
+              <Button.Resources>
+                <StaticResource x:Key="ButtonBackgroundPointerOver" ResourceKey="HaloCtrlHoverBrush" />
+                <StaticResource x:Key="ButtonBackgroundPressed" ResourceKey="HaloCtrlBrush" />
+                <StaticResource x:Key="ButtonBorderBrushPointerOver" ResourceKey="HaloCtrlStrokeBrush" />
+                <StaticResource x:Key="ButtonBorderBrushPressed" ResourceKey="HaloCtrlStrokeBrush" />
+              </Button.Resources>
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*" />
+                  <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                  VerticalAlignment="Center"
+                  FontSize="{StaticResource HaloFontBody}"
+                  Foreground="{ThemeResource HaloText3Brush}"
+                  Text="Search movies and series"
+                  TextTrimming="CharacterEllipsis" />
+                <FontIcon
+                  Grid.Column="1"
+                  VerticalAlignment="Center"
+                  FontSize="14"
+                  Foreground="{ThemeResource HaloText2Brush}"
+                  Glyph="&#xE721;" />
+              </Grid>
+            </Button>
             <Border VerticalAlignment="Center" Style="{StaticResource HaloSegmentedTrayStyle}">
               <StackPanel Orientation="Horizontal">
                 <RadioButton GroupName="HomeFilter" IsChecked="True" Click="OnAllFilterClick" Content="All" Style="{StaticResource HaloSegmentedRadioStyle}" />

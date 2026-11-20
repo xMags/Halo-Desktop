@@ -65,7 +65,7 @@ namespace winrt::HaloDesktop::implementation
         // Home is off screen. The view stops the carousel's clock itself.
         void Deactivate();
         void OpenContinue(winrt::Windows::Foundation::IInspectable const& item);
-        void OpenSearch(winrt::hstring const& query);
+        void OpenSearch();
         // A shelf's "See all": its grid, the history or the library.
         void OpenCatalog(winrt::Windows::Foundation::IInspectable const& shelf);
         void OpenContinueCatalog();

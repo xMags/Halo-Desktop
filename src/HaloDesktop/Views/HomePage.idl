@@ -34,7 +34,7 @@ namespace HaloDesktop
         void ToggleFeaturedLibrary(Object item);
         void Deactivate();
         void OpenContinue(Object item);
-        void OpenSearch(String query);
+        void OpenSearch();
         void OpenCatalog(Object shelf);
         void OpenContinueCatalog();
         Double HeroHeight { get; };
