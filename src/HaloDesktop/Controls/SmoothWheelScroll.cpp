@@ -72,5 +72,32 @@ namespace HaloDesktop::Controls
                 }
             });
         view.AddHandler(Xaml::UIElement::PointerWheelChangedEvent(), winrt::box_value(handler), false);
+
+        // A glide runs on the compositor, apart from the view's layout. A page
+        // taken off screen mid-glide (a title opened while the page still
+        // moves) came back with the two disagreeing: the view at the top, the
+        // compositor still drawing the content where the glide left it, so the
+        // page's header showed cut off. Leaving stops the glide where it is,
+        // and arriving puts the compositor exactly where the view says it is.
+        auto const settle = [weak = winrt::make_weak(view)](winrt::Windows::Foundation::IInspectable const&, Xaml::RoutedEventArgs const&)
+        {
+            try
+            {
+                auto const scroller = weak.get();
+                if (!scroller) return;
+                scroller.ScrollTo(
+                    scroller.HorizontalOffset(),
+                    scroller.VerticalOffset(),
+                    Xaml::Controls::ScrollingScrollOptions{
+                        Xaml::Controls::ScrollingAnimationMode::Disabled,
+                        Xaml::Controls::ScrollingSnapPointsMode::Ignore });
+            }
+            catch (winrt::hresult_error const&)
+            {
+                // A view being torn down has nothing left to put right.
+            }
+        };
+        view.Unloaded(settle);
+        view.Loaded(settle);
     }
 }

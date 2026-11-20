@@ -11,7 +11,10 @@ namespace HaloDesktop::Controls
     // notch" setting (WheelLineDistance per line).
     //
     // The view stops handling the wheel itself (IgnoredInputKinds); touch,
-    // touchpad panning, keys and the scrollbar are left to it. A sideways
+    // touchpad panning, keys and the scrollbar are left to it. Leaving the
+    // screen stops a glide, and coming back puts the compositor's position
+    // back in step with the view's, so a page left mid-glide cannot return
+    // drawn out of place. A sideways
     // wheel and Ctrl with the wheel are left alone. The handler holds the view
     // weakly. Attaching a view again does nothing, so a page can call this on
     // every Loaded. UI thread only.
