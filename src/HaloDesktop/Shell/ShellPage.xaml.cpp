@@ -9,7 +9,6 @@
 #include "Services/AccountPictureService.h"
 #include "Services/Device/DeviceDataMove.h"
 #include "Services/Device/DeviceMovePolicy.h"
-#include "Services/DevicePreferencesStore.h"
 #include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
 #include "Shell/PointerFocusPolicy.h"
@@ -18,7 +17,6 @@
 
 #include <winrt/Microsoft.UI.Xaml.Automation.h>
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cstddef>
 #include <limits>
@@ -35,44 +33,22 @@ namespace
     constexpr std::uint32_t AvatarSize = 28;
     constexpr wchar_t AccountToolTip[] = L"Server & account";
 
-    winrt::Microsoft::UI::Xaml::FrameworkElement FindNamedDescendant(
-        winrt::Microsoft::UI::Xaml::DependencyObject const& root,
-        std::wstring_view name)
+    // IsChecked is nullable (a three-state box); the rail's are never indeterminate.
+    bool IsLit(winrt::Microsoft::UI::Xaml::Controls::RadioButton const& item)
     {
-        auto const count = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChildrenCount(root);
-        for (std::int32_t index = 0; index < count; ++index)
-        {
-            auto const child = winrt::Microsoft::UI::Xaml::Media::VisualTreeHelper::GetChild(root, index);
-            if (auto const element = child.try_as<winrt::Microsoft::UI::Xaml::FrameworkElement>();
-                element && element.Name() == name)
-            {
-                return element;
-            }
-            if (auto const found = FindNamedDescendant(child, name))
-            {
-                return found;
-            }
-        }
-        return nullptr;
+        auto const checked = item.IsChecked();
+        return checked && checked.Value();
     }
 }
 
 namespace winrt::HaloDesktop::implementation
 {
-    ShellPage::ShellPage()
-        : m_titleMenu(App::Services())
-    {
-    }
+    ShellPage::ShellPage() = default;
 
     void ShellPage::InitializeComponent()
     {
         ShellPageT::InitializeComponent();
         m_stockAvatar = AccountAvatar().Source();
-        // Closed until the viewer first opens it, then as they last left it.
-        auto const open = App::Services().DevicePreferences->NavPaneOpen();
-        m_storedPaneOpen = open;
-        NavigationControl().IsPaneOpen(open);
-        ApplyPaneState(open);
     }
 
     void ShellPage::OnLoaded(
@@ -172,26 +148,6 @@ namespace winrt::HaloDesktop::implementation
                     self->UpdateDownloadBadge();
                 }
             });
-        // The sidebar reads the same collection the Home shelf does, so it needs
-        // the same notice when a next-episode lookup lands after the first paint.
-        m_continueChangedToken = App::Services().Catalog->AddContinueChangedHandler(
-            [weak = get_weak()]()
-            {
-                if (auto const self = weak.get())
-                {
-                    self->RefreshJumpBackIn();
-                }
-            });
-        // A right-click menu anywhere can mark one of these episodes watched,
-        // which moves its row on the way finishing it would.
-        m_userStateChangedToken = App::Services().Catalog->AddUserStateChangedHandler(
-            [weak = get_weak()]()
-            {
-                if (auto const self = weak.get())
-                {
-                    self->RefreshJumpBackIn();
-                }
-            });
         // What was read above belongs to whoever was signed in at launch, often
         // nobody, with the sign-in page over the shell.
         m_identityChangedToken = App::Services().Session->AddIdentityChangedHandler(
@@ -222,13 +178,8 @@ namespace winrt::HaloDesktop::implementation
                     self->ShowSkippedAddons(names);
                 }
             });
-        UpdatePaneToggleOffset();
-        HookPaneToggle();
-        RestoreStoredPaneState();
         UpdateDownloadBadge();
         RefreshAccountIdentity();
-        RefreshJumpBackIn();
-        RefreshJumpBackInAsync();
         // Also picks up a notice still pending from before the shell last unloaded.
         ShowSkippedAddons(App::Services().DeviceMove->TakeUnreportedSkippedAddons());
     }
@@ -236,13 +187,6 @@ namespace winrt::HaloDesktop::implementation
     void ShellPage::OnIdentityChanged()
     {
         RefreshAccountIdentity();
-        // The account's services were reset before this runs, so this empties the
-        // rows of the account that left; the load refills them for the new one.
-        RefreshJumpBackIn();
-        if (App::Services().Session->Mode() != ::HaloDesktop::Services::SessionMode::SignedOut)
-        {
-            RefreshJumpBackInAsync();
-        }
     }
 
     // The names stay pending until a dialog naming them was actually opened. Only
@@ -316,16 +260,6 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Downloads->RemoveChangedHandler(m_downloadChangedToken);
             m_downloadChangedToken = 0;
         }
-        if (m_continueChangedToken != 0)
-        {
-            App::Services().Catalog->RemoveContinueChangedHandler(m_continueChangedToken);
-            m_continueChangedToken = 0;
-        }
-        if (m_userStateChangedToken != 0)
-        {
-            App::Services().Catalog->RemoveUserStateChangedHandler(m_userStateChangedToken);
-            m_userStateChangedToken = 0;
-        }
         if (m_identityChangedToken != 0)
         {
             App::Services().Session->RemoveIdentityChangedHandler(m_identityChangedToken);
@@ -350,7 +284,6 @@ namespace winrt::HaloDesktop::implementation
         }
         DetachPointerHandlers();
         m_frameNavigatedRevoker.revoke();
-        m_paneToggleClick.revoke();
         m_attached = false;
     }
 
@@ -444,7 +377,7 @@ namespace winrt::HaloDesktop::implementation
             } });
 
         // The mouse back button is a shell-wide gesture, not a content one, so it
-        // listens on the NavigationView rather than the frame host: a press over the
+        // listens on the whole shell rather than the frame host: a press over the
         // rail should go back just as one over the page does. Handled presses count,
         // because the button a press lands on has no interest in the X buttons.
         m_backPointerHandler = winrt::box_value(Microsoft::UI::Xaml::Input::PointerEventHandler{
@@ -463,7 +396,7 @@ namespace winrt::HaloDesktop::implementation
             Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
             m_pointerPressedHandler,
             true);
-        NavigationControl().AddHandler(
+        ShellRoot().AddHandler(
             Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
             m_backPointerHandler,
             true);
@@ -506,7 +439,7 @@ namespace winrt::HaloDesktop::implementation
         {
             if (m_backPointerHandler)
             {
-                NavigationControl().RemoveHandler(
+                ShellRoot().RemoveHandler(
                     Microsoft::UI::Xaml::UIElement::PointerPressedEvent(),
                     m_backPointerHandler);
             }
@@ -561,53 +494,27 @@ namespace winrt::HaloDesktop::implementation
         }
     }
 
-    void ShellPage::OnItemInvoked(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
-        Microsoft::UI::Xaml::Controls::NavigationViewItemInvokedEventArgs const& args)
+    void ShellPage::OnRailItemClick(
+        winrt::Windows::Foundation::IInspectable const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)
     {
-        auto const item = args.InvokedItemContainer().try_as<Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+        auto const item = sender.try_as<Microsoft::UI::Xaml::FrameworkElement>();
         if (!item)
         {
             return;
         }
-
         NavigateFromTag(winrt::unbox_value_or<winrt::hstring>(item.Tag(), L""));
-    }
-
-    void ShellPage::OnJumpContextRequested(
-        winrt::Windows::Foundation::IInspectable const& sender,
-        Microsoft::UI::Xaml::Input::ContextRequestedEventArgs const& args)
-    {
-        auto const row = sender.try_as<Microsoft::UI::Xaml::Controls::NavigationViewItem>();
-        if (!row)
-        {
-            return;
-        }
-        auto const tag = winrt::unbox_value_or<winrt::hstring>(row.Tag(), L"");
-        std::array<wchar_t const*, 3> const tags{ L"Jump0", L"Jump1", L"Jump2" };
-        for (std::size_t index = 0; index < tags.size(); ++index)
-        {
-            if (tag == tags[index] && m_jumpItems[index])
-            {
-                m_titleMenu.ShowForContinue(row, args, m_jumpItems[index]);
-                return;
-            }
-        }
-    }
-
-    void ShellPage::OnBackRequested(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewBackRequestedEventArgs const& args)
-    {
-        App::Services().Navigation->GoBack();
+        // A click lights the item at once. When nothing navigates (a press on
+        // the page already shown), the frame raises nothing, so the rail is
+        // put back to the page that is up.
+        UpdateNavigationState(App::Services().Navigation->CurrentPage());
     }
 
     void ShellPage::OnSearchAcceleratorInvoked(
         [[maybe_unused]] Microsoft::UI::Xaml::Input::KeyboardAccelerator const& sender,
         Microsoft::UI::Xaml::Input::KeyboardAcceleratorInvokedEventArgs const& args)
     {
-        // The pane no longer hosts a search box, so the shortcut opens the search page,
-        // which focuses its own input on arrival.
+        // The shortcut opens the search page, which focuses its own input on arrival.
         App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Search);
         args.Handled(true);
     }
@@ -649,7 +556,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     // The frame host is the area pages actually lay out in, so it already has the
-    // nav rail subtracted, whether the rail is collapsed, compact or expanded.
+    // rail subtracted.
     void ShellPage::OnContentHostSizeChanged(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         Microsoft::UI::Xaml::SizeChangedEventArgs const& args)
@@ -657,202 +564,11 @@ namespace winrt::HaloDesktop::implementation
         App::Services().LayoutMetrics->SetContentWidth(args.NewSize().Width);
     }
 
-    void ShellPage::OnPaneOpening(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
-        [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
-    {
-        RefreshAccountIdentity();
-        RefreshJumpBackIn();
-        ApplyPaneState(true);
-    }
-
-    // Not remembered here: the NavigationView also opens and closes the pane on
-    // its own (as it sets itself up), and storing those moves overwrote the
-    // viewer's choice. Only the toggle button stores it (HookPaneToggle).
-    void ShellPage::OnPaneClosing(
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationView const& sender,
-        [[maybe_unused]] Microsoft::UI::Xaml::Controls::NavigationViewPaneClosingEventArgs const& args)
-    {
-        ApplyPaneState(false);
-    }
-
-    // The viewer's own toggle is the one source of the stored pane state. The
-    // NavigationView flips the pane in its own handler for the same click, so
-    // the new state is read a turn later, once that has run.
-    void ShellPage::HookPaneToggle()
-    {
-        if (m_paneToggleClick || !m_paneToggle)
-        {
-            return;
-        }
-        auto const button = m_paneToggle.try_as<Microsoft::UI::Xaml::Controls::Primitives::ButtonBase>();
-        if (!button)
-        {
-            return;
-        }
-        m_paneToggleClick = button.Click(winrt::auto_revoke, [weak = get_weak()](auto const&, auto const&)
-        {
-            auto const self = weak.get();
-            if (!self)
-            {
-                return;
-            }
-            try
-            {
-                static_cast<void>(self->DispatcherQueue().TryEnqueue(
-                    Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
-                    [weak = self->get_weak()]()
-                    {
-                        if (auto const shell = weak.get())
-                        {
-                            try
-                            {
-                                shell->RememberPaneState(shell->NavigationControl().IsPaneOpen());
-                            }
-                            catch (winrt::hresult_error const&)
-                            {
-                            }
-                        }
-                    }));
-            }
-            catch (winrt::hresult_error const&)
-            {
-                // The shell is going away: nothing to remember it for.
-            }
-        });
-    }
-
-    // The NavigationView settles its pane as it first lays out, after the value
-    // read at start was applied, so the stored choice is put back once that has
-    // happened.
-    void ShellPage::RestoreStoredPaneState()
-    {
-        try
-        {
-            static_cast<void>(DispatcherQueue().TryEnqueue(
-                Microsoft::UI::Dispatching::DispatcherQueuePriority::Low,
-                [weak = get_weak()]()
-                {
-                    auto const self = weak.get();
-                    if (!self || !self->m_attached)
-                    {
-                        return;
-                    }
-                    try
-                    {
-                        auto const navigation = self->NavigationControl();
-                        if (navigation.IsPaneOpen() != self->m_storedPaneOpen)
-                        {
-                            navigation.IsPaneOpen(self->m_storedPaneOpen);
-                        }
-                    }
-                    catch (winrt::hresult_error const&)
-                    {
-                    }
-                }));
-        }
-        catch (winrt::hresult_error const&)
-        {
-        }
-    }
-
-    void ShellPage::ApplyPaneState(bool open)
-    {
-        SetJumpBackVisibility(open);
-        AccountLines().Visibility(open
-            ? Microsoft::UI::Xaml::Visibility::Visible
-            : Microsoft::UI::Xaml::Visibility::Collapsed);
-        UpdateAccountToolTip();
-        UpdatePaneToggleOffset();
-        m_paneShownOpen = open;
-        UpdateDownloadBadge();
-    }
-
-    // The toggle belongs to the NavigationView's template, so it exists only once
-    // the template has been applied; before that this does nothing and the Loaded
-    // handler applies it.
-    void ShellPage::UpdatePaneToggleOffset()
-    {
-        if (!m_paneToggle && m_attached)
-        {
-            m_paneToggle = FindNamedDescendant(NavigationControl(), L"TogglePaneButton");
-        }
-        auto const toggle = m_paneToggle;
-        if (!toggle)
-        {
-            return;
-        }
-        // No margin in either pane state: the toggle's own column already centres
-        // it over the rail's icons, and any offset shows as a visible misalignment.
-        toggle.Margin(Microsoft::UI::Xaml::Thickness{ 0.0, 0.0, 0.0, 0.0 });
-    }
-
-    void ShellPage::RememberPaneState(bool open)
-    {
-        if (open == m_storedPaneOpen)
-        {
-            return;
-        }
-        m_storedPaneOpen = open;
-        if (!m_paneWriteRunning)
-        {
-            WritePaneStateAsync();
-        }
-    }
-
-    // One writer at a time, writing whatever was asked for last, so toggles faster
-    // than the disk only ever leave the final state behind, never an older one.
-    winrt::fire_and_forget ShellPage::WritePaneStateAsync()
-    {
-        auto lifetime = get_strong();
-        auto const uiContext = winrt::apartment_context{};
-        auto const store = App::Services().DevicePreferences;
-        m_paneWriteRunning = true;
-        while (true)
-        {
-            auto const value = m_storedPaneOpen;
-            co_await winrt::resume_background();
-            try
-            {
-                store->NavPaneOpen(value);
-            }
-            catch (...)
-            {
-                // Losing the preference is not worth failing a click over.
-            }
-            co_await uiContext;
-            if (m_storedPaneOpen == value)
-            {
-                break;
-            }
-        }
-        m_paneWriteRunning = false;
-    }
-
-    void ShellPage::SetJumpBackVisibility(bool visible)
-    {
-        m_paneOpen = visible;
-        std::array items{ JumpItem1(), JumpItem2(), JumpItem3() };
-        auto anyVisible = false;
-        for (std::size_t index = 0; index < items.size(); ++index)
-        {
-            auto const show = visible && static_cast<bool>(m_jumpItems[index]);
-            items[index].Visibility(show
-                ? Microsoft::UI::Xaml::Visibility::Visible
-                : Microsoft::UI::Xaml::Visibility::Collapsed);
-            anyVisible = anyVisible || show;
-        }
-        JumpHeader().Visibility(anyVisible
-            ? Microsoft::UI::Xaml::Visibility::Visible
-            : Microsoft::UI::Xaml::Visibility::Collapsed);
-    }
-
     void ShellPage::OnFrameNavigated(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
     {
         UpdateNavigationState(App::Services().Navigation->CurrentPage());
-        RefreshJumpBackIn();
     }
 
     Microsoft::UI::Xaml::Controls::Frame ShellPage::ContentFrameControl() const
@@ -860,19 +576,17 @@ namespace winrt::HaloDesktop::implementation
         return FindName(L"ContentFrame").as<Microsoft::UI::Xaml::Controls::Frame>();
     }
 
-    Microsoft::UI::Xaml::Controls::InfoBadge ShellPage::DownloadsBadgeControl() const
+    // The rail's lit destination, or null when none is.
+    Microsoft::UI::Xaml::Controls::RadioButton ShellPage::CheckedRailItem()
     {
-        return FindName(L"DownloadsBadge").as<Microsoft::UI::Xaml::Controls::InfoBadge>();
-    }
-
-    Microsoft::UI::Xaml::Controls::NavigationView ShellPage::NavigationControl() const
-    {
-        return FindName(L"Navigation").as<Microsoft::UI::Xaml::Controls::NavigationView>();
-    }
-
-    Microsoft::UI::Xaml::Controls::NavigationViewItem ShellPage::NavigationItem(winrt::hstring const& name) const
-    {
-        return FindName(name).as<Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+        for (auto const& item : { HomeItem(), SearchItem(), LibraryItem(), HistoryItem(), DownloadsItem(), SettingsItem() })
+        {
+            if (IsLit(item))
+            {
+                return item;
+            }
+        }
+        return nullptr;
     }
 
     void ShellPage::NavigateFromTag(winrt::hstring const& tag)
@@ -909,17 +623,6 @@ namespace winrt::HaloDesktop::implementation
             App::Services().Navigation->GoTo(Page::Settings);
             return;
         }
-        if (tag == L"Jump0" || tag == L"Jump1" || tag == L"Jump2")
-        {
-            auto const index = static_cast<std::size_t>(tag[4] - L'0');
-            if (m_jumpItems[index])
-            {
-                ::HaloDesktop::Services::OpenContinueItem(
-                    *App::Services().Navigation,
-                    m_jumpItems[index]);
-            }
-            return;
-        }
         if (tag == L"Detail")
         {
             App::Services().Navigation->GoTo(Page::Detail);
@@ -939,117 +642,53 @@ namespace winrt::HaloDesktop::implementation
         {
             section = App::Services().Navigation->SectionBehindCurrentPage();
         }
-        Microsoft::UI::Xaml::Controls::NavigationViewItem selectedItem{ nullptr };
+        Microsoft::UI::Xaml::Controls::RadioButton selectedItem{ nullptr };
         switch (section)
         {
         case Page::Home:
         case Page::Detail:
         case Page::Person:
-            selectedItem = NavigationItem(L"HomeItem");
+            selectedItem = HomeItem();
             break;
         case Page::Search:
-            selectedItem = NavigationItem(L"SearchItem");
+            selectedItem = SearchItem();
             break;
         case Page::Catalog:
-            selectedItem = NavigationControl().SelectedItem().try_as<
-                Microsoft::UI::Xaml::Controls::NavigationViewItem>();
+            // A See all page keeps whichever section it was opened from lit.
+            selectedItem = CheckedRailItem();
             if (!selectedItem)
             {
-                selectedItem = NavigationItem(L"HomeItem");
+                selectedItem = HomeItem();
             }
             break;
         case Page::Library:
-            selectedItem = NavigationItem(L"LibraryItem");
+            selectedItem = LibraryItem();
             break;
         case Page::History:
-            selectedItem = NavigationItem(L"HistoryItem");
+            selectedItem = HistoryItem();
             break;
         case Page::Downloads:
-            selectedItem = NavigationItem(L"DownloadsItem");
+            selectedItem = DownloadsItem();
             break;
         case Page::Settings:
-            selectedItem = NavigationItem(L"SettingsItem");
+            selectedItem = SettingsItem();
             break;
         }
 
-        NavigationControl().SelectedItem(selectedItem);
-        NavigationControl().IsBackEnabled(App::Services().Navigation->CanGoBack());
+        // The group unlights the others; Checked starts no navigation (only Click does).
+        if (selectedItem && !IsLit(selectedItem))
+        {
+            selectedItem.IsChecked(true);
+        }
     }
 
     void ShellPage::UpdateDownloadBadge()
     {
         auto const count = App::Services().Downloads->ActiveCount();
-        auto const badge = DownloadsBadgeControl();
-        badge.Value(count);
-        // The count beside the label with the pane open; a dot on the icon with
-        // it closed, where a number would crowd the glyph.
-        badge.Visibility(count != 0 && m_paneShownOpen
+        // A dot on the icon: a number would crowd the glyph.
+        DownloadsDot().Visibility(count != 0
             ? Microsoft::UI::Xaml::Visibility::Visible
             : Microsoft::UI::Xaml::Visibility::Collapsed);
-        if (auto const dot = DownloadsDot())
-        {
-            dot.Visibility(count != 0 && !m_paneShownOpen
-                ? Microsoft::UI::Xaml::Visibility::Visible
-                : Microsoft::UI::Xaml::Visibility::Collapsed);
-        }
-    }
-
-    void ShellPage::RefreshJumpBackIn()
-    {
-        std::array titles{
-            FindName(L"JumpTitle1").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-            FindName(L"JumpTitle2").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-            FindName(L"JumpTitle3").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-        };
-        std::array metadata{
-            FindName(L"JumpMeta1").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-            FindName(L"JumpMeta2").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-            FindName(L"JumpMeta3").as<Microsoft::UI::Xaml::Controls::TextBlock>(),
-        };
-        std::array posters{
-            FindName(L"JumpPoster1").as<winrt::HaloDesktop::ArtworkImage>(),
-            FindName(L"JumpPoster2").as<winrt::HaloDesktop::ArtworkImage>(),
-            FindName(L"JumpPoster3").as<winrt::HaloDesktop::ArtworkImage>(),
-        };
-        auto const continued = App::Services().Catalog->ContinueWatching();
-        for (std::size_t index = 0; index < m_jumpItems.size(); ++index)
-        {
-            m_jumpItems[index] = index < static_cast<std::size_t>(continued.Size())
-                ? continued.GetAt(static_cast<std::uint32_t>(index))
-                : nullptr;
-            titles[index].Text(m_jumpItems[index] ? m_jumpItems[index].Name() : L"");
-            posters[index].SourceUrl(m_jumpItems[index] ? m_jumpItems[index].Poster() : L"");
-            if (!m_jumpItems[index])
-            {
-                metadata[index].Text(L"");
-                continue;
-            }
-            auto line = m_jumpItems[index].Tag();
-            if (!line.empty() && !m_jumpItems[index].TimeLeft().empty())
-            {
-                line = line + L" · ";
-            }
-            metadata[index].Text(line + m_jumpItems[index].TimeLeft());
-        }
-        SetJumpBackVisibility(m_paneOpen);
-    }
-
-    winrt::fire_and_forget ShellPage::RefreshJumpBackInAsync()
-    {
-        auto lifetime = get_strong();
-        try
-        {
-            auto const uiContext = winrt::apartment_context{};
-            co_await App::Services().Catalog->LoadAsync();
-            co_await uiContext;
-            if (m_attached)
-            {
-                RefreshJumpBackIn();
-            }
-        }
-        catch (...)
-        {
-        }
     }
 
     void ShellPage::RefreshAccountIdentity()
@@ -1058,8 +697,8 @@ namespace winrt::HaloDesktop::implementation
         if (session->Mode() == ::HaloDesktop::Services::SessionMode::Device)
         {
             // Halo without an account: this PC, with the stock avatar.
-            AccountName().Text(winrt::hstring{ ::HaloDesktop::Services::DeviceAccountName });
-            AccountRole().Text(winrt::hstring{ ::HaloDesktop::Services::DeviceAccountLabel });
+            m_accountName = winrt::hstring{ ::HaloDesktop::Services::DeviceAccountName };
+            m_accountRole = winrt::hstring{ ::HaloDesktop::Services::DeviceAccountLabel };
             UpdateAccountToolTip();
             RefreshAccountPictureAsync();
             return;
@@ -1069,21 +708,22 @@ namespace winrt::HaloDesktop::implementation
             .IsAdmin = session->IsAdmin(),
             .Plan = plan ? std::wstring_view{ *plan } : std::wstring_view{},
         });
-        AccountName().Text(::HaloDesktop::Services::AccountDisplayName(session->UserName()));
-        AccountRole().Text(label);
+        m_accountName = winrt::hstring{ ::HaloDesktop::Services::AccountDisplayName(session->UserName()) };
+        m_accountRole = winrt::hstring{ label };
         UpdateAccountToolTip();
         RefreshAccountPictureAsync();
     }
 
-    // Open, the row says what it opens; compact, where only the avatar shows, it
-    // names the account. A screen reader hears both either way: the row's text
-    // is set from here, so the button has no name of its own to offer.
+    // Only the avatar shows, so the tooltip names the account and its tier (what
+    // the expanded pane used to print beside it). A screen reader hears the name
+    // and what the button opens.
     void ShellPage::UpdateAccountToolTip()
     {
-        auto const name = AccountName().Text();
-        Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(
-            AccountButton(),
-            winrt::box_value(m_paneOpen || name.empty() ? winrt::hstring{ AccountToolTip } : name));
+        auto const name = m_accountName;
+        auto const tip = name.empty()
+            ? winrt::hstring{ AccountToolTip }
+            : (m_accountRole.empty() ? name : name + L" \u00B7 " + m_accountRole);
+        Microsoft::UI::Xaml::Controls::ToolTipService::SetToolTip(AccountButton(), winrt::box_value(tip));
         Microsoft::UI::Xaml::Automation::AutomationProperties::SetName(
             AccountButton(),
             name.empty() ? winrt::hstring{ AccountToolTip } : name + L", " + AccountToolTip);

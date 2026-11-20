@@ -3,14 +3,100 @@
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <Style x:Key="HaloPaneRowButtonStyle" TargetType="Button">
+  <!--
+    One destination of the shell's rail: a
+    large icon over a short label in a 64 by 60 tile. The chosen one sits on a
+    raised tile (the segmented selector's fill and hairline edge) with an accent
+    pill in the rail's gutter, and its icon and label take the accent. A
+    RadioButton, so one group keeps exactly one lit and automation reads it as
+    a choice; the shell navigates on Click, never on Checked, so lighting the
+    current page from code does not navigate.
+  -->
+  <Style x:Key="HaloNavRailItemStyle" TargetType="RadioButton">
+    <Setter Property="Width" Value="64" />
+    <Setter Property="Height" Value="60" />
     <Setter Property="MinWidth" Value="0" />
-    <Setter Property="Height" Value="44" />
-    <Setter Property="Padding" Value="8,0" />
-    <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="Background" Value="Transparent" />
+    <Setter Property="UseSystemFocusVisuals" Value="True" />
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="RadioButton">
+          <Grid x:Name="Root" Background="Transparent">
+            <Border x:Name="HoverLayer" Background="{ThemeResource HaloSubtleBrush}" CornerRadius="8" Opacity="0" />
+            <Border x:Name="SelectionLayer" Background="{ThemeResource HaloSegmentSelectedBrush}" BorderBrush="{ThemeResource HaloSegmentSelectedStrokeBrush}" BorderThickness="1" CornerRadius="8" Opacity="0" />
+            <!-- In the 6px gutter left of the tile, outside its frame. -->
+            <Border
+              x:Name="Indicator"
+              Width="3"
+              Height="18"
+              Margin="-5,0,0,0"
+              HorizontalAlignment="Left"
+              VerticalAlignment="Center"
+              Background="{ThemeResource HaloAccentBrush}"
+              CornerRadius="1.5"
+              Opacity="0" />
+            <ContentPresenter
+              x:Name="Label"
+              HorizontalAlignment="Center"
+              VerticalAlignment="Center"
+              AutomationProperties.AccessibilityView="Raw"
+              Content="{TemplateBinding Content}"
+              ContentTemplate="{TemplateBinding ContentTemplate}"
+              Foreground="{ThemeResource HaloText2Brush}" />
+            <VisualStateManager.VisualStateGroups>
+              <VisualStateGroup x:Name="CommonStates">
+                <VisualState x:Name="Normal" />
+                <VisualState x:Name="PointerOver">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Pressed">
+                  <VisualState.Setters>
+                    <Setter Target="HoverLayer.Opacity" Value="1" />
+                    <Setter Target="Label.Opacity" Value="0.7" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Disabled">
+                  <VisualState.Setters>
+                    <Setter Target="Root.Opacity" Value="0.4" />
+                  </VisualState.Setters>
+                </VisualState>
+              </VisualStateGroup>
+              <VisualStateGroup x:Name="CheckStates">
+                <VisualState x:Name="Checked">
+                  <VisualState.Setters>
+                    <Setter Target="SelectionLayer.Opacity" Value="1" />
+                    <Setter Target="Indicator.Opacity" Value="1" />
+                    <Setter Target="Label.Foreground" Value="{ThemeResource HaloAccentBrush}" />
+                  </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="Unchecked" />
+                <VisualState x:Name="Indeterminate" />
+              </VisualStateGroup>
+            </VisualStateManager.VisualStateGroups>
+          </Grid>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
+  </Style>
+
+  <!-- The rail's account button: the avatar alone, centred, with a soft wash under the pointer. -->
+  <Style x:Key="HaloRailAccountButtonStyle" TargetType="Button">
+    <Setter Property="Width" Value="52" />
+    <Setter Property="Height" Value="52" />
+    <Setter Property="MinWidth" Value="0" />
+    <Setter Property="MinHeight" Value="0" />
+    <Setter Property="Padding" Value="0" />
+    <Setter Property="HorizontalAlignment" Value="Center" />
+    <Setter Property="HorizontalContentAlignment" Value="Center" />
+    <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="Background" Value="Transparent" />
     <Setter Property="BorderThickness" Value="0" />
-    <Setter Property="CornerRadius" Value="{StaticResource HaloControlCornerRadius}" />
+    <Setter Property="CornerRadius" Value="8" />
   </Style>
 
   <!--
@@ -270,29 +356,6 @@
     <Setter Property="MinHeight" Value="0" />
     <Setter Property="OnContent" Value="{x:Null}" />
     <Setter Property="OffContent" Value="{x:Null}" />
-  </Style>
-
-  <!--
-    NavigationViewItemHeader's stock template applies its own text treatment, which
-    swallowed the kicker styling. Templating it keeps the design's mono label.
-  -->
-  <Style x:Key="HaloNavSectionHeaderStyle" TargetType="NavigationViewItemHeader">
-    <Setter Property="Padding" Value="12,6,12,8" />
-    <Setter Property="HorizontalContentAlignment" Value="Left" />
-    <Setter Property="Template">
-      <Setter.Value>
-        <ControlTemplate TargetType="NavigationViewItemHeader">
-          <ContentPresenter
-            Padding="{TemplateBinding Padding}"
-            HorizontalAlignment="Left"
-            Content="{TemplateBinding Content}"
-            FontFamily="{StaticResource HaloMonoBoldFont}"
-            FontSize="{StaticResource HaloFontCaption}"
-            FontWeight="Bold"
-            Foreground="{ThemeResource HaloText3Brush}" />
-        </ControlTemplate>
-      </Setter.Value>
-    </Setter>
   </Style>
 
   <!--

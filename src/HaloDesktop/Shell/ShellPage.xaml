@@ -3,7 +3,6 @@
   x:Class="HaloDesktop.ShellPage"
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-  xmlns:controls="using:HaloDesktop"
   KeyboardAcceleratorPlacementMode="Hidden"
   Loaded="OnLoaded"
   Unloaded="OnUnloaded">
@@ -13,166 +12,106 @@
       Key="K"
       Modifiers="Control"
       Invoked="OnSearchAcceleratorInvoked" />
-    <!-- The rail's own back button stays collapsed, so its Alt+Left accelerator never
-         reaches the user. This one carries the shortcut instead, alongside the mouse
-         back button handled in the code-behind. -->
+    <!-- The rail has no back button, so Alt+Left carries the shortcut,
+         alongside the mouse back button handled in the code-behind. -->
     <KeyboardAccelerator
       Key="Left"
       Modifiers="Menu"
       Invoked="OnBackAcceleratorInvoked" />
   </Page.KeyboardAccelerators>
 
-  <NavigationView
-    x:Name="Navigation"
-    AlwaysShowHeader="False"
-    Background="Transparent"
-    CompactPaneLength="{StaticResource HaloCompactPaneWidth}"
-    IsBackButtonVisible="Collapsed"
-    IsBackEnabled="False"
-    IsPaneOpen="False"
-    IsSettingsVisible="False"
-    ItemInvoked="OnItemInvoked"
-    BackRequested="OnBackRequested"
-    PaneOpening="OnPaneOpening"
-    PaneClosing="OnPaneClosing"
-    OpenPaneLength="{StaticResource HaloPaneWidth}"
-    PaneDisplayMode="Left">
+  <Grid x:Name="ShellRoot" Background="Transparent">
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="Auto" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
 
-    <NavigationView.Resources>
-      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelected" Color="{ThemeResource HaloNavSelColor}" />
-      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPointerOver" Color="{ThemeResource HaloAccentTintColor}" />
-      <SolidColorBrush x:Key="NavigationViewItemBackgroundSelectedPressed" Color="{ThemeResource HaloChartDimColor}" />
-      <SolidColorBrush x:Key="NavigationViewItemForegroundSelected" Color="{ThemeResource HaloAccentColor}" />
-      <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPointerOver" Color="{ThemeResource HaloAccentColor}" />
-      <SolidColorBrush x:Key="NavigationViewItemForegroundSelectedPressed" Color="{ThemeResource HaloAccentColor}" />
-      <SolidColorBrush x:Key="NavigationViewSelectionIndicatorForeground" Color="Transparent" />
-    </NavigationView.Resources>
+    <!--
+      The rail: one fixed width, a large icon over its
+      label for each destination, the account at the foot. It never expands.
+      Arrow keys move between destinations (XY focus) without navigating; Enter
+      or Space opens one. Tab enters the rail once.
+    -->
+    <Grid x:Name="Rail" Width="{StaticResource HaloRailWidth}" Padding="0,4,0,12">
+      <Grid.RowDefinitions>
+        <RowDefinition Height="*" />
+        <RowDefinition Height="Auto" />
+      </Grid.RowDefinitions>
 
-    <NavigationView.MenuItems>
-      <NavigationViewItemHeader Content="MENU" Style="{StaticResource HaloNavSectionHeaderStyle}" />
-      <NavigationViewItem x:Name="HomeItem" Content="Home" Tag="Home">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE80F;" />
-        </NavigationViewItem.Icon>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="SearchItem" Content="Search" Tag="Search">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE721;" />
-        </NavigationViewItem.Icon>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="LibraryItem" Content="Library" Tag="Library">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE8F1;" />
-        </NavigationViewItem.Icon>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="HistoryItem" Content="History" Tag="History">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE823;" />
-        </NavigationViewItem.Icon>
-      </NavigationViewItem>
-      <!-- Windows' cloud-download glyph. While anything downloads the open pane
-           shows the count beside the label, and the closed rail a dot on the icon. -->
-      <NavigationViewItem x:Name="DownloadsItem" Tag="Downloads">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xEBD3;" />
-        </NavigationViewItem.Icon>
-        <NavigationViewItem.InfoBadge>
-          <InfoBadge x:Name="DownloadsDot" Visibility="Collapsed" />
-        </NavigationViewItem.InfoBadge>
-        <NavigationViewItem.Content>
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="*" />
-              <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <TextBlock VerticalAlignment="Center" Text="Downloads" />
-            <InfoBadge x:Name="DownloadsBadge" Grid.Column="1" Margin="12,0,0,0" Value="2" />
-          </Grid>
-        </NavigationViewItem.Content>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="SettingsItem" Content="Settings" Tag="Settings">
-        <NavigationViewItem.Icon>
-          <FontIcon Glyph="&#xE713;" />
-        </NavigationViewItem.Icon>
-      </NavigationViewItem>
+      <StackPanel
+        x:Name="RailItems"
+        Spacing="4"
+        TabFocusNavigation="Once"
+        XYFocusKeyboardNavigation="Enabled">
+        <RadioButton x:Name="HomeItem" AutomationProperties.Name="Home" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="Home">
+          <StackPanel Spacing="4">
+            <FontIcon HorizontalAlignment="Center" FontSize="22" Glyph="&#xE80F;" />
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="Home" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="SearchItem" AutomationProperties.Name="Search" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="Search">
+          <StackPanel Spacing="4">
+            <FontIcon HorizontalAlignment="Center" FontSize="22" Glyph="&#xE721;" />
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="Search" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="LibraryItem" AutomationProperties.Name="Library" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="Library">
+          <StackPanel Spacing="4">
+            <FontIcon HorizontalAlignment="Center" FontSize="22" Glyph="&#xE8F1;" />
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="Library" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="HistoryItem" AutomationProperties.Name="History" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="History">
+          <StackPanel Spacing="4">
+            <FontIcon HorizontalAlignment="Center" FontSize="22" Glyph="&#xE823;" />
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="History" />
+          </StackPanel>
+        </RadioButton>
+        <!-- Windows' cloud-download glyph, with a dot on it while anything downloads. -->
+        <RadioButton x:Name="DownloadsItem" AutomationProperties.Name="Downloads" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="Downloads">
+          <StackPanel Spacing="4">
+            <Grid HorizontalAlignment="Center">
+              <FontIcon FontSize="22" Glyph="&#xEBD3;" />
+              <InfoBadge
+                x:Name="DownloadsDot"
+                Margin="0,-2,-6,0"
+                HorizontalAlignment="Right"
+                VerticalAlignment="Top"
+                Visibility="Collapsed" />
+            </Grid>
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="Downloads" />
+          </StackPanel>
+        </RadioButton>
+        <RadioButton x:Name="SettingsItem" AutomationProperties.Name="Settings" Click="OnRailItemClick" GroupName="ShellRail" Style="{StaticResource HaloNavRailItemStyle}" Tag="Settings">
+          <StackPanel Spacing="4">
+            <FontIcon HorizontalAlignment="Center" FontSize="22" Glyph="&#xE713;" />
+            <TextBlock HorizontalAlignment="Center" FontSize="{StaticResource HaloFontCaption}" Text="Settings" />
+          </StackPanel>
+        </RadioButton>
+      </StackPanel>
 
-      <!--
-        "Jump back in" belongs after the menu in the design. PaneCustomContent is
-        templated above MenuItems, so these live in MenuItems instead and opt out of
-        selection. They are hidden with the pane, matching the design's expanded-only rule.
-      -->
-      <NavigationViewItemHeader x:Name="JumpHeader" Margin="0,14,0,0" Content="JUMP BACK IN" Style="{StaticResource HaloNavSectionHeaderStyle}" />
-      <NavigationViewItem x:Name="JumpItem1" Height="44" SelectsOnInvoked="False" Tag="Jump0" ContextRequested="OnJumpContextRequested">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="24" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster1" DecodeWidth="48" /></Grid>
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle1" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="JumpMeta1" Style="{StaticResource HaloMonoData}" />
-          </StackPanel>
-        </Grid>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem2" Height="44" SelectsOnInvoked="False" Tag="Jump1" ContextRequested="OnJumpContextRequested">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="24" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster2" DecodeWidth="48" /></Grid>
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle2" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="JumpMeta2" Style="{StaticResource HaloMonoData}" />
-          </StackPanel>
-        </Grid>
-      </NavigationViewItem>
-      <NavigationViewItem x:Name="JumpItem3" Height="44" SelectsOnInvoked="False" Tag="Jump2" ContextRequested="OnJumpContextRequested">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="24" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid Width="24" Height="34" VerticalAlignment="Center"><controls:PlaceholderArt /><controls:ArtworkImage x:Name="JumpPoster3" DecodeWidth="48" /></Grid>
-          <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="JumpTitle3" FontSize="{StaticResource HaloFontBody}" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="JumpMeta3" Style="{StaticResource HaloMonoData}" />
-          </StackPanel>
-        </Grid>
-      </NavigationViewItem>
-    </NavigationView.MenuItems>
-
-    <NavigationView.PaneFooter>
-      <Button x:Name="AccountButton" Click="OnAccountClick" Style="{StaticResource HaloPaneRowButtonStyle}" ToolTipService.ToolTip="Server &amp; account">
-        <Grid>
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="28" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Border
-            Width="28"
-            Height="28"
-            CornerRadius="14">
-            <!-- The account's own picture when it has one, set from the code-behind;
-                 the stock avatar otherwise. -->
-            <Image
-              x:Name="AccountAvatar"
-              Source="ms-appx:///Assets/user-avatar.png"
-              Stretch="UniformToFill" />
-          </Border>
-          <StackPanel x:Name="AccountLines" Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" Spacing="2">
-            <TextBlock x:Name="AccountName" FontSize="{StaticResource HaloFontEmphasis}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" TextTrimming="CharacterEllipsis" />
-            <TextBlock x:Name="AccountRole" CharacterSpacing="120" FontFamily="{StaticResource HaloMonoBoldFont}" FontSize="{StaticResource HaloFontCaption}" Foreground="{ThemeResource HaloAccentBrush}" />
-          </StackPanel>
-        </Grid>
+      <!-- The account: its picture only; its name and tier are the tooltip. -->
+      <Button
+        x:Name="AccountButton"
+        Grid.Row="1"
+        Click="OnAccountClick"
+        Style="{StaticResource HaloRailAccountButtonStyle}">
+        <Border Width="32" Height="32" CornerRadius="16">
+          <!-- The account's own picture when it has one, set from the code-behind;
+               the stock avatar otherwise. -->
+          <Image
+            x:Name="AccountAvatar"
+            Source="ms-appx:///Assets/user-avatar.png"
+            Stretch="UniformToFill" />
+        </Border>
       </Button>
-    </NavigationView.PaneFooter>
+    </Grid>
 
     <!-- Listens for presses on empty content so a caret can be dismissed. The element
          that actually receives the focus is FocusSink, inside. -->
     <Border
       x:Name="ContentHost"
+      Grid.Column="1"
       Background="{ThemeResource HaloLayerBrush}"
       BorderBrush="{ThemeResource HaloCardStrokeBrush}"
       BorderThickness="1,1,0,0"
@@ -199,5 +138,5 @@
           UseSystemFocusVisuals="False" />
       </Grid>
     </Border>
-  </NavigationView>
+  </Grid>
 </Page>
