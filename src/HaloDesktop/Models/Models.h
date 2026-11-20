@@ -440,7 +440,8 @@ namespace winrt::HaloDesktop::implementation
     {
         SourcesNavParams()=default; SourcesNavParams(hstring type,hstring metaId,hstring videoId,hstring itemId,hstring title,hstring showName,hstring episodeLabel,hstring poster);
         hstring Type()const;hstring MetaId()const;hstring VideoId()const;hstring ItemId()const;hstring Title()const;hstring ShowName()const;hstring EpisodeLabel()const;hstring Poster()const;
-    private:hstring m_type,m_metaId,m_videoId,m_itemId,m_title,m_showName,m_episodeLabel,m_poster;
+        hstring ReleaseInfo()const; void ReleaseInfo(hstring const& value);
+    private:hstring m_type,m_metaId,m_videoId,m_itemId,m_title,m_showName,m_episodeLabel,m_poster,m_releaseInfo;
     };
 
     struct PlaybackRequest : PlaybackRequestT<PlaybackRequest>

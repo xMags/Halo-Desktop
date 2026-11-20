@@ -378,6 +378,11 @@ namespace HaloDesktop::Services::Downloads
     std::wstring MakeDownloadFolderName(DownloadMedia const& media)
     {
         constexpr std::size_t MaximumFolderName = 80;
+        auto const year = media.Year && media.Year->size() == 4
+                && std::all_of(media.Year->begin(), media.Year->end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; })
+            ? std::optional<std::wstring>{ L" (" + *media.Year + L")" }
+            : std::nullopt;
+        auto const maximumName = MaximumFolderName - (year ? year->size() : 0);
         auto const& source = media.ShowName && !media.ShowName->empty() ? *media.ShowName : media.Title;
         std::wstring name;
         name.reserve(source.size());
@@ -427,14 +432,14 @@ namespace HaloDesktop::Services::Downloads
             }
         };
         trimEnd(collapsed);
-        if (collapsed.size() > MaximumFolderName)
+        if (collapsed.size() > maximumName)
         {
-            collapsed.resize(MaximumFolderName);
+            collapsed.resize(maximumName);
             trimEnd(collapsed);
         }
         if (collapsed.empty())
         {
-            return L"Video";
+            return year ? L"Video" + *year : std::wstring{ L"Video" };
         }
         // CON, PRN, AUX, NUL, COM1-9 and LPT1-9 name devices, with or without
         // an extension, so `Con` or `Nul.2019` cannot be folders.
@@ -447,7 +452,18 @@ namespace HaloDesktop::Services::Downloads
         {
             collapsed.push_back(L'_');
         }
+        if (year) collapsed += *year;
         return collapsed;
+    }
+
+    void FollowTitleFolderYear(DownloadMedia& media, std::vector<DownloadRecord> const& records)
+    {
+        if (!media.MetaId || media.MetaId->empty()) return;
+        auto const sibling = std::find_if(records.begin(), records.end(), [&media](DownloadRecord const& record)
+        {
+            return record.Media.MetaId == media.MetaId && record.Media.MediaType == media.MediaType;
+        });
+        if (sibling != records.end()) media.Year = sibling->Media.Year;
     }
 
     bool IsSafeFileName(std::wstring const& value) noexcept

@@ -921,6 +921,7 @@ namespace HaloDesktop::Services::Downloads
         // Each title gets its own folder in the download folder, which holds its
         // video, subtitle and pictures (one per show for episodes). A folder made
         // here and left empty by a start that then fails is taken away again.
+        FollowTitleFolderYear(request.Media, latest);
         directory /= MakeDownloadFolderName(request.Media);
         bool createdFolder{};
         {

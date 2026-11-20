@@ -621,6 +621,7 @@ namespace HaloDesktop::Views
         auto const id = media.Id();
         auto const title = media.Title();
         auto const poster = media.Poster();
+        auto const releaseInfo = media.ReleaseInfo();
         auto const itemId = type + L":" + id;
         // A series' own id is never a video, so it has no watch row and no
         // download of its own.
@@ -634,7 +635,7 @@ namespace HaloDesktop::Views
         MenuComposer menu{ m_navigation, m_downloads, m_actions, anchor, std::move(beforeOpen) };
         if (!isSeries)
         {
-            menu.Item(L"Play", PlayGlyph, [navigation = menu.Navigation(), beforeOpen = menu.BeforeOpen(), type, id, videoId, playable, itemId, title, poster]()
+            menu.Item(L"Play", PlayGlyph, [navigation = menu.Navigation(), beforeOpen = menu.BeforeOpen(), type, id, videoId, playable, itemId, title, poster, releaseInfo]()
             {
                 if (beforeOpen) beforeOpen();
                 if (!playable)
@@ -644,10 +645,10 @@ namespace HaloDesktop::Views
                         winrt::make<winrt::HaloDesktop::implementation::DetailNavParams>(type, id, title, poster));
                     return;
                 }
-                navigation->ShowSheet(
-                    ::HaloDesktop::Services::Page::Sources,
-                    winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
-                        type, id, videoId, itemId, title, title, L"", poster));
+                auto const sources = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
+                    type, id, videoId, itemId, title, title, L"", poster);
+                sources.ReleaseInfo(releaseInfo);
+                navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, sources);
             });
             menu.AddPlayOffline(videoId);
         }

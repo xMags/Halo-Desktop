@@ -236,6 +236,7 @@ namespace
         InsertOptionalString(object, L"streamName", media.StreamName);
         InsertOptionalString(object, L"streamTitle", media.StreamTitle);
         InsertOptionalString(object, L"dynamicRange", media.DynamicRange);
+        InsertOptionalString(object, L"year", media.Year);
         return object;
     }
 
@@ -260,6 +261,7 @@ namespace
             .StreamName = OptionalString(object, L"streamName"),
             .StreamTitle = OptionalString(object, L"streamTitle"),
             .DynamicRange = OptionalString(object, L"dynamicRange"),
+            .Year = OptionalString(object, L"year"),
         };
     }
 

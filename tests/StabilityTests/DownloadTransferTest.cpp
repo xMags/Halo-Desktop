@@ -2410,6 +2410,42 @@ namespace
         Require(named(L"...") == L"Video" && named(L"") == L"Video", "an empty folder name was made");
         Require(named(std::wstring(200, L'a')).size() == 80, "a long title was not shortened");
         Require(named(L"Am\u00E9lie") == L"Am\u00E9lie", "an accented title was changed");
+
+        // The year, when known, follows as media servers expect.
+        auto const dated = [](std::wstring title, std::optional<std::wstring> year)
+        {
+            return HaloDesktop::Services::Downloads::MakeDownloadFolderName(DownloadMedia{
+                .VideoId = L"movie:dated", .ItemId = L"movie:dated", .MediaType = L"movie",
+                .Title = std::move(title), .Year = std::move(year),
+            });
+        };
+        Require(dated(L"Dune: Part Two", L"2024") == L"Dune - Part Two (2024)", "the year did not follow the title");
+        Require(dated(L"Con", L"2019") == L"Con_ (2019)", "a device name with a year was allowed");
+        Require(dated(L"", L"2019") == L"Video (2019)", "an empty title lost its year");
+        Require(dated(L"Up", L"19") == L"Up" && dated(L"Up", L"20x4") == L"Up" && dated(L"Up", L"../x") == L"Up",
+            "a year that is not four digits was used in a folder name");
+        auto const longDated = dated(std::wstring(200, L'a'), L"2001");
+        Require(longDated.size() == 80 && longDated.ends_with(L" (2001)"), "a long title pushed its year past the limit");
+
+        // A title's later downloads follow the first one's year, or its lack of one.
+        using HaloDesktop::Services::Downloads::FollowTitleFolderYear;
+        auto const episode = [](std::wstring videoId, std::optional<std::wstring> year)
+        {
+            return DownloadMedia{ .VideoId = std::move(videoId), .ItemId = L"series:tt1", .MediaType = L"series",
+                .MetaId = L"tt1", .Title = L"Pilot", .ShowName = L"Show", .Year = std::move(year) };
+        };
+        std::vector<DownloadRecord> const undatedShow{ DownloadRecord{ .JobId = L"a", .Media = episode(L"tt1:1:1", std::nullopt) } };
+        auto later = episode(L"tt1:1:2", L"2019");
+        FollowTitleFolderYear(later, undatedShow);
+        Require(!later.Year, "a show's next episode left the folder its first one is in");
+        std::vector<DownloadRecord> const datedShow{ DownloadRecord{ .JobId = L"b", .Media = episode(L"tt1:1:1", L"2019") } };
+        auto fromContinue = episode(L"tt1:1:3", std::nullopt);
+        FollowTitleFolderYear(fromContinue, datedShow);
+        Require(fromContinue.Year == L"2019", "an episode started without a year did not join its show's folder");
+        auto other = DownloadMedia{ .VideoId = L"movie:tt2", .ItemId = L"movie:tt2", .MediaType = L"movie",
+            .MetaId = L"tt2", .Title = L"Other", .Year = L"2001" };
+        FollowTitleFolderYear(other, datedShow);
+        Require(other.Year == L"2001", "another title's download changed this one's year");
     }
 
     // The pictures a download keeps are named after its video, beside it.

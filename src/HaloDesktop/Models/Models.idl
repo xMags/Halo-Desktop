@@ -220,6 +220,9 @@ namespace HaloDesktop
         String ShowName { get; };
         String EpisodeLabel { get; };
         String Poster { get; };
+        // The title's release info (`2019`, `2019-2023`), where whoever opened
+        // the sheet knew it; empty otherwise. A download takes its year.
+        String ReleaseInfo;
     };
 
     [default_interface]

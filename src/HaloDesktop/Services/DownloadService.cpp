@@ -514,7 +514,7 @@ namespace HaloDesktop::Services
             return nullptr;
         }
         auto const& media = record->Media;
-        return winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
+        auto const sources = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
             winrt::hstring{ media.MediaType },
             winrt::hstring{ media.MetaId.value_or(L"") },
             winrt::hstring{ media.VideoId },
@@ -523,6 +523,8 @@ namespace HaloDesktop::Services
             winrt::hstring{ media.ShowName.value_or(L"") },
             winrt::hstring{ media.EpisodeLabel.value_or(L"") },
             winrt::hstring{ media.Poster.value_or(L"") });
+        sources.ReleaseInfo(winrt::hstring{ media.Year.value_or(L"") });
+        return sources;
     }
 
     std::optional<winrt::HaloDesktop::PlaybackRequest> DownloadService::OfflineNext(

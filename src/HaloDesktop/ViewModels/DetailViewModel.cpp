@@ -445,10 +445,10 @@ namespace winrt::HaloDesktop::implementation
             return;
         }
         auto const name = Title();
-        m_navigation->ShowSheet(
-            ::HaloDesktop::Services::Page::Sources,
-            winrt::make<implementation::SourcesNavParams>(
-                m_params.Type(), m_params.MetaId(), MovieVideo(), ItemId(), name, name, L"", PosterUrl()));
+        auto const sources = winrt::make<implementation::SourcesNavParams>(
+            m_params.Type(), m_params.MetaId(), MovieVideo(), ItemId(), name, name, L"", PosterUrl());
+        sources.ReleaseInfo(winrt::hstring{ m_meta->Preview.ReleaseInfo.value_or(L"") });
+        m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, sources);
     }
 
     void DetailViewModel::OpenEpisode(winrt::Windows::Foundation::IInspectable const& row)
@@ -957,10 +957,10 @@ namespace winrt::HaloDesktop::implementation
         if (!m_params || !episode) return;
         // An untitled episode goes to the sheet and the player under the show's name.
         auto const episodeTitle = episode.Title().empty() ? Title() : episode.Title();
-        m_navigation->ShowSheet(
-            ::HaloDesktop::Services::Page::Sources,
-            winrt::make<implementation::SourcesNavParams>(
-                m_params.Type(), m_params.MetaId(), episode.VideoId(), ItemId(), episodeTitle, Title(), episode.Tag(), PosterUrl()));
+        auto const sources = winrt::make<implementation::SourcesNavParams>(
+            m_params.Type(), m_params.MetaId(), episode.VideoId(), ItemId(), episodeTitle, Title(), episode.Tag(), PosterUrl());
+        if (m_meta) sources.ReleaseInfo(winrt::hstring{ m_meta->Preview.ReleaseInfo.value_or(L"") });
+        m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, sources);
     }
 
     bool DetailViewModel::OwnsMetadata() const

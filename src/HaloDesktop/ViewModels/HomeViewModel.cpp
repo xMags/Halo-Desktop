@@ -418,17 +418,17 @@ namespace winrt::HaloDesktop::implementation
             OpenFeaturedDetail(featured);
             return;
         }
-        m_navigation->ShowSheet(
-            ::HaloDesktop::Services::Page::Sources,
-            winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
-                media.Type(),
-                media.Id(),
-                MovieVideoId(media),
-                media.Type() + L":" + media.Id(),
-                media.Title(),
-                media.Title(),
-                L"",
-                media.Poster()));
+        auto const sources = winrt::make<winrt::HaloDesktop::implementation::SourcesNavParams>(
+            media.Type(),
+            media.Id(),
+            MovieVideoId(media),
+            media.Type() + L":" + media.Id(),
+            media.Title(),
+            media.Title(),
+            L"",
+            media.Poster());
+        sources.ReleaseInfo(media.ReleaseInfo());
+        m_navigation->ShowSheet(::HaloDesktop::Services::Page::Sources, sources);
     }
     void HomeViewModel::ToggleFeaturedLibrary(winrt::Windows::Foundation::IInspectable const& item)
     {

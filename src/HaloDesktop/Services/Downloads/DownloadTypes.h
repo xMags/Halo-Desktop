@@ -60,6 +60,11 @@ namespace HaloDesktop::Services::Downloads
         // absent on records written before it was kept, which then fall back to
         // what the stored name and title say.
         std::optional<std::wstring> DynamicRange;
+        // The title's (for an episode, the show's) first release year, as four
+        // digits, when it was known at the start: it names the download's
+        // folder `Title (Year)`, as media servers expect. Absent on records
+        // written before it was kept.
+        std::optional<std::wstring> Year;
     };
 
     struct SubtitleRequest final
@@ -219,8 +224,15 @@ namespace HaloDesktop::Services::Downloads
     // The folder a new download gets inside the download folder: the show's
     // name for an episode, the title for a film, made safe for Windows (no
     // reserved characters or device names, no trailing dot or space, at most
-    // 80 characters; `:` reads as ` -`). Never empty, never a path.
+    // 80 characters; `:` reads as ` -`), then ` (Year)` when the media has a
+    // four-digit year. Never empty, never a path.
     [[nodiscard]] std::wstring MakeDownloadFolderName(DownloadMedia const& media);
+
+    // A title's later downloads (a show's other episodes, a replaced source)
+    // take the year of one already kept for the same title, or its lack of
+    // one, so a show is never split between `Show` and `Show (2019)` however
+    // each download was started. Unchanged when no other download is of that title.
+    void FollowTitleFolderYear(DownloadMedia& media, std::vector<DownloadRecord> const& records);
 
     // True when the path sits inside one of the approved download roots, compared
     // component by component so a sibling folder with a shared prefix does not

@@ -8,6 +8,7 @@
 #include "Security/ProtectedHttpHeaders.h"
 #include "Services/Downloads/DownloadPreparation.h"
 #include "Services/LanguagePolicy.h"
+#include "Services/SearchResultsPolicy.h"
 #include "Services/SettingsSyncService.h"
 
 #include <algorithm>
@@ -288,6 +289,7 @@ namespace HaloDesktop::Services
                 .StreamName = OptionalText(stream.Name),
                 .StreamTitle = OptionalText(stream.Title),
                 .DynamicRange = OptionalText(info.DynamicRange),
+                .Year = ReleaseYear(OptionalText(navigation.ReleaseInfo())),
             },
             .Request = Downloads::ProtectedRequest{
                 .Url = std::wstring{ stream.Url.c_str() },
