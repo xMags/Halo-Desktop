@@ -5,4 +5,23 @@
     <Platform Name="x86" />
   </Configurations>
   <Project Path="src/HaloDesktop/HaloDesktop.vcxproj" />
+  <!--
+    The test projects compile the app's own sources, so they are built with the
+    app: a solution build never leaves a test binary older than the code it
+    checks. They are x64 only.
+  -->
+  <Folder Name="/tests/">
+    <Project Path="tests/MpvPlaybackIntegrationTests/MpvPlaybackIntegrationTests.vcxproj">
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="tests/PlaybackPolicyTests/PlaybackPolicyTests.vcxproj">
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+    <Project Path="tests/StabilityTests/StabilityTests.vcxproj">
+      <Build Solution="*|ARM64" Project="false" />
+      <Build Solution="*|x86" Project="false" />
+    </Project>
+  </Folder>
 </Solution>
