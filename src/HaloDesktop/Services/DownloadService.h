@@ -100,9 +100,16 @@ namespace HaloDesktop::Services
         void EnrichMissingArtwork();
         // Saves the logo and landscape art beside each finished download that
         // lacks them, so its card works offline. Each job and picture is tried
-        // once per session (a failure waits for the next launch); the work runs
-        // off the UI thread and writes only through the engine.
+        // once until the network comes back (RetryMissingPictures); the work
+        // runs off the UI thread and writes only through the engine.
         void EnrichMissingSidecars();
+        // Windows reported a network change: once it settles with internet
+        // access, RetryMissingPictures runs. UI thread.
+        void OnNetworkStatusChanged();
+        // The pictures that could not be had (offline at launch, say) are asked
+        // for again: art for downloads still without any, and every missing
+        // saved logo and art. A picture already saved is never fetched again.
+        void RetryMissingPictures();
         static winrt::fire_and_forget SaveSidecarAsync(
             std::weak_ptr<DownloadService> weak,
             std::shared_ptr<Downloads::TransferEngine> engine,
@@ -137,6 +144,11 @@ namespace HaloDesktop::Services
         // slots always mean seconds no matter how many transfers are reporting.
         winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_throughputTimer{ nullptr };
         winrt::event_token m_throughputTickToken{};
+        // A network change starts this; it fires once the changes have been
+        // quiet for a while, since Windows reports a reconnect as a burst.
+        winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer m_networkRetryTimer{ nullptr };
+        winrt::event_token m_networkRetryTickToken{};
+        winrt::event_token m_networkStatusToken{};
         // MB/s, one sample per chart bar, oldest first; at most ThroughputSlots.
         std::vector<double> m_throughput;
         std::vector<Downloads::DownloadRecord> m_records;

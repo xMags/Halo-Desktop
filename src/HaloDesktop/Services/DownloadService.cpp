@@ -24,11 +24,16 @@
 #include <tuple>
 #include <utility>
 #include <wil/resource.h>
+#include <winrt/Windows.Networking.Connectivity.h>
 
 namespace
 {
     using HaloDesktop::Services::Downloads::DownloadRecord;
     using HaloDesktop::Services::Downloads::DownloadStatus;
+    namespace Connectivity = winrt::Windows::Networking::Connectivity;
+
+    // How long the network must stay settled before missing pictures are tried again.
+    constexpr std::chrono::seconds NetworkSettleDelay{ 5 };
 }
 
 namespace HaloDesktop::Services
@@ -94,6 +99,45 @@ namespace HaloDesktop::Services
                     self->SampleThroughput();
                 }
             });
+        m_networkRetryTimer = m_dispatcher.CreateTimer();
+        m_networkRetryTimer.Interval(std::chrono::duration_cast<winrt::Windows::Foundation::TimeSpan>(NetworkSettleDelay));
+        m_networkRetryTimer.IsRepeating(false);
+        m_networkRetryTickToken = m_networkRetryTimer.Tick(
+            [weak = weak_from_this()](
+                [[maybe_unused]] winrt::Microsoft::UI::Dispatching::DispatcherQueueTimer const& timer,
+                [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& args)
+            {
+                if (auto const self = weak.lock())
+                {
+                    self->RetryMissingPictures();
+                }
+            });
+        try
+        {
+            // Raised on a thread-pool thread: it only hands the news to the UI thread.
+            m_networkStatusToken = Connectivity::NetworkInformation::NetworkStatusChanged(
+                [weak = weak_from_this(), dispatcher = m_dispatcher](
+                    [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender)
+                {
+                    try
+                    {
+                        static_cast<void>(dispatcher.TryEnqueue([weak]()
+                        {
+                            if (auto const self = weak.lock())
+                            {
+                                self->OnNetworkStatusChanged();
+                            }
+                        }));
+                    }
+                    catch (...)
+                    {
+                    }
+                });
+        }
+        catch (...)
+        {
+            // No network news: missing pictures wait for the next launch, as before.
+        }
         m_running = true;
         RebindAccount();
     }
@@ -115,6 +159,30 @@ namespace HaloDesktop::Services
                 m_throughputTimer.Tick(m_throughputTickToken);
                 m_throughputTickToken = {};
                 m_throughputTimer = nullptr;
+            }
+        }
+        catch (...)
+        {
+        }
+        try
+        {
+            if (m_networkStatusToken.value != 0)
+            {
+                Connectivity::NetworkInformation::NetworkStatusChanged(m_networkStatusToken);
+                m_networkStatusToken = {};
+            }
+        }
+        catch (...)
+        {
+        }
+        try
+        {
+            if (m_networkRetryTimer)
+            {
+                m_networkRetryTimer.Stop();
+                m_networkRetryTimer.Tick(m_networkRetryTickToken);
+                m_networkRetryTickToken = {};
+                m_networkRetryTimer = nullptr;
             }
         }
         catch (...)
@@ -941,6 +1009,43 @@ namespace HaloDesktop::Services
         }
     }
 
+    void DownloadService::OnNetworkStatusChanged()
+    {
+        if (!m_running || !m_networkRetryTimer) return;
+        try
+        {
+            auto const profile = Connectivity::NetworkInformation::GetInternetConnectionProfile();
+            if (!profile || profile.GetNetworkConnectivityLevel() != Connectivity::NetworkConnectivityLevel::InternetAccess)
+            {
+                return;
+            }
+            // Each change in a burst pushes the retry back.
+            m_networkRetryTimer.Stop();
+            m_networkRetryTimer.Start();
+        }
+        catch (...)
+        {
+        }
+    }
+
+    void DownloadService::RetryMissingPictures()
+    {
+        if (!m_running) return;
+        // An ask still in flight may be asked again: both write the same picture
+        // through the engine, which takes one write per job at a time, and a
+        // save finds a picture already there before fetching anything.
+        std::erase_if(m_artworkPending, [this](std::wstring const& jobId)
+        {
+            return std::any_of(m_records.begin(), m_records.end(), [&jobId](DownloadRecord const& record)
+            {
+                return record.JobId == jobId && !record.Media.LandscapeArtwork;
+            });
+        });
+        m_sidecarsTried.clear();
+        EnrichMissingArtwork();
+        EnrichMissingSidecars();
+    }
+
     winrt::fire_and_forget DownloadService::SaveSidecarAsync(
         std::weak_ptr<DownloadService> weak,
         std::shared_ptr<Downloads::TransferEngine> engine,
@@ -973,7 +1078,8 @@ namespace HaloDesktop::Services
         catch (...)
         {
             // Offline, a missing picture or a refused write: the card keeps
-            // showing the picture from the network, and the next launch tries again.
+            // showing the picture from the network, and the network coming
+            // back (or the next launch) tries again.
         }
     }
 
