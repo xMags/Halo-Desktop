@@ -7,11 +7,11 @@
       "name": "libmpv",
       "path": "external\\mpv\\arm64\\bin\\libmpv-2.dll",
       "outputName": "libmpv-2.dll",
-      "version": "2026-08-23-9f9f8c4dd4",
+      "version": "2026-10-22-488fec0789",
       "license": "LGPL-2.1-or-later",
       "restoreCommand": "tools\\fetch-mpv.ps1 -Platform ARM64",
-      "sha256": "368E8D7927ADD9B126348B6027D0DB013CD576DD45061B6CB9AF87A6315EFFBC",
-      "size": 72904704
+      "sha256": "081D451476A433E79F372ECF2ADB13FFA3BBBC7D72DFF2A907CDC67559E0131A",
+      "size": 74221056
     },
     {
       "name": "vulkan-loader",
@@ -20,7 +20,7 @@
       "version": "vulkan-sdk-1.4.357.0",
       "license": "Apache-2.0",
       "restoreCommand": "tools\\Build-VulkanLoader.ps1 -Platform ARM64",
-      "sha256": "771A9A811D01FC402944A3B93F49AF2563BEBBA765FF40DB7225A49D021A0E33",
+      "sha256": "B7F40395EECAFE38A6ABA7529B3C1EC572ABCA74B70E9C9391E5C62BFE506180",
       "size": 854528
     }
   ],

@@ -7,11 +7,11 @@
       "name": "libmpv",
       "path": "external\\mpv\\bin\\libmpv-2.dll",
       "outputName": "libmpv-2.dll",
-      "version": "2026-08-23-9f9f8c4dd4",
+      "version": "2026-10-22-488fec0789",
       "license": "LGPL-2.1-or-later",
       "restoreCommand": "tools\\fetch-mpv.ps1",
-      "sha256": "E68C30FC040ACF60AC4BD353D773D7AACE672E4DC07DB14371137B7444418F52",
-      "size": 98742272
+      "sha256": "84FA6B98FF800770D7CE32AAD8F767C04C2B624916E57844E83E9FE917064C2B",
+      "size": 101407232
     },
     {
       "name": "vulkan-loader",

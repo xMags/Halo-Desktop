@@ -10,11 +10,11 @@ and substitute it.
 
 | Field | Value |
 | --- | --- |
-| Release | `2026-08-23-9f9f8c4dd4` |
-| Asset | `mpv-dev-lgpl-x86_64-20260823-git-9f9f8c4dd4.7z` |
-| Asset SHA-256 | `16b9aeaef838a79c61d0299e410ab45604ecd6591a17da7ecf7aef6a6fdd1c17` |
-| `libmpv-2.dll` SHA-256 | `E68C30FC040ACF60AC4BD353D773D7AACE672E4DC07DB14371137B7444418F52` |
-| mpv revision | `9f9f8c4dd4d82077b42879a738748fab1d5038c2` |
+| Release | `2026-10-22-488fec0789` |
+| Asset | `mpv-dev-lgpl-x86_64-20261022-git-488fec0789.7z` |
+| Asset SHA-256 | `133f9ed88ba9db933bc0a0d0a6e3316cec4f9fc2c459a03d420a7fa2448d6a6a` |
+| `libmpv-2.dll` SHA-256 | `84FA6B98FF800770D7CE32AAD8F767C04C2B624916E57844E83E9FE917064C2B` |
+| mpv revision | `488fec0789e5026804ac8dd03fb749570416d48a` |
 | Configuration | LGPL, no GPL components |
 
 The DLL hash and size are also recorded in `external/manifest.json` and are
@@ -23,12 +23,14 @@ enforced on every build by `tools/Verify-Dependencies.ps1`.
 ## Sources
 
 - mpv itself: <https://github.com/mpv-player/mpv> at revision
-  `9f9f8c4dd4d82077b42879a738748fab1d5038c2`.
+  `488fec0789e5026804ac8dd03fb749570416d48a`.
 - The Windows build, including the pinned revisions of every bundled library and
   the exact build configuration:
-  <https://github.com/zhongfly/mpv-winbuild> at release `2026-08-23-9f9f8c4dd4`.
+  <https://github.com/zhongfly/mpv-winbuild> at release `2026-10-22-488fec0789`.
   That repository's workflow logs record the full dependency graph used for this
-  release.
+  release. Upstream removes its releases after about a month, so the same
+  archives, byte for byte, are kept at
+  <https://github.com/xMags/Halo-Desktop/releases/tag/libmpv-2026-10-22-488fec0789>.
 - The cross-compilation recipe those builds use:
   <https://github.com/shinchiro/mpv-winbuild-cmake>.
 

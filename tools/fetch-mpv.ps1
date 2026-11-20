@@ -22,19 +22,19 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$releaseTag = '2026-08-23-9f9f8c4dd4'
+$releaseTag = '2026-10-22-488fec0789'
 $architecture = if ($Platform -eq 'ARM64') { 'arm64' } else { 'x64' }
 $assetName = if ($Platform -eq 'ARM64') {
-    'mpv-dev-lgpl-aarch64-20260823-git-9f9f8c4dd4.7z'
+    'mpv-dev-lgpl-aarch64-20261022-git-488fec0789.7z'
 }
 else {
-    'mpv-dev-lgpl-x86_64-20260823-git-9f9f8c4dd4.7z'
+    'mpv-dev-lgpl-x86_64-20261022-git-488fec0789.7z'
 }
 $assetSha256 = if ($Platform -eq 'ARM64') {
-    '2922EA39D2B0D1EB05267E0E0D525A31815313D2EF375A8EEA34ED11532C908D'
+    'DBA2715A2E7E344A1C6325C129332A955CA274665068E72DDA7CAC9B67A0509F'
 }
 else {
-    '16B9AEAEF838A79C61D0299E410AB45604ECD6591A17DA7ECF7AEF6A6FDD1C17'
+    '133F9ED88BA9DB933BC0A0D0A6E3316CEC4F9FC2C459A03D420A7FA2448D6A6A'
 }
 $libraryMachine = if ($Platform -eq 'ARM64') { 'arm64' } else { 'x64' }
 $manifestName = if ($Platform -eq 'ARM64') { 'external\manifest-arm64.json' } else { 'external\manifest.json' }
@@ -120,10 +120,29 @@ function New-DefinitionFile {
 try {
     New-Item -ItemType Directory -Path $temporaryRoot -Force | Out-Null
     $archivePath = Join-Path $temporaryRoot $assetName
-    $downloadUrl = "https://github.com/zhongfly/mpv-winbuild/releases/download/$releaseTag/$assetName"
+    # The upstream publisher deletes its builds after about a month, so the
+    # pinned archives are mirrored on this repository's own releases and tried
+    # there first. Either source is accepted only if it matches the pinned hash.
+    $downloadUrls = @(
+        "https://github.com/xMags/Halo-Desktop/releases/download/libmpv-$releaseTag/$assetName",
+        "https://github.com/zhongfly/mpv-winbuild/releases/download/$releaseTag/$assetName"
+    )
 
     Write-Host "Downloading pinned $assetName from release $releaseTag..." -ForegroundColor White
-    Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+    $downloaded = $false
+    foreach ($downloadUrl in $downloadUrls) {
+        try {
+            Invoke-WebRequest -Uri $downloadUrl -OutFile $archivePath
+            $downloaded = $true
+            break
+        }
+        catch [Microsoft.PowerShell.Commands.HttpResponseException] {
+            Write-Host "  not available at $downloadUrl ($($_.Exception.Response.StatusCode))" -ForegroundColor Yellow
+        }
+    }
+    if (-not $downloaded) {
+        throw "The pinned libmpv archive $assetName could not be downloaded from any source."
+    }
 
     $actualAssetHash = (Get-FileHash -LiteralPath $archivePath -Algorithm SHA256).Hash
     if ($actualAssetHash -ne $assetSha256) {
@@ -131,8 +150,10 @@ try {
     }
     Write-Host 'Archive hash verified.' -ForegroundColor White
 
-    # tar.exe on Windows is bsdtar, which reads the 7-Zip container directly.
-    & tar.exe -xf $archivePath -C $temporaryRoot
+    # Windows' own tar.exe is bsdtar, which reads the 7-Zip container directly.
+    # It is called by its full path because a GNU tar earlier on PATH (Git's,
+    # for one) cannot open 7-Zip archives or Windows paths.
+    & (Join-Path $env:SystemRoot 'System32\tar.exe') -xf $archivePath -C $temporaryRoot
     if ($LASTEXITCODE -ne 0) {
         throw "tar.exe failed with exit code $LASTEXITCODE."
     }
