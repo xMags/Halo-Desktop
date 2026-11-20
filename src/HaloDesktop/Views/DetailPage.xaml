@@ -6,6 +6,7 @@
   xmlns:local="using:HaloDesktop"
   Background="{StaticResource HaloDetailGroundBrush}"
   ContextRequested="OnContextRequested"
+  RequestedTheme="Dark"
   Loaded="OnLoaded"
   NavigationCacheMode="Disabled"
   SizeChanged="OnSizeChanged"

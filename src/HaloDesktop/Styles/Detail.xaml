@@ -2,9 +2,10 @@
 <!--
   The title page's own palette and controls, from the reference's `detail.css`.
   Deliberately outside the theme dictionaries: the title page is dark in both app
-  themes because it always sits on the title's art (the shell holds the window
-  in its forced dark scope while the page is open), so these are fixed colours,
-  not theme tokens. Alphas are the reference's rgba values as bytes.
+  themes because it always sits on the title's art (the page asks for the dark
+  theme itself; the rail and title bar around it keep the viewer's theme), so
+  these are fixed colours, not theme tokens. Alphas are the reference's rgba
+  values as bytes.
 -->
 <ResourceDictionary
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"

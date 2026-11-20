@@ -275,7 +275,6 @@ namespace winrt::HaloDesktop::implementation
         auto const& navigation = *App::Services().Navigation;
         auto const overlayOpen = navigation.IsOverlayOpen();
         auto const chrome = ::HaloDesktop::Shell::ResolveShellChrome({
-            .TitlePageCurrent = navigation.CurrentPage() == Page::Detail,
             .SignInOverlayOpen = overlayOpen && navigation.CurrentOverlayPage() == Page::Login,
             .PlayerOverlayOpen = overlayOpen && navigation.CurrentOverlayPage() == Page::Player,
         });

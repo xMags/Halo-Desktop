@@ -1078,14 +1078,6 @@ namespace
         auto const browsing = ResolveShellChrome({});
         Require(!browsing.ForceDarkPalette && !browsing.PlayerTitleBar, "a browse page changed the window chrome");
 
-        auto const title = ResolveShellChrome({ .TitlePageCurrent = true });
-        Require(title.ForceDarkPalette && !title.PlayerTitleBar, "a title page did not turn the window dark");
-
-        // The player over a title page keeps the window dark beneath it, so
-        // closing the player lands back on a dark title page.
-        auto const playingTitle = ResolveShellChrome({ .TitlePageCurrent = true, .PlayerOverlayOpen = true });
-        Require(playingTitle.ForceDarkPalette && playingTitle.PlayerTitleBar, "the player over a title page lost a chrome rule");
-
         auto const playingHome = ResolveShellChrome({ .PlayerOverlayOpen = true });
         Require(!playingHome.ForceDarkPalette && playingHome.PlayerTitleBar, "the player did not pin its title bar dark");
 
@@ -1097,7 +1089,7 @@ namespace
         auto const signIn = ResolveShellChrome({ .SignInOverlayOpen = true });
         Require(signIn.ForceDarkPalette && signIn.OverlayCoversTitleBar && !signIn.PlayerTitleBar,
             "the sign-in screen was not full window and dark");
-        auto const signInOverPlayer = ResolveShellChrome({ .TitlePageCurrent = true, .SignInOverlayOpen = true, .PlayerOverlayOpen = true });
+        auto const signInOverPlayer = ResolveShellChrome({ .SignInOverlayOpen = true, .PlayerOverlayOpen = true });
         Require(signInOverPlayer.ForceDarkPalette && !signInOverPlayer.PlayerTitleBar,
             "the sign-in screen showed the player's title bar");
     }
