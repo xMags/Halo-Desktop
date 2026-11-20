@@ -4,6 +4,8 @@
 #include "DetailSimilarCard.g.cpp"
 #endif
 
+#include "Controls/ThemeColorLookup.h"
+
 namespace winrt::HaloDesktop::implementation
 {
     DetailSimilarCard::DetailSimilarCard()
@@ -46,9 +48,12 @@ namespace winrt::HaloDesktop::implementation
         // `.similar:hover .similar-name`: the name brightens to full ink.
         if (auto const name = NameText())
         {
-            auto const key = winrt::box_value(winrt::hstring{ hovered ? L"HaloDetailInkBrush" : L"HaloDetailInk78Brush" });
-            auto const found = Microsoft::UI::Xaml::Application::Current().Resources().TryLookup(key);
-            if (auto const brush = found.try_as<Microsoft::UI::Xaml::Media::Brush>()) name.Foreground(brush);
+            // Read for the card's own theme: the application's resources
+            // answer for the theme the app started in.
+            if (auto const color = ::HaloDesktop::Controls::ThemeColor(name, hovered ? L"HaloDetailInkColor" : L"HaloDetailInk78Color"))
+            {
+                name.Foreground(Microsoft::UI::Xaml::Media::SolidColorBrush{ *color });
+            }
         }
     }
 }

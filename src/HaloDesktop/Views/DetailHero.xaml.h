@@ -4,6 +4,7 @@
 
 #include <winrt/Microsoft.UI.Composition.h>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
+#include <winrt/Windows.Web.Http.h>
 
 namespace winrt::HaloDesktop::implementation
 {
@@ -34,12 +35,19 @@ namespace winrt::HaloDesktop::implementation
     private:
         void OnViewModelChanged(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Data::PropertyChangedEventArgs const& args);
         void LoadLogo();
+        // The light theme's logo: fetched and judged as Home's banner judges
+        // its own (ChooseHeroLogoTreatment), then shown as drawn, inked in the
+        // page's ink, or given up for the name. Stale once m_logo moves on.
+        winrt::fire_and_forget LoadJudgedLogoAsync(winrt::hstring url);
+        [[nodiscard]] bool IsLight() const;
         // The logo's `drop-shadow(0 4px 24px rgba(0,0,0,.5))`, cast by its alpha.
         // Decoration only: any refusal hides it for good.
         void UpdateLogoShadow();
 
         winrt::HaloDesktop::DetailViewModel m_viewModel{ nullptr };
         winrt::hstring m_logo;
+        winrt::Windows::Web::Http::HttpClient m_logoClient{ nullptr };
+        Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChanged;
         winrt::Microsoft::UI::Composition::SpriteVisual m_logoShadow{ nullptr };
         winrt::Microsoft::UI::Composition::DropShadow m_logoDropShadow{ nullptr };
         bool m_shadowUnavailable{};

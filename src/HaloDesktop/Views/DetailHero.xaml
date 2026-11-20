@@ -121,7 +121,7 @@
             FontFamily="Segoe UI Variable Display"
             FontSize="44"
             FontWeight="SemiBold"
-            Foreground="{StaticResource HaloDetailInkBrush}"
+            Foreground="{ThemeResource HaloDetailInkBrush}"
             LineHeight="47.5"
             LineStackingStrategy="BlockLineHeight"
             Text="{x:Bind ViewModel.Title, Mode=OneWay}"
@@ -150,33 +150,33 @@
                   Margin="9,0"
                   VerticalAlignment="Center"
                   FontSize="14"
-                  Foreground="{StaticResource HaloDetailInk40Brush}"
+                  Foreground="{ThemeResource HaloDetailInk40Brush}"
                   Text="&#x00B7;"
                   Visibility="{x:Bind SeparatorVisibility}" />
                 <TextBlock
                   VerticalAlignment="Center"
                   FontSize="14"
-                  Foreground="{StaticResource HaloDetailInk74Brush}"
+                  Foreground="{ThemeResource HaloDetailInk74Brush}"
                   Text="{x:Bind Text}"
                   Visibility="{x:Bind PlainVisibility}" />
                 <Border
                   Padding="6,0"
                   VerticalAlignment="Center"
-                  BorderBrush="{StaticResource HaloDetailCertificateStrokeBrush}"
+                  BorderBrush="{ThemeResource HaloDetailCertificateStrokeBrush}"
                   BorderThickness="1"
                   CornerRadius="4"
                   Visibility="{x:Bind CertificateVisibility}">
-                  <TextBlock FontSize="12" Foreground="{StaticResource HaloDetailInk74Brush}" Text="{x:Bind Text}" />
+                  <TextBlock FontSize="12" Foreground="{ThemeResource HaloDetailInk74Brush}" Text="{x:Bind Text}" />
                 </Border>
                 <StackPanel
                   VerticalAlignment="Center"
                   Orientation="Horizontal"
                   Spacing="6"
                   Visibility="{x:Bind ImdbVisibility}">
-                  <Border Padding="4,1" VerticalAlignment="Center" Background="{StaticResource HaloDetailImdbBrush}" CornerRadius="3">
-                    <TextBlock FontSize="10" FontWeight="ExtraBold" Foreground="{StaticResource HaloDetailOnInkBrush}" Text="IMDb" />
+                  <Border Padding="4,1" VerticalAlignment="Center" Background="{ThemeResource HaloDetailImdbBrush}" CornerRadius="3">
+                    <TextBlock FontSize="10" FontWeight="ExtraBold" Foreground="{ThemeResource HaloDetailOnInkBrush}" Text="IMDb" />
                   </Border>
-                  <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="{StaticResource HaloDetailInk74Brush}" Text="{x:Bind Text}" />
+                  <TextBlock VerticalAlignment="Center" FontSize="14" Foreground="{ThemeResource HaloDetailInk74Brush}" Text="{x:Bind Text}" />
                 </StackPanel>
               </StackPanel>
             </DataTemplate>
@@ -187,7 +187,7 @@
           x:Name="SynopsisText"
           Margin="0,14,0,0"
           FontSize="15"
-          Foreground="{StaticResource HaloDetailInk86Brush}"
+          Foreground="{ThemeResource HaloDetailInk86Brush}"
           LineHeight="24"
           LineStackingStrategy="BlockLineHeight"
           MaxLines="3"
@@ -265,10 +265,10 @@
             Width="160"
             Height="4"
             VerticalAlignment="Center"
-            Background="{StaticResource HaloDetailBarTrackBrush}"
+            Background="{ThemeResource HaloDetailBarTrackBrush}"
             CornerRadius="2"
             Visibility="{x:Bind ViewModel.ProgressVisibility, Mode=OneWay}">
-            <Border Background="{StaticResource HaloDetailBarBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5">
+            <Border Background="{ThemeResource HaloDetailBarBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5">
               <Border.RenderTransform>
                 <ScaleTransform ScaleX="{x:Bind ViewModel.ProgressFraction, Mode=OneWay}" />
               </Border.RenderTransform>
@@ -277,13 +277,13 @@
           <TextBlock
             VerticalAlignment="Center"
             FontSize="13"
-            Foreground="{StaticResource HaloDetailInk72Brush}"
+            Foreground="{ThemeResource HaloDetailInk72Brush}"
             Text="{x:Bind ViewModel.TimeLeft, Mode=OneWay}"
             Visibility="{x:Bind ViewModel.ProgressVisibility, Mode=OneWay}" />
           <TextBlock
             VerticalAlignment="Center"
             FontSize="13"
-            Foreground="{StaticResource HaloDetailInk40Brush}"
+            Foreground="{ThemeResource HaloDetailInk40Brush}"
             Text="&#x00B7;"
             Visibility="{x:Bind ViewModel.ProgressSeparatorVisibility, Mode=OneWay}" />
           <local:QualityMedal
@@ -318,7 +318,7 @@
             Margin="0,0,0,4"
             FontSize="13"
             FontWeight="SemiBold"
-            Foreground="{StaticResource HaloDetailInk72Brush}"
+            Foreground="{ThemeResource HaloDetailInk72Brush}"
             Text="Ways to watch" />
           <StackPanel
             Margin="0,12,0,0"
@@ -326,7 +326,7 @@
             Spacing="8"
             Visibility="{x:Bind ViewModel.AvailabilityLoadingVisibility, Mode=OneWay}">
             <ProgressRing Width="14" Height="14" MinWidth="0" MinHeight="0" VerticalAlignment="Center" IsActive="True" />
-            <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="{StaticResource HaloDetailInk55Brush}" Text="Asking your addons&#x2026;" />
+            <TextBlock VerticalAlignment="Center" FontSize="13" Foreground="{ThemeResource HaloDetailInk55Brush}" Text="Asking your addons&#x2026;" />
           </StackPanel>
           <ItemsControl IsTabStop="False" ItemsSource="{x:Bind ViewModel.Availability, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
@@ -343,14 +343,14 @@
                       Grid.Column="1"
                       Height="4"
                       VerticalAlignment="Center"
-                      Background="{StaticResource HaloDetailMeterTrackBrush}"
+                      Background="{ThemeResource HaloDetailMeterTrackBrush}"
                       CornerRadius="2">
-                      <Border Background="{StaticResource HaloDetailMeterBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind PlainMeterVisibility}">
+                      <Border Background="{ThemeResource HaloDetailMeterBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind PlainMeterVisibility}">
                         <Border.RenderTransform>
                           <ScaleTransform ScaleX="{x:Bind Meter}" />
                         </Border.RenderTransform>
                       </Border>
-                      <Border Background="{StaticResource HaloDetailGoldMeterBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind GoldMeterVisibility}">
+                      <Border Background="{ThemeResource HaloDetailGoldMeterBrush}" CornerRadius="2" RenderTransformOrigin="0,0.5" Visibility="{x:Bind GoldMeterVisibility}">
                         <Border.RenderTransform>
                           <ScaleTransform ScaleX="{x:Bind Meter}" />
                         </Border.RenderTransform>
@@ -361,7 +361,7 @@
                       MinWidth="74"
                       VerticalAlignment="Center"
                       FontSize="13"
-                      Foreground="{StaticResource HaloDetailInk72Brush}"
+                      Foreground="{ThemeResource HaloDetailInk72Brush}"
                       Text="{x:Bind Count}"
                       TextAlignment="Right" />
                   </Grid>
@@ -372,14 +372,14 @@
           <TextBlock
             Margin="0,12,0,0"
             FontSize="13"
-            Foreground="{StaticResource HaloDetailInk55Brush}"
+            Foreground="{ThemeResource HaloDetailInk55Brush}"
             Text="None of your addons has streams for this title."
             TextWrapping="Wrap"
             Visibility="{x:Bind ViewModel.AvailabilityEmptyVisibility, Mode=OneWay}" />
           <!-- No addon offers streams at all: Halo ships none, so say what to do. -->
           <StackPanel Margin="0,12,0,0" Spacing="4" Visibility="{x:Bind ViewModel.NoStreamAddonsVisibility, Mode=OneWay}">
-            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{StaticResource HaloDetailInk72Brush}" Text="Add a streaming addon to watch" TextWrapping="Wrap" />
-            <TextBlock FontSize="13" Foreground="{StaticResource HaloDetailInk55Brush}" Text="Halo doesn't come with streams. Add an addon that provides them, and its sources show up here." TextWrapping="Wrap" />
+            <TextBlock FontSize="14" FontWeight="SemiBold" Foreground="{ThemeResource HaloDetailInk72Brush}" Text="Add a streaming addon to watch" TextWrapping="Wrap" />
+            <TextBlock FontSize="13" Foreground="{ThemeResource HaloDetailInk55Brush}" Text="Halo doesn't come with streams. Add an addon that provides them, and its sources show up here." TextWrapping="Wrap" />
           </StackPanel>
           <ItemsControl IsTabStop="False" ItemsSource="{x:Bind ViewModel.AvailabilityFailures, Mode=OneWay}">
             <ItemsControl.ItemTemplate>
@@ -396,14 +396,14 @@
           <Grid
             Margin="0,14,0,0"
             Padding="0,14,0,0"
-            BorderBrush="{StaticResource HaloDetailLineBrush}"
+            BorderBrush="{ThemeResource HaloDetailLineBrush}"
             BorderThickness="0,1,0,0"
             Visibility="{x:Bind ViewModel.SubtitlesVisibility, Mode=OneWay}">
-            <TextBlock FontSize="13" Foreground="{StaticResource HaloDetailInk72Brush}" Text="Subtitles" />
+            <TextBlock FontSize="13" Foreground="{ThemeResource HaloDetailInk72Brush}" Text="Subtitles" />
             <TextBlock
               HorizontalAlignment="Right"
               FontSize="13"
-              Foreground="{StaticResource HaloDetailInk72Brush}"
+              Foreground="{ThemeResource HaloDetailInk72Brush}"
               Text="{x:Bind ViewModel.SubtitlesText, Mode=OneWay}" />
           </Grid>
           <Button

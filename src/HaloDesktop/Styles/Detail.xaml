@@ -1,88 +1,163 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
   The title page's own palette and controls, from the reference's `detail.css`.
-  Deliberately outside the theme dictionaries: the title page is dark in both app
-  themes because it always sits on the title's art (the page asks for the dark
-  theme itself; the rail and title bar around it keep the viewer's theme), so
-  these are fixed colours, not theme tokens. Alphas are the reference's rgba
-  values as bytes.
+  Its own theme dictionaries rather than the app's tokens: the page sits on the
+  title's art, so its inks, glass and fades are tuned for that, dark (the
+  reference's rgba values as bytes) and light. Code that paints with the
+  composition layer reads the colour tokens through ThemeColorLookup.
 -->
 <ResourceDictionary
   xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
   xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
 
-  <SolidColorBrush x:Key="HaloDetailGroundBrush" Color="#FF0B0B0D" />
-  <SolidColorBrush x:Key="HaloDetailInkBrush" Color="#FFF5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailOnInkBrush" Color="#FF0B0B0D" />
-  <!-- The reference's ink at its opacities, named by percent. -->
-  <SolidColorBrush x:Key="HaloDetailInk86Brush" Color="#DBF5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk78Brush" Color="#C7F5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk74Brush" Color="#BDF5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk72Brush" Color="#B8F5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk55Brush" Color="#8CF5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk50Brush" Color="#80F5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk45Brush" Color="#73F5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailInk40Brush" Color="#66F5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailEdgeBrush" Color="#1AFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailLineBrush" Color="#17FFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailFocusBrush" Color="#FFF8E7A6" />
+  <ResourceDictionary.ThemeDictionaries>
+    <ResourceDictionary x:Key="Default">
+      <SolidColorBrush x:Key="HaloDetailGroundBrush" Color="#FF0B0B0D" />
+      <SolidColorBrush x:Key="HaloDetailInkBrush" Color="#FFF5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailOnInkBrush" Color="#FF0B0B0D" />
+      <!-- The reference's ink at its opacities, named by percent. -->
+      <SolidColorBrush x:Key="HaloDetailInk86Brush" Color="#DBF5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk78Brush" Color="#C7F5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk74Brush" Color="#BDF5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk72Brush" Color="#B8F5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk55Brush" Color="#8CF5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk50Brush" Color="#80F5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk45Brush" Color="#73F5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailInk40Brush" Color="#66F5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailEdgeBrush" Color="#1AFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailLineBrush" Color="#17FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailFocusBrush" Color="#FFF8E7A6" />
 
-  <!--
-    Glass. WinUI has no backdrop-filter; the in-app AcrylicBrush the Windows App SDK
-    ships blurs whatever the app draws behind the element (here the title's art),
-    then tints it. Its blur radius is fixed by the system rather than the reference's
-    28px, and it adds the system's noise texture. Where the system turns transparency
-    off, it falls back to the flat fill below, which still reads as a dark pane.
-  -->
-  <AcrylicBrush x:Key="HaloDetailGlassBrush" TintColor="#FF16161A" TintOpacity="0.48" FallbackColor="#E016161A" />
-  <AcrylicBrush x:Key="HaloDetailCompactBarBrush" TintColor="#FF101014" TintOpacity="0.6" FallbackColor="#F0101014" />
+      <!--
+        Glass. WinUI has no backdrop-filter; the in-app AcrylicBrush the Windows App SDK
+        ships blurs whatever the app draws behind the element (here the title's art),
+        then tints it. Its blur radius is fixed by the system rather than the reference's
+        28px, and it adds the system's noise texture. Where the system turns transparency
+        off, it falls back to the flat fill below, which still reads as a dark pane.
+      -->
+      <AcrylicBrush x:Key="HaloDetailGlassBrush" TintColor="#FF16161A" TintOpacity="0.48" FallbackColor="#E016161A" />
+      <AcrylicBrush x:Key="HaloDetailCompactBarBrush" TintColor="#FF101014" TintOpacity="0.6" FallbackColor="#F0101014" />
 
-  <!-- `.detail-bg-blur::after`: the dim over the blurred art. -->
-  <SolidColorBrush x:Key="HaloDetailBackdropDimBrush" Color="#9E08080A" />
-  <SolidColorBrush x:Key="HaloDetailSkeletonBrush" Color="#14FFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailArtBrush" Color="#0DFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailArtRingBrush" Color="#0FFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailHoverBrush" Color="#0FFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailCurrentBrush" Color="#0DFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailMeterTrackBrush" Color="#1AFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailMeterBrush" Color="#B3F5F5F7" />
-  <LinearGradientBrush x:Key="HaloDetailGoldMeterBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-    <GradientStop Offset="0" Color="#FFC79A2E" />
-    <GradientStop Offset="1" Color="#FFF8E7A6" />
-  </LinearGradientBrush>
-  <SolidColorBrush x:Key="HaloDetailBarTrackBrush" Color="#33FFFFFF" />
-  <LinearGradientBrush x:Key="HaloDetailBarBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-    <GradientStop Offset="0" Color="#B3F5F5F7" />
-    <GradientStop Offset="1" Color="#FFFFFFFF" />
-  </LinearGradientBrush>
-  <SolidColorBrush x:Key="HaloDetailCertificateStrokeBrush" Color="#59FFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailImdbBrush" Color="#FFF5C518" />
-  <SolidColorBrush x:Key="HaloDetailBadgeBrush" Color="#B30A0A0C" />
-  <SolidColorBrush x:Key="HaloDetailPlayCircleBrush" Color="#8C000000" />
-  <SolidColorBrush x:Key="HaloDetailRoundBrush" Color="#1FFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailRoundHoverBrush" Color="#33FFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailRoundOnBrush" Color="#EBF5F5F7" />
-  <SolidColorBrush x:Key="HaloDetailBrowseBrush" Color="#1AFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailBrowseHoverBrush" Color="#2EFFFFFF" />
-  <SolidColorBrush x:Key="HaloDetailPagerBrush" Color="#14FFFFFF" />
-  <!--
-    A row's edge with more to show fades over 48px. XAML has no opacity mask for live
-    content, so a band of the glass's own colour is laid over that edge, fading to
-    clear, as Home's shelves do with their ground.
-  -->
-  <LinearGradientBrush x:Key="HaloDetailFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-    <GradientStop Offset="0" Color="#E616161A" />
-    <GradientStop Offset="1" Color="#0016161A" />
-  </LinearGradientBrush>
-  <LinearGradientBrush x:Key="HaloDetailFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
-    <GradientStop Offset="0" Color="#0016161A" />
-    <GradientStop Offset="1" Color="#E616161A" />
-  </LinearGradientBrush>
+      <!-- `.detail-bg-blur::after`: the dim over the blurred art. -->
+      <SolidColorBrush x:Key="HaloDetailBackdropDimBrush" Color="#9E08080A" />
+      <SolidColorBrush x:Key="HaloDetailSkeletonBrush" Color="#14FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailArtBrush" Color="#0DFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailArtRingBrush" Color="#0FFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailHoverBrush" Color="#0FFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailCurrentBrush" Color="#0DFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailMeterTrackBrush" Color="#1AFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailMeterBrush" Color="#B3F5F5F7" />
+      <LinearGradientBrush x:Key="HaloDetailGoldMeterBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#FFC79A2E" />
+        <GradientStop Offset="1" Color="#FFF8E7A6" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloDetailBarTrackBrush" Color="#33FFFFFF" />
+      <LinearGradientBrush x:Key="HaloDetailBarBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#B3F5F5F7" />
+        <GradientStop Offset="1" Color="#FFFFFFFF" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloDetailCertificateStrokeBrush" Color="#59FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailImdbBrush" Color="#FFF5C518" />
+      <SolidColorBrush x:Key="HaloDetailBadgeBrush" Color="#B30A0A0C" />
+      <SolidColorBrush x:Key="HaloDetailPlayCircleBrush" Color="#8C000000" />
+      <SolidColorBrush x:Key="HaloDetailRoundBrush" Color="#1FFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailRoundHoverBrush" Color="#33FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailRoundOnBrush" Color="#EBF5F5F7" />
+      <SolidColorBrush x:Key="HaloDetailBrowseBrush" Color="#1AFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailBrowseHoverBrush" Color="#2EFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailPagerBrush" Color="#14FFFFFF" />
+      <!--
+        A row's edge with more to show fades over 48px. XAML has no opacity mask for live
+        content, so a band of the glass's own colour is laid over that edge, fading to
+        clear, as Home's shelves do with their ground.
+      -->
+      <LinearGradientBrush x:Key="HaloDetailFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#E616161A" />
+        <GradientStop Offset="1" Color="#0016161A" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="HaloDetailFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#0016161A" />
+        <GradientStop Offset="1" Color="#E616161A" />
+      </LinearGradientBrush>
+      <Color x:Key="HaloDetailGroundColor">#FF0B0B0D</Color>
+      <Color x:Key="HaloDetailInkColor">#FFF5F5F7</Color>
+      <Color x:Key="HaloDetailInk78Color">#C7F5F5F7</Color>
+      <SolidColorBrush x:Key="HaloDetailPlayHoverBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailPlayPressedBrush" Color="#FFE4E4E8" />
+      <SolidColorBrush x:Key="HaloDetailRoundOnHoverBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailLinkLineBrush" Color="#40FFFFFF" />
+    </ResourceDictionary>
+    <ResourceDictionary x:Key="Light">
+      <!--
+        The light theme: the app's pale ground and its dark ink at the same
+        opacities, glass that frosts the art white, and a dark main button.
+        Badges and the play circle sit on posters, so they stay dark.
+      -->
+      <Color x:Key="HaloDetailGroundColor">#FFF4F6FA</Color>
+      <Color x:Key="HaloDetailInkColor">#FF0E1220</Color>
+      <Color x:Key="HaloDetailInk78Color">#C70E1220</Color>
+      <SolidColorBrush x:Key="HaloDetailGroundBrush" Color="#FFF4F6FA" />
+      <SolidColorBrush x:Key="HaloDetailInkBrush" Color="#FF0E1220" />
+      <SolidColorBrush x:Key="HaloDetailOnInkBrush" Color="#FFFFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailInk86Brush" Color="#DB0E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk78Brush" Color="#C70E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk74Brush" Color="#BD0E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk72Brush" Color="#B80E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk55Brush" Color="#8C0E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk50Brush" Color="#800E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk45Brush" Color="#730E1220" />
+      <SolidColorBrush x:Key="HaloDetailInk40Brush" Color="#660E1220" />
+      <SolidColorBrush x:Key="HaloDetailEdgeBrush" Color="#170E1220" />
+      <SolidColorBrush x:Key="HaloDetailLineBrush" Color="#140E1220" />
+      <SolidColorBrush x:Key="HaloDetailFocusBrush" Color="#FF9A7400" />
+      <AcrylicBrush x:Key="HaloDetailGlassBrush" TintColor="#FFFFFFFF" TintOpacity="0.6" FallbackColor="#EBFFFFFF" />
+      <AcrylicBrush x:Key="HaloDetailCompactBarBrush" TintColor="#FFF4F6FA" TintOpacity="0.72" FallbackColor="#F5F4F6FA" />
+      <SolidColorBrush x:Key="HaloDetailBackdropDimBrush" Color="#D1F4F6FA" />
+      <SolidColorBrush x:Key="HaloDetailSkeletonBrush" Color="#120E1220" />
+      <SolidColorBrush x:Key="HaloDetailArtBrush" Color="#0A0E1220" />
+      <SolidColorBrush x:Key="HaloDetailArtRingBrush" Color="#0F0E1220" />
+      <SolidColorBrush x:Key="HaloDetailHoverBrush" Color="#0A0E1220" />
+      <SolidColorBrush x:Key="HaloDetailCurrentBrush" Color="#080E1220" />
+      <SolidColorBrush x:Key="HaloDetailMeterTrackBrush" Color="#170E1220" />
+      <SolidColorBrush x:Key="HaloDetailMeterBrush" Color="#B30E1220" />
+      <LinearGradientBrush x:Key="HaloDetailGoldMeterBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#FFA87812" />
+        <GradientStop Offset="1" Color="#FFD9A520" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloDetailBarTrackBrush" Color="#240E1220" />
+      <LinearGradientBrush x:Key="HaloDetailBarBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#B30E1220" />
+        <GradientStop Offset="1" Color="#FF0E1220" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloDetailCertificateStrokeBrush" Color="#590E1220" />
+      <SolidColorBrush x:Key="HaloDetailImdbBrush" Color="#FFF5C518" />
+      <SolidColorBrush x:Key="HaloDetailBadgeBrush" Color="#B30A0A0C" />
+      <SolidColorBrush x:Key="HaloDetailPlayCircleBrush" Color="#8C000000" />
+      <SolidColorBrush x:Key="HaloDetailRoundBrush" Color="#B3FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailRoundHoverBrush" Color="#E6FFFFFF" />
+      <SolidColorBrush x:Key="HaloDetailRoundOnBrush" Color="#EB0E1220" />
+      <SolidColorBrush x:Key="HaloDetailBrowseBrush" Color="#0F0E1220" />
+      <SolidColorBrush x:Key="HaloDetailBrowseHoverBrush" Color="#1A0E1220" />
+      <SolidColorBrush x:Key="HaloDetailPagerBrush" Color="#0D0E1220" />
+      <LinearGradientBrush x:Key="HaloDetailFadeStartBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#E6FFFFFF" />
+        <GradientStop Offset="1" Color="#00FFFFFF" />
+      </LinearGradientBrush>
+      <LinearGradientBrush x:Key="HaloDetailFadeEndBrush" StartPoint="0,0.5" EndPoint="1,0.5">
+        <GradientStop Offset="0" Color="#00FFFFFF" />
+        <GradientStop Offset="1" Color="#E6FFFFFF" />
+      </LinearGradientBrush>
+      <SolidColorBrush x:Key="HaloDetailPlayHoverBrush" Color="#FF262B3A" />
+      <SolidColorBrush x:Key="HaloDetailPlayPressedBrush" Color="#FF3A4052" />
+      <SolidColorBrush x:Key="HaloDetailRoundOnHoverBrush" Color="#FF262B3A" />
+      <SolidColorBrush x:Key="HaloDetailLinkLineBrush" Color="#400E1220" />
+    </ResourceDictionary>
+  </ResourceDictionary.ThemeDictionaries>
 
   <!-- `.glass`: the panels' frosted fill, edge and radius. -->
   <Style x:Key="HaloDetailGlassPanelStyle" TargetType="Border">
-    <Setter Property="Background" Value="{StaticResource HaloDetailGlassBrush}" />
-    <Setter Property="BorderBrush" Value="{StaticResource HaloDetailEdgeBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailGlassBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailEdgeBrush}" />
     <Setter Property="BorderThickness" Value="1" />
     <Setter Property="CornerRadius" Value="18" />
     <Setter Property="Padding" Value="22,20,22,22" />
@@ -92,13 +167,13 @@
   <Style x:Key="HaloDetailPanelTitleStyle" TargetType="TextBlock">
     <Setter Property="FontSize" Value="17" />
     <Setter Property="FontWeight" Value="SemiBold" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailInkBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailInkBrush}" />
     <Setter Property="VerticalAlignment" Value="Center" />
   </Style>
   <Style x:Key="HaloDetailPanelNoteStyle" TargetType="TextBlock">
     <Setter Property="FontFamily" Value="{StaticResource HaloMonoFont}" />
     <Setter Property="FontSize" Value="12" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailInk50Brush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailInk50Brush}" />
     <Setter Property="VerticalAlignment" Value="Bottom" />
     <Setter Property="Margin" Value="10,0,0,2" />
     <Setter Property="TextWrapping" Value="NoWrap" />
@@ -115,11 +190,11 @@
     <Setter Property="Padding" Value="0" />
     <Setter Property="BorderThickness" Value="0" />
     <Setter Property="Background" Value="Transparent" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailInkBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailInkBrush}" />
     <Setter Property="HorizontalContentAlignment" Value="Center" />
     <Setter Property="VerticalContentAlignment" Value="Center" />
     <Setter Property="UseSystemFocusVisuals" Value="True" />
-    <Setter Property="FocusVisualPrimaryBrush" Value="{StaticResource HaloDetailFocusBrush}" />
+    <Setter Property="FocusVisualPrimaryBrush" Value="{ThemeResource HaloDetailFocusBrush}" />
     <Setter Property="FocusVisualPrimaryThickness" Value="2" />
     <Setter Property="FocusVisualSecondaryThickness" Value="0" />
     <Setter Property="FocusVisualMargin" Value="-3" />
@@ -130,8 +205,8 @@
     <Setter Property="Height" Value="46" />
     <Setter Property="Padding" Value="26,0" />
     <Setter Property="CornerRadius" Value="10" />
-    <Setter Property="Background" Value="{StaticResource HaloDetailInkBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailOnInkBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailInkBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailOnInkBrush}" />
     <Setter Property="FontSize" Value="15" />
     <Setter Property="FontWeight" Value="SemiBold" />
     <Setter Property="Template">
@@ -157,12 +232,12 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="#FFFFFFFF" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailPlayHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="#FFE4E4E8" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailPlayPressedBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Disabled">
@@ -196,8 +271,8 @@
     <Setter Property="Height" Value="46" />
     <Setter Property="CornerRadius" Value="23" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{StaticResource HaloDetailEdgeBrush}" />
-    <Setter Property="Background" Value="{StaticResource HaloDetailRoundBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailEdgeBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailRoundBrush}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
@@ -219,12 +294,12 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloDetailRoundHoverBrush}" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailRoundHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloDetailRoundHoverBrush}" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailRoundHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Disabled">
@@ -246,9 +321,9 @@
     <Setter Property="Height" Value="46" />
     <Setter Property="CornerRadius" Value="23" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{StaticResource HaloDetailEdgeBrush}" />
-    <Setter Property="Background" Value="{StaticResource HaloDetailRoundOnBrush}" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailOnInkBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailEdgeBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailRoundOnBrush}" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailOnInkBrush}" />
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="Button">
@@ -270,12 +345,12 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="#FFFFFFFF" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailRoundOnHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="#FFFFFFFF" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailRoundOnHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Disabled">
@@ -294,8 +369,8 @@
   <!-- `.dh-sources`: the underlined "N sources" link. -->
   <Style x:Key="HaloDetailLinkButtonStyle" BasedOn="{StaticResource HaloDetailButtonBaseStyle}" TargetType="Button">
     <Setter Property="FontSize" Value="13" />
-    <Setter Property="Foreground" Value="{StaticResource HaloDetailInk72Brush}" />
-    <Setter Property="BorderBrush" Value="#40FFFFFF" />
+    <Setter Property="Foreground" Value="{ThemeResource HaloDetailInk72Brush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailLinkLineBrush}" />
     <Setter Property="BorderThickness" Value="0,0,0,1" />
     <Setter Property="Template">
       <Setter.Value>
@@ -315,12 +390,12 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Foreground" Value="{StaticResource HaloDetailInkBrush}" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloDetailInkBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Foreground" Value="{StaticResource HaloDetailInkBrush}" />
+                    <Setter Target="ContentPresenter.Foreground" Value="{ThemeResource HaloDetailInkBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Disabled" />
@@ -355,13 +430,13 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="RowRoot.Background" Value="{StaticResource HaloDetailHoverBrush}" />
+                    <Setter Target="RowRoot.Background" Value="{ThemeResource HaloDetailHoverBrush}" />
                     <Setter Target="Chevron.Opacity" Value="1" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="RowRoot.Background" Value="{StaticResource HaloDetailHoverBrush}" />
+                    <Setter Target="RowRoot.Background" Value="{ThemeResource HaloDetailHoverBrush}" />
                     <Setter Target="Chevron.Opacity" Value="1" />
                   </VisualState.Setters>
                 </VisualState>
@@ -380,7 +455,7 @@
               Grid.Column="1"
               VerticalAlignment="Center"
               FontSize="12"
-              Foreground="{StaticResource HaloDetailInk50Brush}"
+              Foreground="{ThemeResource HaloDetailInk50Brush}"
               Glyph="&#xE76C;"
               Opacity="0" />
           </Grid>
@@ -395,8 +470,8 @@
     <Setter Property="Height" Value="40" />
     <Setter Property="CornerRadius" Value="10" />
     <Setter Property="BorderThickness" Value="1" />
-    <Setter Property="BorderBrush" Value="{StaticResource HaloDetailEdgeBrush}" />
-    <Setter Property="Background" Value="{StaticResource HaloDetailBrowseBrush}" />
+    <Setter Property="BorderBrush" Value="{ThemeResource HaloDetailEdgeBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailBrowseBrush}" />
     <Setter Property="FontSize" Value="14" />
     <Setter Property="FontWeight" Value="Medium" />
     <Setter Property="Template">
@@ -421,12 +496,12 @@
                 <VisualState x:Name="Normal" />
                 <VisualState x:Name="PointerOver">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloDetailBrowseHoverBrush}" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailBrowseHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Pressed">
                   <VisualState.Setters>
-                    <Setter Target="ContentPresenter.Background" Value="{StaticResource HaloDetailBrowseHoverBrush}" />
+                    <Setter Target="ContentPresenter.Background" Value="{ThemeResource HaloDetailBrowseHoverBrush}" />
                   </VisualState.Setters>
                 </VisualState>
                 <VisualState x:Name="Disabled">
@@ -448,7 +523,7 @@
     <Setter Property="Width" Value="32" />
     <Setter Property="Height" Value="32" />
     <Setter Property="CornerRadius" Value="16" />
-    <Setter Property="Background" Value="{StaticResource HaloDetailPagerBrush}" />
+    <Setter Property="Background" Value="{ThemeResource HaloDetailPagerBrush}" />
   </Style>
 
   <!-- A card or a row that draws its own hover: the button only takes the click. -->

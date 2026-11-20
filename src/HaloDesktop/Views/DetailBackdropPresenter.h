@@ -36,6 +36,8 @@ namespace HaloDesktop::Views
 
     private:
         void Build();
+        // The scrim in the host's theme: its ground colour and its stops.
+        void ApplyTheme();
         void OnLoaded(winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface const& surface, bool succeeded);
         void Release() noexcept;
         void Disable() noexcept;
@@ -46,11 +48,13 @@ namespace HaloDesktop::Views
         winrt::Microsoft::UI::Composition::SpriteVisual m_art{ nullptr };
         winrt::Microsoft::UI::Composition::SpriteVisual m_scrim{ nullptr };
         winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_mask{ nullptr };
+        winrt::Microsoft::UI::Composition::CompositionLinearGradientBrush m_scrimGradient{ nullptr };
         winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface m_surface{ nullptr };
         std::wstring m_url;
         float m_width{};
         float m_height{};
         bool m_disabled{};
+        winrt::Microsoft::UI::Xaml::FrameworkElement::ActualThemeChanged_revoker m_themeChanged;
         // Last, so it is revoked before the surface it listens to goes.
         winrt::Microsoft::UI::Xaml::Media::LoadedImageSurface::LoadCompleted_revoker m_loaded;
     };

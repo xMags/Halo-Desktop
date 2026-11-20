@@ -14,15 +14,15 @@
   -->
   <Grid>
     <Border
-      Background="{StaticResource HaloDetailCurrentBrush}"
-      BorderBrush="{StaticResource HaloDetailEdgeBrush}"
+      Background="{ThemeResource HaloDetailCurrentBrush}"
+      BorderBrush="{ThemeResource HaloDetailEdgeBrush}"
       BorderThickness="1"
       CornerRadius="12"
       IsHitTestVisible="False"
       Visibility="{x:Bind Episode.CurrentVisibility, Mode=OneWay}" />
     <Border
       x:Name="HoverFill"
-      Background="{StaticResource HaloDetailHoverBrush}"
+      Background="{ThemeResource HaloDetailHoverBrush}"
       CornerRadius="12"
       IsHitTestVisible="False"
       Opacity="0">
@@ -52,14 +52,14 @@
             Height="34"
             HorizontalAlignment="Center"
             VerticalAlignment="Center"
-            Background="{StaticResource HaloDetailPlayCircleBrush}"
+            Background="{ThemeResource HaloDetailPlayCircleBrush}"
             CornerRadius="17"
             IsHitTestVisible="False"
             Opacity="0">
             <Border.OpacityTransition>
               <ScalarTransition Duration="0:0:0.15" />
             </Border.OpacityTransition>
-            <FontIcon FontSize="14" Foreground="{StaticResource HaloDetailInkBrush}" Glyph="&#xE768;" />
+            <FontIcon FontSize="14" Foreground="{ThemeResource HaloDetailInkBrush}" Glyph="&#xE768;" />
           </Border>
           <Grid
             Height="3"
@@ -93,7 +93,7 @@
               VerticalAlignment="Center"
               FontFamily="{StaticResource HaloMonoFont}"
               FontSize="12"
-              Foreground="{StaticResource HaloDetailInk50Brush}"
+              Foreground="{ThemeResource HaloDetailInk50Brush}"
               Text="{x:Bind Episode.Tag, Mode=OneWay}"
               Visibility="{x:Bind Episode.PlainTagVisibility, Mode=OneWay}" />
             <FontIcon
@@ -109,7 +109,7 @@
               VerticalAlignment="Center"
               FontSize="15"
               FontWeight="SemiBold"
-              Foreground="{StaticResource HaloDetailInkBrush}"
+              Foreground="{ThemeResource HaloDetailInkBrush}"
               Text="{x:Bind Episode.Title, Mode=OneWay}"
               TextTrimming="CharacterEllipsis" />
             <Border
@@ -128,7 +128,7 @@
           </Grid>
           <TextBlock
             FontSize="13"
-            Foreground="{StaticResource HaloDetailInk55Brush}"
+            Foreground="{ThemeResource HaloDetailInk55Brush}"
             LineHeight="18.85"
             LineStackingStrategy="BlockLineHeight"
             MaxLines="2"
@@ -143,14 +143,14 @@
             HorizontalAlignment="Right"
             FontFamily="{StaticResource HaloMonoFont}"
             FontSize="12"
-            Foreground="{StaticResource HaloDetailInk50Brush}"
+            Foreground="{ThemeResource HaloDetailInk50Brush}"
             Text="{x:Bind Episode.Aside, Mode=OneWay}"
             Visibility="{x:Bind Episode.AsideVisibility, Mode=OneWay}" />
           <TextBlock
             HorizontalAlignment="Right"
             FontFamily="{StaticResource HaloMonoFont}"
             FontSize="12"
-            Foreground="{StaticResource HaloDetailInk50Brush}"
+            Foreground="{ThemeResource HaloDetailInk50Brush}"
             Text="{x:Bind Episode.Aired, Mode=OneWay}"
             Visibility="{x:Bind Episode.AiredVisibility, Mode=OneWay}" />
         </StackPanel>

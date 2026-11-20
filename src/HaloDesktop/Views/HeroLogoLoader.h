@@ -36,4 +36,10 @@ namespace HaloDesktop::Views
     [[nodiscard]] concurrency::task<LoadedHeroLogo> LoadHeroLogoAsync(
         winrt::Windows::Web::Http::HttpClient client,
         std::wstring url);
+
+    // The logo's shape in `ink`, made once per logo and ink and kept on it.
+    // Empty when the logo kept no pixels or XAML refuses the bitmap. UI thread.
+    [[nodiscard]] winrt::Microsoft::UI::Xaml::Media::ImageSource InkedHeroLogo(
+        LoadedHeroLogo& logo,
+        winrt::Windows::UI::Color ink);
 }

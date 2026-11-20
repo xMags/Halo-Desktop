@@ -103,4 +103,30 @@ namespace HaloDesktop::Views
         loaded.Image = bitmap;
         co_return loaded;
     }
+
+    winrt::Microsoft::UI::Xaml::Media::ImageSource InkedHeroLogo(LoadedHeroLogo& logo, winrt::Windows::UI::Color ink)
+    {
+        if (logo.Pixels.empty() || logo.PixelWidth == 0 || logo.PixelHeight == 0) return nullptr;
+        if (logo.Inked && logo.InkColor == ink) return logo.Inked;
+        try
+        {
+            std::vector<std::uint8_t> pixels = logo.Pixels;
+            InkHeroLogo(pixels, ink.R, ink.G, ink.B);
+            winrt::Microsoft::UI::Xaml::Media::Imaging::WriteableBitmap bitmap{
+                static_cast<std::int32_t>(logo.PixelWidth),
+                static_cast<std::int32_t>(logo.PixelHeight) };
+            auto const buffer = bitmap.PixelBuffer();
+            if (buffer.Capacity() < pixels.size()) return nullptr;
+            std::copy(pixels.begin(), pixels.end(), buffer.data());
+            buffer.Length(static_cast<std::uint32_t>(pixels.size()));
+            bitmap.Invalidate();
+            logo.Inked = bitmap;
+            logo.InkColor = ink;
+            return bitmap;
+        }
+        catch (winrt::hresult_error const&)
+        {
+            return nullptr;
+        }
+    }
 }

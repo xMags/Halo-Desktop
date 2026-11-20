@@ -572,28 +572,7 @@ namespace HaloDesktop::Views
         auto const text = m_parts.TitleText.try_as<winrt::Microsoft::UI::Xaml::Controls::TextBlock>();
         auto const brush = text ? text.Foreground().try_as<winrt::Microsoft::UI::Xaml::Media::SolidColorBrush>() : nullptr;
         if (!brush) return nullptr;
-        auto const ink = brush.Color();
-        if (logo.Inked && logo.InkColor == ink) return logo.Inked;
-        try
-        {
-            std::vector<std::uint8_t> pixels = logo.Pixels;
-            ::HaloDesktop::Views::InkHeroLogo(pixels, ink.R, ink.G, ink.B);
-            winrt::Microsoft::UI::Xaml::Media::Imaging::WriteableBitmap bitmap{
-                static_cast<std::int32_t>(logo.PixelWidth),
-                static_cast<std::int32_t>(logo.PixelHeight) };
-            auto const buffer = bitmap.PixelBuffer();
-            if (buffer.Capacity() < pixels.size()) return nullptr;
-            std::copy(pixels.begin(), pixels.end(), buffer.data());
-            buffer.Length(static_cast<std::uint32_t>(pixels.size()));
-            bitmap.Invalidate();
-            logo.Inked = bitmap;
-            logo.InkColor = ink;
-            return bitmap;
-        }
-        catch (winrt::hresult_error const&)
-        {
-            return nullptr;
-        }
+        return ::HaloDesktop::Views::InkedHeroLogo(logo, brush.Color());
     }
 
     void HomeHeroPresenter::UpdateTitleTreatment()

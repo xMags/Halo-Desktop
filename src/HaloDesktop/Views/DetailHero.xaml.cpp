@@ -4,6 +4,12 @@
 #include "DetailHero.g.cpp"
 #endif
 
+#include "Controls/ThemeColorLookup.h"
+#include "Views/HeroLogoLoader.h"
+#include "Views/HeroLogoPolicy.h"
+
+#include <optional>
+#include <pplawait.h>
 #include <winrt/Microsoft.UI.Xaml.Hosting.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Animation.h>
 #include <winrt/Microsoft.UI.Xaml.Media.Imaging.h>
@@ -34,7 +40,22 @@ namespace winrt::HaloDesktop::implementation
         m_viewModelChanged.revoke();
         if (!m_viewModel) return;
         m_viewModelChanged = m_viewModel.PropertyChanged(winrt::auto_revoke, { get_weak(), &DetailHero::OnViewModelChanged });
+        // The logo is judged per theme, so a theme change loads it again.
+        m_themeChanged = ActualThemeChanged(winrt::auto_revoke, [weak = get_weak()](auto&&, auto&&)
+        {
+            if (auto const self = weak.get())
+            {
+                self->m_logo = {};
+                self->LoadLogo();
+                self->UpdateLogoShadow();
+            }
+        });
         LoadLogo();
+    }
+
+    bool DetailHero::IsLight() const
+    {
+        return ActualTheme() == Microsoft::UI::Xaml::ElementTheme::Light;
     }
 
     void DetailHero::ApplyLayout(double gutter, bool showAside, double heroHeight)
@@ -129,6 +150,13 @@ namespace winrt::HaloDesktop::implementation
             UpdateLogoShadow();
             return;
         }
+        if (IsLight())
+        {
+            // Nothing until judged, so a white mark never flashes on the pale page.
+            image.Source(nullptr);
+            LoadJudgedLogoAsync(logo);
+            return;
+        }
         try
         {
             Microsoft::UI::Xaml::Media::Imaging::BitmapImage bitmap;
@@ -141,6 +169,56 @@ namespace winrt::HaloDesktop::implementation
             // logo that fails to load does.
             image.Source(nullptr);
             if (m_viewModel) m_viewModel.LogoFailed();
+        }
+    }
+
+    winrt::fire_and_forget DetailHero::LoadJudgedLogoAsync(winrt::hstring url)
+    {
+        auto const lifetime = get_strong();
+        auto const uiContext = winrt::apartment_context{};
+        if (!m_logoClient) m_logoClient = winrt::Windows::Web::Http::HttpClient{};
+        std::optional<::HaloDesktop::Views::LoadedHeroLogo> loaded;
+        try
+        {
+            loaded = co_await ::HaloDesktop::Views::LoadHeroLogoAsync(m_logoClient, std::wstring{ url });
+        }
+        catch (...)
+        {
+        }
+        // Awaiting a PPL task may resume on a pool thread; everything below
+        // touches this control and its theme.
+        co_await uiContext;
+        if (url != m_logo) co_return;
+        auto treatment = loaded
+            ? ::HaloDesktop::Views::ChooseHeroLogoTreatment(loaded->Luminance, loaded->Coverage, IsLight())
+            : ::HaloDesktop::Views::HeroLogoTreatment::Name;
+        Microsoft::UI::Xaml::Media::ImageSource source{ nullptr };
+        if (treatment == ::HaloDesktop::Views::HeroLogoTreatment::Original)
+        {
+            source = loaded->Image;
+        }
+        else if (treatment == ::HaloDesktop::Views::HeroLogoTreatment::Inked)
+        {
+            if (auto const ink = ::HaloDesktop::Controls::ThemeColor(*this, L"HaloDetailInkColor"))
+            {
+                source = ::HaloDesktop::Views::InkedHeroLogo(*loaded, *ink);
+            }
+        }
+        if (!source)
+        {
+            // A light logo that fills its box, one that could not be judged or
+            // inked, or none at all: the name, as a logo that fails does.
+            if (m_viewModel) m_viewModel.LogoFailed();
+            co_return;
+        }
+        try
+        {
+            LogoImage().Source(source);
+            // An inked copy raises no ImageOpened of its own.
+            UpdateLogoShadow();
+        }
+        catch (winrt::hresult_error const&)
+        {
         }
     }
 
@@ -165,7 +243,9 @@ namespace winrt::HaloDesktop::implementation
                 m_logoShadow.Shadow(m_logoDropShadow);
                 ElementCompositionPreview::SetElementChildVisual(host, m_logoShadow);
             }
-            m_logoShadow.IsVisible(shown);
+            // It lifts a logo off dark art; on the light page it would only
+            // smudge the logo's edges.
+            m_logoShadow.IsVisible(shown && !IsLight());
             if (!shown) return;
             auto const width = image.ActualWidth();
             auto const height = image.ActualHeight();

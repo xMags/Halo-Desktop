@@ -1,7 +1,10 @@
 #include "pch.h"
 #include "Views/DetailBackdropPresenter.h"
 
+#include "Controls/ThemeColorLookup.h"
+
 #include <chrono>
+#include <span>
 #include <stdexcept>
 #include <utility>
 #include <winrt/Microsoft.UI.Xaml.Hosting.h>
@@ -20,19 +23,29 @@ namespace
     constexpr float SettleScale = 1.06F;
     constexpr float SettleOpacity = 0.4F;
 
-    // `.detail-bg-scrim`: darkest behind the text column, lifting toward the art's
-    // open side. rgba(11, 11, 13, a) at 0%, 34%, 62% and 100%.
+    // `.detail-bg-scrim`: the page's ground, heaviest behind the text column,
+    // lifting toward the art's open side, at 0%, 34%, 62% and 100%. The light
+    // theme's dark text needs a heavier wash over the same art than the dark
+    // theme's light text does.
     struct ScrimStop final
     {
         float Offset;
         std::uint8_t Alpha;
     };
-    constexpr ScrimStop ScrimStops[]{
+    constexpr ScrimStop DarkScrimStops[]{
         { 0.0F, 0xDB },
         { 0.34F, 0x85 },
         { 0.62F, 0x1A },
         { 1.0F, 0x52 },
     };
+    constexpr ScrimStop LightScrimStops[]{
+        { 0.0F, 0xF0 },
+        { 0.34F, 0xC2 },
+        { 0.62F, 0x2E },
+        { 1.0F, 0x47 },
+    };
+    // The dark theme's ground, if the token cannot be read.
+    constexpr winrt::Windows::UI::Color FallbackGround{ 0xFF, 0x0B, 0x0B, 0x0D };
 
     bool AnimationsEnabled()
     {
@@ -96,15 +109,12 @@ namespace HaloDesktop::Views
         m_art = m_compositor.CreateSpriteVisual();
         m_art.Opacity(0.0F);
 
-        auto const scrimGradient = m_compositor.CreateLinearGradientBrush();
-        scrimGradient.StartPoint({ 0.0F, 0.0F });
-        scrimGradient.EndPoint({ 1.0F, 0.0F });
-        for (auto const& stop : ScrimStops)
-        {
-            scrimGradient.ColorStops().Append(m_compositor.CreateColorGradientStop(stop.Offset, { stop.Alpha, 0x0B, 0x0B, 0x0D }));
-        }
+        m_scrimGradient = m_compositor.CreateLinearGradientBrush();
+        m_scrimGradient.StartPoint({ 0.0F, 0.0F });
+        m_scrimGradient.EndPoint({ 1.0F, 0.0F });
+        ApplyTheme();
         auto const scrimBrush = m_compositor.CreateMaskBrush();
-        scrimBrush.Source(scrimGradient);
+        scrimBrush.Source(m_scrimGradient);
         scrimBrush.Mask(m_mask);
         m_scrim = m_compositor.CreateSpriteVisual();
         m_scrim.Brush(scrimBrush);
@@ -112,6 +122,31 @@ namespace HaloDesktop::Views
         m_root.Children().InsertAtTop(m_art);
         m_root.Children().InsertAtTop(m_scrim);
         ElementCompositionPreview::SetElementChildVisual(m_host, m_root);
+        m_themeChanged = m_host.ActualThemeChanged(winrt::auto_revoke, [this](auto&&, auto&&)
+        {
+            if (m_disabled) return;
+            try
+            {
+                ApplyTheme();
+            }
+            catch (winrt::hresult_error const&)
+            {
+                Disable();
+            }
+        });
+    }
+
+    void DetailBackdropPresenter::ApplyTheme()
+    {
+        auto const theme = m_host.ActualTheme();
+        auto const light = theme == winrt::Microsoft::UI::Xaml::ElementTheme::Light;
+        auto const ground = ::HaloDesktop::Controls::ThemeColor(theme, L"HaloDetailGroundColor").value_or(FallbackGround);
+        auto const stops = m_scrimGradient.ColorStops();
+        stops.Clear();
+        for (auto const& stop : light ? std::span<ScrimStop const>{ LightScrimStops } : std::span<ScrimStop const>{ DarkScrimStops })
+        {
+            stops.Append(m_compositor.CreateColorGradientStop(stop.Offset, { stop.Alpha, ground.R, ground.G, ground.B }));
+        }
     }
 
     void DetailBackdropPresenter::SetArt(std::wstring_view url)
@@ -234,6 +269,7 @@ namespace HaloDesktop::Views
     {
         try
         {
+            m_themeChanged.revoke();
             m_loaded.revoke();
             if (m_surface)
             {

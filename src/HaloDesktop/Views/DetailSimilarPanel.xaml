@@ -73,7 +73,7 @@
         Width="48"
         Margin="0,16,0,0"
         HorizontalAlignment="Left"
-        Fill="{StaticResource HaloDetailFadeStartBrush}"
+        Fill="{ThemeResource HaloDetailFadeStartBrush}"
         IsHitTestVisible="False"
         Visibility="Collapsed" />
       <Rectangle
@@ -82,7 +82,7 @@
         Width="48"
         Margin="0,16,0,0"
         HorizontalAlignment="Right"
-        Fill="{StaticResource HaloDetailFadeEndBrush}"
+        Fill="{ThemeResource HaloDetailFadeEndBrush}"
         IsHitTestVisible="False"
         Visibility="Collapsed" />
     </Grid>

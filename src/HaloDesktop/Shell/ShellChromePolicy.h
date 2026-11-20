@@ -15,9 +15,8 @@ namespace HaloDesktop::Shell
     {
         // The whole window (ground, title bar, pane, sheet, dialogs and menus)
         // paints the dark palette whatever the theme preference: only for the
-        // full-window sign-in screen. A title page is dark on its art in both
-        // themes, but asks for that itself (DetailPage's RequestedTheme), so the
-        // rail and title bar around it keep the viewer's theme.
+        // full-window sign-in screen. A title page follows the viewer's theme
+        // like any other page (its palette has light and dark values).
         bool ForceDarkPalette{};
         // The title bar sits on the player's near-black ground with dark-palette
         // ink and light caption buttons, in both themes.
