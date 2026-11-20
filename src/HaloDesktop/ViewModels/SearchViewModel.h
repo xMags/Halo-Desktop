@@ -102,6 +102,9 @@ namespace winrt::HaloDesktop::implementation
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleVisibility() const noexcept;
         // The legend's people item, and the box's words, follow the server.
         [[nodiscard]] Microsoft::UI::Xaml::Visibility PeopleHintVisibility() const noexcept;
+        // The legend's note that a TMDB key adds people search, for Halo
+        // without an account and without a working key.
+        [[nodiscard]] Microsoft::UI::Xaml::Visibility TmdbKeyHintVisibility() const noexcept;
         // The legend's link item names magnets only when the server opens them.
         [[nodiscard]] winrt::hstring LinksHintText() const;
         [[nodiscard]] winrt::hstring Placeholder() const;

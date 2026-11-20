@@ -9,6 +9,7 @@
 #include <memory>
 #include <winrt/Microsoft.UI.Xaml.Controls.h>
 #include <winrt/Microsoft.UI.Xaml.Data.h>
+#include <winrt/Microsoft.UI.Xaml.Documents.h>
 #include <winrt/Microsoft.UI.Xaml.Input.h>
 
 namespace winrt::HaloDesktop::implementation
@@ -37,6 +38,9 @@ namespace winrt::HaloDesktop::implementation
         void OnClearRecentClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnShowAllResultsClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnPosterClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
+        void OnTmdbKeySettingsClick(
+            Microsoft::UI::Xaml::Documents::Hyperlink const& sender,
+            Microsoft::UI::Xaml::Documents::HyperlinkClickEventArgs const& args);
         void OnPersonClick(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnGridElementPrepared(Microsoft::UI::Xaml::Controls::ItemsRepeater const&, Microsoft::UI::Xaml::Controls::ItemsRepeaterElementPreparedEventArgs const&);
         void OnTopMatchTapped(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::TappedRoutedEventArgs const&);

@@ -401,6 +401,7 @@ namespace winrt::HaloDesktop::implementation
     }
 
     Microsoft::UI::Xaml::Visibility SearchViewModel::PeopleHintVisibility() const noexcept { return VisibleIf(PeopleAvailable()); }
+    Microsoft::UI::Xaml::Visibility SearchViewModel::TmdbKeyHintVisibility() const noexcept { return VisibleIf(m_features->PeopleNeedTmdbKey()); }
 
     winrt::hstring SearchViewModel::LinksHintText() const
     {
@@ -1571,6 +1572,7 @@ namespace winrt::HaloDesktop::implementation
     {
         Raise(L"Placeholder");
         Raise(L"PeopleHintVisibility");
+        Raise(L"TmdbKeyHintVisibility");
         Raise(L"LinksHintText");
         // A TVDB or IMDb person card that waited for the server's answer.
         if (IsServerLookup() && !m_serverLookupAsked)
@@ -2200,7 +2202,7 @@ namespace winrt::HaloDesktop::implementation
                  L"RecentVisibility", L"HintsVisibility", L"StatusVisibility", L"StatusFailed", L"NoAddonsVisibility", L"TopMatchVisibility", L"TopMatchSkeletonVisibility",
                  L"LibraryVisibility", L"ResultsVisibility", L"ResultsSkeletonVisibility",
                  L"FilteredEmptyVisibility", L"NothingFoundVisibility", L"AddonsUnreachableVisibility",
-                 L"PeopleVisibility", L"PeopleHintVisibility", L"LinksHintText", L"Placeholder" })
+                 L"PeopleVisibility", L"PeopleHintVisibility", L"TmdbKeyHintVisibility", L"LinksHintText", L"Placeholder" })
         {
             Raise(name);
         }

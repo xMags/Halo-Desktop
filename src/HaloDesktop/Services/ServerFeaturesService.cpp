@@ -64,6 +64,11 @@ namespace HaloDesktop::Services
         return m_state == State::Loaded && m_capabilities.People;
     }
 
+    bool ServerFeaturesService::PeopleNeedTmdbKey() const noexcept
+    {
+        return m_state == State::Loaded && m_backends->UsesDevice() && !m_capabilities.People;
+    }
+
     bool ServerFeaturesService::Lookup() const noexcept
     {
         return m_state == State::Loaded && m_capabilities.Lookup;

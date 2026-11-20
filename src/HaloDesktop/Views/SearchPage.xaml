@@ -479,6 +479,23 @@
                 <TextBlock Style="{StaticResource SearchHintLabelStyle}" Text="IMDb / TVDB Links" />
               </StackPanel>
             </Grid>
+            <!--
+              Without an account and without a working TMDB key, one quiet line
+              says what a key adds. Settings opens on its Account section, where
+              the key card sits, so the link needs no more than to open it.
+            -->
+            <TextBlock
+              MaxWidth="560"
+              HorizontalAlignment="Center"
+              FontSize="{StaticResource HaloFontSmall}"
+              Foreground="{ThemeResource HaloText3Brush}"
+              TextAlignment="Center"
+              TextWrapping="Wrap"
+              Visibility="{x:Bind ViewModel.TmdbKeyHintVisibility, Mode=OneWay}">
+              <Run Text="Add a free TMDB key in" />
+              <Hyperlink Click="OnTmdbKeySettingsClick" UnderlineStyle="None">Settings</Hyperlink>
+              <Run Text="to also find actors, directors and writers, and open TVDB links." />
+            </TextBlock>
           </StackPanel>
 
           <!--

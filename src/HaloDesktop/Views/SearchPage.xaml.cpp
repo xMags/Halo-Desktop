@@ -8,6 +8,7 @@
 #endif
 #include "App.xaml.h"
 #include "Models/Models.h"
+#include "Services/NavigationService.h"
 #include "Shell/LayoutMetricsService.h"
 #include "ViewModels/SearchViewModel.h"
 
@@ -301,6 +302,13 @@ namespace winrt::HaloDesktop::implementation
         {
             m_viewModel.OpenDetail(card.Tag());
         }
+    }
+
+    void SearchPage::OnTmdbKeySettingsClick(
+        [[maybe_unused]] Microsoft::UI::Xaml::Documents::Hyperlink const& sender,
+        [[maybe_unused]] Microsoft::UI::Xaml::Documents::HyperlinkClickEventArgs const& args)
+    {
+        App::Services().Navigation->GoTo(::HaloDesktop::Services::Page::Settings);
     }
 
     void SearchPage::OnPersonClick(winrt::Windows::Foundation::IInspectable const& sender, [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const&)

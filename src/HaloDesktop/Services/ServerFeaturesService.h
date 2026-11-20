@@ -52,6 +52,9 @@ namespace HaloDesktop::Services
         void EnsureLoaded();
         [[nodiscard]] bool People() const noexcept;
         [[nodiscard]] bool Lookup() const noexcept;
+        // Halo without an account, with no working TMDB key: people search
+        // and TVDB links would turn on with one (Settings' TMDB key card).
+        [[nodiscard]] bool PeopleNeedTmdbKey() const noexcept;
         // Pasted magnets, for this account.
         [[nodiscard]] bool Magnets() const noexcept;
         // Whether the answer for this account is in (an answer that failed counts).

@@ -60,6 +60,7 @@ namespace HaloDesktop
         Microsoft.UI.Xaml.Visibility PeopleVisibility { get; };
         // People search, when the server has it: the legend's item and the box's words.
         Microsoft.UI.Xaml.Visibility PeopleHintVisibility { get; };
+        Microsoft.UI.Xaml.Visibility TmdbKeyHintVisibility { get; };
         // The legend's link item: "HTTP & Magnet Links" when the server opens magnets.
         String LinksHintText { get; };
         String Placeholder { get; };
