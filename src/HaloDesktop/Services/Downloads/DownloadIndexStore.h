@@ -8,6 +8,7 @@
 #include <mutex>
 #include <optional>
 #include <set>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -20,6 +21,19 @@ namespace HaloDesktop::Services::Downloads
         std::filesystem::path ConfigFile;
         std::filesystem::path VaultDirectory;
         std::filesystem::path DefaultDownloadDirectory;
+    };
+
+    // The index on disk was written by a newer Halo Desktop, in a format this
+    // build does not know. It is never rewritten, set aside or emptied: every
+    // load, and so every change (each one loads first), fails with this, and
+    // the file waits for a build that can read it. The text is shown as it is.
+    class NewerDownloadIndexError final : public std::runtime_error
+    {
+    public:
+        NewerDownloadIndexError()
+            : std::runtime_error{ "These downloads were saved by a newer version of Halo Desktop. Update Halo Desktop to manage them." }
+        {
+        }
     };
 
     // Thread-safe atomic persistence for non-secret download metadata. Save

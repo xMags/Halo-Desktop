@@ -500,9 +500,33 @@ namespace HaloDesktop::Services::Downloads
           m_store(std::move(dataRoot)),
           m_vault(m_store.Paths().VaultDirectory)
     {
-        for (auto& record : m_store.Load())
+        std::vector<DownloadRecord> loaded;
+        auto newerIndex = false;
+        try
+        {
+            loaded = m_store.Load();
+        }
+        catch (NewerDownloadIndexError const&)
+        {
+            // The app still starts, with no downloads listed; every change is
+            // refused by the store with the same reason, and the file is kept.
+            newerIndex = true;
+        }
+        for (auto& record : loaded)
         {
             m_records.emplace(record.JobId, std::move(record));
+        }
+        if (newerIndex && launchRecovery)
+        {
+            try
+            {
+                launchRecovery(
+                    L"These downloads were saved by a newer version of Halo Desktop. "
+                    L"Update Halo Desktop to see them. Nothing was changed.");
+            }
+            catch (...)
+            {
+            }
         }
         if (m_store.TakeLoadRecoveryNotice() && launchRecovery)
         {
@@ -642,7 +666,16 @@ namespace HaloDesktop::Services::Downloads
             }
         }
 
-        auto latest = m_store.Load(false);
+        std::vector<DownloadRecord> latest;
+        try
+        {
+            latest = m_store.Load(false);
+        }
+        catch (NewerDownloadIndexError const&)
+        {
+            // As at launch: the account binds with nothing listed, so each
+            // change it asks for is refused with the store's own reason.
+        }
         {
             std::scoped_lock const lock{ m_mutex };
             std::optional<DownloadRecord> activeRecord;

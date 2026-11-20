@@ -551,6 +551,53 @@ namespace
             "a wholly malformed download index was not quarantined");
     }
 
+    // An index a newer build wrote is never set aside or emptied: loads and
+    // changes refuse, the bytes stay as they were, and the engine still starts.
+    void TestNewerDownloadIndexIsLeftAlone()
+    {
+        TemporaryDirectory temporary;
+        auto const dataRoot = temporary.Path() / L"state";
+        std::filesystem::create_directories(dataRoot);
+        auto const indexPath = dataRoot / L"downloads-index.json";
+        std::string const newer = R"({"version":"99","entries":[{"jobId":"from-the-future"}]})";
+        HaloDesktop::Storage::WriteUtf8FileAtomic(indexPath, newer);
+
+        DownloadIndexStore store{ dataRoot };
+        auto const refuses = [](auto&& action)
+        {
+            try
+            {
+                action();
+            }
+            catch (HaloDesktop::Services::Downloads::NewerDownloadIndexError const&)
+            {
+                return true;
+            }
+            catch (...)
+            {
+            }
+            return false;
+        };
+        Require(refuses([&store]() { static_cast<void>(store.Load(false)); }),
+            "a newer download index loaded, or failed as something else");
+        Require(refuses([&store]() { store.Apply({ Record(L"job-new", L"movie:new") }); }),
+            "a change was written over a newer download index");
+        Require(refuses([&store]() { store.Save({ Record(L"job-new", L"movie:new") }, 1); }),
+            "a save was written over a newer download index");
+
+        std::vector<std::wstring> reports;
+        {
+            TransferEngine engine{ dataRoot, [&reports](std::wstring_view line) { reports.emplace_back(line); } };
+            engine.SetAccount(L"https://example.test", L"user-a");
+            Require(engine.List().empty(), "a newer download index listed downloads");
+        }
+        Require(reports.size() == 1 && reports.front().find(L"newer version") != std::wstring::npos,
+            "the engine did not report a newer download index at launch");
+        Require(HaloDesktop::Storage::ReadUtf8File(indexPath, 32u * 1024u * 1024u) == newer,
+            "a newer download index was changed");
+        Require(QuarantinedIndexes(dataRoot).empty(), "a newer download index was set aside as corrupt");
+    }
+
     void TestDownloadLandscapeArtworkPersistence()
     {
         TemporaryDirectory temporary;
@@ -928,6 +975,7 @@ void RunStandaloneStorageTests()
     TestMigrationProtectsExistingTarget();
     TestDownloadLeasesAndAtomicIndexMerge();
     TestCorruptDownloadIndexRecovery();
+    TestNewerDownloadIndexIsLeftAlone();
     TestDownloadLandscapeArtworkPersistence();
     TestPendingDownloadDeletionRecovery();
     TestPendingDeletionKeepsSharedFiles();

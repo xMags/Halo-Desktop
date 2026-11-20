@@ -370,7 +370,12 @@ namespace
             return {};
         }
         auto const root = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(raw));
-        if (RequiredUnsigned(root, L"version") != IndexVersion)
+        auto const version = RequiredUnsigned(root, L"version");
+        if (version > IndexVersion)
+        {
+            throw HaloDesktop::Services::Downloads::NewerDownloadIndexError{};
+        }
+        if (version != IndexVersion)
         {
             throw std::runtime_error{ "The download index version is unsupported." };
         }
@@ -629,6 +634,11 @@ namespace
         try
         {
             return { ParseRecords(raw, recoverInterrupted), false };
+        }
+        catch (HaloDesktop::Services::Downloads::NewerDownloadIndexError const&)
+        {
+            // Not corrupt, only newer: left exactly as it is.
+            throw;
         }
         catch (...)
         {
