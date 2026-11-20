@@ -43,7 +43,8 @@ namespace winrt::HaloDesktop::implementation
         explicit SearchPersonViewModel(::HaloDesktop::Api::Dto::PersonSummary const& person);
         [[nodiscard]] winrt::hstring Name() const { return m_name; }
         [[nodiscard]] winrt::hstring Line() const { return m_line; }
-        [[nodiscard]] Microsoft::UI::Xaml::Visibility LineVisibility() const noexcept;
+        [[nodiscard]] winrt::hstring Role() const { return m_role; }
+        [[nodiscard]] winrt::Windows::Foundation::IInspectable LineToolTip() const;
         [[nodiscard]] winrt::hstring Photo() const { return m_photo; }
         [[nodiscard]] winrt::hstring Initials() const { return m_initials; }
         [[nodiscard]] std::int64_t TmdbId() const noexcept { return m_tmdbId; }
@@ -52,6 +53,7 @@ namespace winrt::HaloDesktop::implementation
         std::int64_t m_tmdbId{};
         winrt::hstring m_name;
         winrt::hstring m_line;
+        winrt::hstring m_role;
         winrt::hstring m_photo;
         winrt::hstring m_initials;
     };

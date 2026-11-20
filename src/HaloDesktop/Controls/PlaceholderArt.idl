@@ -1,12 +1,14 @@
 namespace HaloDesktop
 {
     // What a placeholder stands in for. Plain is the striped tile every art slot
-    // uses; a movie or series poster gets a soft surface with that kind's glyph.
+    // uses; a movie or series poster, or a person's portrait, gets a soft
+    // surface with that kind's glyph.
     enum PlaceholderKind
     {
         Plain,
         Movie,
         Series,
+        Person,
     };
 
     [default_interface]

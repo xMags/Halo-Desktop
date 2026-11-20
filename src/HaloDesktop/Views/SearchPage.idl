@@ -37,7 +37,11 @@ namespace HaloDesktop
     {
         String Name { get; };
         String Line { get; };
-        Microsoft.UI.Xaml.Visibility LineVisibility { get; };
+        // What they are ("Actor"), under the portrait; empty when unknown.
+        String Role { get; };
+        // The whole line, known-for titles included, as the card's tooltip;
+        // null when there is nothing to say.
+        Object LineToolTip { get; };
         String Photo { get; };
         String Initials { get; };
     }

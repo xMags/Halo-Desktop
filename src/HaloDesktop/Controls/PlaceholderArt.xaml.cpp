@@ -57,6 +57,7 @@ namespace winrt::HaloDesktop::implementation
         show(FindName(L"PosterSurface").try_as<Microsoft::UI::Xaml::UIElement>(), poster);
         show(FindName(L"MovieGlyph").try_as<Microsoft::UI::Xaml::UIElement>(), m_kind == winrt::HaloDesktop::PlaceholderKind::Movie);
         show(FindName(L"SeriesGlyph").try_as<Microsoft::UI::Xaml::UIElement>(), m_kind == winrt::HaloDesktop::PlaceholderKind::Series);
+        show(FindName(L"PersonGlyph").try_as<Microsoft::UI::Xaml::UIElement>(), m_kind == winrt::HaloDesktop::PlaceholderKind::Person);
     }
 
     winrt::hstring PlaceholderArt::Caption() const

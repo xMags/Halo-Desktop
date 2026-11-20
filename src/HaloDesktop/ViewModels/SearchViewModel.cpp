@@ -174,12 +174,19 @@ namespace winrt::HaloDesktop::implementation
         : m_tmdbId(person.TmdbId),
           m_name(person.Name),
           m_line(::HaloDesktop::Services::PersonRowLine(person)),
-          m_photo(person.Photo.value_or(winrt::hstring{})),
+          m_role(winrt::hstring{ ::HaloDesktop::Services::KnownForLabel(person.KnownFor) }),
+          // The portrait card is a poster's size, more than the server's
+          // thumbnail-sized copy holds; the person page then reuses this copy.
+          m_photo(winrt::hstring{ ::HaloDesktop::Controls::PortraitPhotoUrl(person.Photo.value_or(winrt::hstring{})) }),
           m_initials(::HaloDesktop::ViewModels::Initials(person.Name))
     {
     }
 
-    Microsoft::UI::Xaml::Visibility SearchPersonViewModel::LineVisibility() const noexcept { return VisibleIf(!m_line.empty()); }
+    winrt::Windows::Foundation::IInspectable SearchPersonViewModel::LineToolTip() const
+    {
+        if (m_line.empty()) return nullptr;
+        return winrt::box_value(m_line);
+    }
 
     RecentSearchViewModel::RecentSearchViewModel(winrt::hstring term) : m_term(std::move(term)) {}
     winrt::hstring RecentSearchViewModel::Term() const { return m_term; }

@@ -133,10 +133,14 @@ namespace winrt::HaloDesktop::implementation
     {
         m_kindLabel = value;
         if (auto text = FindName(L"KindText").try_as<Microsoft::UI::Xaml::Controls::TextBlock>()) text.Text(value);
-        // The missing-poster surface shows the kind's glyph: a TV for a series, film for anything else.
+        // The missing-poster surface shows the kind's glyph: a TV for a series,
+        // a figure for a person, film for anything else.
         if (auto placeholder = FindName(L"Placeholder").try_as<winrt::HaloDesktop::PlaceholderArt>())
         {
-            placeholder.Kind(value == L"SERIES" ? winrt::HaloDesktop::PlaceholderKind::Series : winrt::HaloDesktop::PlaceholderKind::Movie);
+            auto const kind = value == L"SERIES" ? winrt::HaloDesktop::PlaceholderKind::Series
+                : value == L"PERSON"             ? winrt::HaloDesktop::PlaceholderKind::Person
+                                                 : winrt::HaloDesktop::PlaceholderKind::Movie;
+            placeholder.Kind(kind);
         }
     }
     bool PosterCard::ShowKindBadge() const noexcept { return m_showKindBadge; }

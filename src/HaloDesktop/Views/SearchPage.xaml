@@ -133,52 +133,21 @@
         Click="OnPosterClick" />
     </DataTemplate>
     <!--
-      One person of the people row: a round photo over its initials (shown
-      until, unless, the photo loads) and the name. No card; a soft wash under
-      the pointer.
+      One person of the people row: a poster card holding their portrait, the
+      2:3 shape TMDB's profile photos come in and the person page shows, so no
+      face is cropped. A faint figure stands in until, unless, the photo loads.
+      Under it the name and what they are; the known-for titles are its tooltip.
     -->
     <DataTemplate x:Key="SearchPersonTemplate" x:DataType="local:SearchPersonViewModel">
-      <Button
-        Padding="8,8,18,8"
-        HorizontalAlignment="Stretch"
-        HorizontalContentAlignment="Stretch"
+      <local:PosterCard
+        Title="{x:Bind Name}"
+        Meta="{x:Bind Role}"
+        Poster="{x:Bind Photo}"
+        KindLabel="PERSON"
         AutomationProperties.Name="{x:Bind Name}"
-        Background="Transparent"
-        BorderThickness="0"
-        Click="OnPersonClick"
-        CornerRadius="36"
-        Tag="{x:Bind}">
-        <Button.Resources>
-          <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="{ThemeResource HaloSubtleColor}" />
-          <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="{ThemeResource HaloSubtlePressedColor}" />
-        </Button.Resources>
-        <Grid ColumnSpacing="14">
-          <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="56" />
-            <ColumnDefinition Width="*" />
-          </Grid.ColumnDefinitions>
-          <Grid Width="56" Height="56" Background="{ThemeResource HaloAccentTintBrush}" CornerRadius="28">
-            <TextBlock
-              HorizontalAlignment="Center"
-              VerticalAlignment="Center"
-              FontFamily="Segoe UI Variable Display"
-              FontSize="{StaticResource HaloFontEmphasis}"
-              FontWeight="SemiBold"
-              Foreground="{ThemeResource HaloAccentBrush}"
-              Text="{x:Bind Initials}" />
-            <local:ArtworkImage DecodeWidth="112" SourceUrl="{x:Bind Photo}" />
-          </Grid>
-          <StackPanel Grid.Column="1" VerticalAlignment="Center" Spacing="2">
-            <TextBlock FontSize="{StaticResource HaloFontBody}" FontWeight="SemiBold" Foreground="{ThemeResource HaloText1Brush}" Text="{x:Bind Name}" TextTrimming="CharacterEllipsis" />
-            <TextBlock
-              FontSize="{StaticResource HaloFontCaption}"
-              Foreground="{ThemeResource HaloText3Brush}"
-              Text="{x:Bind Line}"
-              TextTrimming="CharacterEllipsis"
-              Visibility="{x:Bind LineVisibility}" />
-          </StackPanel>
-        </Grid>
-      </Button>
+        ToolTipService.ToolTip="{x:Bind LineToolTip}"
+        Tag="{x:Bind}"
+        Click="OnPersonClick" />
     </DataTemplate>
   </Page.Resources>
   <Grid>
@@ -764,7 +733,7 @@
               <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
               <ItemsRepeater x:Name="PeopleAboveGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
                 <ItemsRepeater.Layout>
-                  <UniformGridLayout ItemsStretch="Fill" MinColumnSpacing="8" MinItemWidth="250" MinRowSpacing="4" Orientation="Horizontal" />
+                  <UniformGridLayout ItemsStretch="None" MinColumnSpacing="18" MinItemWidth="132" MinRowSpacing="14" Orientation="Horizontal" />
                 </ItemsRepeater.Layout>
               </ItemsRepeater>
             </StackPanel>
@@ -810,7 +779,7 @@
               <TextBlock Style="{StaticResource SearchSectionTitleStyle}" Text="People" />
               <ItemsRepeater x:Name="PeopleBelowGrid" ItemTemplate="{StaticResource SearchPersonTemplate}">
                 <ItemsRepeater.Layout>
-                  <UniformGridLayout ItemsStretch="Fill" MinColumnSpacing="8" MinItemWidth="250" MinRowSpacing="4" Orientation="Horizontal" />
+                  <UniformGridLayout ItemsStretch="None" MinColumnSpacing="18" MinItemWidth="132" MinRowSpacing="14" Orientation="Horizontal" />
                 </ItemsRepeater.Layout>
               </ItemsRepeater>
             </StackPanel>
