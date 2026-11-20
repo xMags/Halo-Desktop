@@ -5,6 +5,7 @@
 #include "Api/BackendSelector.h"
 #include "Api/HaloBackend.h"
 #include "Models/Models.h"
+#include "Services/Device/DeviceModePolicy.h"
 #include "Services/QueryCache.h"
 
 #include <algorithm>
@@ -199,14 +200,22 @@ namespace HaloDesktop::Services
         // then adds this PC's addons one by one, and a seed from here landing
         // between two of its writes would replace the list and lose them. The
         // move reloads account data when it ends, which seeds here if needed.
+        //
+        // An account whose own list lacks a built-in (set up before it became
+        // one, or after a move from this PC, which leaves the built-ins behind)
+        // gets it added at the end, once per account per session, as the PC's
+        // own list is topped up. Nothing is removed or reordered. Where the
+        // list for everyone has the same address, the server marks the copy
+        // provided globally and it shows greyed out, as unused. Only a list
+        // whose every URL is known is sent, since the save replaces it whole.
         auto const moveOwnsSeeding = m_session->HasDeviceDataToMove();
-        auto const shouldSeed = !m_seedAttempted && payload.Global.empty() && payload.User.empty()
-            && m_session->Mode() != SessionMode::Device && !moveOwnsSeeding;
+        auto const tryDefaults = !m_seedAttempted && m_session->Mode() != SessionMode::Device && !moveOwnsSeeding;
         if (!moveOwnsSeeding)
         {
             m_seedAttempted = true;
         }
-        if (shouldSeed)
+        std::optional<std::vector<winrt::hstring>> withDefaults;
+        if (tryDefaults && payload.Global.empty() && payload.User.empty())
         {
             std::vector<winrt::hstring> defaults;
             defaults.reserve(DefaultAddonUrls.size());
@@ -214,10 +223,34 @@ namespace HaloDesktop::Services
             {
                 defaults.emplace_back(url);
             }
+            withDefaults = std::move(defaults);
+        }
+        else if (tryDefaults && std::all_of(payload.User.begin(), payload.User.end(), [](auto const& addon) { return addon.TransportUrl.has_value(); }))
+        {
+            std::vector<std::wstring> own;
+            own.reserve(payload.User.size());
+            for (auto const& addon : payload.User)
+            {
+                own.emplace_back(*addon.TransportUrl);
+            }
+            if (auto const next = ::HaloDesktop::Services::Device::TopUpAddonList(own))
+            {
+                std::vector<winrt::hstring> urls;
+                urls.reserve(next->size());
+                for (auto const& url : *next)
+                {
+                    urls.emplace_back(url);
+                }
+                withDefaults = std::move(urls);
+            }
+        }
+        if (withDefaults)
+        {
+            auto defaults = std::move(*withDefaults);
             // Best effort, as the reference client seeds: the server validates
             // every manifest, so one built-in host being down refuses the whole
-            // list, and that must not fail the first load. The empty list
-            // already read is applied instead.
+            // list, and that must not fail the load. The list already read is
+            // applied instead.
             std::optional<::HaloDesktop::Api::Dto::AddonsPayload> seeded;
             try
             {
