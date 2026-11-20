@@ -239,6 +239,13 @@ namespace winrt::HaloDesktop::implementation
         UpdateSkeletonPulse();
     }
 
+    void HomePage::OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args)
+    {
+        if (args.NavigationMode() != Microsoft::UI::Xaml::Navigation::NavigationMode::Back) return;
+        // None prepared (Back from anywhere but a Search the box opened) is no flight.
+        [[maybe_unused]] auto const started = ::HaloDesktop::Controls::StartSearchBoxReturn(HomeSearchBox());
+    }
+
     void HomePage::OnSearchClick(
         [[maybe_unused]] winrt::Windows::Foundation::IInspectable const& sender,
         [[maybe_unused]] Microsoft::UI::Xaml::RoutedEventArgs const& args)

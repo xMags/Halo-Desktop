@@ -24,6 +24,7 @@ namespace winrt::HaloDesktop::implementation
         void OnLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnUnloaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnNavigatedTo(Microsoft::UI::Xaml::Navigation::NavigationEventArgs const& args);
+        void OnNavigatingFrom(Microsoft::UI::Xaml::Navigation::NavigatingCancelEventArgs const& args);
         void OnQueryBoxLoaded(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
         void OnQueryKeyDown(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::Input::KeyRoutedEventArgs const&);
         void OnQueryGotFocus(winrt::Windows::Foundation::IInspectable const&, Microsoft::UI::Xaml::RoutedEventArgs const&);
@@ -97,6 +98,10 @@ namespace winrt::HaloDesktop::implementation
         // Arrived by Home's search box flight: the chips and the body below the
         // field fade in on Loaded, around the flying box.
         bool m_settleAroundField{};
+        // This visit to the page began with Home's box flying in, so Back to
+        // Home flies the field back into it. Kept across a Back arrival (from a
+        // title opened here): it is still the visit the box began.
+        bool m_arrivedByFlight{};
     };
 }
 

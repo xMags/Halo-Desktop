@@ -222,10 +222,23 @@ namespace winrt::HaloDesktop::implementation
         // From Home's search box: the box grows into the field, and what sits
         // around the field settles in once the page is loaded.
         m_settleAroundField = ::HaloDesktop::Controls::StartSearchBoxFlight(QueryField());
+        if (args.NavigationMode() != Microsoft::UI::Xaml::Navigation::NavigationMode::Back)
+        {
+            m_arrivedByFlight = m_settleAroundField;
+        }
         if (auto const query = args.Parameter().try_as<winrt::Windows::Foundation::IPropertyValue>())
         {
             m_viewModel.Arrive(query.GetString());
         }
+    }
+
+    void SearchPage::OnNavigatingFrom(Microsoft::UI::Xaml::Navigation::NavigatingCancelEventArgs const& args)
+    {
+        // Only Back to the Home the box flew in from: any other way out is a
+        // new step, which slides as it always does.
+        if (!m_arrivedByFlight || args.NavigationMode() != Microsoft::UI::Xaml::Navigation::NavigationMode::Back) return;
+        if (args.SourcePageType().Name != winrt::xaml_typename<winrt::HaloDesktop::HomePage>().Name) return;
+        ::HaloDesktop::Controls::PrepareSearchBoxReturn(QueryField());
     }
 
     // WinUI's box shows its own clear button only while it has the caret. The
